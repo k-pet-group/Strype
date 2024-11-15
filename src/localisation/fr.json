@@ -96,7 +96,7 @@
       "errorUserDefinedFuncMsg":"Fonction définie par l'utilisateur\nla définition de cette fonction contient des erreurs",
       "errorUserDefinedVarMsg":"Variable définie par l'utilisateur\nune affectation de cette variable contient des erreurs",
       "EOFError": "Ce cadre ne peut pas être vide.",
-      "GDriveSaveFailed":"Strype coud not saved to Google Drive. Your latest changes may have not been saved, and the sync has been turned off.",
+      "GDriveSaveFailed":"Strype n'a pas pu enregister le fichier sur Google Drive. Les dernières modifications n'ont peut-être pas été enregistrées et la synchronisation a peut-être été desactivée.",
       "fileNameError":"Le nom de projet / fichier ne peut contenir que des lettres, des chiffres, des espaces, des tirets ou des parenthèses.",
       "gdriveConnectionSaveToLoadProjFailed":"Connexion à Google Drive impossible lors de la tentative de sauvegarde du projet actuel.\nEssayez de vous connecter de nouveau pour ouvrir un autre projet.",
       "gdriveConnectionSaveToUnloadPageFailed":"Connexion à Google Drive impossible lors de la tentative de sauvegarde du projet actuel.\nEssayez de vous connecter de nouveau pour sauvegarder le project actuel avant de quitter Strype.",

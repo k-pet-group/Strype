@@ -1,0 +1,201 @@
+{
+    "localeName":"Español",
+    "defaultProjName":"Mi proyecto",
+    "strypeFileDesc":"Archivo del proyecto Strype",
+    "pythonFileDesc":"Archivo del código Python",
+    "frame":{
+        "defaultText":{
+            "condition":"condición ",
+            "list":"lista ",
+            "identifier":"identificador ",
+            "expression":"expresión ",
+            "value":"valor ",
+            "variable":"variable ",
+            "funcCall":"nombre de la función ",
+            "simpleFuncCall":"función()",
+            "exception":"excepción ",
+            "name":"nombre ",
+            "parameters":"parámetros ",
+            "module":"módulo ",
+            "modulePart":"función/clase ",
+            "comment":"tu comentario "
+        },
+
+        "funcdef_desc":" definición de la función",
+        "varassign_desc":"asignación de la variable",
+        "funccall_desc":"llamada de le función",
+        "blank_desc":"blanco",
+        "comment_desc":"comentario",
+        "if_detail":"Añade una declaración condicional \uD835\uDC22\uD835\uDC1F (si) en el cursor del marco.", 
+        "import_detail":"Añade una declaración \uD835\uDC22\uD835\uDC26\uD835\uDC29\uD835\uDC28\uD835\uDC2B\uD835\uDC2D (importa) en el cursor del marco.",
+        "elif_detail":"Añade una declaración condicional \uD835\uDC1E\uD835\uDC25\uD835\uDC22\uD835\uDC1F (mas si) en el cursor del marco.", 
+        "else_detail":"Añade una declaración condicional \uD835\uDC1E\uD835\uDC25\uD835\uDC2C\uD835\uDC1E (sino) en el cursor del marco.",
+        "for_detail":"Añade un bucle \uD835\uDC1F\uD835\uDC28\uD835\uDC2B (para) en el cursor del marco.", 
+        "funcdef_detail":"Añade una definición de la función en el curosr del marco.",
+        "fromimport_detail":"Añade una declaración \uD835\uDC1F\uD835\uDC2B\uD835\uDC28\uD835\uDC26...\uD835\uDC22\uD835\uDC26\uD835\uDC29\uD835\uDC28\uD835\uDC2B\uD835\uDC2D (a partir de ...importa) en el cursor del marco.",
+        "while_detail":"Añade un bucle \uD835\uDC30\uD835\uDC21\uD835\uDC22\uD835\uDC25\uD835\uDC1E (mientras) en el cursor del marco.",
+        "break_detail":"Añade una declaración \uD835\uDC1B\uD835\uDC2B\uD835\uDC1E\uD835\uDC1A\uD835\uDC24 (pausa) en el cursor del marco",
+        "continue_detail":"Añade una declaración \uD835\uDC1C\uD835\uDC28\uD835\uDC27\uD835\uDC2D\uD835\uDC22\uD835\uDC27\uD835\uDC2E\uD835\uDC1E (continuar) en el cursor del marco.",
+        "varassign_detail":"Añade una asignación de la variable en el cursor del marco.",
+        "funccall_detail":"Añade una llamada de la función en el cursor del marco.",
+        "blank_detail":"Añade un marco en blanco en el cursor del marco.",
+        "return_detail":"Añade una declaración \uD835\uDC2B\uD835\uDC1E\uD835\uDC2D\uD835\uDC2E\uD835\uDC2B\uD835\uDC27 (retornar) en el cursor del marco.", 
+        "comment_detail":"Añade una comentario en el cursor del marco.",
+        "try_detail":"Añade una declaración \uD835\uDC2D\uD835\uDC2B\uD835\uDC32 (intentar) en el cursor del marco.",
+        "raise_detail":"Añade una declaración \uD835\uDC2B\uD835\uDC1A\uD835\uDC22\uD835\uDC2C\uD835\uDC1E (levantar) en el cursor del marco.",
+        "except_detail":"Añade una declaración \uD835\uDC1E\uD835\uDC31\uD835\uDC1C\uD835\uDC1E\uD835\uDC29\uD835\uDC2D (excepción) en el cursor del marco.",
+        "finally_detail":"Añade una declarción \uD835\uDC1F\uD835\uDC22\uD835\uDC27\uD835\uDC1A\uD835\uDC25\uD835\uDC25\uD835\uDC32 (finalmente) en el cursor del mar.",
+        "with_detail":"Añade una declaración \uD835\uDC30\uD835\uDC22\uD835\uDC2D\uD835\uDC21 (con) en el cursor del mar.",
+        "global_detail":"Añade una declarción \uD835\uDC20\uD835\uDC25\uD835\uDC28\uD835\uDC1B\uD835\uDC1A\uD835\uDC25 en el cursor del mar. Esta palabra clave permite modifica una variable \uD835\uDC54\uD835\uDC59\uD835\uDC5C\uD835\uDC4F\uD835\uDC4E\uD835\uDC59\uD835\uDC59\uD835\uDC66, desde dentro de una función."
+    },
+
+
+    "messageBannerMessage": {
+        "deleteLargeCode":"Acabas de eliminar un pedazo de código. Si no fue tu intención, tu puedes: ",
+        "uploadSuccessMicrobit":"Cargar a micro:bit completado.",
+        "uploadFailureMicrobit":"Cargar a micro:bit fallo con un error \"{errorMsg}\"",
+        "noUndo" :"No hay ninguna accion de deshacer disponible.", 
+        "noRedo":"No hay ninguna accion de rehacer disponible.",
+        "uploadEditorFileError":"Ha occurrió un problema durante la carga del archivo del editor: {errorMsg}. Tu código no ha cambiado.", 
+        "uploadEditorFileNotSupported":"El formato de este archivo no es compatible. Se espera extensión de archivo: {list}. Tu código no ha cambiado.",
+        "uploadEditorFileSuccess":"La carga del archivo del editor se ha realizado con éxito. Tu código ha sido cargado.",
+        "forbiddenFrameMove":"El(los) marco(s) seleccionado(s) no se puede(n) mover porque genera(n) un código erroneó.",
+        "forbiddenFramePaste":"El(los) marco(s) seleccionado(s) no puede(n) ser pegado(s) porque genera(n) un código erroneó.",
+        "functionFrameCantDelete":"No se puede eliminar un marco de definición de función desde esta posición del cursor cuando el contenido no está vacío.",
+        "gdriveConnectToSaveFailed":"La conexión a Google Drive se ha perdido. La sincronización con Google Drive se ha detenido, es posible que no se hayan guardado los últimos cambios.",
+        
+        "gdriveCantCreateStrypeFolder":"Strype no pudo crear un archivo \"Strype\" predeterminado en Google Drive.",
+        "invalidPythonParseImport": "Código inválido de Python importado: {errorMsg}",
+        "invalidPythonParsePaste": "Código inválido de Python copiado: {errorMsg}",
+        "wrongPythonStructCopied":"No se puede pegar else/elif/except/finally y contendio adicional en una sola copia",
+        "incompatiblePythonStrypeSection":"El código Python no se puede colocar en la sección objectivo de Strype."
+    },
+
+    "buttonLabel":{
+        "undo":"Deshacer",
+        "yes":"Sí",
+        "no":"No",
+        "ok":"OK",
+        "cancel":"cancelar",
+        "runOnMicrobit":"Ejecutar en micro:bit",
+        "sendToMicrobit":"Enviar a micro:bit",
+        "startCoding":"Empezar a codificar!",
+        "addCodeExtract": "&larr; Añadir al código", 
+        "showMore":"Mostrar más",
+        "showLess":"Mostrar menos",
+        "saveDiffLocation":"Guardar en otro lugar",
+        "overwriteProject":"Reemplazar",
+        "saveProjectCopy":"Elige un nuewvo nombre"
+    },
+
+    "action": {
+        "uploadingToMicrobit":"Cargando a micro:bit ...",
+        "feedbackLink":"Dar retroalimentación ..."
+    },
+
+    "errorMessage": {
+        "wrongDataFormat":"el formato de datos no puedo ser interpretado por Strype",
+        "stateDataIntegrity" :"los datos no tienen integridad para ser interpretados por Strype",
+        "dataNotObject" :"los datos no describen un objeto",
+        "stateWrongPlatform":"el archivo se generó desde una plataforma Strype diferente a la plataforma Strype actual",
+        
+        "stateWrongFrameTypeName":"se produjo un problema al recuperar los tipos de marcos",
+        "emptyEditableSlot":"El espacio no puede estar vacío",
+        "errorTitle":"Error",
+        "pastFrameErrTitle": "Error de tiempo de ejecución en la última ejecucíon",
+        "errorUserDefinedFuncMsg":"Funcíon definida por el usuario\nesta definición de función contiene errores",
+        "errorUserDefinedVarMsg":"Variable definida por el usuario\nuna de la asignaciones para esta variable contiene errores",
+        "EOFError": "Este marco no puede estar vacío.",
+        "GDriveSaveFailed":"Strype no pudo guardar el archivo en Google Drive. Es posible que no se hayan guardado los últimos cambios y que se haya apagado la sincronización.",
+        "fileNameError":"El nombre del proyecto/archivo solo puede contener letras, números, espacios, guiones o parêntesis.",
+        "gdriveConnectionSaveToLoadProjFailed":"No se pudo conectar a Google Drive al intentar guardar el proyecto actual. Intente iniciar sesión abrir otro proyecto.",
+        "gdriveConnectionSaveToUnloadPageFailed":"No se pudo conectar a Google Drive al intentar guardar el proyecto actual. Intente iniciar sesión nuevamente para guardar el proyecto actual antes de salir de Strype.",
+        "gdrivePermissionsNotMet":"Strype requiere al menos un permiso de acceso para usar Google Drive.",
+        "gdriveReadOnly":"Este archivo de Google Drive es solo de lectura, la sincronización con Google Drive se ha apagado.",          
+        "gdriveWrongFile":"Por favor seleccione el archivo Strype (extensión \".spy\").",
+        "unexpectedCharsPython": "caracter(es) inesperado(s)"
+    },
+
+
+    "appMessage": {
+        "editorFileUpload":"Cargando tu archive archiveo al editor...",
+        "editorConfirmChangeCode":"El contenido actual del editor se perderá permanentemente",
+        "editorFileUploadWrongVersion":"Este código se ha proudcido con una versión diferente del editor.\nLa importación puede generar errores.\n¿Aún quieres continuar?",
+        "enableInnerDisabledFrameConfirm":"Esta acción habilitará el el grupo completo de marcos deshabilitados al que pertence este marcos.\n¿Aún quieres continuar?",
+        "importsContainer":"Importaciones:",
+        "funcDefsContainer":"Definiciones de funciones:",
+        "mainContainer":"Mi código:",
+        "preCompiledErrorNeedFix":"Primero corrija los erroes existentes.",
+        "noWebUSB":"Este navegador no admite conexiones webUSB. Por favor utilice otro navegador (como Google Chrome).",
+        "emptyCodeError":"El códdigo no puede estar vacío.",
+        "loadToTarget":"Abierto desde",
+        "saveToTarget":"Guardar en",
+        "targetFS":"Este dispositivo",
+        "fileName":"Nombre del archivo:",
+        "gdriveFileAlreadyExists":"Ya existe un proyecto con este nombre en la ubicación de Google Drive.\n/¿Quieres reemplazarlo?",
+        "gdriveLockedFileAlreadyExists":"Este proyecto está bloqueado en la unicación de Google Drive.\nNo se puede guardar con este nombre.",
+        "autosaveGDrive":"Guardardo",
+        "autoSaveGDriveTooltip":"Este proyecto se guardará automáticamente en Google Drive cada {frecuencia} minutos.",
+        "selectFolder":"Seleccione una carpeta",
+        "selectStrypeFile":"Seleccione un proyecto Strype",
+        "gdriveLocation":"Carpeta:",
+        "gdriveAllStrypeFiles":"Todos los archivos Strype",
+        "gdriveTab":"Mi Drive",
+        "editorErrors":"Errores"
+    },
+
+    "contextMenu": {
+        "ctrl":"Ctrl",
+        "cut":"cortar",
+        "copy":"copiar",
+        "downloadAsImg":"descargar como imagen",
+        "duplicate":"Duplicar",
+        "paste":"pegar",
+        "pasteAbove": "pegar arriba",
+        "pasteBelow": "pegar abajo",
+        "pasteBelowJointRoot": "pegar debajo de lar raíz",
+        "enable":"activar",
+        "disable":"desactivar",
+        "undo":"deshacer",
+        "redo":"rehacer",
+        "delete":"eliminar",
+        "deleteOuter":"eliminar externo",
+        "insert":"insertar"
+    },
+
+    "appMenu": {
+        "downloadPython":"Convertir a archivo Python",
+        "loadProject":"Abrir",
+        "loadProjectTooltip":"Abrir proyecto desde este dispositivo o desde Google Drive",
+        "saveProject":"Guardar",
+        "saveProjectTooltip":"Guardar el proyecto en este dipositivo o en Google Drive",
+        "saveAsProject":"Guardar como...",
+        "saveAsProjectTooltip":"Guardar como un proyecto nuevo en este dipositivo o en Google Drive",
+        "resetProject":"Nuevo proyecto",
+        "resetProjectTooltip":"Restablecer el editor con el proyecto predeterminado de Strype",
+        "prefs":"Preferencias",
+        "lang":"Idioma: ",
+        "version":"versión",
+        "homepage":"Página de inicio de Strype"
+    },
+
+    "autoCompletion": {
+        "myFunctions":"Mis funciones ",
+        "myVariables":"Mis variables",
+        "importedModules":"Módulos importados",
+        "invalidState":"No hay finalización disponible",
+        "noDocumentation":"No hay documentación disponible"
+    },
+
+    "PEA": {
+        "run":"Ejecutar",
+        "stop":"Detener",
+        "stopping":"Deteniéndose...",
+        "runtimeErrorConsole": "Error de tiempo de ejecución",
+        "expand":"Expandir",
+        "collapse":"Colapsar",
+        "console": "Consola",
+        "TurtleGraphics":"Gráficos 'Turtle'",
+        "importTurtle":"Importar el módulo 'turtle'en tu código para usar gráficos 'Turtle'."
+    }
+}

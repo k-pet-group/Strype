@@ -9,6 +9,8 @@
             @click.stop="onGetCaret"
             @slotGotCaret="onGetCaret"
             @slotLostCaret="onLoseCaret"
+            @mouseenter="handleMouseEnterLeave(true)"
+            @mouseleave="handleMouseEnterLeave(false)"
             @keydown.up="onUDKeyDown($event)"
             @keydown.down="onUDKeyDown($event)"
             @keydown.prevent.stop.esc
@@ -425,6 +427,20 @@ export default Vue.extend({
             if(this.erroneous()){
                 (this.$refs.errorPopover as InstanceType<typeof BPopover>).$emit("open");
             }
+        },
+        
+        handleMouseEnterLeave(isEntering: boolean) {
+            // There is a bug with how Firefox handles editable text HTML elements contained in a draggable div.
+            // We need to detect when the mouse is entering/leaving the text element to disable/enable the div's
+            // draggable attribute. 
+            // Because the frames are imbricated, we need to do that for all the frames hierarchy up ot the frames container.
+            // see https://stackoverflow.com/questions/21680363/prevent-drag-event-to-interfere-with-input-elements-in-firefox-using-html5-drag
+            let frameId = this.frameId;
+            do{
+                (document.getElementById(getFrameUID(frameId)) as HTMLDivElement).draggable = !isEntering;
+                frameId = this.appStore.frameObjects[frameId].parentId;
+            } 
+            while(frameId > 0);
         },
         
         updateAC() : void {

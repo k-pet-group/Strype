@@ -365,7 +365,11 @@ export default Vue.extend({
         document.getElementById(this.frameHeaderId)?.removeEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
         
         // Remove the registration of the caret container component at the upmost level for drag and drop
-        delete this.$root.$refs[getCaretUID(this.caretPosition.below, this.frameId)];
+        // ONLY if the frame is really removed from the state (because for a very strange reason, when reloading
+        // a page and overwriting the frames with a state, the initial state's frame are destroyed after registered).
+        if(this.appStore.frameObjects[this.frameId] == undefined){
+            delete this.$root.$refs[getCaretUID(this.caretPosition.below, this.frameId)];
+        }
     },
 
     methods: {

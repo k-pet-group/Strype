@@ -186,7 +186,7 @@ describe("Basic operation", () => {
         return;
     }
     it("Blank canvas", () => {
-        runCodeAndCheckImage("", "print('Hello')\n", "graphics-blank");
+        runCodeAndCheckImage("", "print('Hello')\n", "graphics-blank", ImageComparison.WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS);
     });
     it("Basic cat", () => {
         runCodeAndCheckImage("", "Actor('cat-test.jpg')\nsleep(1)\n", "graphics-just-cat");
@@ -227,6 +227,15 @@ describe("Basic operation", () => {
                 cat.set_rotation(180)
             sleep(1)
             `, "graphics-no-such-image-load-cat-instead");
+    });
+    it("Stops", () => {
+        // Add image, stop then move; we should not see the move:
+        runCodeAndCheckImage("", `
+            a = Actor("cat-test.jpg")
+            a.turn(90)
+            stop()
+            a.move(100)
+        `, "stops");
     });
 });
 
@@ -393,5 +402,33 @@ describe("World bounds", () => {
             mover.move(325 * math.sqrt(2))
             sleep(1)
             `, "bounds-corners");
+    });
+});
+
+describe("World background", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // Graphics tests can't run in microbit
+        return;
+    }
+    it("Tiles smaller backgrounds 1", () => {
+        runCodeAndCheckImage("", `
+            set_background("cat-test.jpg")
+            Actor("mouse-test.jpg")
+            sleep(1)
+        `, "background-tiled-1");
+    });
+    it("Tiles smaller backgrounds 2", () => {
+        runCodeAndCheckImage("", `
+            set_background(load_image("mouse-test.jpg"))
+            Actor("cat-test.jpg")
+            sleep(1)
+        `, "background-tiled-2");
+    });
+    it("Accepts colour background", () => {
+        runCodeAndCheckImage("", `
+            set_background("red")
+            Actor("cat-test.jpg")
+            sleep(1)
+        `, "background-colour");
     });
 });

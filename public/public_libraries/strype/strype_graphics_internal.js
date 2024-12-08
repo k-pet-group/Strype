@@ -83,6 +83,9 @@ var $builtinmodule = function(name)  {
         };
         return susp;
     });
+    mod.setBackground = new Sk.builtin.func(function(img) {
+        peaComponent.__vue__.getPersistentImageManager().setBackground(img);
+    });
     mod.addImage = new Sk.builtin.func(function(image, assoc) {
         return peaComponent.__vue__.getPersistentImageManager().addPersistentImage(image, assoc);
     });

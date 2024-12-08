@@ -195,6 +195,12 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         // what line of code maps with what frame in case of an execution error.
         // We need to extract the line from the error message sent by Skulpt.
         const skulptErrStr: string = err.toString();
+        if (skulptErrStr.startsWith("SystemExit")) {
+            // SystemExit is an error, but not one we print out because it is a deliberate
+            // exit from the program (e.g. from strype.graphics.stop()).  So we just silently stop for that one:
+            handleExecutionFinished(false);
+            return;
+        }
         let moreInfo = "";
         let errorLine = -1;
         if (err.traceback) {

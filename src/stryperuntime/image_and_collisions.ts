@@ -16,17 +16,52 @@ export const WORLD_WIDTH = 800;
 export const WORLD_HEIGHT = 600;
 
 export class PersistentImageManager {
+    // Special case: 0 is always the background, and inserted first in the map to make it
+    // first in the iteration order.  By default it is an 800x600 white image.
     private persistentImages = new Map<number, PersistentImage>();
     private persistentImagesDirty = false; // This relates to whether the map has had addition/removal, need to check each entry to see whether they are dirty
-    private nextPersistentImageId = 0;
+    private nextPersistentImageId = 1;
     private collisionSystem = new System();
     // A map to be able to look up the PersistentImage when we find an intersecting Box during collision detection:
     private boxToImageMap = new Map<Box, PersistentImage>();
     
+    constructor() {
+        this.clear();
+    }
+    
     public clear() : void {
         this.persistentImages.clear();
-        this.persistentImagesDirty = false;
+        // Set background to plain black image:
+        // We use an oversize image to avoid slivers of other colour appearing at the edges
+        // due to the size not being perfectly 800 x 600 on the actual webpage,
+        // which means we are scaling and using anti-aliased sub-pixel rendering: 
+        const black_800_600 = new OffscreenCanvas(808, 606);
+        const ctx = black_800_600.getContext("2d");
+        if (ctx != null) {
+            (ctx as OffscreenCanvasRenderingContext2D).fillStyle = "black";
+            (ctx as OffscreenCanvasRenderingContext2D).fillRect(0, 0, 808, 606);
+        }
+        this.persistentImages.set(0, {
+            id: 0,
+            img: black_800_600,
+            // Since we go from -399 to 400, -299 to 300, the actual centre is 0.5, 0.5:
+            x: 0.5,
+            y: 0.5,
+            rotation: 0,
+            scale: 1.0,
+            collisionBox: null,
+            dirty: true,
+            associatedObject: null,
+        });
+        this.persistentImagesDirty = true;
         this.collisionSystem.clear();
+    }
+    
+    public setBackground(imageOrCanvas : OffscreenCanvas) : void {
+        const bk = this.persistentImages.get(0);
+        if (bk) {
+            bk.img = imageOrCanvas;
+        }
     }
 
     // eslint-disable-next-line @typescript-eslint/explicit-module-boundary-types

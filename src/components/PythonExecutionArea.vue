@@ -184,7 +184,11 @@ export default Vue.extend({
             const realHeight = domCanvas.getBoundingClientRect().height;
             domCanvas.width = realWidth;
             domCanvas.height = realHeight;
-            targetCanvas = new OffscreenCanvas(domCanvas.getBoundingClientRect().width, domCanvas.getBoundingClientRect().height);
+            // It's possible for the on-screen canvas to be the wrong aspect ratio, which we do not prevent.
+            // But we make the off-screen canvas the right aspect ratio:
+            const maxHeight = Math.min(realHeight, (3 / 4) * realWidth);
+            const maxWidth = (4 / 3) * maxHeight;
+            targetCanvas = new OffscreenCanvas(maxWidth, maxHeight);
             targetContext = targetCanvas?.getContext("2d", {alpha: false}) as OffscreenCanvasRenderingContext2D;
         };
         // Listen to size changes, and call now:
@@ -528,6 +532,7 @@ export default Vue.extend({
             }
         },
         redrawCanvas() : void {
+            const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
             const c = targetCanvas;
             if (c == null) {
                 // We can't redraw if there's no canvas
@@ -590,8 +595,9 @@ export default Vue.extend({
             if (c.width > 0 && c.height > 0) {
                 // Important on Safari to clear the canvas first, otherwise the new frame
                 // gets blended on top.  Firefox and Chrome don't do this by default (different alpha blending mode?):
-                domContext?.clearRect(0, 0, c.width, c.height);
-                domContext?.drawImage(c, 0, 0);
+                domContext?.clearRect(0, 0, domCanvas.width, domCanvas.height);
+                // The target canvas can be smaller than the real one, and we want to centre it:
+                domContext?.drawImage(c, (domCanvas.width - (targetCanvas?.width ?? 0)) / 2, (domCanvas.height - (targetCanvas?.height ?? 0)) / 2);
             }
         },
 

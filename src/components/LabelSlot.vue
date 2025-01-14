@@ -747,7 +747,7 @@ export default Vue.extend({
             // Note: because 1) key code value is deprecated and 2) "=" is coded a different value between Chrome and FF, 
             // we explicitly check the "key" property value check here as any other key could have been typed
             if(this.labelSlotsIndex === 0 && this.slotId.indexOf(",") == -1 && !hasTextSelection  &&
-                (event.key === "=" || event.key === " ") && !event.ctrlKey && this.frameType === AllFrameTypesIdentifier.varassign){
+                (event.key === "=" || event.key === " ") && !event.ctrlKey && (this.frameType === AllFrameTypesIdentifier.varassign || this.frameType === AllFrameTypesIdentifier.array)){
                 // Go to the first slot of the labelIndex 1 structure of the frame (first slot of the RHS)
                 this.appStore.setSlotTextCursors(undefined, undefined);
                 this.$nextTick(() => {    

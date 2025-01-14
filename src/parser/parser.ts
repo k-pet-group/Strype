@@ -119,7 +119,20 @@ export default class Parser {
         statement.frameType.labels.forEach((label, labelSlotsIndex) => {
             // For varassign frames, the symbolic assignment on the UI should be replaced by the Python "=" symbol
             if(label.showLabel??true){
-                output += ((label.label.length > 0 && statement.frameType.type === AllFrameTypesIdentifier.varassign) ? " = " : label.label);
+                if (statement.frameType.type === AllFrameTypesIdentifier.array){
+                    if(label.label === " &#x21D0; ["){
+                        output += " = [";
+                    } 
+                    else if(label.label === "]"){
+                        output += "]";
+                    } 
+                    else{
+                        output += label.label;
+                    }
+                } 
+                else{
+                    output += ((label.label.length > 0 && (statement.frameType.type === AllFrameTypesIdentifier.varassign)) ? " = " : label.label);
+                }
             }
             
             //if there are slots

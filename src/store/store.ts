@@ -574,7 +574,7 @@ export const useStore = defineStore("app", {
             // the returned value is an array of UserDefinedElement objects.
             // Note: the slots we look at can only be 1 single code since they are LHS or function name slots.
             return Object.values(state.frameObjects).filter((frame: FrameObject) => (frame.id !== state.currentFrame.id 
-                && (frame.frameType.type === AllFrameTypesIdentifier.funcdef || frame.frameType.type === AllFrameTypesIdentifier.varassign)))
+                && ((frame.frameType.type === AllFrameTypesIdentifier.funcdef) || (frame.frameType.type === AllFrameTypesIdentifier.varassign) || (frame.frameType.type === AllFrameTypesIdentifier.array))))
                 .map((frame: FrameObject) => ({name: (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.trim(),
                     isFunction: frame.frameType.type === AllFrameTypesIdentifier.funcdef}) as UserDefinedElement);
         },
@@ -595,7 +595,7 @@ export const useStore = defineStore("app", {
                 const currentSlotCode = (document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos)))?.textContent??"";
                 const nonHighlightedCode = currentSlotCode.substring(0, selectionStart) + currentSlotCode.substring(selectionEnd);
                 const isSlotWholeCodeContentSelected = (selectionStart != selectionEnd && nonHighlightedCode.trim().length == 0);
-                const isLHSVarAssign = (currentFrame.frameType.type == AllFrameTypesIdentifier.varassign && focusSlotCursorInfos.slotInfos.labelSlotsIndex == 0); 
+                const isLHSVarAssign = (((currentFrame.frameType.type == AllFrameTypesIdentifier.varassign) || (currentFrame.frameType.type == AllFrameTypesIdentifier.array)) && focusSlotCursorInfos.slotInfos.labelSlotsIndex == 0); 
                 return (currentSlotCode.trim().length == 0 || focusSlotCursorInfos.slotInfos.slotType == SlotType.string 
                     || currentFrame.frameType.type == AllFrameTypesIdentifier.comment || isSlotWholeCodeContentSelected)
                     && currentFrame.frameType.type != AllFrameTypesIdentifier.import 

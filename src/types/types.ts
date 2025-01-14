@@ -338,6 +338,7 @@ const StandardFrameTypesIdentifiers = {
     return: "return",
     varassign: "varassign",
     global: "global",
+    array: "array",
     ...JointFrameIdentifiers,
 };
 
@@ -655,6 +656,19 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         colour: scssVars.mainCodeContainerBackground,
     };
 
+    // Muskaan types
+
+    const ArrayDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.array,
+        labels: [
+            { label: "", defaultText: i18n.t("frame.defaultText.identifier") as string},
+            { label: " &#x21D0; [", defaultText: i18n.t("frame.defaultText.value") as string},
+            { label: "]", defaultText: "", showSlots: false, showLabel: true},
+        ],
+        colour: scssVars.mainCodeContainerBackground,
+    };
+
     /*2) update the Defintions variable holding all the definitions */
     Definitions = {
         IfDefinition,
@@ -679,6 +693,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         CommentDefinition,
         GlobalDefinition,
         // also add the frame containers as we might need to retrieve them too
+        ArrayDefinition,
         ...FrameContainersDefinitions,
     };
 

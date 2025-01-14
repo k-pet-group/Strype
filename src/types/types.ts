@@ -338,7 +338,8 @@ const StandardFrameTypesIdentifiers = {
     return: "return",
     varassign: "varassign",
     global: "global",
-    array: "array",
+    list: "list",
+    set: "set",
     ...JointFrameIdentifiers,
 };
 
@@ -658,13 +659,24 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
 
     // Muskaan types
 
-    const ArrayDefinition: FramesDefinitions = {
+    const ListDefinition: FramesDefinitions = {
         ...StatementDefinition,
-        type: StandardFrameTypesIdentifiers.array,
+        type: StandardFrameTypesIdentifiers.list,
         labels: [
             { label: "", defaultText: i18n.t("frame.defaultText.identifier") as string},
             { label: " &#x21D0; [", defaultText: i18n.t("frame.defaultText.value") as string},
             { label: "]", defaultText: "", showSlots: false, showLabel: true},
+        ],
+        colour: scssVars.mainCodeContainerBackground,
+    };
+
+    const SetDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.set,
+        labels: [
+            { label: "", defaultText: i18n.t("frame.defaultText.identifier") as string},
+            { label: " &#x21D0; {", defaultText: i18n.t("frame.defaultText.value") as string},
+            { label: "}", defaultText: "", showSlots: false, showLabel: true},
         ],
         colour: scssVars.mainCodeContainerBackground,
     };
@@ -693,7 +705,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         CommentDefinition,
         GlobalDefinition,
         // also add the frame containers as we might need to retrieve them too
-        ArrayDefinition,
+        ListDefinition,
+        SetDefinition,
         ...FrameContainersDefinitions,
     };
 

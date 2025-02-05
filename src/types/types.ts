@@ -340,6 +340,7 @@ const StandardFrameTypesIdentifiers = {
     global: "global",
     list: "list",
     set: "set",
+    mcall: "mcall",
     ...JointFrameIdentifiers,
 };
 
@@ -681,6 +682,16 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         colour: scssVars.mainCodeContainerBackground,
     };
 
+    const MethodDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.mcall,
+        labels: [
+            { label: "", defaultText: i18n.t("frame.defaultText.identifier") as string},
+            { label: ".", defaultText: i18n.t("frame.defaultText.value") as string},
+        ],
+        colour: scssVars.mainCodeContainerBackground,
+    };
+
     /*2) update the Defintions variable holding all the definitions */
     Definitions = {
         IfDefinition,
@@ -707,6 +718,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         // also add the frame containers as we might need to retrieve them too
         ListDefinition,
         SetDefinition,
+        MethodDefinition,
         ...FrameContainersDefinitions,
     };
 

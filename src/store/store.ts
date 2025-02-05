@@ -161,6 +161,10 @@ export const useStore = defineStore("app", {
             DAPWrapper: {} as DAPWrapper,
 
             previousDAPWrapper: {} as DAPWrapper,
+
+            /* Stores names of data structures */
+
+            dataStructNames: [] as string[],
         };
     },
 
@@ -249,11 +253,11 @@ export const useStore = defineStore("app", {
         
         generateAvailableFrameCommands: (state) => (frameId: number, caretPosition: CaretPosition, lookingForTargetPos?: boolean) => {
             // If we are currently editing there are no frame command to show...
+            const currentFrame  = state.frameObjects[frameId];
             if(state.isEditing) {
                 return {} as  {[id: string]: AddFrameCommandDef[]};
             }
 
-            const currentFrame  = state.frameObjects[frameId];
             const parent = state.frameObjects[getParentOrJointParent(currentFrame.id)];
 
             // list with all potential joint children to be added
@@ -2774,6 +2778,11 @@ export const useStore = defineStore("app", {
                 previousFramesSelection = [...this.selectedFrames];
                 this.selectMultipleFrames(direction);
             } while (previousFramesSelection.length !== this.selectedFrames.length && !this.selectedFrames.includes(stopId));
+        },
+
+        /* for adding new items to the data structures name list */
+        saveName(name: string){
+            this.dataStructNames.push(name);
         },
     },
 });

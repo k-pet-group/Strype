@@ -181,6 +181,7 @@ export default Vue.extend({
                             },
                         },
                     };
+                    this.appStore.saveName(name);
                 }
                 
             }

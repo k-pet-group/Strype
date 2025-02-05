@@ -710,6 +710,12 @@ export function generateAllFrameCommandsDefs():void {
             tooltip:i18n.t("frame.set_detail") as string,
             shortcuts: ["s"],
         }],
+        "m": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.mcall),
+            description: i18n.t("frame.mcall_desc") as string,
+            tooltip:i18n.t("frame.mcall_detail") as string,
+            shortcuts: ["m"],
+        }],
     };
 
     // We need to "tell" the Vue component that hosts the frame commands (Commands.vue) to refresh as there is no reactivity

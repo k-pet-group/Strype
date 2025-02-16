@@ -338,9 +338,6 @@ const StandardFrameTypesIdentifiers = {
     return: "return",
     varassign: "varassign",
     global: "global",
-    list: "list",
-    set: "set",
-    mcall: "mcall",
     ...JointFrameIdentifiers,
 };
 
@@ -658,40 +655,6 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         colour: scssVars.mainCodeContainerBackground,
     };
 
-    // Muskaan types
-
-    const ListDefinition: FramesDefinitions = {
-        ...StatementDefinition,
-        type: StandardFrameTypesIdentifiers.list,
-        labels: [
-            { label: "", defaultText: i18n.t("frame.defaultText.identifier") as string},
-            { label: " &#x21D0; [", defaultText: i18n.t("frame.defaultText.value") as string},
-            { label: "]", defaultText: "", showSlots: false, showLabel: true},
-        ],
-        colour: scssVars.mainCodeContainerBackground,
-    };
-
-    const SetDefinition: FramesDefinitions = {
-        ...StatementDefinition,
-        type: StandardFrameTypesIdentifiers.set,
-        labels: [
-            { label: "", defaultText: i18n.t("frame.defaultText.identifier") as string},
-            { label: " &#x21D0; {", defaultText: i18n.t("frame.defaultText.value") as string},
-            { label: "}", defaultText: "", showSlots: false, showLabel: true},
-        ],
-        colour: scssVars.mainCodeContainerBackground,
-    };
-
-    const MethodDefinition: FramesDefinitions = {
-        ...StatementDefinition,
-        type: StandardFrameTypesIdentifiers.mcall,
-        labels: [
-            { label: "", defaultText: i18n.t("frame.defaultText.identifier") as string},
-            { label: ".", defaultText: i18n.t("frame.defaultText.value") as string},
-        ],
-        colour: scssVars.mainCodeContainerBackground,
-    };
-
     /*2) update the Defintions variable holding all the definitions */
     Definitions = {
         IfDefinition,
@@ -716,9 +679,6 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         CommentDefinition,
         GlobalDefinition,
         // also add the frame containers as we might need to retrieve them too
-        ListDefinition,
-        SetDefinition,
-        MethodDefinition,
         ...FrameContainersDefinitions,
     };
 

@@ -23,9 +23,6 @@
 
         "funcdef_desc":" definición de la función",
         "varassign_desc":"asignación de la variable",
-        "list_desc": "asignación de lista",
-        "set_desc" : "establecer tarea",
-        "mcall_desc" : "llamada al método",
         "funccall_desc":"llamada de le función",
         "blank_desc":"blanco",
         "comment_desc":"comentario",
@@ -40,8 +37,6 @@
         "break_detail":"Añade una declaración \uD835\uDC1B\uD835\uDC2B\uD835\uDC1E\uD835\uDC1A\uD835\uDC24 (pausa) en el cursor del marco",
         "continue_detail":"Añade una declaración \uD835\uDC1C\uD835\uDC28\uD835\uDC27\uD835\uDC2D\uD835\uDC22\uD835\uDC27\uD835\uDC2E\uD835\uDC1E (continuar) en el cursor del marco.",
         "varassign_detail":"Añade una asignación de la variable en el cursor del marco.",
-        "list_detail": "Agregue una asignación de lista en el cursor del marco.",
-        "set_detail": "Agregue una asignación establecida en el cursor del marco.",
         "funccall_detail":"Añade una llamada de la función en el cursor del marco.",
         "mcall_detail": "Agregue una llamada a un método en el cursor del marco.",
         "blank_detail":"Añade un marco en blanco en el cursor del marco.",

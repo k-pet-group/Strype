@@ -114,7 +114,7 @@ function getAllUserDefinedVariablesWithinUpTo(framesForParentId: FrameObject[], 
             return {found: soFar, complete: true};
         }
         // Get LHS from assignments:
-        if (((frame.frameType.type === AllFrameTypesIdentifier.varassign) || (frame.frameType.type === AllFrameTypesIdentifier.list) || (frame.frameType.type === AllFrameTypesIdentifier.set)) && !frame.isDisabled) {
+        if (frame.frameType.type === AllFrameTypesIdentifier.varassign && !frame.isDisabled) {
             // We may have all sorts on the LHS.  We want any slots which are plain,
             // and which are adjoined by either the beginning of the slot, the end,
             // or a comma

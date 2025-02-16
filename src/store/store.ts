@@ -161,6 +161,10 @@ export const useStore = defineStore("app", {
             DAPWrapper: {} as DAPWrapper,
 
             previousDAPWrapper: {} as DAPWrapper,
+
+            /* Stores names of data structures */
+
+            dataStructNames: [] as string[],
         };
     },
 
@@ -249,11 +253,11 @@ export const useStore = defineStore("app", {
         
         generateAvailableFrameCommands: (state) => (frameId: number, caretPosition: CaretPosition, lookingForTargetPos?: boolean) => {
             // If we are currently editing there are no frame command to show...
+            const currentFrame  = state.frameObjects[frameId];
             if(state.isEditing) {
                 return {} as  {[id: string]: AddFrameCommandDef[]};
             }
 
-            const currentFrame  = state.frameObjects[frameId];
             const parent = state.frameObjects[getParentOrJointParent(currentFrame.id)];
 
             // list with all potential joint children to be added
@@ -574,7 +578,7 @@ export const useStore = defineStore("app", {
             // the returned value is an array of UserDefinedElement objects.
             // Note: the slots we look at can only be 1 single code since they are LHS or function name slots.
             return Object.values(state.frameObjects).filter((frame: FrameObject) => (frame.id !== state.currentFrame.id 
-                && ((frame.frameType.type === AllFrameTypesIdentifier.funcdef) || (frame.frameType.type === AllFrameTypesIdentifier.varassign) || (frame.frameType.type === AllFrameTypesIdentifier.array))))
+                && ((frame.frameType.type === AllFrameTypesIdentifier.funcdef) || (frame.frameType.type === AllFrameTypesIdentifier.varassign) || (frame.frameType.type === AllFrameTypesIdentifier.list) || (frame.frameType.type === AllFrameTypesIdentifier.set))))
                 .map((frame: FrameObject) => ({name: (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.trim(),
                     isFunction: frame.frameType.type === AllFrameTypesIdentifier.funcdef}) as UserDefinedElement);
         },
@@ -595,7 +599,7 @@ export const useStore = defineStore("app", {
                 const currentSlotCode = (document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos)))?.textContent??"";
                 const nonHighlightedCode = currentSlotCode.substring(0, selectionStart) + currentSlotCode.substring(selectionEnd);
                 const isSlotWholeCodeContentSelected = (selectionStart != selectionEnd && nonHighlightedCode.trim().length == 0);
-                const isLHSVarAssign = (((currentFrame.frameType.type == AllFrameTypesIdentifier.varassign) || (currentFrame.frameType.type == AllFrameTypesIdentifier.array)) && focusSlotCursorInfos.slotInfos.labelSlotsIndex == 0); 
+                const isLHSVarAssign = (((currentFrame.frameType.type == AllFrameTypesIdentifier.varassign) || (currentFrame.frameType.type == AllFrameTypesIdentifier.list)) && focusSlotCursorInfos.slotInfos.labelSlotsIndex == 0); 
                 return (currentSlotCode.trim().length == 0 || focusSlotCursorInfos.slotInfos.slotType == SlotType.string 
                     || currentFrame.frameType.type == AllFrameTypesIdentifier.comment || isSlotWholeCodeContentSelected)
                     && currentFrame.frameType.type != AllFrameTypesIdentifier.import 
@@ -2774,6 +2778,11 @@ export const useStore = defineStore("app", {
                 previousFramesSelection = [...this.selectedFrames];
                 this.selectMultipleFrames(direction);
             } while (previousFramesSelection.length !== this.selectedFrames.length && !this.selectedFrames.includes(stopId));
+        },
+
+        /* for adding new items to the data structures name list */
+        saveName(name: string){
+            this.dataStructNames.push(name);
         },
     },
 });

@@ -699,10 +699,22 @@ export function generateAllFrameCommandsDefs():void {
             shortcuts: ["g"],
         }],
         "q": [{
-            type: getFrameDefType(AllFrameTypesIdentifier.array),
-            description: i18n.t("frame.array_desc") as string,
-            tooltip:i18n.t("frame.array_detail") as string,
+            type: getFrameDefType(AllFrameTypesIdentifier.list),
+            description: i18n.t("frame.list_desc") as string,
+            tooltip:i18n.t("frame.list_detail") as string,
             shortcuts: ["q"],
+        }],
+        "s": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.set),
+            description: i18n.t("frame.set_desc") as string,
+            tooltip:i18n.t("frame.set_detail") as string,
+            shortcuts: ["s"],
+        }],
+        "m": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.mcall),
+            description: i18n.t("frame.mcall_desc") as string,
+            tooltip:i18n.t("frame.mcall_detail") as string,
+            shortcuts: ["m"],
         }],
     };
 

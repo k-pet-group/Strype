@@ -43,7 +43,7 @@ import { CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getS
 import {checkCodeErrors, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
-import {readFileAsyncAsData, splitByRegexMatches} from "@/helpers/common";
+import {readFileAsyncAsData, readImageSizeFromDataURI, splitByRegexMatches} from "@/helpers/common";
 
 
 export default Vue.extend({
@@ -358,11 +358,11 @@ export default Vue.extend({
                     let isImage = item.type.startsWith("image");
                     let isAudio = item.type.startsWith("audio");
                     if (file && (isImage || isAudio)) {
-                        readFileAsyncAsData(file).then((dataAndBase64) => {
+                        readFileAsyncAsData(file).then(isImage ? readImageSizeFromDataURI : (s) => Promise.resolve({dataURI: s, width: -1, height: -1})).then((dataAndDim) => {
                             // The code is the code to load the literal from its base64 string representation:
-                            const code = (isImage ? "load_image" : "Sound") + "(\"" + dataAndBase64 + "\")";
+                            const code = (isImage ? "load_image" : "Sound") + "(\"" + dataAndDim.dataURI + "\")";
                             document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
-                                ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: item.type, content: code}}));
+                                ?.dispatchEvent(new CustomEvent(CustomEventTypes.editorContentPastedInSlot, {detail: {type: item.type, content: code, width: dataAndDim.width, height: dataAndDim.height}}));
                         });
                         return;
                     }

@@ -1,5 +1,5 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, MediaSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot } from "@/types/types";
+import {FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, MediaSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, SlotInfosOptionalMedia} from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -1671,7 +1671,8 @@ export const useStore = defineStore("app", {
             });
         },
 
-        async setFrameEditableSlotContent(frameSlotInfos: SlotInfos) {
+        // Returns stateBeforeChanges
+        async setFrameEditableSlotContent(frameSlotInfos: SlotInfosOptionalMedia) {
             //This action is called EVERY time a unitary change is made on the editable slot.
             //We save changes at the entire slot level: therefore, we need to remove the last
             //previous state to replace it with the difference between the state even before and now;            
@@ -1684,7 +1685,11 @@ export const useStore = defineStore("app", {
             //save the previous state
             const stateBeforeChanges = cloneDeep(this.$state);
 
-            (retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot).code = frameSlotInfos.code;
+            const destSlot = retrieveSlotFromSlotInfos(frameSlotInfos) as BaseSlot;
+            destSlot.code = frameSlotInfos.code;
+            if (frameSlotInfos.mediaType) {
+                (destSlot as MediaSlot).mediaType = frameSlotInfos.mediaType;
+            }
 
             //save state changes
             this.saveStateChanges(stateBeforeChanges);

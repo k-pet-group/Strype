@@ -77,7 +77,7 @@ import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
 import { getLabelSlotUID, CustomEventTypes, getFrameHeaderUID, closeBracketCharacters, getMatchingBracket, operators, openBracketCharacters, keywordOperatorsWithSurroundSpaces, stringQuoteCharacters, getFocusedEditableSlotTextSelectionStartEnd, parseCodeLiteral, getNumPrecedingBackslashes, setDocumentSelection, getFrameLabelSlotsStructureUID, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, stringDoubleQuoteChar, UISingleQuotesCharacters, UIDoubleQuotesCharacters, stringSingleQuoteChar, getSelectionCursorsComparisonValue, getTextStartCursorPositionOfHTMLElement, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, checkCanReachAnotherCommentLine, getACLabelSlotUID, getFrameUID, getFrameComponent, getElementsInSelection } from "@/helpers/editor";
-import {CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot, MediaSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, LoadedMedia} from "@/types/types";
+import {CaretPosition, FrameObject, CursorPosition, AllFrameTypesIdentifier, SlotType, SlotCoreInfos, isFieldBracketedSlot, SlotsStructure, BaseSlot, StringSlot, isFieldStringSlot, SlotCursorInfos, areSlotCoreInfosEqual, FieldSlot, MediaSlot, PythonExecRunningState, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, LoadedMedia, EditImageInDialogFunction} from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { mapStores } from "pinia";
 import { checkCodeErrors, evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -160,7 +160,7 @@ export default Vue.extend({
         isEmphasised: Boolean,
     },
 
-    inject: ["mediaPreviewPopupInstance"],
+    inject: ["mediaPreviewPopupInstance", "editImageInDialog"],
 
     beforeUpdate(){
         // If the text isn't set again here, despite "code" being reactive, we end up with "duplicated" insert with operators.
@@ -365,6 +365,10 @@ export default Vue.extend({
 
         mediaPreviewPopupRef(): InstanceType<typeof MediaPreviewPopup> | null {
             return ((this as any).mediaPreviewPopupInstance as () => InstanceType<typeof MediaPreviewPopup>)?.();
+        },
+
+        doEditImageInDialog() : EditImageInDialogFunction {
+            return (this as any).editImageInDialog as EditImageInDialogFunction;
         },
     },
 
@@ -1187,7 +1191,17 @@ export default Vue.extend({
         },
 
         onCodePaste(event: CustomEvent) {
-            this.onCodePasteImpl(event.detail.content, event.detail.type);
+            // If the user pastes a large image (>= 1000 pixels in either dimension)
+            // we figure they probably want to trim it down before pasting, so we
+            // show the image editing dialog:
+            if (event.detail.type.startsWith("image/") && (event.detail.width >= 1000 || event.detail.height >= 1000)) {
+                this.doEditImageInDialog(/"([^"]+)"/.exec(event.detail.content)?.[1] ?? "", () => {}, (replacement : {code: string, mediaType: string}) => {
+                    this.onCodePasteImpl(replacement.code, replacement.mediaType);
+                });
+            }
+            else {
+                this.onCodePasteImpl(event.detail.content, event.detail.type);
+            }
         },
         
         onCodePasteImpl(content : string, type : string) {
@@ -1599,7 +1613,17 @@ export default Vue.extend({
         },
         showMediaPreviewPopup(event : MouseEvent) {
             if (!this.isPythonExecuting) {
-                this.mediaPreviewPopupRef?.showPopup(event, this.mediaPreview);
+                this.mediaPreviewPopupRef?.showPopup(event, this.mediaPreview, (repl : { code: string, mediaType : string }) => {
+                    this.appStore.setFrameEditableSlotContent(
+                        {
+                            ...this.coreSlotInfo,
+                            code: repl.code,
+                            mediaType: repl.mediaType,
+                            initCode: "",
+                            isFirstChange: true,
+                        }
+                    );
+                });
             }
         },
         startHideMediaPreviewPopup() {
@@ -1608,6 +1632,14 @@ export default Vue.extend({
     },
     watch: {
         slotType: function() {
+            if (this.isMediaSlot) {
+                this.loadMediaPreview().then((m) => {
+                    this.mediaPreview = m;
+                });
+            }
+        },
+        // If the image is edited, the slotType won't change but code will so we need to watch it:
+        code: function() {
             if (this.isMediaSlot) {
                 this.loadMediaPreview().then((m) => {
                     this.mediaPreview = m;

@@ -74,7 +74,8 @@
         <ModalDlg :dlgId="resyncGDAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
             <span style="white-space:pre-wrap" v-html="$t('appMessage.resyncToGDAtStartup')"></span>
         </ModalDlg>
-        <MediaPreviewPopup ref="mediaPreviewPopup" />        
+        <MediaPreviewPopup ref="mediaPreviewPopup" />
+        <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" />
         <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
         <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
     </div>
@@ -94,7 +95,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget } from "@/types/types";
+import {AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, EditImageInDialogFunction} from "@/types/types";
 import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
@@ -109,6 +110,7 @@ import {copyFramesFromParsedPython, splitLinesToSections, STRYPE_LOCATION} from 
 import GoogleDrive from "@/components/GoogleDrive.vue";
 import { BvModalEvent } from "bootstrap-vue";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
+import EditImageDlg from "@/components/EditImageDlg.vue";
 
 let autoSaveTimerId = -1;
 let projectSaveFunctionsState : ProjectSaveFunction[] = [];
@@ -123,6 +125,7 @@ export default Vue.extend({
         MessageBanner,
         FrameContainer,
         Commands,
+        EditImageDlg,
         MediaPreviewPopup,
         Menu,
         ModalDlg,
@@ -138,6 +141,8 @@ export default Vue.extend({
             progressbarMessage: "",
             resetStrypeProjectFlag: false,
             isExpandedPythonExecArea: false,
+            imgToEditInDialog: "",
+            showImgPreview: (() => {}) as (dataURL: string) => void,
         };
     },
 
@@ -901,12 +906,31 @@ export default Vue.extend({
         getPeaComponent() {
             return (this.$refs[this.strypeCommandsRefId] as any).$refs.strypePEA;
         },
+        editImageInDialog(imageDataURL: string, showPreview: (dataURL: string) => void, callback: (replacement: {code: string, mediaType: string}) => void) {
+            const editImageDlg = this.$refs.editImageDlg as InstanceType<typeof EditImageDlg>;
+            this.imgToEditInDialog = imageDataURL;
+            this.showImgPreview = showPreview;
+
+            const editedImage = (event: BvModalEvent, dlgId: string) => {
+                if((event.trigger == "ok" || event.trigger=="event") && dlgId == "editImageDlg"){
+                    //Call the callback:
+                    editImageDlg.getUpdatedMedia().then(callback);
+
+                    this.$root.$off("bv::modal::hide", editedImage);
+                }
+            };
+            this.$root.$on("bv::modal::hide", editedImage);
+
+            this.$root.$emit("bv::show::modal", "editImageDlg");
+        },
     },
 
-    provide() {
+    provide() : { mediaPreviewPopupInstance : any, peaComponent: any, editImageInDialog : EditImageInDialogFunction} {
         return {
             mediaPreviewPopupInstance: this.getMediaPreviewPopupInstance,
             peaComponent: this.getPeaComponent,
+            // Note, this provides the function:
+            editImageInDialog: this.editImageInDialog,            
         };
     },
 });

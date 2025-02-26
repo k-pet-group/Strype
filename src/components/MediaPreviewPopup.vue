@@ -7,8 +7,9 @@
         @mouseleave="startHidePopup"
     >
         <div class="MediaPreviewPopup-header">
-            <button class="MediaPreviewPopup-header-preview-button" @click="doPreview">Preview</button>
+            <button class="MediaPreviewPopup-header-preview-button" @click="doPreview">{{$t("media.preview")}}</button>
             <span class="MediaPreviewPopup-header-text">{{mediaInfo}}</span>
+            <button class="MediaPreviewPopup-header-edit-button" @click="doEdit">{{$t("media.edit")}}</button>
         </div>
         <div class="MediaPreviewPopup-img-container">
             <img :src="imgDataURL" alt="Media preview" @load="imgLoaded">
@@ -20,7 +21,7 @@
 
 <script lang="ts">
 import Vue from "vue";
-import {LoadedMedia} from "@/types/types";
+import {EditImageInDialogFunction, LoadedMedia} from "@/types/types";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import {PersistentImageManager} from "@/stryperuntime/image_and_collisions";
 
@@ -36,13 +37,15 @@ export default Vue.extend({
             mediaType: "",
             audioBuffer: undefined as AudioBuffer | undefined,
             stopPreviewOnHide : () => {},
+            replaceAfterEdit : (() => {}) as ((replacement: {code: string, mediaType: string}) => void),
         };
     },
 
-    inject: ["peaComponent"],
+    inject: ["peaComponent", "editImageInDialog"],
     
     methods: {
-        showPopup(event : MouseEvent, media: LoadedMedia) {
+        showPopup(event : MouseEvent, media: LoadedMedia, replaceMedia: (replacement: {code: string, mediaType: string}) => void) {
+            this.replaceAfterEdit = replaceMedia;
             this.cancelHidePopup();
             this.isVisible = true;
             this.popupStyle = {
@@ -53,20 +56,22 @@ export default Vue.extend({
             this.mediaType = media.mediaType;
             this.audioBuffer = media.audioBuffer;
             if (media.audioBuffer) {
+                // This is not translated because it's a class name:
                 this.mediaInfo = "Sound";
                 this.imgDataURL = media.imageDataURL;
             }
             else {
                 if (this.imgDataURL != media.imageDataURL) {
                     this.imgDataURL = media.imageDataURL;
-                    this.mediaInfo = "Image";
+                    // This is not translated because it's a class name:
+                    this.mediaInfo = "EditableImage";
                 }
             }
         },
         imgLoaded(event: Event) {
             const previewImgElement = event.target as HTMLImageElement;
             if (this.mediaType.startsWith("image/")) {
-                this.mediaInfo = `Image (${this.mediaType.replace("image/", "")}), ${previewImgElement?.width} × ${previewImgElement?.height} pixels`;
+                this.mediaInfo = `EditableImage (${this.mediaType.replace("image/", "")}), ${previewImgElement?.naturalWidth} × ${previewImgElement?.naturalHeight} ${this.$t("media.pixels")}`;
             }
         },
         startHidePopup() {
@@ -77,6 +82,34 @@ export default Vue.extend({
         },
         cancelHidePopup() {
             window.clearTimeout(this.hideTimeout);
+        },
+        doPreviewImage(imgDataURL: string) {
+            document.getElementById("strypeGraphicsPEATab")?.click();
+            Vue.nextTick(() => {
+                const imgManager: PersistentImageManager | undefined = this.peaComponentRef?.getPersistentImageManager();
+                imgManager?.clear();
+                const checkered = new OffscreenCanvas(800, 600);
+                const ctx = checkered.getContext("2d") as OffscreenCanvasRenderingContext2D;
+                const squareSize = 15;
+                for (let y = 0; y < 600; y += squareSize) {
+                    for (let x = 0; x < 800; x += squareSize) {
+                        ctx.fillStyle = (x / squareSize + y / squareSize) % 2 === 0 ? "#ccc" : "#fff";
+                        ctx.fillRect(x, y, squareSize, squareSize);
+                    }
+                }
+                imgManager?.setBackground(checkered);
+                const preview = new Image();
+                preview.onload = () => {
+                    imgManager?.addPersistentImage(preview);
+                    this.peaComponentRef?.redrawCanvas();
+                };
+                preview.src = imgDataURL;
+                this.peaComponentRef?.redrawCanvas();
+            });
+            this.stopPreviewOnHide = () => {
+                this.peaComponentRef?.getPersistentImageManager()?.clear();
+                this.peaComponentRef?.redrawCanvas();
+            };
         },
         doPreview() {
             // Stop any existing preview first:
@@ -122,32 +155,17 @@ export default Vue.extend({
             }
             else {
                 // For images, show a preview on the world:
-                document.getElementById("strypeGraphicsPEATab")?.click();
-                Vue.nextTick(() => {
-                    const imgManager : PersistentImageManager | undefined = this.peaComponentRef?.getPersistentImageManager();
-                    imgManager?.clear();
-                    const checkered = new OffscreenCanvas(800, 600);
-                    const ctx = checkered.getContext("2d") as OffscreenCanvasRenderingContext2D;
-                    const squareSize = 15;
-                    for (let y = 0; y < 600; y += squareSize) {
-                        for (let x = 0; x < 800; x += squareSize) {
-                            ctx.fillStyle = (x / squareSize + y / squareSize) % 2 === 0 ? "#ccc" : "#fff";
-                            ctx.fillRect(x, y, squareSize, squareSize);
-                        }
-                    }
-                    imgManager?.setBackground(checkered);
-                    const preview = new Image();
-                    preview.onload = () => {
-                        imgManager?.addPersistentImage(preview);
-                        this.peaComponentRef?.redrawCanvas();
-                    };
-                    preview.src = this.imgDataURL;
-                    this.peaComponentRef?.redrawCanvas();
+                this.doPreviewImage(this.imgDataURL);
+            }
+        },
+        doEdit() {
+            if (this.audioBuffer) {
+                // TODO edit sounds
+            }
+            else {
+                this.doEditImageInDialog(this.imgDataURL, this.doPreviewImage, (replacement : {code: string, mediaType: string}) => {
+                    this.replaceAfterEdit(replacement);
                 });
-                this.stopPreviewOnHide = () => {
-                    this.peaComponentRef?.getPersistentImageManager()?.clear();
-                    this.peaComponentRef?.redrawCanvas();
-                };
             }
         },
     },
@@ -155,6 +173,9 @@ export default Vue.extend({
     computed: {
         peaComponentRef(): InstanceType<typeof PythonExecutionArea> | null {
             return ((this as any).peaComponent as () => InstanceType<typeof PythonExecutionArea>)?.();
+        },
+        doEditImageInDialog() : EditImageInDialogFunction {
+            return (this as any).editImageInDialog as EditImageInDialogFunction;
         },
     },
 });
@@ -204,7 +225,7 @@ export default Vue.extend({
     text-align: center;
     color: #444;
 }
-.MediaPreviewPopup-header-preview-button {
+.MediaPreviewPopup-header-preview-button, .MediaPreviewPopup-header-edit-button {
     justify-content: center;
     align-items: center;
 }

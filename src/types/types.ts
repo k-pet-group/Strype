@@ -249,6 +249,11 @@ export interface SlotInfos extends SlotCoreInfos {
     errorTitle?: string;
 }
 
+// Like SlotInfos but may contain a MediaType (if it's a media slot)
+export interface SlotInfosOptionalMedia extends SlotInfos {
+    mediaType?: string;
+}
+
 export interface SlotCursorInfos{
     slotInfos: SlotCoreInfos;
     cursorPos: number;
@@ -1123,3 +1128,5 @@ export interface LoadedMedia {
     // But only sounds have this item:
     audioBuffer?: AudioBuffer,
 }
+
+export type EditImageInDialogFunction = (imageDataURL: string, showPreview: (dataURL : string) => void, callback: (replacement: {code: string, mediaType: string}) => void) => void;

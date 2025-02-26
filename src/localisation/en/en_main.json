@@ -164,5 +164,15 @@
     "console": "Console",
     "Graphics": "Graphics",
     "importTurtle": "Import the module 'turtle' to use Turtle Graphics."
+  },
+  "media": {
+    "edit": "Edit",
+    "imageChangedSize": "Changed size (approx): ",
+    "imageCrop": "Image Crop",
+    "imageDetails": "Image Details",
+    "imageOriginalSize": "Original size: ",
+    "imageScale": "Image Scale",
+    "pixels": "pixels",
+    "preview": "Preview"
   }
 }

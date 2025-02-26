@@ -142,6 +142,22 @@ export function readFileAsyncAsData(file: File): Promise<string>  {
     });
 }
 
+export function readImageSizeFromDataURI(dataURI: string): Promise<{ dataURI: string, width: number; height: number }> {
+    return new Promise((resolve, reject) => {
+        const img = new Image();
+
+        img.onload = () => {
+            resolve({ dataURI: dataURI, width: img.naturalWidth, height: img.naturalHeight });
+        };
+
+        img.onerror = (error) => {
+            reject(new Error("Failed to load image from data URI"));
+        };
+
+        img.src = dataURI;
+    });
+}
+
 export const readFileContent = async (file: File): Promise<string>  => {
     // from https://stackoverflow.com/questions/17068610/read-a-file-synchronously-in-javascript
     const result = await new Promise<string>((resolve, reject) => {

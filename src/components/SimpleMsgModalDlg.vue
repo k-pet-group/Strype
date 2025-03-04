@@ -1,6 +1,6 @@
 <template>
     <ModalDlg :dlgId="dlgId" :dlgTitle="dlgTitle" :okOnly="true">
-        <span>{{dlgMsg}}</span>
+        <span v-html="dlgMsg"/>
     </ModalDlg>
 </template>
 

@@ -1025,6 +1025,17 @@ export enum StrypeSyncTarget {
     gd, // Google Drive
 }
 
+export enum GAPIState {
+    unloaded, // default state : the Google API hasn't been loaded yet
+    loaded, // when the Google API has been loaded
+    failed, // when the Google API failed to load
+}
+
+export enum ShareProjectMode {
+    public, // A public sharing (generic cases)
+    withinGD, // A share within Google Drive access rights
+}
+
 export enum SaveRequestReason {
     autosave,
     saveProjectAtLocation, // explicit save at the given location in the dialog

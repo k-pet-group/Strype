@@ -68,7 +68,7 @@
     "gdriveConnectionSaveToLoadProjFailed": "Fehler beim Versuch, dass offene Projekt auf Google Drive zu speichern. Bitte wieder anmelden, um ein anderes Projekt zu laden.",
     "gdriveConnectionSaveToUnloadPageFailed": "Fehler beim Versuch, dass offene Projekt auf Google Drive zu speichern. Bitte wieder anmelden, um das Projekt zu speichern bevor Strype geschlossen wird.",
     "gdrivePermissionsNotMet": "Strype braucht midestens ein Zugriffsrecht um Google Drive zu benutzen.",
-    "gdriveReadOnly": "Diese Datei ist schreibgeschützt. Automatische Speicherung ist abgeschaltet.",
+    "gdriveReadOnly": "Diese Google Drive-Projekt ist schreibgeschützt.",
     "gdriveWrongFile": "Bitte eine Strype-Datei auswählen (Dateiendung \".spy\").",
     "unexpectedCharsPython": "Unerwartete Zeichen"
   },

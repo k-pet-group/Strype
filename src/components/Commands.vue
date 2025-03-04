@@ -8,7 +8,37 @@
                     <img v-else-if="isProjectFromFS" :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')" class="project-target-logo"/> 
                     <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag" v-t="'appMessage.savedGDrive'" />
                     <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifGDrive'" :class="{'modifed-label-span': isProjectNotSourced}" />
+                    <ModalDlg :dlgId="shareGDProjectModalDlgId" :okCustomTitle="$t('buttonLabel.copyLink')" :dlgTitle="$t('appMessage.createShareProjectLink')" :autoFocusButton="'ok'">
+                        <div>
+                            <span class="share-mode-buttons-container-title">{{$i18n.t('appMessage.shareProjectModeLabel')}}</span>
+                            <div class="share-mode-buttons-container">
+                                    <div class="share-mode-button-group">
+                                    <input type="radio" id="shareGDProjectPublicRadioBtn" name="shareGDModeRadioGroup" 
+                                        v-model="shareProjectMode" :value="shareProjectWithinGDModeValue" />
+                                    <div>
+                                        <label for="shareGDProjectPublicRadioBtn" >{{$i18n.t("appMessage.shareProjectWithinGDMode")}}</label>
+                                        <span>{{$i18n.t("appMessage.shareProjectWithinGDModeDetails")}}</span>
+                                    </div>
+                                </div>
+                                <div class="share-mode-button-group">
+                                    <input type="radio" id="shareGDProjectWithGDRadioBtn" name="shareGDModeRadioGroup"
+                                    v-model="shareProjectMode" :value="shareProjectPublicModeValue" />
+                                    <div>
+                                        <label for="shareGDProjectWithGDRadioBtn" >{{$i18n.t("appMessage.shareProjectPublicMode")}}</label>
+                                        <span>{{$i18n.t("appMessage.shareProjectPublicModeDetails")}}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </ModalDlg>
                 </div>
+                <img 
+                    v-if="isProjectFromGoogleDrive"
+                    :src="require('@/assets/images/share.png')"
+                    :class="{'share-proj-img': true, disabled: isEditorContentModifiedFlag}" 
+                    :title="$t((isEditorContentModifiedFlag)?'appMessage.needSaveShareProj':'appMessage.shareProj')"
+                    @click="shareProject"
+                />
             </div>     
             <div @mousedown.prevent.stop @mouseup.prevent.stop>
                 /* IFTRUE_isMicrobit
@@ -80,14 +110,17 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getAppSimpleMsgDlgId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getGoogleDriveComponentRefId, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypeSyncTarget } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, ShareProjectMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import Menu from "@/components/Menu.vue";
+import GoogleDrive from "@/components/GoogleDrive.vue";
+import ModalDlg from "@/components/ModalDlg.vue";
 /* IFTRUE_isPython */
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import { isMacOSPlatform } from "@/helpers/common";
@@ -96,6 +129,7 @@ import { isMacOSPlatform } from "@/helpers/common";
 import APIDiscovery from "@/components/APIDiscovery.vue";
 import { flash } from "@/helpers/webUSB";
 import { downloadHex } from "@/helpers/download";
+import { BvModalEvent } from "bootstrap-vue";
 /* FITRUE_isMicrobit */
 
 export default Vue.extend({
@@ -103,6 +137,7 @@ export default Vue.extend({
 
     components: {
         AddFrameCommand,
+        ModalDlg,
         /* IFTRUE_isMicrobit */
         APIDiscovery,
         /* FITRUE_isMicrobit */
@@ -119,6 +154,7 @@ export default Vue.extend({
             frameCommandsReactiveFlag: false, // this flag is only use to allow a reactive binding when the add frame commands are updated (language),
             isExpandedPEA: false, // flag indicating whether the Python Execution Area is expanded (to fit the other parts of the commands)
             lastProjectSavedDateTooltip: "", // update on a mouse over event (in getLastProjectSavedDateTooltip)
+            shareProjectMode: ShareProjectMode.withinGD,
         };
     },
 
@@ -152,6 +188,18 @@ export default Vue.extend({
         
         isProjectNotSourced(): boolean {
             return this.appStore.syncTarget == StrypeSyncTarget.none;
+        },
+
+        shareGDProjectModalDlgId(): string {
+            return "shareGDProjectModalDlg";
+        },
+
+        shareProjectPublicModeValue() {
+            return ShareProjectMode.public;
+        },
+
+        shareProjectWithinGDModeValue() {
+            return ShareProjectMode.withinGD;
         },
         
         /* IFTRUE_isPython */
@@ -567,6 +615,14 @@ export default Vue.extend({
             this.handleAppScroll,
             false
         );
+
+        // Register share mode modal dialog opening event
+        this.$root.$on("bv::modal::hide", this.onShareProjectModeSelectionHideModalDlg);
+    },
+
+    beforeDestroy() {
+        // Just in case, we remove the Bootstrap modal event handler from the root app 
+        this.$root.$off("bv::modal::hide", this.onShareProjectModeSelectionHideModalDlg);
     },
 
     methods: {
@@ -575,7 +631,7 @@ export default Vue.extend({
         },
         
         handleAppScroll(event: WheelEvent) {
-            // Don't do anything if a context menu is displayed
+            // Don't do anything if a context menu is displayed 
             if(!getActiveContextMenu()){
                 const currentScroll = $("#"+getEditorMiddleUID()).scrollTop();
                 $("#"+getEditorMiddleUID()).scrollTop((currentScroll??0) + (event as WheelEvent).deltaY/2);
@@ -636,6 +692,90 @@ export default Vue.extend({
             this.lastProjectSavedDateTooltip = toolTipVal;
         },
 
+        shareProject(){
+            // We only share a project that is saved. Show the user what mode of sharing to use (see details in shareProjectWithMode())
+            if(!this.isEditorContentModifiedFlag){
+                this.$root.$emit("bv::show::modal", this.shareGDProjectModalDlgId);
+            }
+        },
+
+        onShareProjectModeSelectionHideModalDlg(event: BvModalEvent, dlgId: string){
+            if(dlgId == this.shareGDProjectModalDlgId && event.trigger == "ok"){
+                this.shareProjectWithMode(this.shareProjectMode == ShareProjectMode.public);
+            }
+        },
+
+        shareProjectWithMode(isPublicShare: boolean){
+            // There is no intermediate steps when the mode is selected for sharing a project
+            // (we first close the mode selector modal, then validate)
+            this.$root.$emit("bv::hide::modal", this.shareGDProjectModalDlgId);
+
+            // Sharing a project results in the share URL to be created and copied in the clipboard.
+            // With Google Drive, we allow two types of sharing: either sharing the Google Drive link (after setting the project readonly and totally public in the sharing settings)
+            // or just getting a Strype URL with a shared Google Drive file ID (in that case, users getting the shared link still need to connect to Google Drive first.)
+            // We preare the link to share and the message to show to the users as a confirmation or error situation.
+            // Note that we always generate the link: if public sharing fails, we fall back on the within Google Drive mode sharing.
+            let shareLink = "", alertMessage = "";
+            if(isPublicShare){
+                // Before generating a link, we change the file setttings on Google Drive to make it accessible at large.
+                const gdVueComponent = ((this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
+                let createPermissionSucceeded = false;
+                let alertErrorDetail = "";
+                gdVueComponent.shareGoogleDriveFile()
+                    .then((succeeded) => createPermissionSucceeded = succeeded)
+                    .catch((error) => alertMessage = error)
+                    .finally(() => {
+                        if(createPermissionSucceeded){
+                            // We have set the file public on Google Drive, now we retrieve the share link.
+                            gapi.client.request({
+                                path: "https://www.googleapis.com/drive/v3/files/" + gdVueComponent.saveFileId,
+                                method: "GET",
+                                params: {fields: "webViewLink"},
+                            })
+                                .then((resp) => {
+                                    if(resp.status == 200){
+                                        shareLink = `${window.location}?${sharedStrypeProjectIdKey}=${encodeURIComponent(JSON.parse(resp.body)["webViewLink"])}`;
+                                        alertMessage = this.$i18n.t("appMessage.sharedProjectLinkCopied") as string;
+                                    }
+                                    else{
+                                    // Something happened when we tried to get the public URL of the Google Drive file.
+                                    // We still share the file within Google Drive
+                                        shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
+                                        alertMessage = this.$i18n.t("appMessage.gdPublicShareFailed", (this.$i18n.t("errorMessage.webViewLinkNotRetrieved", resp.status?.toString()??"unknown") as string)) as string;
+                                    }
+                                })
+                                .catch((error) => {
+                                    // Something happened when we tried to get the public URL of the Google Drive file.
+                                    // We still share the file within Google Drive
+                                    shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
+                                    alertMessage = this.$i18n.t("appMessage.gdPublicShareFailed", (this.$i18n.t("errorMessage.webViewLinkNotRetrieved", error) as string)) as string;
+            
+                                })
+                                .finally(() => this.finaliseShareProjectLink(shareLink, alertMessage));                           
+                        }
+                        else{
+                            // The project could not be made public on Google Drive for some reason.
+                            // We still make a share link but we make it within Google Drive instead.
+                            shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
+                            alertMessage = this.$i18n.t("appMessage.gdPublicShareFailed", alertErrorDetail) as string;
+                            this.finaliseShareProjectLink(shareLink, alertMessage);
+                        }
+                    });            
+            }
+            else{
+                shareLink = `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentGoogleDriveSaveFileId}`;
+                alertMessage = this.$i18n.t("appMessage.sharedProjectLinkCopied") as string;
+                this.finaliseShareProjectLink(shareLink, alertMessage);
+            }
+        },
+
+        finaliseShareProjectLink(shareLink: string, alertMsg: string){
+            // Paste the share link in the clipboard and show the user an information message.
+            navigator.clipboard.writeText(shareLink);
+            this.appStore.simpleModalDlgMsg = alertMsg;
+            this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());        
+        },
+
         /* IFTRUE_isMicrobit */
         runToMicrobit() {
             // If we can directly upload on microbit, we run the method flash().
@@ -687,6 +827,50 @@ export default Vue.extend({
 .gdrive-sync-label {
     color: #2e641b;
     font-size: 80%;
+}
+
+.share-proj-img {
+    cursor: pointer;
+    margin-left: 5px;
+    width: 0.75em;
+}
+
+.share-proj-img.disabled {
+    opacity: 25%;
+    cursor: default;
+}
+
+.share-mode-buttons-container-title {
+    font-weight: 600;
+}
+
+.share-mode-buttons-container {
+    display: table;
+    margin-left: 30px;
+    margin-top: 10px;
+}
+
+.share-mode-button-group {
+    display: table-row;
+}
+
+.share-mode-buttons-container input,
+.share-mode-buttons-container > div > div {
+    display: table-cell;
+    font-size: 95%;
+}
+
+.share-mode-buttons-container > div > div {
+    padding-left: 5px;
+}
+
+.share-mode-buttons-container span {
+    font-size: 90%;
+    display: block;
+}
+
+.share-mode-buttons-container > .share-mode-button-group:first-child span {
+    margin-bottom: 20px;
 }
 
 .commands {

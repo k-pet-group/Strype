@@ -1,2 +1,3 @@
 1 - Check the Strype version (in package.json) is correct (example "1.0.2" -- date and hash are set automatically in the project)
 2 - Make sure the app server path in vue.config.js is correct (/editor/ and /microbit/ for the normal cases)
+3 - ON THE SERVER, update the "Last-Modified" header to publication date

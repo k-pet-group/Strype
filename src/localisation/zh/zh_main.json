@@ -72,7 +72,7 @@
     "gdriveConnectionSaveToLoadProjFailed": "尝试保存当前项目时无法连接到 Google Drive。请尝试重新登录以打开另一个项目。",
     "gdriveConnectionSaveToUnloadPageFailed": "尝试保存当前项目时无法连接到 Google Drive。请在离开Strype前尝试重新登录以保存当前项目 。",
     "gdrivePermissionsNotMet": "Strype 至少需要一项访问权限才能使用 Google Drive。",
-    "gdriveReadOnly": "此文件为只读。自动保存已关闭。",
+    "gdriveReadOnly": "此Google Drive文件为只读。",
     "gdriveWrongFile": "请选择一个 Strype 文件（扩展名为 \".spy\"）。",
     "unexpectedCharsPython": "意外字符"
   },

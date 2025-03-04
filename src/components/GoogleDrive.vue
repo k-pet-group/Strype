@@ -1,6 +1,6 @@
 <template>
     <div>
-        <GoogleDriveFilePicker :ref="googleDriveFilePickerComponentId" @picked-file="loadPickedFileId" @picked-folder="savePickedFolder" @nonStrypeFilePicked="onNonStrypeFilePicked" dev-key="AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E" :oauth-token="oauthToken"/>
+        <GoogleDriveFilePicker :ref="googleDriveFilePickerComponentId" @picked-file="loadPickedFileId" @picked-folder="savePickedFolder" @nonStrypeFilePicked="onNonStrypeFilePicked" :dev-key="devKey" :oauth-token="oauthToken"/>
         <SimpleMsgModalDlg :dlgId="loginErrorModalDlgId" :hideActionListener="signIn"/>
         <SimpleMsgModalDlg :dlgId="nonStrypeFilePickedModalDlgId" :hideActionListener="loadFile" />
         <ModalDlg :dlgId="saveExistingGDProjectModalDlgId" :size="saveExistingFileDlgSize" :elementToFocusId="(isFileLocked) ? saveExistingFileCopyButtonId : saveExistingFileOverwriteButtonId">
@@ -19,14 +19,15 @@
 import Vue from "vue";
 import {mapStores} from "pinia";
 import {useStore} from "@/store/store";
+import Menu from "@/components/Menu.vue";
+import App from "@/App.vue";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import i18n from "@/i18n";
 import { CustomEventTypes, getAppSimpleMsgDlgId, getSaveAsProjectModalDlg } from "@/helpers/editor";
 import { strypeFileExtension } from "@/helpers/common";
-import { BootstrapDlgSize, MessageDefinitions, SaveExistingGDProjectInfos, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
-import Menu from "@/components/Menu.vue";
+import { BootstrapDlgSize, GAPIState, MessageDefinitions, SaveExistingGDProjectInfos, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
 
 // This enum is used for flaging the action taken when a request to save a file on Google Drive
 // has been done, and a file of the same name already exists on the Drive
@@ -45,11 +46,17 @@ export default Vue.extend({
         ModalDlg,
     },
 
+    props: {
+        openSharedProjectFileId: String,
+    },
+
     data: function(){
         return {
+            gapiLoadedState: GAPIState.unloaded,
             client: null as google.accounts.oauth2.TokenClient | null, // The Google Identity client
             oauthToken : null as string | null,
-            currentAction: null as "load" | "loadAsResync" | "save" | null, // flag the request current action for async workflow;
+            devKey: "AIzaSyDKjPl4foVEM8iCMTkgu_FpedJ604vbm6E",
+            currentAction: null as "load" | "save" | null, // flag the request current action for async workflow;
             saveReason: SaveRequestReason.unloadPage, // flag the reason of the save action
             saveFileName: "", // The file name, will be set via the Menu when a name is provided for saving, or when loading a project
             isFileLocked: false, // Flag to notify when a file is locked (used for saving);
@@ -137,10 +144,35 @@ export default Vue.extend({
         // After Google API loaded, initialise client:
         gapiStart() {
             gapi.client.init({
-            }).then(function (response) {
+            }).then((response) => {
+                this.gapiLoadedState = GAPIState.loaded;
                 console.log("GAPI loaded");
-            }, function (reason) {
-                console.log("GAPI Error: " + reason.result.error.message);
+            }, (reason) => {
+                this.gapiLoadedState = GAPIState.failed;
+                console.log(reason.result.error.message);
+            });
+        },
+
+        getGAPIStatusWhenLoadedOrFailed(): Promise<GAPIState> {
+            // If the GAPI isn't responsive within 10 seconds we considered it failed to load...
+            const maxWaitingTimeout = 10000;
+            let waitingCounter = 0;
+            const checkingStateInterval = 200; // we check the GAPI state very 200 ms when unloaded
+            return new Promise<GAPIState>((resolve) => {
+                if(this.gapiLoadedState == GAPIState.unloaded){
+                    // GAPI isn't loaded yet, we need to wait
+                    const timerId = setInterval(() => {
+                        waitingCounter += checkingStateInterval;
+                        if(waitingCounter >= maxWaitingTimeout || this.gapiLoadedState != GAPIState.unloaded){
+                            clearInterval(timerId);
+                            resolve((this.gapiLoadedState == GAPIState.unloaded) ? GAPIState.failed : this.gapiLoadedState);
+                        }
+                    }, checkingStateInterval);
+                }
+                else {
+                    // GAPI is loaded or failed to do so, we can return the promise
+                    resolve(this.gapiLoadedState);
+                }
             });
         },
 
@@ -165,7 +197,7 @@ export default Vue.extend({
 
                     // In any case, continue the action requested by the user (need to do it in a next tick to make sure the oauthToken is updated in all Vue components)
                     this.$nextTick(() => {
-                        if(this.currentAction == "load" || this.currentAction == "loadAsResync"){
+                        if(this.currentAction == "load"){
                             this.doLoadFile();
                         }
                         else if(this.currentAction == "save"){
@@ -190,6 +222,8 @@ export default Vue.extend({
                 // If signing fails, reset to no sync
                 this.appStore.syncTarget = StrypeSyncTarget.none; 
                 this.$root.$emit(CustomEventTypes.removeFunctionToEditorProjectSave, "GD");
+                // At the very end, emit event for notifying the attempt to open a shared project is finished
+                this.$emit(CustomEventTypes.openSharedFileDone);
             }            
         },
 
@@ -212,8 +246,8 @@ export default Vue.extend({
             xhr.send(null);
         },
 
-        loadFile(loadAsResync?: boolean) {
-            this.currentAction = (loadAsResync) ? "loadAsResync" : "load";
+        loadFile() {
+            this.currentAction = "load";
             // This method is the entry point to load a file from Google Drive. We check or request to sign-in to Google Drive here.
             // (that is redundant with the previous "save" action if we were already syncing, but this method can be called when we were not syncing so it has to be done.)
             if(this.oauthToken == null){                
@@ -238,35 +272,83 @@ export default Vue.extend({
                 // When we load for the very first time, we may not have a Drive location to look for. In that case, we look for a Strype folder existence 
                 // (however we do not create it here, we would do this on a save action). If a location is already set, we make sure it still exists. 
                 // If it doesn't exist anymore, we set the default location to the Strype folder (if available) or just the Drive itself if not.
-                this.checkDriveStrypeFolder(false, (strypeFolderId) => {
-                    if(this.appStore.strypeProjectLocation && (this.appStore.strypeProjectLocation instanceof String)){
-                        gapi.client.request({
-                            path: "https://www.googleapis.com/drive/v3/files/" + this.appStore.strypeProjectLocation,
-                            method: "GET",
-                        }).then((response) => {
-                            // Folder is found, we get the name
-                            this.appStore.strypeProjectLocationAlias = JSON.parse(response.body).name;
-                        }, () => {
-                            // Folder not found, we set Strype as default folder if it exists
+                // NOTE: we do not need to check a folder when opening a shared project
+                if(this.openSharedProjectFileId.length == 0){
+                    this.checkDriveStrypeFolder(false, (strypeFolderId) => {
+                        if(this.appStore.strypeProjectLocation && (this.appStore.strypeProjectLocation instanceof String)){
+                            gapi.client.request({
+                                path: "https://www.googleapis.com/drive/v3/files/" + this.appStore.strypeProjectLocation,
+                                method: "GET",
+                            }).then((response) => {
+                                // Folder is found, we get the name
+                                this.appStore.strypeProjectLocationAlias = JSON.parse(response.body).name;
+                            }, () => {
+                                // Folder not found, we set Strype as default folder if it exists
+                                this.appStore.strypeProjectLocation = (strypeFolderId) ? strypeFolderId : undefined;
+                                this.appStore.strypeProjectLocationAlias = (strypeFolderId) ? "Strype" : "";
+                            });
+                        }
+                        else{
                             this.appStore.strypeProjectLocation = (strypeFolderId) ? strypeFolderId : undefined;
                             this.appStore.strypeProjectLocationAlias = (strypeFolderId) ? "Strype" : "";
-                        });
-                    }
-                    else{
-                        this.appStore.strypeProjectLocation = (strypeFolderId) ? strypeFolderId : undefined;
-                        this.appStore.strypeProjectLocationAlias = (strypeFolderId) ? "Strype" : "";
-                    }
+                        }
 
-                    if(this.currentAction == "loadAsResync"){
-                        // When we want to load a file as a resyincing mechanism (when browser is opened/reloaded) we don't use the file picker
-                        this.loadPickedFileId(this.appStore.currentGoogleDriveSaveFileId as string);
-                    }
-                    else {
                         // Method called to trigger the file load -- this would be called after we made sure the connection to Google Drive is (still) valid
                         (this.$refs[this.googleDriveFilePickerComponentId] as InstanceType<typeof GoogleDriveFilePicker>).startPicking(false);
+                    });
+                }
+                else{
+                    this.loadPickedFileId(this.openSharedProjectFileId);
+                }
+            }
+        },
+
+        getPublicSharedProjectContent(sharedFileID: string) {
+            // This mechanism to load file isn't using OAuth but our API key instead. 
+            // It is only relevant for getting a Strype project content of a PUBLICLY SHARED project.
+            // We wait for GAPI to be loaded, or show an error message if it failed
+
+            this.getGAPIStatusWhenLoadedOrFailed()
+                .then((gapiState) =>{
+                    if(gapiState == GAPIState.loaded){
+                        let alertMsgKey = "", alertParams = "";
+                        gapi.client.request({
+                            path: `https://www.googleapis.com/drive/v3/files/${sharedFileID}?alt=media&key=${this.devKey}`,
+                            method: "GET",
+                        })
+                            .then((response) => {
+                                if(response.status == 200){
+                                    return this.appStore.setStateFromJSONStr({stateJSONStr: decodeURIComponent(escape(response.body)), showMessage: false })
+                                        .then(() => {
+                                            alertMsgKey = "appMessage.retrievedSharedGenericProject";
+                                            alertParams = this.appStore.projectName;
+
+                                            // Remove things in the state that were related to Google Drive
+                                            this.cleanGoogleDriveRelatedInfosInState();
+                                        })
+                                        .catch((reason) => {
+                                            alertMsgKey = "errorMessage.retrievedSharedGenericProject";
+                                            alertParams = reason;
+                                        });                     
+                                }
+                                else{
+                                    alertMsgKey = "errorMessage.retrievedSharedGenericProject";
+                                    alertParams = response.status?.toString()??"unknown";
+                                }
+                            })
+                            .catch((reason) => {
+                                alertMsgKey = "errorMessage.retrievedSharedGenericProject";
+                                alertParams = (reason?.result?.error?.message)??(reason?.status);
+                            })
+                            .finally(() => {
+                                // Show a message to the user that the project has (not) been loaded
+                                (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject(alertMsgKey, alertParams);
+                            });
+                    }
+                    else{
+                        (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.GAPIFailed") as string);
                     }
                 });
-            }
         },
 
         saveFile(saveReason: SaveRequestReason) {
@@ -443,7 +525,7 @@ export default Vue.extend({
                 method: "GET",
                 params: {fields: "name, modifiedTime"},
             }).execute((resp) => {
-                if(this.currentAction == "loadAsResync"){
+                if(this.openSharedProjectFileId.length > 0){
                     fileName = resp.name;
                 }
                 // The date conversion works fine because Google Drive API uses RFC 3339 date format
@@ -455,45 +537,68 @@ export default Vue.extend({
                 path: "https://www.googleapis.com/drive/v3/files/" + id,
                 method: "GET",
                 params: {alt: "media"},
-            }).execute((resp) => {
+            }).then((resp) => {
                 // Some flags in the store SHOULD NOT BE lost when we load a file, so we make a backup of those here:
                 const strypeLocation = this.appStore.strypeProjectLocation;
                 const strypeLocationAlias = this.appStore.strypeProjectLocationAlias;
                 // Load the file content in the editor
+                const isOpenedSharedProject = (this.openSharedProjectFileId.length > 0);
                 this.appStore.setStateFromJSONStr(
                     {
                         // The response from Google Drive would be encoded in UTF-8, so we need to decode it.
                         // cf https://stackoverflow.com/questions/13356493/decode-utf-8-with-javascript
-                        stateJSONStr: decodeURIComponent(escape(JSON.stringify(resp))),
+                        stateJSONStr: decodeURIComponent(escape(JSON.stringify(resp.result))),
+                        showMessage: !isOpenedSharedProject,
                     }                    
                 ).then(() => {
                     // Only update things if we could set the new state
-                    this.saveFileId = id;
+                    if(isOpenedSharedProject){
+                        this.cleanGoogleDriveRelatedInfosInState();
+                    }
+                    else{
+                        this.saveFileId = id;
+                        // Restore the fields we backed up before loading
+                        this.appStore.strypeProjectLocation = strypeLocation;
+                        this.appStore.strypeProjectLocationAlias = strypeLocationAlias;
+                        this.appStore.projectLastSaveDate = lastSaveDate;
+                    }
                     // Users may have changed the file name directly on Drive, so we make sure at this stage we get the project with that same name
                     // (At this stage, we shouldn't have an undefined name, but for safety we use the default project name if so.)
                     const fileNameNoExt = (fileName) ? fileName.substring(0, fileName.lastIndexOf(".")) : i18n.t("defaultProjName") as string;
                     this.appStore.projectName = fileNameNoExt;
                     this.saveFileName = fileNameNoExt;
-                    // Restore the fields we backed up before loading
-                    this.appStore.strypeProjectLocation = strypeLocation;
-                    this.appStore.strypeProjectLocationAlias = strypeLocationAlias;
-                    this.appStore.projectLastSaveDate = lastSaveDate;
+                        
                     // And finally register the correc target flags via the Menu 
                     // (it is necessary when switching from FS to GD to also update the Menu flags, which will update the state too)
-                    (this.$parent as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.gd);
-                }, () => {});
+                    (this.$parent as InstanceType<typeof Menu>).saveTargetChoice((isOpenedSharedProject) ? StrypeSyncTarget.none : StrypeSyncTarget.gd);
 
-                // We check that the file has write access. 
-                gapi.client.request({
-                    path: "https://www.googleapis.com/drive/v3/files/" + id,
-                    method: "GET",
-                    params: {fields: "capabilities/canEdit"},
-                }).execute((resp) => {
-                    if(!resp["capabilities"]["canEdit"]){
-                        this.saveFileId = undefined;
-                        this.updateSignInStatus(false);
-                        this.appStore.simpleModalDlgMsg = this.$i18n.t((resp == undefined) ? "errorMessage.gdriveNoFile" : "errorMessage.gdriveReadOnly") as string;
-                        this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                    // We check that the file has write access and isn't locked (in Google Drive). 
+                    // We use that also (regardless the access rights) to make accessed shared project READONLY.
+                    gapi.client.request({
+                        path: "https://www.googleapis.com/drive/v3/files/" + id,
+                        method: "GET",
+                        params: {fields: "capabilities/canEdit, capabilities/canModifyContent"},
+                    }).execute((resp) => {
+                        if(isOpenedSharedProject || !resp["capabilities"]["canEdit"] || !resp["capabilities"]["canModifyContent"]){
+                            this.saveFileId = undefined;
+                            this.updateSignInStatus(false);
+                            if(isOpenedSharedProject){
+                                (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject("appMessage.retrievedSharedGenericProject", fileNameNoExt);
+                            }
+                            else{
+                                this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveReadOnly") as string;
+                                this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                            }
+                        }
+                    });
+                        
+                    // At the very end, emit event for notifying the attempt to open a shared project is finished
+                    this.$emit(CustomEventTypes.openSharedFileDone);                  
+                }, (reason) => {
+                    // When loading a file didn't work, we only need to handle the situation of opening a shared file 
+                    // (because the error message would have been shown before for normal opening from the Drive picker)
+                    if(this.openSharedProjectFileId.length > 0){
+                        (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", reason);
                     }
                 });
             });
@@ -648,6 +753,33 @@ export default Vue.extend({
             }
 
             // If user chose "cancel": we do nothing  
+        },
+
+        async shareGoogleDriveFile(): Promise<boolean>{
+            // When we share a Strype project, we try to set the project on Google Drive with public acccess.
+            // The methods returns a Promise, with a boolean flag set at true if we succeeeded.
+            return new Promise<boolean>((resolve, reject) => {
+                gapi.client.request({
+                    path: `https://www.googleapis.com/drive/v3/files/${this.saveFileId}/permissions`,
+                    method: "POST",
+                    body:  {
+                        role: "reader",
+                        type: "anyone",
+                    },
+                }).then((resp) => {
+                    resolve(resp.status == 200);
+                }, (reason) => {
+                    reject(reason);
+                });
+            });
+        },
+
+        cleanGoogleDriveRelatedInfosInState(){
+            this.appStore.currentGoogleDriveSaveFileId = undefined;
+            this.appStore.strypeProjectLocation = undefined;
+            this.appStore.strypeProjectLocationAlias = "";
+            this.appStore.projectLastSaveDate = -1;
+            this.saveFileId = undefined;
         },
     },
 });

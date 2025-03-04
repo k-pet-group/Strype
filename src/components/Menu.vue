@@ -1,7 +1,7 @@
 <template>
     <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
     <div @keydown="handleKeyEvent" @keyup="handleKeyEvent" tabindex="-1" @mousedown.self.stop.prevent>
-        <GoogleDrive :ref="googleDriveComponentId" />
+        <GoogleDrive :ref="googleDriveComponentId" :openSharedProjectFileId="openSharedProjectId" />
         <div>
             <a href="https://strype.org/" :title="$i18n.t('appMenu.homepage')"><img class="top-left-strype-logo" :src="require('@/assets/images/Strype-logo-128-2x.png')"></a>
         </div>
@@ -207,6 +207,9 @@ export default Vue.extend({
             // Request opening a project flag we need to use when a user wanted to open another project from a modified project
             // that wasn't initially a FS or GD project (because at this stage we can't know what the target will be...)
             requestOpenProjectLater: false,
+            // Flags for opening a shared project: the ID (main flag) and the target (for the moment it's only Google Drive...)
+            openSharedProjectId: "",
+            openSharedProjectTarget: StrypeSyncTarget.none,
         };
     },
 
@@ -231,6 +234,12 @@ export default Vue.extend({
         
         // Event listener for saving project action completion
         this.$root.$on(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
+
+        // Event listenr for the Google component to listen the attempt to open a shared project is done (successfully or not)
+        (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).$on(CustomEventTypes.openSharedFileDone, () => {
+            this.openSharedProjectId = "";
+            this.openSharedProjectTarget = StrypeSyncTarget.none;
+        });
 
         // Composition API allows watching an array of "sources" (cf https://vuejs.org/guide/essentials/watchers.html)
         // We need to update the current error Index when: the error count changes, navigation occurs (i.e. editing toggles, caret pos or focus pos changes)
@@ -431,8 +440,13 @@ export default Vue.extend({
                 // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
                 this.$root.$emit("bv::show::modal", this.saveOnLoadModalDlgId);
             }
-            else {
+            else if(this.openSharedProjectId.length == 0) {
+                // The normal "open target" dialog
                 this.$root.$emit("bv::show::modal", this.loadProjectModalDlgId);
+            }
+            else {
+                // The case of opening a shared project: we don't need a target selection, we just try to open the project
+                this.loadProject();
             }
         },
 
@@ -457,7 +471,7 @@ export default Vue.extend({
 
         changeTargetFocusOnMouseOver(event: MouseEvent) {
             // On the "load project dialog", entering a target button should "snap" the focus to it and select it.
-            // On the "save porject dialog", entering a button just give an indication that the button can "clicked".
+            // On the "save project dialog", entering a button just give an indication that the button can "clicked".
             // For both, we handle those visual aspects by setting the focus on the button -- CSS does the rest.
             if(event.target){
                 (event.target as HTMLDivElement).focus();
@@ -503,7 +517,14 @@ export default Vue.extend({
             }
             // If we have swapped target, we should remove the other target in the list of saving functions.
             // (It doesn't really matter if there is one or not, the remove method will take care of that.)
-            this.$root.$emit(CustomEventTypes.removeFunctionToEditorProjectSave, (target == StrypeSyncTarget.fs) ? "GD" : "FS");
+            const targetsToRemove = [];
+            if(target == StrypeSyncTarget.fs || target == StrypeSyncTarget.none) {
+                targetsToRemove.push("GD");
+            }
+            if(target == StrypeSyncTarget.gd || target == StrypeSyncTarget.none) {
+                targetsToRemove.push("FS");
+            }
+            targetsToRemove.forEach((targetToRemove) =>  this.$root.$emit(CustomEventTypes.removeFunctionToEditorProjectSave, targetToRemove));
         },
 
         saveCurrentProject(saveReason?: SaveRequestReason){
@@ -669,7 +690,7 @@ export default Vue.extend({
             const selectValue = this.getTargetSelectVal();
             // Reset the temporary sync file flag
             this.tempSyncTarget = this.appStore.syncTarget;
-            if(selectValue == StrypeSyncTarget.gd){
+            if(selectValue == StrypeSyncTarget.gd || this.openSharedProjectId.length > 0 ){
                 (this.$refs[this.googleDriveComponentId] as InstanceType<typeof GoogleDrive>).loadFile();
             }
             else{               
@@ -829,7 +850,6 @@ export default Vue.extend({
                     event.stopPropagation();
                     (document.activeElement as HTMLElement).click();
                 }
-
 
                 if(event.type == "keydown" && ["Tab", "ArrowDown", "ArrowUp"].includes(event.key)){
                 // When the tab key is hit, we handle the menu entry selection ourselves, because the default behaviour won't do it properly.

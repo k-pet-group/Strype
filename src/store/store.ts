@@ -2375,8 +2375,8 @@ export const useStore = defineStore("app", {
                 if(isStateJSONStrValid){  
                     const newStateStr = JSON.stringify(newStateObj);     
                     if(!isVersionCorrect) {
-                    // If the version isn't correct, we ask confirmation to the user before continuing 
-                    // for ease of coding, we register a "one time" event listener on the modal
+                        // If the version isn't correct, we ask confirmation to the user before continuing 
+                        // for ease of coding, we register a "one time" event listener on the modal
                         const execSetStateFunction = (event: BvModalEvent, dlgId: string) => {
                             if((event.trigger == "ok" || event.trigger=="event") && dlgId == getImportDiffVersionModalDlgId()){
                                 this.doSetStateFromJSONStr(newStateStr);      
@@ -2385,7 +2385,7 @@ export const useStore = defineStore("app", {
                             }
                             else{
                                 isStateJSONStrValid = false;
-                                reject();
+                                reject(errorDetailMessage);
                             }
                         };
                         vm.$root.$on("bv::modal::hide", execSetStateFunction); 
@@ -2398,11 +2398,13 @@ export const useStore = defineStore("app", {
                     }                
                 }
                 else{
-                    const message = cloneDeep(MessageDefinitions.UploadEditorFileError);
-                    const msgObj: FormattedMessage = (message.message as FormattedMessage);
-                    msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorDetailMessage);
-                    this.showMessage(message, null);
-                    reject();
+                    if(payload.showMessage??true){
+                        const message = cloneDeep(MessageDefinitions.UploadEditorFileError);
+                        const msgObj: FormattedMessage = (message.message as FormattedMessage);
+                        msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorDetailMessage);
+                        this.showMessage(message, null);
+                    }
+                    reject(errorDetailMessage);
                 }
             });
         },

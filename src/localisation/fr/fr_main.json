@@ -174,10 +174,12 @@
     "stop": "Arrêter",
     "stopping": "Arrêt...",
     "runtimeErrorConsole": "Erreur d'exécution",
-    "expand": "Agrandir",
-    "collapse": "Réduire",
     "console": "Console",
     "TurtleGraphics": "Turtle Graphics",
-    "importTurtle": "Importe le module 'turtle' pour utiliser Turtle Graphics"
+    "importTurtle": "Importe le module 'turtle' pour utiliser Turtle Graphics",
+    "PEA-layout-tabs-collapsed": "Disposition en onglets reduite",
+    "PEA-layout-tabs-expanded":"Disposition en onglets étendue",
+    "PEA-layout-split-collapsed": "Disposition fractionnée réduite",
+    "PEA-layout-split-expanded": "Disposition fractionnée étendue"
   }
 }

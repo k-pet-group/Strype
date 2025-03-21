@@ -5,7 +5,7 @@ import { useStore } from "@/store/store";
 import { skulptReadPythonLib } from "@/autocompletion/ac-skulpt";
 import i18n from "@/i18n";
 import Vue from "vue";
-import { CustomEventTypes, setPythonExecAreaExpandButtonPos } from "./editor";
+import { CustomEventTypes, setPythonExecAreaLayoutButtonPos } from "./editor";
 
 const STRYPE_RUN_ACTION_MSG = "StrypeRunActionCalled";
 const STRYPE_INPUT_INTERRUPT_ERR_MSG = "ExternalError: " + STRYPE_RUN_ACTION_MSG;
@@ -129,7 +129,7 @@ function sInput(prompt: string) {
         }, 1000);
 
         // We check if the expand/collapse button needs to be repositioned.
-        setPythonExecAreaExpandButtonPos();
+        setPythonExecAreaLayoutButtonPos();
     });
 }
 

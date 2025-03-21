@@ -1110,3 +1110,14 @@ export interface Locale {
     code: string, // a 2 letter code idenitifying the locale (e.g.: "en")
     name: string, // the user-friendly locale's name (e.g.: "English")
 }
+
+export enum StrypePEALayoutMode {
+    tabsCollapsed, // the default layout mode where PEA is collapsed and using tabs for console/graphics
+    tabsExpanded, // the layout mode where PEA is expanded and using tabs for console/graphics
+    splitCollapsed, // the layout mode where PEA is collapsed and console/graphics windows are (horizontally) split
+    splitExpanded, // the layout mode where PEA is expanded and console/graphics windows are (vertically) split
+}
+export interface StrypePEALayoutData {
+    mode: StrypePEALayoutMode, // The layout view for the PEA in Strype, see related enum
+    iconName: string, // the name of the icon to be retrieved from our SVG icons + localisation key name (makes it simpler to have one property!)
+}

@@ -13,6 +13,8 @@ import Frame from "@/components/Frame.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
+import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
+import { debounce } from "lodash";
 
 export const undoMaxSteps = 200;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -42,6 +44,7 @@ export enum CustomEventTypes {
     acItemHovered="acItemHovered",
     openSharedFileDone="openSharedFileDone",
     /* IFTRUE_isPython */
+    pythonExecAreaMounted = "peaMounted",
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
     pythonConsoleRequestFocus = "pythonConsoleReqFocus",
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
@@ -948,17 +951,17 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
             const closestCaretEl = document.getElementById(getCaretUID(currentCaretPositionsForDnD[closestCaretPositionIndex].caretPosition as string, currentCaretPositionsForDnD[closestCaretPositionIndex].frameId));
             // First remove the drop indicator of the current drop position (if any)
             if(currentCaretDropPosId.length > 0){
-                (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.areFramesDraggedOver = false;
+                (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = false;
                 // Not really required but just better to reset things properly
-                (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.areDropFramesAllowed = true;
+                (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
                 // We make sure that we remove the "drag and d&d" flag on this caret since it's no longer a candidate for dropping the frames at this position...
                 removeDuplicateActionOnFramesDnD();
             }
             currentCaretDropPosId = closestCaretEl?.id??"";
             currentCaretDropPosFrameId = newCaretDropPosFrameId;
             currentCaretDropPosCaretPos = newCaretDropPosCaretPos;
-            (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.areFramesDraggedOver = true;
-            (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.areDropFramesAllowed = 
+            (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = true;
+            (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = 
                 isFrameDropAllowed(newCaretDropPosFrameId, newCaretDropPosCaretPos);
         }
 
@@ -976,7 +979,7 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
 export function addDuplicateActionOnFramesDnD(): void {
     // Add the "+" symbol
     if(currentCaretDropPosFrameId != 0){
-        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.isDuplicateDnDAction = true;
+        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).isDuplicateDnDAction = true;
     }
 
     // Do not blur the source frame(s)
@@ -987,7 +990,7 @@ export function addDuplicateActionOnFramesDnD(): void {
 export function removeDuplicateActionOnFramesDnD(): void {
     // Remove the "+" symbol on the destination caret
     if(currentCaretDropPosFrameId != 0){
-        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.isDuplicateDnDAction = false;
+        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).isDuplicateDnDAction = false;
     }
 
     // Restore the blur on the source frame(s) only if we are still dragging 
@@ -1001,7 +1004,7 @@ export function removeDuplicateActionOnFramesDnD(): void {
 // there is no "dragend" being raised by the browser consequently.
 const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
     if(useStore().isDraggingFrame){
-        const areDropFramesAllowed = (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.areDropFramesAllowed;
+        const areDropFramesAllowed = (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed;
         // Notify the drag even is finished
         notifyDragEnded();
 
@@ -1130,9 +1133,9 @@ export function notifyDragEnded():void {
     (document.getElementsByTagName("body")[0] as HTMLBodyElement).removeEventListener("mouseup", bodyMouseUpEventHandlerForFrameDnD);
     document.getElementsByTagName("body")[0]?.classList.remove("dragging-frame");
     if(currentCaretDropPosId.length > 0){
-        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.areFramesDraggedOver = false;
+        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = false;
         // Not really required but just better to reset things properly
-        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).$data.areDropFramesAllowed = true;
+        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
     }
     // Reset flags in the next tick to let UI update properly
     Vue.nextTick(() => {
@@ -1691,13 +1694,16 @@ export function setPythonExecutionAreaTabsContentMaxHeight(): void {
     // (defined above) with the correct value. If not, we use the default 50vh (50% of body) value directly.
     const editorNewMaxHeight = manuallyResizedEditorHeight ?? (fullAppHeight / 2);
     // For the tabs' height, we can't rely on the container as the tabs may stack on top of each other (small browser window)
-    const pythonExecAreaTabsAreaHeight = (document.querySelector("#peaControlsDiv li") as HTMLLIElement).getBoundingClientRect().height;
-    (document.querySelector("#tabContentContainerDiv") as HTMLDivElement).style.maxHeight = ((fullAppHeight - editorNewMaxHeight - pythonExecAreaTabsAreaHeight) + "px");
+    // so we get the first element of the tab section that is not having a 0 height (because tabs are hidden when we are in split layout)
+    const pythonExecAreaTabsAreaHeight = [...document.querySelectorAll("#peaControlsDiv li, .pea-no-tabs-controls")]
+        .find((element) => element.getBoundingClientRect().height != 0)
+        ?.getBoundingClientRect().height;    
+    (document.querySelector("#tabContentContainerDiv") as HTMLDivElement).style.maxHeight = ((fullAppHeight - editorNewMaxHeight - (pythonExecAreaTabsAreaHeight??0)) + "px");
 }
 
-// This method set the Python Execution Area expand/collapse button position based on the presence of scrollbars
+// This method set the Python Execution Area layout buttons position based on the presence of scrollbars
 // (It is put here as we need to call at different points in the code.)
-export function setPythonExecAreaExpandButtonPos(): void{
+export function setPythonExecAreaLayoutButtonPos(): void{
     // We need to know in which context we are : Python console, or Turtle.
     // The general idea is to override the CSS styling by directly applying style when needed (the case a scrollbar is present).
     // We find out the size of the scroll bar, add a margin of 2px, to displace the button by that size.
@@ -1705,24 +1711,25 @@ export function setPythonExecAreaExpandButtonPos(): void{
     setTimeout(() => {
         const pythonConsoleTextArea = document.getElementById("pythonConsole");
         const pythonTurtleContainerDiv = document.getElementById("pythonTurtleContainerDiv");
-        const peaExpandButton = document.getElementsByClassName("pea-toggle-size-button")[0] as HTMLDivElement;
-        if(pythonConsoleTextArea && pythonTurtleContainerDiv){
+        const peaLayoutButtonsContainer = document.getElementsByClassName("pea-toggle-layout-buttons-container")?.[0];
+        const peaComponent = ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as any).$refs[getStrypePEAComponentRefId()]);
+        if(pythonConsoleTextArea && pythonTurtleContainerDiv && peaLayoutButtonsContainer && peaComponent){
             // First get the natural position offset of the button, so can compute the new position:
-            const peaExpandButtonNaturalPosOffset = parseInt((scssVars.pythonExecutionAreaExpandButtonPosOffset as string).replace("px",""));
-    
+            const peaExpandButtonNaturalPosOffset = parseInt((scssVars.pythonExecutionAreaLayoutButtonsPosOffset as string).replace("px",""));
             // Then, look for the scrollbars
-            if(pythonConsoleTextArea.style.display != "none"){
+            if((peaComponent as InstanceType<typeof PythonExecutionArea>).isConsoleAreaShowing && !(peaComponent as InstanceType<typeof PythonExecutionArea>).isGraphicsAreaShowing){
                 // In the Python console, we wrap the text, only the vertical scrollbar can appear.
                 const scrollDiff = pythonConsoleTextArea.getBoundingClientRect().width - pythonConsoleTextArea.clientWidth;
-                peaExpandButton.style.right = (pythonConsoleTextArea.scrollHeight > pythonConsoleTextArea.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiff + 2) + "px" : "";
-                peaExpandButton.style.bottom = "";
+                (peaLayoutButtonsContainer as HTMLDivElement).style.right = (pythonConsoleTextArea.scrollHeight > pythonConsoleTextArea.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiff + 2) + "px" : "";
+                (peaLayoutButtonsContainer as HTMLDivElement).style.bottom = "";                
             }
             else{
                 // In the Turtle container, any of the scrollbars can appear.
                 const scrollDiffW = pythonTurtleContainerDiv.getBoundingClientRect().width - pythonTurtleContainerDiv.clientWidth,
                     scrollDiffH = pythonTurtleContainerDiv.getBoundingClientRect().height - pythonTurtleContainerDiv.clientHeight;
-                peaExpandButton.style.right = (pythonTurtleContainerDiv.scrollHeight > pythonTurtleContainerDiv.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiffW + 2) + "px" : "";
-                peaExpandButton.style.bottom = (pythonTurtleContainerDiv.scrollWidth > pythonTurtleContainerDiv.clientWidth) ? (peaExpandButtonNaturalPosOffset + scrollDiffH + 2) + "px" : "";
+                (peaLayoutButtonsContainer as HTMLDivElement).style.right = (pythonTurtleContainerDiv.scrollHeight > pythonTurtleContainerDiv.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiffW + 2) + "px" : "";
+                (peaLayoutButtonsContainer as HTMLDivElement).style.bottom = (pythonTurtleContainerDiv.scrollWidth > pythonTurtleContainerDiv.clientWidth) ? (peaExpandButtonNaturalPosOffset + scrollDiffH + 2) + "px" : "";
+    
             }
         }
     }, 100);
@@ -1733,18 +1740,46 @@ export function setPythonExecAreaExpandButtonPos(): void{
  * to allow the commands to be displayed in columns when they can't be shown as one column.
  * See Commands.vue for the HTML template logics.
  */
-export function resetAddFrameCommandContainerHeight(): void{
-    (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = "";
-}
+export const debounceComputeAddFrameCommandContainerSize = debounce(computeAddFrameCommandContainerSize, 100);
 
-export function computeAddFrameCommandContainerHeight(): void{
-    // When the container div overflows, we remove the overflow extra height to the p element containing the commands
-    // so that we can shorten the p height to trigger the commands to be displayed in columns.  
-    const scrollContainerH = document.getElementsByClassName("no-PEA-commands")[0].scrollHeight;
-    const noPEACommandsH =  Math.round(document.getElementsByClassName("no-PEA-commands")[0].getBoundingClientRect().height);
-    if(noPEACommandsH < scrollContainerH){
+export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): void{
+    // Two situations can happen: being or not in expanded PEA view.
+    // If we are in expanded PEA view, the height of the frame commands panel is aligned with the editor's "cropped" size.
+    // If we are in collapsed PEA view, the height of the frame commands is aligned with the commands/PEA splitter pane's size.
+    if(isExpandedPEA){
+        const projectNameContainerH = (document.getElementsByClassName("project-name-container")[0] as HTMLDivElement).clientHeight;
+        const croppedEditorH = (manuallyResizedEditorHeight) ? manuallyResizedEditorHeight : (document.getElementsByTagName("body")[0].clientHeight / 2);
+        (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = (croppedEditorH - projectNameContainerH) + "px";
+        // In expanded view, we need to set the frame commmands container to "position: absolute" for the content to overlay the commands/PEA splitter.
+        // However, the width won't align properly, we need to set that width manually.
+        const frameCmdsParagraphContainer =  document.querySelector(".frameCommands") as HTMLDivElement;
+        (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.width = frameCmdsParagraphContainer.clientWidth + "px";
+    }
+    else {
+        // Reset the frame commands container's width to natural behaviour (see case above)
+        (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.width = "";
+
+        // When the container div overflows, we remove the overflow extra height to the p element containing the commands
+        // so that we can shorten the p height to trigger the commands to be displayed in columns.
+        const scrollContainerH = document.getElementsByClassName("no-PEA-commands")[0].scrollHeight;
+        const noPEACommandsH =  document.getElementsByClassName("no-PEA-commands")[0].getBoundingClientRect().height;
         const addFrameCmdsPH = (document.querySelector(".frameCommands p") as HTMLParagraphElement).getBoundingClientRect().height;
-        (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = (addFrameCmdsPH - (scrollContainerH - noPEACommandsH)) + "px";
+        const commandsFlexContainer = (document.querySelector(".frameCommands p") as HTMLParagraphElement);
+        if(noPEACommandsH < scrollContainerH){
+            commandsFlexContainer.style.height = (addFrameCmdsPH - (scrollContainerH - noPEACommandsH)) + "px";
+        }
+        else{
+            // The commands panel is not overflowing, but it could be because it is already collapsed (elements are wrapped) and now we have more space for it to expand:
+            // in the case, we want to increase the commands panel size.
+            if(commandsFlexContainer.childElementCount > 0){
+                const firstCommandLeft = commandsFlexContainer.children[0].getBoundingClientRect().left;
+                const lastCommandLeft =  commandsFlexContainer.children[commandsFlexContainer.childElementCount - 1].getBoundingClientRect().left;
+                if(firstCommandLeft != lastCommandLeft){
+                    const projectNameContainerH = document.getElementsByClassName("project-name-container")[0].getBoundingClientRect().height;
+                    (document.querySelector(".frameCommands p") as HTMLParagraphElement).style.height = (noPEACommandsH - projectNameContainerH) + "px";
+                }
+            }
+        }
     }
 }
 

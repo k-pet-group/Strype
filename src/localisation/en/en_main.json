@@ -175,10 +175,12 @@
     "stop": "Stop",
     "stopping": "Stopping...",
     "runtimeErrorConsole": "Runtime error",
-    "expand": "Expand",
-    "collapse": "Collapse",
     "console": "Console",
     "TurtleGraphics": "Turtle Graphics",
-    "importTurtle": "Import the module 'turtle' to use Turtle Graphics."
+    "importTurtle": "Import the module 'turtle' to use Turtle Graphics.",
+    "PEA-layout-tabs-collapsed": "Collapsed and tabs layout",
+    "PEA-layout-tabs-expanded":"Expanded and tabs layout",
+    "PEA-layout-split-collapsed": "Collapsed and split layout",
+    "PEA-layout-split-expanded": "Expanded and split layout"
   }
 }

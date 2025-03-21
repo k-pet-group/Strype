@@ -25,6 +25,36 @@
     <strong>We're sorry but Strype doesn't work without JavaScript enabled.
         Please enable it to continue.</strong>
   </noscript>
+  
+  <!--We need to load the SVG sprite for Strype ASAP, so it can be used by the app's components, see script below. -->
+  <svg xmlns="http://www.w3.org/2000/svg" style="display: none;">
+		<symbol id="strype-svgicon-PEA-layout-empty-border" viewBox="0 0 12 12">
+			<path stroke="currentColor" fill="none" d="M1.5,2 h9 A1,1 0 0,1 11.5,3 v6 A1,1 0 0,1 10.5,10 h-9 A1,1 0 0,1 0.5,9 v-6 A1,1 0 0,1 1.5,2 Z"/>
+		</symbol>
+		<symbol id="strype-svgicon-PEA-layout-split-expanded" viewBox="0 0 12 12">
+			<use href="#strype-svgicon-PEA-layout-empty-border"/>
+			<path stroke="currentColor" stroke-width="0.5" d="M2.75,3.75 h2 a.5,.5 0 0,1 0.5,.5 v.5 a.5,.5 0 0,1 -.5,.5 h-2 a.5,.5 0 0,1 -.5,-.5 v-.5 a.5,.5 0 0,1 .5,-.5 Z"/>
+			<path stroke="currentColor" stroke-width="0.5" d="M7.25,6.75 h2 a.5,.5 0 0,1 0.5,.5 v.5 a.5,.5 0 0,1 -.5,.5 h-2 a.5,.5 0 0,1 -.5,-.5 v-.5 a.5,.5 0 0,1 .5,-.5 Z"/>
+			<path stroke="currentColor" stroke-width="0.5" d="M2.75,6.75 h2 a.5,.5 0 0,1 0.5,.5 v.5 a.5,.5 0 0,1 -.5,.5 h-2 a.5,.5 0 0,1 -.5,-.5 v-.5 a.5,.5 0 0,1 .5,-.5 Z"/>
+		</symbol>
+		<symbol id="strype-svgicon-PEA-layout-tabs-expanded" viewBox="0 0 12 12">
+			<use href="#strype-svgicon-PEA-layout-empty-border"/>
+			<path stroke="currentColor" stroke-width="0.5" d="M2.75,3.75 h2 a.5,.5 0 0,1 0.5,.5 v.5 a.5,.5 0 0,1 -.5,.5 h-2 a.5,.5 0 0,1 -.5,-.5 v-.5 a.5,.5 0 0,1 .5,-.5 Z"/>
+			<path stroke="currentColor" stroke-width="0.5" d="M2.75,6.75 h6.5 a.5,.5 0 0,1 0.5,.5 v.5 a.5,.5 0 0,1 -.5,.5 h-6.5 a.5,.5 0 0,1 -.5,-.5 v-.5 a.5,.5 0 0,1 .5,-.5 Z"/>			
+		</symbol>
+		<symbol id="strype-svgicon-PEA-layout-tabs-collapsed" viewBox="0 0 12 12">
+			<use href="#strype-svgicon-PEA-layout-empty-border"/>
+			<path stroke="currentColor" stroke-width="0.5" d="M2.75,3.75 h2 a.5,.5 0 0,1 0.5,.5 v3.5 a.5,.5 0 0,1 -.5,.5 h-2 a.5,.5 0 0,1 -.5,-.5 v-3.5 a.5,.5 0 0,1 .5,-.5 Z"/>
+			<path stroke="currentColor" stroke-width="0.5" d="M7.25,6.75 h2 a.5,.5 0 0,1 0.5,.5 v.5 a.5,.5 0 0,1 -.5,.5 h-2 a.5,.5 0 0,1 -.5,-.5 v-.5 a.5,.5 0 0,1 .5,-.5 Z"/>
+		</symbol>
+		<symbol id="strype-svgicon-PEA-layout-split-collapsed" viewBox="0 0 12 12">
+			<use href="#strype-svgicon-PEA-layout-empty-border"/>
+			<path stroke="currentColor" stroke-width="0.5" d="M2.75,3.75 h2 a.5,.5 0 0,1 0.5,.5 v3.5 a.5,.5 0 0,1 -.5,.5 h-2 a.5,.5 0 0,1 -.5,-.5 v-3.5 a.5,.5 0 0,1 .5,-.5 Z"/>
+			<path stroke="currentColor" stroke-width="0.25" d="M6.875,5.625 h2.75 a.25,.25 0 0,1 0.25,.25 v.25 a.25,.5 0 0,1 -.25,.25 h-2.75 a.25,.25 0 0,1 -.25,-.25 v-.25 a.25,.25 0 0,1 .25,-.25 Z"/>
+			<path stroke="currentColor" stroke-width="0.25" d="M6.875,7.625 h2.75 a.25,.25 0 0,1 0.25,.25 v.25 a.25,.5 0 0,1 -.25,.25 h-2.75 a.25,.25 0 0,1 -.25,-.25 v-.25 a.25,.25 0 0,1 .25,-.25 Z"/>
+		</symbol>
+	</svg>
+  
   <b id="uncompatibleBrowserSpan" style="display: block; white-space: pre; margin:auto; width: 50%;"></b>
   
   <div id="app"></div>

@@ -99,7 +99,7 @@ export default Vue.extend({
 }
 
 .hidden {
-    display: none;
+    display: none !important;
 }
 
 .leftMargin {

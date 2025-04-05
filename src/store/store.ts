@@ -1,5 +1,5 @@
 import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode } from "@/types/types";
+import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
@@ -15,8 +15,8 @@ import $ from "jquery";
 import { BvModalEvent } from "bootstrap-vue";
 import { nextTick } from "@vue/composition-api";
 import { TPyParser } from "tigerpython-parser";
-/* IFTRUE_isPython */
 import AppComponent from "@/App.vue";
+/* IFTRUE_isPython */
 import PEAComponent from "@/components/PythonExecutionArea.vue";
 import CommandsComponent from "@/components/Commands.vue";
 import { actOnTurtleImport, getPEAComponentRefId } from "@/helpers/editor";
@@ -171,8 +171,6 @@ export const useStore = defineStore("app", {
             projectLastSaveDate: -1, // Date ticks
 
             selectedFrames: [] as number[],
-
-            appLang: "en",
 
             tigerPythonLang: "en", // The locale for TigerPython, see parser.ts as to why it's here
 
@@ -654,29 +652,6 @@ export const useStore = defineStore("app", {
     },
     
     actions:{
-        setAppLang(lang: string) {
-            // Set the language in the store first
-            this.appLang = lang;
-
-            // Then change the UI via i18n
-            i18n.locale = lang;
-
-            // And also change TigerPython locale -- if Strype locale is not available in TigerPython, we use English instead
-            const tpLangs = TPyParser.getLanguages as any as string[]; // TODO remove this casting once TigerPython's type for getLanguages is fixed
-            this.tigerPythonLang = (tpLangs.includes(lang)) ? lang : "en";
-
-            // Change all frame definition types to update the localised bits
-            generateAllFrameDefinitionTypes(true);
-
-            // Change the frame command labels / details 
-            generateAllFrameCommandsDefs();
-
-            /* IFTRUE_isMicrobit */
-            //change the API description content here, as we don't want to construct the textual API description every time we need it
-            getAPIItemTextualDescriptions(true);
-            /* FITRUE_isMicrobit */
-        },
-        
         showMessage(newMessage: MessageDefinition, timeoutMillis: number | null) {
             this.currentMessage = newMessage;
             const ourId = ++this.currentMessageId;
@@ -2463,8 +2438,6 @@ export const useStore = defineStore("app", {
 
                 commandsComponent.resetPEACommmandsSplitterDefaultState().then(() => {
                     this.updateState(JSON.parse(JSON.stringify(newState)));
-                    // If the language has been updated, we need to also update the UI accordingly
-                    this.setAppLang(this.appLang);
                     // Wait a bit after we have reset everything for the UI to get ready, then affect backed up changes
                     setTimeout(() => {
                         let chainedTimeOuts = 400;
@@ -2513,8 +2486,6 @@ export const useStore = defineStore("app", {
                 /* FITRUE_isPython */
                 /* IFTRUE_isMicrobit */
                 this.updateState(JSON.parse(stateJSONStr));
-                // If the language has been updated, we need to also update the UI accordingly
-                this.setAppLang(this.appLang);
                 resolve();
                 /* FITRUE_isMicrobit */
             });
@@ -2908,6 +2879,46 @@ export const useStore = defineStore("app", {
                 previousFramesSelection = [...this.selectedFrames];
                 this.selectMultipleFrames(direction);
             } while (previousFramesSelection.length !== this.selectedFrames.length && !this.selectedFrames.includes(stopId));
+        },
+    },
+});
+
+export const settingsStore = defineStore("settings", {
+    state: () => {
+        return {
+            // The local in this store settings is to keep the language throught the session (i.e. localStorage)
+            // regardless the local *of the project*. When we cannot retrieve this property, we fall back
+            // on the project's locale.
+            // The default state is undefined so we can detect real undefined locale to the default English...
+            locale: undefined as undefined | string,
+        };
+    },
+
+    actions:{
+        setAppLang(lang: string) {
+            // Set the language in the store first
+            this.locale = lang;
+
+            // Then change the UI via i18n
+            i18n.locale = lang;
+
+            // And also change TigerPython locale -- if Strype locale is not available in TigerPython, we use English instead
+            const tpLangs = TPyParser.getLanguages as any as string[]; // TODO remove this casting once TigerPython's type for getLanguages is fixed
+            useStore().tigerPythonLang = (tpLangs.includes(lang)) ? lang : "en";
+
+            // Change all frame definition types to update the localised bits
+            generateAllFrameDefinitionTypes(true);
+
+            // Change the frame command labels / details 
+            generateAllFrameCommandsDefs();
+
+            /* IFTRUE_isMicrobit */
+            //change the API description content here, as we don't want to construct the textual API description every time we need it
+            getAPIItemTextualDescriptions(true);
+            /* FITRUE_isMicrobit */
+
+            // Save the settings
+            (vm.$children[0] as InstanceType<typeof AppComponent>).autoSaveStateToWebLocalStorage(SaveRequestReason.saveSettings);
         },
     },
 });

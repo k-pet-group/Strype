@@ -658,16 +658,19 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     /*3) if required, update the types in all the frames existing in the editor (needed to update default texts and frame container labels) */
     if(regenerateExistingFrames){
         Object.values(useStore().frameObjects).forEach((frameObject: FrameObject) => {
-            // For containers, we just assign the label manually again here
+            // For containers, we just assign the label manually again here and change the definitons
             switch(frameObject.frameType.type){
             case ImportsContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.importsContainer") as string;
+                ImportsContainerDefinition.labels[0].label = i18n.t("appMessage.importsContainer") as string;
                 break;
             case FuncDefContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.funcDefsContainer") as string;
+                FuncDefContainerDefinition.labels[0].label = i18n.t("appMessage.funcDefsContainer") as string;
                 break;
             case MainFramesContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.t("appMessage.mainContainer") as string;
+                MainFramesContainerDefinition.labels[0].label = i18n.t("appMessage.mainContainer") as string;
                 break;
             default:
                 // For all normal frames, we rely on the frame definition type                
@@ -1044,6 +1047,7 @@ export enum SaveRequestReason {
     loadProject,
     unloadPage,
     reloadBrowser, // for Google Drive: when a project was previously saved in GD and the browser is reloaded and the user requested to save the local changes to GD.
+    saveSettings, // for saving Strype settings
 }
 
 export interface SaveExistingGDProjectInfos {

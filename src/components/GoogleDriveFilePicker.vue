@@ -3,7 +3,7 @@
 </template>
 <script lang="ts">
 import Vue from "vue";
-import {useStore} from "@/store/store";
+import {useStore, settingsStore} from "@/store/store";
 import { mapStores } from "pinia";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { CustomEventTypes } from "@/helpers/editor";
@@ -22,7 +22,7 @@ export default Vue.extend({
     },
 
     computed:{
-        ...mapStores(useStore),
+        ...mapStores(useStore, settingsStore),
     },
 
     data: function() {
@@ -111,7 +111,7 @@ export default Vue.extend({
             const pickerBuilder = new google.picker.PickerBuilder()
                 .disableFeature(google.picker.Feature.MULTISELECT_ENABLED)
                 .disableFeature(google.picker.Feature.NAV_HIDDEN)
-                .setLocale(useStore().appLang)
+                .setLocale(this.settingsStore.locale??"en")
                 .setOAuthToken(this.oauthToken)
                 .setDeveloperKey(this.devKey)
                 .setCallback(this.pickerCallback)

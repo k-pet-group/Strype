@@ -52,7 +52,7 @@
                                     <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
                                     <span>Google Drive</span>
                                 </div>
-                                <div id="saveToFSStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
+                                <div :id="saveToFSStrypeButtonId" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, true)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncFSValue}">
                                     <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
                                     <span v-t="'appMessage.targetFS'"></span>
@@ -185,10 +185,10 @@
 //      Imports     //
 //////////////////////
 import Vue from "vue";
-import { useStore } from "@/store/store";
+import { useStore, settingsStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
-import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
+import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppLangSelectId, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNearestErrorIndex, getSaveAsProjectModalDlg, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection, sharedStrypeProjectIdKey, sharedStrypeProjectTargetKey } from "@/helpers/editor";
 import { Slide } from "vue-burger-menu";
 import { mapStores } from "pinia";
 import GoogleDrive from "@/components/GoogleDrive.vue";
@@ -311,7 +311,7 @@ export default Vue.extend({
     },
 
     computed: {
-        ...mapStores(useStore),
+        ...mapStores(useStore, settingsStore),
         
         menuUID(): string {
             return getEditorMenuUID();
@@ -405,9 +405,13 @@ export default Vue.extend({
         saveProjectTargetButtonGpId(): string {
             return "saveProjectProjectSelect";
         },
+
+        saveToFSStrypeButtonId(): string {
+            return getSaveStrypeProjectToFSButtonId();
+        },
         
         saveFileNameInputId(): string {
-            return "saveStrypeFileNameInput";
+            return getStrypeSaveProjectNameInputId();
         },
 
         shareProjectLinkId(): string {
@@ -471,10 +475,10 @@ export default Vue.extend({
 
         appLang: {
             get(): string {
-                return this.appStore.appLang;
+                return this.settingsStore.locale??"en";
             },
-            set(lang: string) {
-                this.appStore.setAppLang(lang);
+            set(lang: string) {                                
+                this.settingsStore.setAppLang(lang);
             }, 
         },
 

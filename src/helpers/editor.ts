@@ -27,7 +27,13 @@ export const autoSaveFreqMins = 2; // The number of minutes between each autosav
 export const sharedStrypeProjectTargetKey = "shared_proj_targ"; 
 // The URL of the project, with the URL pattern (template) for each possible target
 export const sharedStrypeProjectIdKey = "shared_proj_id";
-//export const sharedStrypeProjectURLSrcTemplates: {target: StrypeSyncTarget, URLTemplate: string}[] = [{target: StrypeSyncTarget.gd, URLTemplate: "https://drive.google.com/file/{0}"}];
+
+// LocalStorage keys used by Strype 
+export enum AutoSaveKeyNames {
+    settingsState = "StrypeSettingsState",
+    pythonEditorState = "PythonStrypeSavedState",
+    mbEditor = "MicrobitStrypeSavedState",
+}
 
 // Custom JS events in Strype
 export enum CustomEventTypes {
@@ -222,7 +228,7 @@ export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanEle
 }
 
 export function getFocusedEditableSlotTextSelectionStartEnd(labelSlotUID: string): {selectionStart: number, selectionEnd: number} {
-    // A helper function to get the selection relative to a *focused* slot: if the selection spans across several slots, we get the right boudary values for the given slot
+    // A helper function to get the selection relative to a *focused* slot: if the selection spans across several slots, we get the right boundary values for the given slot
     const focusCursorInfos = useStore().focusSlotCursorInfos;
     const anchorCursorInfos = useStore().anchorSlotCursorInfos;
     if(anchorCursorInfos != null && focusCursorInfos != null ){
@@ -497,8 +503,16 @@ export function getCaretContainerComponent(frameComponent: InstanceType<typeof F
 }
 // End for component retriever
 
-export function getSaveAsProjectModalDlg():string {
+export function getSaveAsProjectModalDlg(): string {
     return "save-strype-project-modal-dlg";
+}
+
+export function getStrypeSaveProjectNameInputId(): string {
+    return "saveStrypeFileNameInput";
+}
+
+export function getSaveStrypeProjectToFSButtonId() : string {
+    return "saveStrypeProjectToFSStrypeButton";
 }
 
 export function getEditorMiddleUID(): string {

@@ -25,7 +25,7 @@ import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import i18n from "@/i18n";
-import { CustomEventTypes, getAppSimpleMsgDlgId, getSaveAsProjectModalDlg } from "@/helpers/editor";
+import { CustomEventTypes, getAppSimpleMsgDlgId, getFrameUID, getSaveAsProjectModalDlg } from "@/helpers/editor";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { BootstrapDlgSize, GAPIState, MessageDefinitions, SaveExistingGDProjectInfos, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
 
@@ -542,15 +542,18 @@ export default Vue.extend({
             }).then((resp) => {
                 if(fileName?.endsWith(`.${pythonFileExtension}`)){
                     // The loading mechanisms for a Python file differs from a Strype file AND it doens't maintain a "link" to Google Drive.
-                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(resp.body, fileName, lastSaveDate);
-                    this.saveFileId = undefined;
-                    this.updateSignInStatus(false);
-                    this.appStore.strypeProjectLocation = undefined;
-                    this.appStore.strypeProjectLocationAlias = "";
-                    this.appStore.projectLastSaveDate = lastSaveDate;
-                    (this.$parent as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.none);
-                    // At the very end, emit event for notifying the attempt to open a shared project is finished in case that Python file was shared
-                    this.$emit(CustomEventTypes.openSharedFileDone);   
+                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(resp.body, fileName, lastSaveDate).then(() => {
+                        this.saveFileId = undefined;
+                        this.updateSignInStatus(false);
+                        this.appStore.strypeProjectLocation = undefined;
+                        this.appStore.strypeProjectLocationAlias = "";
+                        this.appStore.projectLastSaveDate = lastSaveDate;
+                        (this.$parent as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.none);
+                        // Give focus to the current (focusable) frame element so interaction can happen
+                        document.getElementById(getFrameUID(this.appStore.currentFrame.id))?.focus();                        
+                        // At the very end, emit event for notifying the attempt to open a shared project is finished in case that Python file was shared
+                        this.$emit(CustomEventTypes.openSharedFileDone);   
+                    });
                 }
                 else{
                     // The default case of a .spy (Strype) file.
@@ -567,7 +570,9 @@ export default Vue.extend({
                             showMessage: !isOpenedSharedProject,
                         }                    
                     ).then(() => {
-                    // Only update things if we could set the new state
+                        // Give focus to the current (focusable) frame element so interaction can happen
+                        document.getElementById(getFrameUID(this.appStore.currentFrame.id))?.focus();
+                        // Only update things if we could set the new state
                         if(isOpenedSharedProject){
                             this.cleanGoogleDriveRelatedInfosInState();
                         }

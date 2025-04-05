@@ -94,9 +94,9 @@ import Menu from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane, PaneData} from "splitpanes";
-import { useStore } from "@/store/store";
+import { useStore, settingsStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState } from "@/types/types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getPEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId } from "./helpers/editor";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getPEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
 /* IFTRUE_isPython */
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId } from "@/helpers/editor";
 /* FITRUE_isPython */
@@ -150,7 +150,7 @@ export default Vue.extend({
     },
 
     computed: {       
-        ...mapStores(useStore),
+        ...mapStores(useStore, settingsStore),
 
         editorId(): string {
             return getEditorID();
@@ -199,10 +199,10 @@ export default Vue.extend({
             return getCommandsRightPaneContainerId();
         },
 
-        localStorageAutosaveKey(): string {
-            let storageString = "PythonStrypeSavedState";
+        localStorageAutosaveEditorKey(): string {
+            let storageString = AutoSaveKeyNames.pythonEditorState;
             /* IFTRUE_isMicrobit */
-            storageString = "MicrobitStrypeSavedState";
+            storageString = AutoSaveKeyNames.mbEditor;
             /*FITRUE_isMicrobit */
             return storageString;
         },
@@ -252,6 +252,10 @@ export default Vue.extend({
     },
 
     created() {
+        // The very first action we want to do is trying to restore the Strype settings:
+        // Strype locale:
+        this.setStrypeLocale();
+
         projectSaveFunctionsState[0] = {name: "WS", function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
         window.addEventListener("beforeunload", (event) => {
             // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
@@ -664,19 +668,62 @@ export default Vue.extend({
         autoSaveStateToWebLocalStorage(reason: SaveRequestReason) : void {
             // save the project to the localStorage (WebStorage)
             if (!this.appStore.debugging && typeof(Storage) !== "undefined") {
-                localStorage.setItem(this.localStorageAutosaveKey, this.appStore.generateStateJSONStrWithCheckpoint(true));
-                // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
-                if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
-                    this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                if(reason == SaveRequestReason.saveSettings){
+                    // Save the settings
+                    localStorage.setItem(AutoSaveKeyNames.settingsState, JSON.stringify(this.settingsStore.$state));
+                }
+                else{
+                    localStorage.setItem(this.localStorageAutosaveEditorKey, this.appStore.generateStateJSONStrWithCheckpoint(true));
+                    // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
+                    if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
+                        this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                    }
                 }
             }
+        },
+
+        setStrypeLocale() {
+            // We need to retrieve Strype's language (session) if it exists in the localStorage.
+            // If we didn't retrieve it, we try to infer the browser's language and ask the user
+            // if they want to use the detected (supported) language. 
+            // If they refused or if we can't retrieve anything at all, we use English as default.
+            let strypeSessionLocale = "en"; // default locale
+            let canCheckBrowserLocale = false;
+            if(typeof Storage !== undefined) {
+                const savedSettingsState: typeof this.settingsStore = JSON.parse(localStorage.getItem(AutoSaveKeyNames.settingsState)??"{}");
+                if(savedSettingsState.locale) {
+                    strypeSessionLocale = savedSettingsState.locale;
+                }
+                else {
+                    // There is no locale saved. Maybe the user wants to use the default English, but maybe
+                    // they would like to use another language and their working environment won't save it,
+                    // so we can ask them based on the browser's locale if they want to switch.
+                    canCheckBrowserLocale = true;
+                }
+            }
+            else{
+                canCheckBrowserLocale = true;
+            }
+
+            if(canCheckBrowserLocale){
+                // We didn't retrieve a locale, but we can check if the browser's locale isn't English
+                // and use it for Strype if we provide that locale
+                const foundLanguange = navigator.language?.toLowerCase();
+                const languageCode = (foundLanguange && foundLanguange.length > 1) ? foundLanguange.substring(0,2) : "en";
+                if(languageCode != "en" && this.$i18n.availableLocales.includes(languageCode)) {
+                    strypeSessionLocale = languageCode;
+                }
+            }
+
+            // Now update the UI
+            this.settingsStore.setAppLang(strypeSessionLocale);
         },
 
         loadLocalStorageProjectOnStart() {
             // Check the local storage (WebStorage) to see if there is a saved project from the previous time the user entered the system
             // if browser supports localstorage
             if (typeof(Storage) !== "undefined") {
-                const savedState = localStorage.getItem(this.localStorageAutosaveKey);
+                const savedState = localStorage.getItem(this.localStorageAutosaveEditorKey);
                 if(savedState) {
                     this.appStore.setStateFromJSONStr( 
                         {
@@ -690,7 +737,7 @@ export default Vue.extend({
                         if(this.appStore.currentGoogleDriveSaveFileId) {
                             const execGetGDFileFunction = (event: BvModalEvent, dlgId: string) => {
                                 if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncGDAtStartupModalDlgId){
-                                // Fetch the Google Drive component
+                                    // Fetch the Google Drive component
                                     const gdVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
                                     // Initiate a connection to Google Drive via saving mechanisms (for updating Google Drive with local changes)
                                     gdVueComponent.saveFile(SaveRequestReason.reloadBrowser);
@@ -729,7 +776,7 @@ export default Vue.extend({
             this.resetStrypeProjectFlag = true;
             // 3) delete the WebStorage key that refers to the current autosaved project
             if (typeof(Storage) !== "undefined") {
-                localStorage.removeItem(this.localStorageAutosaveKey);
+                localStorage.removeItem(this.localStorageAutosaveEditorKey);
             }
             // Finally, reload the page to reload the Strype default project (removing potential query parameters)
             window.location.href = window.location.pathname;
@@ -1036,58 +1083,61 @@ export default Vue.extend({
             /* FITRUE_isPython */
         },
         
-        setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle) : void {
-            const allLines = completeSource.split(/\r?\n/);
-            // Split can make an extra blank line at the end which we don't want:
-            if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
-                allLines.pop();
-            }
-            const s = splitLinesToSections(allLines);
-            // Bit awkward but we first copy each to check for errors because
-            // if there are any errors we don't want to paste any:
-            const err = copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping)
-                        ?? copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping)
-                        ?? copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
-            if (err != null) {
-                const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
-                const msgObj = msg.message as FormattedMessage;
-                msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err);
-                
-                useStore().showMessage(msg, 10000);
-            }
-            else {
-                // Clear the current existing code (i.e. frames) of the editor
-                this.appStore.clearAllFrames();
+        setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle) : Promise<void> {
+            return new Promise((resolve) => {
+                const allLines = completeSource.split(/\r?\n/);
+                // Split can make an extra blank line at the end which we don't want:
+                if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
+                    allLines.pop();
+                }
+                const s = splitLinesToSections(allLines);
+                // Bit awkward but we first copy each to check for errors because
+                // if there are any errors we don't want to paste any:
+                const err = copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION, s.importsMapping)
+                            ?? copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION, s.defsMapping)
+                            ?? copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION, s.mainMapping);
+                if (err != null) {
+                    const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
+                    const msgObj = msg.message as FormattedMessage;
+                    msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err);
+                    
+                    useStore().showMessage(msg, 10000);
+                }
+                else {
+                    // Clear the current existing code (i.e. frames) of the editor
+                    this.appStore.clearAllFrames();
 
-                copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION);
-                if (useStore().copiedSelectionFrameIds.length > 0) {
-                    getCaretContainerComponent(getFrameComponent(-1) as InstanceType<typeof FrameContainer>).doPaste(true);
-                }
-                copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION);
-                if (useStore().copiedSelectionFrameIds.length > 0) {
-                    getCaretContainerComponent(getFrameComponent(-2) as InstanceType<typeof FrameContainer>).doPaste(true);
-                }
-                if (s.main.length > 0) {
-                    copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION);
+                    copyFramesFromParsedPython(s.imports.join("\n"), STRYPE_LOCATION.IMPORTS_SECTION);
                     if (useStore().copiedSelectionFrameIds.length > 0) {
-                        getCaretContainerComponent(getFrameComponent(-3) as InstanceType<typeof FrameContainer>).doPaste(true);
+                        getCaretContainerComponent(getFrameComponent(-1) as InstanceType<typeof FrameContainer>).doPaste(true);
                     }
+                    copyFramesFromParsedPython(s.defs.join("\n"), STRYPE_LOCATION.FUNCDEF_SECTION);
+                    if (useStore().copiedSelectionFrameIds.length > 0) {
+                        getCaretContainerComponent(getFrameComponent(-2) as InstanceType<typeof FrameContainer>).doPaste(true);
+                    }
+                    if (s.main.length > 0) {
+                        copyFramesFromParsedPython(s.main.join("\n"), STRYPE_LOCATION.MAIN_CODE_SECTION);
+                        if (useStore().copiedSelectionFrameIds.length > 0) {
+                            getCaretContainerComponent(getFrameComponent(-3) as InstanceType<typeof FrameContainer>).doPaste(true);
+                        }
+                    }
+
+                    // Now we can clear other non-frame related elements
+                    this.appStore.clearNoneFrameRelatedState();
+                
+                    /* IFTRUE_isPython */
+                    // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
+                    actOnTurtleImport();
+
+                    // Clear the Python Execution Area as it could have be run before.
+                    ((this.$root.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as any).clear();
+                    /* FITRUE_isPython */
+
+                    // Finally, we can trigger the notifcation a file has been loaded.
+                    (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
+                    resolve();
                 }
-
-                // Now we can clear other non-frame related elements
-                this.appStore.clearNoneFrameRelatedState();
-             
-                /* IFTRUE_isPython */
-                // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
-                actOnTurtleImport();
-
-                // Clear the Python Execution Area as it could have be run before.
-                ((this.$root.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as any).clear();
-                /* FITRUE_isPython */
-
-                // Finally, we can trigger the notifcation a file has been loaded.
-                (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
-            }
+            });
         },
     },
 });

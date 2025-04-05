@@ -1,5 +1,6 @@
 import { defineConfig } from "cypress";
 import {rimraf} from "rimraf";
+import fs from "fs";
 
 export default defineConfig({
     downloadsFolder: "tests/cypress/downloads",
@@ -28,6 +29,10 @@ export default defineConfig({
                             resolve(null);
                         });
                     });
+                },
+                renameFile(args: {srcPath: string, destPath: string}) {
+                    fs.renameSync(args.srcPath, args.destPath);
+                    return null;
                 },
             });
             // Allow logging to console (although only the first message seems to get logged?)

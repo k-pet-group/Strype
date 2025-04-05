@@ -621,6 +621,7 @@ export default Vue.extend({
         border-radius: 10px;
         border: 1px solid transparent;
         outline: none;
+        background-color: transparent;
     }
 
     .pea-controls-div button:hover {

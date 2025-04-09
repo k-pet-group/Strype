@@ -838,7 +838,8 @@ export function generateAllFrameCommandsDefs():void {
             type: getFrameDefType(AllFrameTypesIdentifier.blank),
             description: i18n.t("frame.blank_desc") as string,
             shortcuts: ["\x13"],
-            symbol: "↵",
+            symbol: "enter",
+            isSVGIconSymbol: true,
         }],
         "t": [{
             type: getFrameDefType(AllFrameTypesIdentifier.try),

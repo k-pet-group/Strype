@@ -34,6 +34,7 @@
                                                             ? addFrameCommand[0].symbol
                                                             : addFrameCommand[0].shortcuts[0]
                                                     "
+                                                    :isSVGIconSymbol="addFrameCommand[0].isSVGIconSymbol"
                                                     :description="addFrameCommand[0].description"
                                                     :index="
                                                         addFrameCommand[0].index!==undefined

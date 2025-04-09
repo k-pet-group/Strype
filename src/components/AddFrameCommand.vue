@@ -1,6 +1,8 @@
 <template>
     <div :class="{'frame-cmd-container': true, disabled: isPythonExecuting || appStore.isDraggingFrame}" @click="onClick">
-        <button :class="{'frame-cmd-btn': true, 'frame-cmd-btn-large': isLargerShorcutSymbol}" :disabled="isPythonExecuting || appStore.isDraggingFrame">{{ symbol }}</button>
+        <button :class="{'frame-cmd-btn': true, 'frame-cmd-btn-large': isLargerShorcutSymbol}" :disabled="isPythonExecuting || appStore.isDraggingFrame">{{ (!isSVGIconSymbol) ? symbol : '' }}
+            <SVGIcon v-if="isSVGIconSymbol" :name="symbol" customClass="add-frame-command-symbol-svg-icon" />
+        </button>
         <span>{{ description }}</span>
     </div>
 </template>
@@ -14,6 +16,7 @@ import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import { findAddCommandFrameType } from "@/helpers/editor";
 import { PythonExecRunningState } from "@/types/types";
+import SVGIcon from "@/components/SVGIcon.vue";
 
 //////////////////////
 //     Component    //
@@ -21,10 +24,15 @@ import { PythonExecRunningState } from "@/types/types";
 export default Vue.extend({
     name: "AddFrameCommand",
 
+    components: {
+        SVGIcon,
+    },
+
     props: {
         type: String, //Type of the Frame Command
         shortcut: String, //the keyboard shortcut to add the frame 
-        symbol: String, //the displayed shortcut in the UI, it can be a symbolic representation
+        symbol: String, //the displayed shortcut in the UI, it can be a symbolic representation or (if specified) a SVGIcon name
+        isSVGIconSymbol: Boolean, // if true, the symbol property is the name of a SVGIcon
         description: String, //the description of the frame
         index: Number, //when more than 1 frame is assigned to a shortcut, the index tells which frame definition should be used
     },
@@ -33,7 +41,7 @@ export default Vue.extend({
         ...mapStores(useStore),
 
         isLargerShorcutSymbol() {
-            return this.symbol.length > 1;
+            return this.symbol.length > 1 && !this.isSVGIconSymbol;
         },
 
         isPythonExecuting(): boolean {
@@ -84,5 +92,11 @@ export default Vue.extend({
 .frame-cmd-btn:disabled {
     cursor: default;
     color: rgb(180, 180, 180);
+}
+
+.add-frame-command-symbol-svg-icon {
+    color: black;
+    width: 10px;
+    height: 12px;
 }
 </style>

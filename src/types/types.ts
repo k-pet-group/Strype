@@ -255,7 +255,8 @@ export interface AddFrameCommandDef {
     type: FramesDefinitions;
     description: string; // The label that shown next to the key shortcut button
     shortcuts: [string, string?]; // The keyboard key shortcuts to be used to add a frame (eg "i" for an if frame), usually that's a single value array, but we can have 1 hidden shortcut as well
-    symbol?: string; // The symbol to show in the key shortcut button when the key it's not easily reprenstable (e.g. "⌴" for space)
+    symbol?: string; // The SVGIcon name for a symbol OR a string representation of the symbol to show in the key shortcut button when the key it's not easily representable
+    isSVGIconSymbol?: boolean; // To differenciate between the two situations mentioned above
     index?: number; // the index of frame type when a shortcut matches more than 1 context-distinct frames
 }
 

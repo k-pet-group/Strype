@@ -343,30 +343,54 @@ test.describe("Selecting then typing in one slot", () => {
     testSelectionBoth("123456", 2, 4, "-", "{12}-{$56}");
     testSelectionBoth("123456", 2, 4, "e", "{12e$56}");
     testSelectionBoth("123456", 2, 4, ".", "{12.$56}");
+    testSelectionBoth("123456", 0, 6, "(", "{}_({$123456})_{}");
 
     // Turn into a number slot by replacement:
     testSelectionBoth("abc123", 0, 3, "+", "{+$123}");
     testSelectionBoth("abc123", 0, 3, "-", "{-$123}");
     testSelectionBoth("abc123", 0, 3, "*", "{}*{$123}");
+
+    testSelectionBoth("abc123", 2, 4, "\"", "{ab}_“$c1”_{23}");
+    testSelectionBoth("abc123", 2, 4, "'", "{ab}_‘$c1’_{23}");
 });
 
 test.describe("Selecting then typing in multiple slots", () => {
-    // Note that because of Cypress not being able to send shift-left/right in a way
-    // that the browser handles to move selection, we are moving our own selection.
-    // Thus some selections are possible (e.g. across brackets) for us to set
-    // that would not be allowed in Strype (e.g. selecting across multiple bracketing levels)
-    // So we just don't make those selections; we can't test that those are banned
-    // programmatically.
     testSelectionBoth("123+456", 2,5, "0", "{120$56}");
     testSelectionBoth("123+456", 2,5, ".", "{12.$56}");
     testSelectionBoth("123+456", 2,5, "*", "{12}*{$56}");
     
     testSelectionBoth("123+456", 2,5, "(", "{12}_({$3}+{4})_{56}");
+
+    testSelectionBoth("123+456", 2, 5, "\"", "{12}_“$3+4”_{56}");
+    
+    // Select just an operator and overtype:
+    testSelectionBoth("+", 0, 1, "a", "{a$}");
+    testSelectionBoth("+", 0, 1, "(", "{}_({$}+{})_{}");
+
+    // Select string or bracket and overtype:
+    testSelectionBoth("\"abc\"", 0, 5, "z", "{z$}");
+    testSelectionBoth("(abc)", 0, 5, "z", "{z$}");
+    
+    // Select a string and attempt to wrap in a bracket:
+    testSelectionBoth("\"abc\"", 0, 5, "(", "{}_({$}_“abc”_{})_{}");
+    // Select a bracket and attempt to wrap in another bracket:
+    testSelectionBoth("(123)", 0, 5, "(", "{}_({$}_({123})_{})_{}");
+
+    // Select multiple strings:
+    testSelectionBoth("print(\"Hello\"+\"Goodbye\")", 6, 23, "(", "{print}_({}_({$}_“Hello”_{}+{}_“Goodbye”_{})_{})_{}");
+    // Select inside brackets:
+    testSelectionBoth("sum([(1+2),3-4])", 11, 14, "(", "{sum}_({}_[{}_({1}+{2})_{},{}_({$3}-{4})_{}]_{})_{}");
+    // String quote brackets:
+    testSelectionBoth("print((1+2))", 6, 11, "\"", "{print}({}_“$(1+2)”_{})_{}");
 });
 
 test.describe("Selecting then deleting in multiple slots", () => {
     testSelectionBoth("123+456", 2,5, (page) => page.keyboard.press("Delete"), "{12$56}");
     testSelectionBoth("123+456", 2,5, (page) => page.keyboard.press("Backspace"), "{12$56}");
+    
+    // Prevent invalid selections (trying to select from outside brackets to within):
+    testSelection("123+(456)*789", 6, 12, (page) => page.keyboard.press("Backspace"), "{123}+{}_({4$})_{}*{789}");
+    testSelection("123+(456)*789", 6, 2, (page) => page.keyboard.press("Backspace"), "{123}+{}_({$56})_{}*{789}");
 });
 
 test.describe("Selecting then cutting/copying", () => {

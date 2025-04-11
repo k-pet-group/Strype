@@ -191,8 +191,8 @@ export default Vue.extend({
             let boldClass = "";               
             switch(this.slotType){
             case SlotType.operator:
-                // For commas, we do not show the operator style but the text style and we allow a right margin
-                codeTypeCSS = (this.code==",") ? scssVars.frameCodeSlotClassName + " slot-right-margin" : scssVars.frameOperatorSlotClassName;
+                // For commas, we add a right margin:
+                codeTypeCSS = scssVars.frameOperatorSlotClassName + ((this.code==",") ? " slot-right-margin" : "");
                 break;
             case SlotType.string:
             case SlotType.openingQuote:
@@ -542,8 +542,10 @@ export default Vue.extend({
         // Event callback equivalent to what would happen for a blur event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
         onLoseCaret(keepIgnoreKeyEventFlagOn?: boolean): void {
-            // Before anything, we make sure that the current frame still exists.
-            if(this.appStore.frameObjects[this.frameId] != undefined){
+            // Before anything, we make sure that the current frame still exists,
+            // and that our slot still exists.  If we shouldn't exist any more, we should
+            // just do nothing and exit quietly:
+            if(this.appStore.frameObjects[this.frameId] != undefined && retrieveSlotFromSlotInfos(this.coreSlotInfo)){
                 if(!this.debugAC) {
                     this.showAC = false;
                     this.acRequested = false;
@@ -1068,9 +1070,15 @@ export default Vue.extend({
                                     }
                                 }
                                 // We set the text and let the refactoring turn it into the right bracketed structure:
+                                let sel = this.appStore.mostRecentSelectedText;
+                                // This does have a slight disadvantage that any smart quotes the user meant to insert
+                                // (e.g. inside a string literal) will get mangled, but I think we just live with that:
+                                sel = sel.replace(new RegExp(`[${UIDoubleQuotesCharacters[0]}${UIDoubleQuotesCharacters[1]}]`, "g"), STRING_DOUBLEQUOTE_PLACERHOLDER);
+                                sel = sel.replace(new RegExp(`[${UISingleQuotesCharacters[0]}${UISingleQuotesCharacters[1]}]`, "g"), STRING_SINGLEQUOTE_PLACERHOLDER);
+                                
                                 inputSpanField.textContent = (inputSpanField?.textContent?.substring(0, cursorPos) ?? "") +
                                     ((isStringQuote) ? ((inputString == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER) : inputString) +
-                                    this.appStore.mostRecentSelectedText +
+                                    sel +
                                     ((isBracket) ? getMatchingBracket(inputString, true) : ((inputString == "\"") ? STRING_DOUBLEQUOTE_PLACERHOLDER : STRING_SINGLEQUOTE_PLACERHOLDER)) +
                                     (inputSpanField?.textContent?.substring(cursorPos + inputString.length) ?? "");
                                 const newSlotCursorInfos: SlotCursorInfos = {slotInfos: this.coreSlotInfo, cursorPos: cursorPos + 1};

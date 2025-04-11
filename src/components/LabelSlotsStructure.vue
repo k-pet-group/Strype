@@ -1,6 +1,7 @@
 <template>
     <div 
         :id="labelSlotsStructDivId"
+        :key="refactorCount"
         contenteditable="true"
         @keydown.left="onLRKeyDown($event)"
         @keydown.right="onLRKeyDown($event)"
@@ -37,7 +38,7 @@ import Vue from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, getFunctionCallDefaultText, getEditableSelectionText } from "@/helpers/editor";
+import {CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, parseLabelSlotUID, getFrameLabelSlotLiteralCodeAndFocus, getFunctionCallDefaultText, getEditableSelectionText, openBracketCharacters, stringQuoteCharacters, getMatchingBracket, UIDoubleQuotesCharacters, STRING_DOUBLEQUOTE_PLACERHOLDER, UISingleQuotesCharacters, STRING_SINGLEQUOTE_PLACERHOLDER} from "@/helpers/editor";
 import {checkCodeErrors, generateFlatSlotBases, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import {calculateParamPrompt} from "@/autocompletion/acManager";
@@ -137,14 +138,53 @@ export default Vue.extend({
         
         onInput(event: InputEvent) {
             // It is possible that the user has deleted the focus or anchor from the DOM, e.g. if they do a multi-slot
-            // select then type.  But one of them should remain.  So we try focus first, and if that is gone, we try
+            // select then type.  But usually one of them should remain.  So we try focus first, and if that is gone, we try
             // anchor instead:
-            ((this.appStore.focusSlotCursorInfos ? document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos)) : null)
-                ?? (this.appStore.anchorSlotCursorInfos ? document.getElementById(getLabelSlotUID(this.appStore.anchorSlotCursorInfos.slotInfos)) : null))
-                ?.dispatchEvent(new InputEvent(event.type, {
+            const targetEl = (this.appStore.focusSlotCursorInfos ? document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos)) : null)
+                ?? (this.appStore.anchorSlotCursorInfos ? document.getElementById(getLabelSlotUID(this.appStore.anchorSlotCursorInfos.slotInfos)) : null);
+            if (targetEl != null) {
+                targetEl.dispatchEvent(new InputEvent(event.type, {
                     data: event.data,
                     isComposing: event.isComposing,
                 }));
+            }
+            else {
+                // So it seems that if you select from one empty slot to another
+                // e.g. typing "+" in an empty slot then selecting around it, or
+                //      selecting around a bracketed structure that has nothing directly adjacent
+                // the browser behaviour in Firefox can be to delete all the involved spans
+                // (despite the remaining zero-width space at the end of the last one)
+                // and put the content in the parent div.  Which messes up our structure.
+                // We know what this content is because it's the input string, and we know
+                // the selection that was deleted because it's in mostRecentSelectedText,
+                // but we must manually restore the selection if the input should have wrapped it,
+                // because our usual mechanisms for detecting this will not work.
+                // We call this a "bad delete".
+                const closestDivId = this.appStore.focusSlotCursorInfos ? ("div_" + getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos)) : this.labelSlotsStructDivId;
+                const closestDiv = document.getElementById(closestDivId);
+                if (event.data) {
+                    const openBracket = openBracketCharacters.includes(event.data);
+                    if (openBracket || stringQuoteCharacters.includes(event.data)) {
+                        // We make a fake element with the content we are restoring so that the rest of the code works properly:
+                        const appendSel = document.createElement("div");
+                        appendSel.classList.add(scssVars.labelSlotInputClassName);
+                        const closing = openBracket ? getMatchingBracket(event.data, true) : event.data;
+                        let sel = this.appStore.mostRecentSelectedText;
+                        // This does have a slight disadvantage that any smart quotes the user meant to insert
+                        // (e.g. inside a string literal) will get mangled, but I think we just live with that:
+                        sel = sel.replace(new RegExp(`[${UIDoubleQuotesCharacters[0]}${UIDoubleQuotesCharacters[1]}]`, "g"), STRING_DOUBLEQUOTE_PLACERHOLDER);
+                        sel = sel.replace(new RegExp(`[${UISingleQuotesCharacters[0]}${UISingleQuotesCharacters[1]}]`, "g"), STRING_SINGLEQUOTE_PLACERHOLDER);
+                        appendSel.append(sel + closing);
+                        closestDiv?.append(appendSel);
+                    }
+                }
+
+                const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                // Must increment refactorCount in case the changed content doesn't trigger a noticeable refactor;
+                // we definitely need to completely redo all the slots if Firefox has deleted a bunch of nodes
+                this.refactorCount += 1;
+                this.checkSlotRefactoring("", stateBeforeChanges);
+            }
         },
         isSlotEmphasised(slot: FlatSlotBase): boolean{
             // In this method, if the flag to check a bracket emphasis (ignoreBracketEmphasisCheck) isn't set,
@@ -268,6 +308,14 @@ export default Vue.extend({
                 }
                 this.$forceUpdate();
                 this.$nextTick(() => {
+                    // If it was a major change, our entire old div element may have been removed
+                    // from the tree and re-added, so it's crucial we refetch the new element in
+                    // this next tick code:
+                    const labelDiv = document.getElementById(this.labelSlotsStructDivId);
+                    if (!labelDiv) {
+                        // Shouldn't happen, but make Typescript happy:
+                        return;
+                    }
                     let newUICodeLiteralLength = 0;
                     let foundPos = false;
                     let setInsideNextSlot = false; // The case when the cursor follow a non editable slot (i.e. operator, bracket, quote)
@@ -375,7 +423,7 @@ export default Vue.extend({
             // text change, but also we need to handle the clipboard, as doing events here on keydown results the browser not being able to get the text
             // cut (since the slots have already disappear, and the action for cut seems to be done on the keyup event)
             if ((event.ctrlKey || event.metaKey) && (event.key.toLowerCase() ==  "x" || event.key.toLowerCase() ==  "c")){
-                // There is a selection already, we can directly can set the text in the browser's clipboard here
+                // There is a selection already, we can directly set the text in the browser's clipboard here
                 const selectionText = getEditableSelectionText();
                 if (selectionText) {
                     navigator.clipboard.writeText(selectionText);
@@ -384,10 +432,6 @@ export default Vue.extend({
                         document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
                             ?.dispatchEvent(new KeyboardEvent(event.type, {
                                 key: "Backspace",
-                                altKey: false,
-                                shiftKey: false,
-                                ctrlKey: false,
-                                metaKey: false,
                             }));
                     }
                 }

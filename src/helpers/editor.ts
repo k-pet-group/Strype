@@ -211,7 +211,8 @@ export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanEle
     const sel = document.getSelection();
     if (sel && sel.rangeCount) {
         const range = sel.getRangeAt(0);
-        if (range.commonAncestorContainer.parentNode == htmlElement) {
+        if (range.commonAncestorContainer.parentNode == htmlElement
+            || range.commonAncestorContainer.parentNode?.parentNode == htmlElement) {
             caretPos = range.startOffset;
         }
     }
@@ -288,7 +289,28 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
     let foundFocusSpan = false;
     let ignoreSpan = !!delimiters;
     let hasStringSlots = false;
-    frameLabelStruct.querySelectorAll("." + scssVars.labelSlotInputClassName).forEach((spanElement) => {
+    // The container and intermediate divs can have relevant text if Firefox has done a "bad delete":
+    frameLabelStruct.querySelectorAll("." + scssVars.labelSlotInputClassName + ", ." + scssVars.labelSlotContainerClassName).forEach((spanElement) => {
+        // Sometimes div can end up with text content after a selection and overtype (a "bad delete") that seems to happen on Firefox.
+        // We only care about these divs if there is text content
+        // directly inside the div (which shouldn't happen except in this situation)
+        if (spanElement.classList.contains(scssVars.labelSlotContainerClassName)) {
+            // Find all the text node direct children:
+            const directTextNodes = Array.from(spanElement.childNodes).filter(
+                (child) => child.nodeType === Node.TEXT_NODE
+            );
+            // Combine the text content from all direct text nodes (should only be one, but no harm doing all):
+            const content = directTextNodes.map((textNode) => textNode.textContent).join("");
+            if (content.length > 0) {
+                // Found this bad input:
+                uiLiteralCode += content;
+                // Also, we know the cursor should be directly after this bad input:
+                foundFocusSpan = true;
+                focusSpanPos += content.length;
+            }
+            return;
+        }
+        
         if(delimiters && (delimiters.startSlotUID == spanElement.id || delimiters.stopSlotUID == spanElement.id)){
             ignoreSpan = !ignoreSpan ;
         } 
@@ -317,7 +339,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 uiLiteralCode += (spanElement.textContent??"").replace(/\u200B/g, "");
             }
         
-            if(spanElement.id === currentSlotUID){
+            if(spanElement.id === currentSlotUID && !foundFocusSpan){
                 focusSpanPos += (useStore().focusSlotCursorInfos?.cursorPos??0);     
                 foundFocusSpan = true;
             }

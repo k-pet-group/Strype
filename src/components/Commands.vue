@@ -79,21 +79,21 @@
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import { autoSaveFreqMins, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getManuallyResizedEditorHeightFlag, getMenuLeftPaneUID, getStrypePEAComponentRefId, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
+import { mapStores } from "pinia";
 import Vue from "vue";
 import browserDetect from "vue-browser-detect-plugin";
-import { mapStores } from "pinia";
-import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 /* IFTRUE_isPython */
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import { isMacOSPlatform } from "@/helpers/common";
 /* FITRUE_isPython */
 /* IFTRUE_isMicrobit */
 import APIDiscovery from "@/components/APIDiscovery.vue";
-import { flash } from "@/helpers/webUSB";
 import { downloadHex } from "@/helpers/download";
+import { flash } from "@/helpers/webUSB";
 /* FITRUE_isMicrobit */
 
 export default Vue.extend({

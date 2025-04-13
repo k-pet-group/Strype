@@ -1,21 +1,10 @@
 <template>
     <div id="app" class="container-fluid print-full-height">
-        <div v-if="showAppProgress || setAppNotOnTop" :class="{'app-overlay-pane': true, 'app-progress-pane': showAppProgress}" @contextmenu="handleOverlayRightClick">
-            <div v-if="showAppProgress" class="app-progress-container">
-                <div class="progress">
-                    <div 
-                        class="progress-bar progress-bar-striped bg-info progress-bar-animated" 
-                        role="progressbar"
-                        style="width: 100%"
-                        aria-valuenow="100"
-                        aria-valuemin="0"
-                        aria-valuemax="100"
-                        >
-                        <span class="progress-bar-text">{{progressbarMessage}}</span>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <BadgePopUp 
+            v-if="isBadgeVisible" 
+            :message="badgeMessage" 
+            @close="$emit('close')" 
+        />
         <Splitpanes id="expandedPythonExecAreaSplitersOverlay" class="strype-split-theme" v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
             <pane key="1">
             </pane>
@@ -82,33 +71,34 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue from "vue";
-import MessageBanner from "@/components/MessageBanner.vue";
-import FrameContainer from "@/components/FrameContainer.vue";
+import BadgePopUp from "@/components/BadgePopUp.vue";
+import Commands from "@/components/Commands.vue";
 import Frame from "@/components/Frame.vue";
 import FrameBody from "@/components/FrameBody.vue";
+import FrameContainer from "@/components/FrameContainer.vue";
 import JointFrames from "@/components/JointFrames.vue";
-import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
+import MessageBanner from "@/components/MessageBanner.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
-import {Splitpanes, Pane} from "splitpanes";
 import { useStore } from "@/store/store";
-import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getStrypePEAComponentRefId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD } from "./helpers/editor";
+import { AppEvent, AutoSaveFunction, BaseSlot, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, MessageDefinitions, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotType, SlotsStructure, StringSlot } from "@/types/types";
+import { Pane, Splitpanes } from "splitpanes";
+import Vue from "vue";
+import { CustomEventTypes, actOnTurtleImport, addDuplicateActionOnFramesDnD, autoSaveFreqMins, frameContextMenuShortcuts, getActiveContextMenu, getAppSimpleMsgDlgId, getCaretContainerRef, getCommandsRightPaneContainerId, getCompanionDndCanvasId, getEditorMiddleUID, getFrameBodyRef, getFrameContainerUID, getFrameContextMenuUID, getFrameLabelSlotsStructureUID, getFrameUID, getGoogleDriveComponentRefId, getImportDiffVersionModalDlgId, getJointFramesRef, getLabelSlotUID, getMenuLeftPaneUID, getSameLevelAncestorIndex, getSelectionCursorsComparisonValue, getStrypeCommandComponentRefId, getStrypePEAComponentRefId, isContextMenuItemSelected, isElementLabelSlotInput, parseLabelSlotUID, removeDuplicateActionOnFramesDnD, setDocumentSelection, setManuallyResizedEditorHeightFlag, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "./helpers/editor";
 /* IFTRUE_isMicrobit */
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 /* FITRUE_isMicrobit */
-import { mapStores } from "pinia";
-import { getFrameContainer, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "./helpers/storeMethods";
-import { cloneDeep } from "lodash";
-import CaretContainer from "@/components/CaretContainer.vue";
-import { VueContextConstructor } from "vue-context";
 import { BACKEND_SKULPT_DIV_ID } from "@/autocompletion/ac-skulpt";
-import {copyFramesFromParsedPython, splitLinesToSections, STRYPE_LOCATION} from "@/helpers/pythonToFrames";
+import CaretContainer from "@/components/CaretContainer.vue";
 import GoogleDrive from "@/components/GoogleDrive.vue";
+import { STRYPE_LOCATION, copyFramesFromParsedPython, splitLinesToSections } from "@/helpers/pythonToFrames";
 import { BvModalEvent } from "bootstrap-vue";
+import { cloneDeep } from "lodash";
+import { mapStores } from "pinia";
+import { VueContextConstructor } from "vue-context";
+import { getFrameContainer, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "./helpers/storeMethods";
 
 let autoSaveTimerId = -1;
 let autoSaveState : AutoSaveFunction[] = [];
@@ -128,6 +118,7 @@ export default Vue.extend({
         SimpleMsgModalDlg,
         Splitpanes,
         Pane,
+        BadgePopUp,
     },
 
     data: function() {
@@ -137,12 +128,15 @@ export default Vue.extend({
             progressbarMessage: "",
             resetStrypeProjectFlag: false,
             isExpandedPythonExecArea: false,
+            badgeMessage: "You've earned the Python Beginner Badge!",
         };
     },
 
-    computed: {       
+    computed: {
         ...mapStores(useStore),
-             
+        isBadgeVisible(): boolean{
+            return this.appStore.badgeBannerVisible;
+        },
         // gets the container frames objects which are in the root
         containerFrames(): FrameObject[] {
             return this.appStore.getFramesForParentId(0);

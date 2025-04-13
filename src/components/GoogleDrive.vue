@@ -16,16 +16,16 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import {mapStores} from "pinia";
-import {useStore} from "@/store/store";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker.vue";
-import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
-import i18n from "@/i18n";
-import { CustomEventTypes, getAppSimpleMsgDlgId, getSaveAsProjectModalDlg } from "@/helpers/editor";
+import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import { strypeFileExtension } from "@/helpers/common";
+import { CustomEventTypes, getAppSimpleMsgDlgId, getSaveAsProjectModalDlg } from "@/helpers/editor";
+import i18n from "@/i18n";
+import { useStore } from "@/store/store";
 import { BootstrapDlgSize, MessageDefinitions, SaveExistingGDProjectInfos, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
+import { mapStores } from "pinia";
+import Vue from "vue";
 import MenuVue from "./Menu.vue";
 
 // This enum is used for flaging the action taken when a request to save a file on Google Drive

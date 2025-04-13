@@ -41,15 +41,15 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
-import { useStore } from "@/store/store";
-import Parser from "@/parser/parser";
-import { execPythonCode } from "@/helpers/execPythonCode";
-import { mapStores } from "pinia";
-import { checkEditorCodeErrors, computeAddFrameCommandContainerHeight, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, hasPrecompiledCodeError,  resetAddFrameCommandContainerHeight, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
-import i18n from "@/i18n";
-import { PythonExecRunningState } from "@/types/types";
 import Menu from "@/components/Menu.vue";
+import { checkEditorCodeErrors, computeAddFrameCommandContainerHeight, countEditorCodeErrors, CustomEventTypes, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, hasPrecompiledCodeError, resetAddFrameCommandContainerHeight, setPythonExecAreaExpandButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
+import { execPythonCode } from "@/helpers/execPythonCode";
+import i18n from "@/i18n";
+import Parser from "@/parser/parser";
+import { useStore } from "@/store/store";
+import { PythonExecRunningState } from "@/types/types";
+import { mapStores } from "pinia";
+import Vue from "vue";
 
 export default Vue.extend({
     name: "PythonExecutionArea",
@@ -151,6 +151,7 @@ export default Vue.extend({
 
     computed:{
         ...mapStores(useStore),
+        // ...mapStores(persistentStore),
 
         isPythonExecuting(): boolean {
             return useStore().pythonExecRunningState != PythonExecRunningState.NotRunning;
@@ -263,6 +264,7 @@ export default Vue.extend({
                 const parser = new Parser();
                 const userCode = parser.getFullCode();
                 parser.getErrorsFormatted(userCode);
+
                 // Trigger the actual Python code execution launch
                 execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),() => useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop, (finishedWithError: boolean, isTurtleListeningKeyEvents: boolean, isTurtleListeningMouseEvents: boolean, isTurtleListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => {
                     // After Skulpt has executed the user code, we need to check if a keyboard listener is still pending from that user code.
@@ -272,23 +274,30 @@ export default Vue.extend({
                     this.stopTurtleUIEventListeners = stopTurtleListeners;
                     if (finishedWithError) {
                         this.updateTurtleListeningEvents();
+                        this.appStore.trackingData.errorEncountered = true;
                     }
+                    else{
+                        // Award badges based on the code and progress
+                        this.appStore.checkForBadges(userCode);
+                    }
+                    
                     if(!this.isTurtleListeningEvents) {
                         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     }
+
                     setPythonExecAreaExpandButtonPos();
                     // A runtime error may happen whenever the user code failed, therefore we should check if an error
                     // when Skulpt indicates the code execution has finished.
                     this.checkNonePrecompiledErrors();
                 });
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
-                // Note that a run time error can still occur later.                
+                // Note that a run time error can still occur later.
                 this.checkNonePrecompiledErrors();
-            }, 1000);           
+            }, 1000);
         },
 
         checkNonePrecompiledErrors(){
-            // As the UI should update first, we do it in the next tick. 
+            // As the UI should update first, we do it in the next tick.
             this.$nextTick().then(() => {
                 checkEditorCodeErrors();
                 this.appStore.errorCount = countEditorCodeErrors();

@@ -1,7 +1,7 @@
-import i18n from "@/i18n";
+import scssVars from "@/assets/style/_export.module.scss";
 import Compiler from "@/compiler/compiler";
+import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import scssVars  from "@/assets/style/_export.module.scss";
 
 // Re-export types from ac-types:
 // Note, important to use * here rather than individual imports, to avoid this issue with Babel:
@@ -776,6 +776,8 @@ export const MessageTypes = {
     gdriveFileAlreadyExists: "gdriveFileAlreadyExists",
     invalidPythonParseImport: "invalidPythonParseImport",
     invalidPythonParsePaste: "invalidPythonParsePaste",
+    pointsEarned: "pointsEarned",
+    dailyCheckIn: "dailyCheckIn",
 };
 
 //empty message
@@ -897,6 +899,40 @@ const InvalidPythonParsePaste: MessageDefinition = {
     },
 };
 
+const FirstExecutionSuccess: MessageDefinition = {
+    type: MessageTypes.uploadSuccessMicrobit,
+    message: {
+        path: "messageBannerMessage.firstExecutionSuccess", 
+        args: {},
+    },
+    buttons: [],
+    path: imagePaths.empty,
+};
+
+const DailyCheckIn: MessageDefinition = {
+    type: MessageTypes.dailyCheckIn,
+    message: {
+        path: "messageBannerMessage.dailyCheckIn", 
+        args: {},
+    },
+    buttons: [],
+    path: imagePaths.empty,
+};
+
+export function PointsEarnedMessage(points: number): MessageDefinition {
+    return {
+        type: MessageTypes.pointsEarned,
+        message: {
+            path: "messageBannerMessage.pointsEarned",
+            args: {
+                points: points.toString(),
+            },
+        },
+        buttons: [],
+        path: imagePaths.empty,
+    };
+}
+
 
 export const MessageDefinitions = {
     NoMessage,
@@ -913,6 +949,8 @@ export const MessageDefinitions = {
     GDriveCantCreateStrypeFolder,
     InvalidPythonParseImport,
     InvalidPythonParsePaste,
+    FirstExecutionSuccess,
+    DailyCheckIn,
 };
 
 //WebUSB listener

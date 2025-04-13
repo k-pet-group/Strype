@@ -73,7 +73,7 @@
             </div>
         </Slide>
         <div>
-            <button 
+            <button
                 :id="menuUID" 
                 href="#" 
                 tabindex="0" 
@@ -84,7 +84,7 @@
             </button>    
         </div>
         <div>
-            <input 
+            <input
                 type="file" 
                 :accept="acceptedInputFileFormat"
                 ref="importFileInput" 
@@ -113,7 +113,52 @@
                     :title="$i18n.t('contextMenu.redo')"
                 />
             </div>
-        </div> 
+        </div>
+        <div class="menu-separator-div"></div>
+
+        <!-- Profile Section -->
+        <div class="menu-icon-div">
+            <input
+                type="image"
+                :src="require('@/assets/images/profile-icon.png')"
+                @click="showProfile"
+                class="menu-icon-entry"
+                :title="$i18n.t('contextMenu.profile')"
+            />
+            <Profile v-if="isProfileVisible" @close="closeProfile" />
+        </div>
+        
+        <!-- Badge Section -->
+        <div class="menu-icon-div">
+            <input
+                type="image"
+                :src="require('@/assets/images/badges-icon.png')"
+                @click="showBadges"
+                class="menu-icon-entry"
+                :title="$i18n.t('contextMenu.profile')"
+            />
+            <Badges v-if="isBadgesVisible" @close="closeBadges" />
+        </div>
+
+        <!-- Challenge section -->
+        <div>
+            <button 
+                @click="toggleChallengesSidebar" 
+                class="challenges-button"
+                :title="'View Challenges'"
+            >
+                C
+            </button>
+            <!-- Sidebar for Challenges -->
+            <div v-if="isChallengesSidebarVisible" class="sidebar">
+                <h3>Challenges</h3>
+                <ul>
+                    <!-- For now, all rows will show Challenge 1 -->
+                    <li v-for="challenge in challenges" :key="challenge">{{ challenge }}</li>
+                </ul>
+            </div>
+        </div>
+        
         <div v-if="errorCount > 0" class="menu-icons-div">
             <i :class="{'fas fa-chevron-up menu-icon-entry menu-icon-centered-entry error-nav-enabled': true, 'error-nav-disabled': (currentErrorNavIndex <= 0 )}" @mousedown.self.stop.prevent="navigateToErrorRequested=true" @click="goToError($event, false)"/>
             <span class="menu-icon-entry menu-icon-centered-entry error-count-span" :title="$t('appMessage.editorErrors')" @mousedown.self.stop.prevent>{{errorCount}}</span>
@@ -126,23 +171,25 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue from "vue";
-import { useStore } from "@/store/store";
-import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
-import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
-import { countEditorCodeErrors, CustomEventTypes, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection } from "@/helpers/editor";
-import { Slide } from "vue-burger-menu";
-import { mapStores } from "pinia";
-import GoogleDrive from "@/components/GoogleDrive.vue";
-import { downloadHex, downloadPython } from "@/helpers/download";
-import { canBrowserOpenFilePicker, canBrowserSaveFilePicker, openFile, saveFile } from "@/helpers/filePicker";
-import ModalDlg from "@/components/ModalDlg.vue";
-import { BvModalEvent } from "bootstrap-vue";
-import { watch } from "@vue/composition-api";
-import { cloneDeep } from "lodash";
-import App from "@/App.vue";
 import appPackageJson from "@/../package.json";
+import App from "@/App.vue";
+import Badges from "@/components/Badges.vue";
+import GoogleDrive from "@/components/GoogleDrive.vue";
+import ModalDlg from "@/components/ModalDlg.vue";
+import Profile from "@/components/Profile.vue";
+import { fileNameRegex, isMacOSPlatform, readFileContent, saveContentToFile, strypeFileExtension } from "@/helpers/common";
+import { downloadHex, downloadPython } from "@/helpers/download";
+import { CustomEventTypes, countEditorCodeErrors, fileImportSupportedFormats, getAppSimpleMsgDlgId, getEditorCodeErrorsHTMLElements, getEditorMenuUID, getFrameHeaderUID, getFrameUID, getGoogleDriveComponentRefId, getLabelSlotUID, getNearestErrorIndex, getSaveAsProjectModalDlg, isElementEditableLabelSlotInput, isElementUIDFrameHeader, isIdAFrameId, parseFrameHeaderUID, parseFrameUID, parseLabelSlotUID, setDocumentSelection } from "@/helpers/editor";
+import { canBrowserOpenFilePicker, canBrowserSaveFilePicker, openFile, saveFile } from "@/helpers/filePicker";
 import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
+import { useStore } from "@/store/store";
+import { AppEvent, CaretPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MIMEDesc, MessageDefinitions, PythonExecRunningState, SaveRequestReason, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
+import { watch } from "@vue/composition-api";
+import { BvModalEvent } from "bootstrap-vue";
+import { cloneDeep } from "lodash";
+import { mapStores } from "pinia";
+import Vue from "vue";
+import { Slide } from "vue-burger-menu";
 
 //////////////////////
 //     Component    //
@@ -154,6 +201,8 @@ export default Vue.extend({
         Slide,
         GoogleDrive,
         ModalDlg,
+        Profile,
+        Badges,
     },
 
     data: function() {
@@ -179,6 +228,11 @@ export default Vue.extend({
             // the right button group value when the dialog is opened, and cleared when the dialog is explicitly closed by the user
             // or when the actions that follow the validation of the dialog (if any) are done.
             currentModalButtonGroupIDInAction: "",
+            //@me
+            isProfileVisible: false,
+            isBadgesVisible: false,
+            isChallengesSidebarVisible: false, // Controls sidebar visibility
+            challenges: ["Challenge 1", "Challenge 1", "Challenge 1", "Challenge 1"], // For now, default to "Challenge 1"
         };
     },
 
@@ -679,7 +733,9 @@ export default Vue.extend({
         resetProject(): void {
             //resetting the project means removing the WebStorage saved project and reloading the page
             //we emit an event to the App so that handlers are done properly
+
             this.$emit("app-reset-project");
+            // localStorage.clear();
         },
 
         handleMenuOpen(){
@@ -699,14 +755,14 @@ export default Vue.extend({
                 //cf online issues about vue-burger-menu https://github.com/mbj36/vue-burger-menu/issues/33
                 e.preventDefault();
                 e.stopPropagation();
-                this.currentTabindexValue = 0;                
+                this.currentTabindexValue = 0;
             }
             else {
                 // Bring the focus back to the editor if the menu was opened (because this can be called when "esc" is hit elsewhere (burger menu behaviour))
                 if(this.appStore.isAppMenuOpened){
                     document.getElementById(getFrameUID(this.appStore.currentFrame.id))?.focus();
                     this.appStore.ignoreKeyEvent = false;
-                }                
+                }
             }
             
             // We want to show the menu right border only whent the menu is opened (because otherwise it lays on the side of the page)
@@ -779,6 +835,25 @@ export default Vue.extend({
             }
         },
 
+        showProfile() {
+            // Show Profile popup
+            this.isProfileVisible = true;
+        },
+        closeProfile() {
+            // Hide popup
+            this.isProfileVisible = false;
+        },
+
+        showBadges() {
+            this.isBadgesVisible = true;
+        },
+        closeBadges() {
+            this.isBadgesVisible = false;
+        },
+
+        toggleChallengesSidebar() {
+            this.isChallengesSidebarVisible = !this.isChallengesSidebarVisible; // Toggle sidebar visibility
+        },
         
         goToError(event: MouseEvent | null, toNext: boolean){
             // Move to the next error (if toNext is true) or the previous error (if toNext is false) when the user clicks on the navigation icon.
@@ -828,7 +903,6 @@ export default Vue.extend({
                             errorElement.click();
                         }
                     }
-                   
                     this.navigateToErrorRequested = false;
                 });
             }     
@@ -842,6 +916,7 @@ export default Vue.extend({
     width: 100%;
     height: 24px;
     margin-bottom: 10px;
+    margin-top: 15px;
 }
 .top-left-strype-logo {
     margin-top: 10px !important;
@@ -1007,16 +1082,16 @@ export default Vue.extend({
 }
 
 .bm-item-list {
-      color: #6d6c6a !important;
-      margin-left: 0% !important;
-      font-size: inherit !important;
+    color: #6d6c6a !important;
+    margin-left: 0% !important;
+    font-size: inherit !important;
 }
 
 .bm-item-list > :not(.menu-separator-div):not(.google-drive-container) {
-      display: flex !important;
-      text-decoration: none !important;
-      padding: $strype-menu-entry-padding !important;
-      width: $strype-menu-entry-width;
+    display: flex !important;
+    text-decoration: none !important;
+    padding: $strype-menu-entry-padding !important;
+    width: $strype-menu-entry-width;
 }
 
 // This essentially acts as the class for the keyboard shortcut spans (for the properties that are ovewritten, other bits are in .strype-menu-kb-shortcut)
@@ -1029,4 +1104,62 @@ export default Vue.extend({
     margin: 0;
     height: 1px !important;
 }
+
+//@me
+
+.challenges-button {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    margin-top: 10px;
+}
+
+.challenges-button:hover {
+    background-color: #0056b3;
+}
+
+/* Sidebar styling */
+.sidebar {
+    position: fixed;
+    top: 0;
+    left: 60px; /* Change to left: 0 for a left-side sidebar */
+    width: 250px;
+    height: 100%;
+    background-color: #333;
+    color: white;
+    padding: 20px;
+    z-index: 1000; /* Below the button */
+    box-shadow: -2px 0 5px rgba(0, 0, 0, 0.5);
+    transform: translateX(0); /* Slide in from the right */
+    transition: transform 0.3s ease; /* Smooth transition */
+}
+
+/* Sidebar header */
+.sidebar h3 {
+    margin-bottom: 20px;
+}
+
+/* Sidebar list */
+.sidebar ul {
+    list-style: none;
+    padding: 0;
+}
+
+/* Sidebar list item */
+.sidebar li {
+    padding: 10px;
+    margin-bottom: 10px;
+    background-color: #444;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: center;
+}
+
+.sidebar li:hover {
+    background-color: #555;
+}
+
 </style>

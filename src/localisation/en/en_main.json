@@ -38,7 +38,9 @@
     "invalidPythonParseImport": "Invalid Python code imported: {errorMsg}",
     "invalidPythonParsePaste": "Invalid Python code pasted: {errorMsg}",
     "wrongPythonStructCopied": "cannot paste else/elif/except/finally and further content in one paste",
-    "incompatiblePythonStrypeSection": "the Python code cannot be placed in the target Strype section"
+    "incompatiblePythonStrypeSection": "the Python code cannot be placed in the target Strype section",
+    "pointsEarned": "📈 +{points} points !",
+    "dailyCheckIn": "🗓️ +1 Daily Check-in."
   },
   "buttonLabel": {
     "undo": "Undo",

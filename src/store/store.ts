@@ -1,20 +1,21 @@
-import Vue from "vue";
-import { FrameObject, CurrentFrame, CaretPosition, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, FuncDefContainerDefinition, EditableSlotReachInfos, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot } from "@/types/types";
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
-import i18n from "@/i18n";
-import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
-import { AppPlatform, AppVersion, vm } from "@/main";
-import initialStates from "@/store/initial-states";
-import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, actOnTurtleImport, getStrypeCommandComponentRefId, getStrypePEAComponentRefId } from "@/helpers/editor";
-import { DAPWrapper } from "@/helpers/partial-flashing";
-import LZString from "lz-string";
+import { CustomEventTypes, actOnTurtleImport, checkEditorCodeErrors, countEditorCodeErrors, generateAllFrameCommandsDefs, getAddCommandsDefs, getCaretUID, getEditorMiddleUID, getFocusedEditableSlotTextSelectionStartEnd, getFrameHeaderUID, getImportDiffVersionModalDlgId, getLabelSlotUID, getSelectionCursorsComparisonValue, getStrypeCommandComponentRefId, getStrypePEAComponentRefId, isLabelSlotEditable, parseCodeLiteral, setDocumentSelection, undoMaxSteps } from "@/helpers/editor";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
-import {cloneDeep, isEqual} from "lodash";
-import $ from "jquery";
-import { BvModalEvent } from "bootstrap-vue";
+import { DAPWrapper } from "@/helpers/partial-flashing";
+import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import i18n from "@/i18n";
+import { AppPlatform, AppVersion, vm } from "@/main";
+import { detectFunctionWithCalls, detectModules, detectNestedLoops, detectRecursion, initialBadges, initialTrackingData, trackCommands, trackLinesOfCode, trackOperators } from "@/store/badges";
+import initialStates from "@/store/initial-states";
+import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, BaseSlot, CaretPosition, CurrentFrame, EditableFocusPayload, EditableSlotReachInfos, EditorFrameObjects, EmptyFrameObject, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, FramesDefinitions, FuncDefContainerDefinition, ImportsContainerDefinition, LabelSlotsContent, MainFramesContainerDefinition, MessageDefinition, MessageDefinitions, NavigationPosition, ObjectPropertyDiff, PointsEarnedMessage, ProjectLocation, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotType, SlotsStructure, StateAppObject, StringSlot, StrypeSyncTarget, UserDefinedElement, areSlotCoreInfosEqual, generateAllFrameDefinitionTypes, isFieldBaseSlot } from "@/types/types";
 import { nextTick } from "@vue/composition-api";
+import { BvModalEvent } from "bootstrap-vue";
+import $ from "jquery";
+import { cloneDeep, isEqual } from "lodash";
+import LZString from "lz-string";
+import { defineStore } from "pinia";
 import { TPyParser } from "tigerpython-parser";
+import Vue from "vue";
 
 let initialState: StateAppObject = initialStates["initialPythonState"];
 /* IFTRUE_isMicrobit */
@@ -76,7 +77,6 @@ export const useStore = defineStore("app", {
 
             // This flag indicates if the user code is being executed in the Python Execution Area
             pythonExecRunningState: PythonExecRunningState.NotRunning,
-
 
             // This flag can be used anywhere a key event should be ignored within the application
             ignoreKeyEvent: false,
@@ -159,7 +159,20 @@ export const useStore = defineStore("app", {
             simpleModalDlgMsg: "",
 
             editableSlotViaKeyboard: {isKeyboard: false, direction: 1} as EditableSlotReachInfos, //indicates when a slot is reached via keyboard arrows, and the direction (-1 for left/up and 1 for right/down)
-        
+
+            points: JSON.parse(localStorage.getItem("points") || "0"), // User points
+            currentPoints: 0, // Store points during each execution
+
+            badges: JSON.parse(localStorage.getItem("badges") || "{}") || initialBadges, // all available badges
+            badgeBannerVisible: false, // to control the visibility of banner for earning badges
+            
+            trackingData: JSON.parse(localStorage.getItem("trackingData") || "{}") || initialTrackingData, // user's tracking data to monitor actions
+            isFirstExecutionDone: JSON.parse(localStorage.getItem("isFirstExecutionDone") || "false") as boolean, 
+
+            linesOfCode: JSON.parse(localStorage.getItem("linesOfCode") || "{}") || trackLinesOfCode,
+            commands: JSON.parse(localStorage.getItem("commands")  || "{}" ) || trackCommands,
+            operators: JSON.parse(localStorage.getItem("commands")  || "{}" ) || trackOperators,
+
             /* The following wrapper is used for interacting with the microbit board via DAP*/
             DAPWrapper: {} as DAPWrapper,
 
@@ -167,7 +180,7 @@ export const useStore = defineStore("app", {
         };
     },
 
-    getters: { 
+    getters: {
         getFramesForParentId: (state) => (frameId: number) => {
             //Get the childrenIds of this frame and based on these return the children objects corresponding to them
             return state.frameObjects[frameId].childrenIds
@@ -612,7 +625,23 @@ export const useStore = defineStore("app", {
         isContainerCollapsed: (state) => (frameId: number) => {
             return state.frameObjects[frameId].isCollapsed ?? false;
         },
+
+        getPoints: (state) => {
+            return localStorage.getItem("points");
+        },
+
+        // getUserBadges: (state) => {
+        //     const earnedBadges: string[] = [];
+        //     for (const badgeName in state.badges){
+        //         if (state.badges[badgeName].earned === 1) {
+        //             earnedBadges.push(badgeName);
+        //         }
+        //     }
+        //     return earnedBadges;
+        // },
     },
+    
+
     
     actions:{
         setAppLang(lang: string) {
@@ -649,6 +678,492 @@ export const useStore = defineStore("app", {
                     }
                 }, timeoutMillis);
             }
+        },
+
+        removeStrings(userCode: string){
+            return userCode
+                .replace(/"""[\s\S]*?"""|'''[\s\S]*?'''/g, "")
+                .replace(/'[^'\\]*(\\.[^'\\]*)*'/g, "")
+                .replace(/"[^"\\]*(\\.[^"\\]*)*"/g, "");
+        },
+
+        removeComments(userCode: string){
+            return userCode
+                .replace(/#.*/g, "");
+        },
+
+        saveToLocalStorage(name:string, value: any) {
+            localStorage.setItem(name, JSON.stringify(value));
+        },
+        
+        updatePoints() {
+            // Update the total points and display the message
+            this.points += this.currentPoints;
+            this.saveToLocalStorage("points", this.points);
+            if (this.currentPoints != 0){
+                this.showMessage(PointsEarnedMessage(this.currentPoints), 5000);
+                this.currentPoints = 0;
+            }
+        },
+
+        awardBadge(badgeName: string){
+            // Add points for the badge, mark it as earned, and show the banner
+            this.currentPoints += this.badges[badgeName].points;
+            this.trackingData.userProgress.currentBadge = badgeName;
+            this.trackingData.userProgress.badgeCount++;
+            this.badges[badgeName].earned = true;
+            
+            // Display the badge banner
+            this.badgeBannerVisible = true;
+            setTimeout(() => {
+                this.badgeBannerVisible = false;
+            }, 7000);
+        },
+
+        initialiseData(){
+            // Initialise and store data for badges, tracking, and code lines
+            this.badges = initialBadges;
+            this.trackingData = initialTrackingData;
+            this.linesOfCode = trackLinesOfCode;
+            this.commands = trackCommands;
+            this.operators = trackOperators;
+            this.updateLocalStorage();
+        },
+
+        awardBadgesForFirstTimeAcheivements(filteredCode: string){
+            // Award badge for first execution and first different program
+            if (!this.isFirstExecutionDone) {
+                this.isFirstExecutionDone = true;
+                this.saveToLocalStorage("isFirstExecutionDone", this.isFirstExecutionDone);
+                this.awardBadge("Hello From Python");
+            }
+            else if (!this.badges["Code Hatchling"].earned){
+                this.awardBadge("Code Hatchling");
+            }
+        },
+
+        awardBadgesBasedOnLinesOfCode(filteredCode: string){
+            // Award badges based on the number of lines coded
+            const filteredLines = filteredCode.split("\n").filter((line) => line.trim() !== "").length;
+
+            // Check against predefined line thresholds
+            for (const line in this.linesOfCode) {
+                if (filteredLines >= parseInt(line, 10) && !this.linesOfCode[line].coded) {
+                    this.linesOfCode[line].coded = 1;
+                    this.currentPoints += this.linesOfCode[line].points;
+                    const badge = this.linesOfCode[line].badgeName;
+                    if(badge){
+                        this.awardBadge(badge);
+                    }
+                }
+            }
+        },
+
+        awardBadgesForFirstTimeCommandUsage(userCode: string, filteredCode: string) {
+            const codeWithoutStrings = this.removeStrings(userCode);
+
+            // First turtle program
+            if (!this.badges["Turtle Tamer"].earned) {
+                const isTurtleProgram = (userCode.includes("turtle.") || userCode.includes("from turtle")) && 
+                    (userCode.includes(".forward") || userCode.includes(".backward") ||
+                    userCode.includes(".left") || userCode.includes(".right"));
+                if (isTurtleProgram){
+                    this.awardBadge("Turtle Tamer");
+                }
+            }
+
+            for (const command in this.commands) {
+                if (filteredCode.includes(command) ||
+                (command == "#" && codeWithoutStrings.includes(command))){
+                    if (!this.commands[command].count){
+                        this.currentPoints += this.commands[command].points;
+                    }
+                    this.commands[command].count += 1;
+                }
+            }
+        },
+
+        detectAlgorithms(filteredCode: string){
+            // Nested loop detection
+            if((filteredCode.includes("for") || filteredCode.includes("while")) && 
+                detectNestedLoops(filteredCode)){
+                this.trackingData.algorithms.nestedLoopCount += 1;
+            }
+
+            // Function with calls detection
+            if(filteredCode.includes("def") && detectFunctionWithCalls(filteredCode)){
+                this.trackingData.algorithms.functionWithCallCount += 1;
+            }
+
+            // Debugging detection
+            if (this.trackingData?.algorithms?.errorEncountered){
+                this.trackingData.algorithms.errorEncountered = false;
+                this.trackingData.algorithms.debuggingCount ++;
+            }
+
+            // Recursive Ranger badge
+            if (!this.badges["Recursive Ranger"].earned && detectRecursion(filteredCode)){
+                this.awardBadge("Recursive Ranger");
+            }
+
+            // Module Maestro Badge
+            if (!this.badges["Module Maestro"].earned &&detectModules(filteredCode) >= 5){
+                this.awardBadge("Module Maestro");
+            }
+        },
+
+        awardBadgesBasedOnCommandFrequency() {
+            const tracker = this.trackingData.algorithms;
+            // Conditional Novice badge
+            if (!this.badges["Conditional Novice"].earned && this.commands["elif"].count > 0 && this.commands["else"].count > 0){
+                this.awardBadge("Conditional Novice");
+            }
+            
+            // Cycle Sprinter badge
+            if (!this.badges["Cycle Sprinter"].earned && this.commands["while"].count > 0 && this.commands["for"].count > 0){
+                this.awardBadge("Cycle Sprinter");
+            }
+            // Twist Tactician badge
+            else if (!this.badges["Twist Tactician"].earned && (this.commands["while"].count + this.commands["for"].count) > 5 &&
+                (this.commands["break"].count > 0 || this.commands["continue"].count > 0)){
+                this.awardBadge("Twist Tactician");
+            }
+            // Loopomancer badge
+            else if (!this.badges["Loopomancer"].earned && tracker.nestedLoopCount > 0 &&
+                this.commands["while"].count > 5 && this.commands["for"].count > 5){
+                this.awardBadge("Loopomancer");
+            }
+
+            // Call Specialist badge
+            if (!this.badges["Call Specialist"].earned && tracker.functionWithCallCount > 0){
+                this.awardBadge("Call Specialist");
+            }
+            // Logic Legend badge
+            else if (!this.badges["Logic Legend"].earned && tracker.functionsWithCall.size >= 5){
+                this.awardBadge("Logic Legend");
+            }
+
+            // Exception Expert badge
+            if (!this.badges["Exception Expert"].earned && this.commands["try"].count > 0 && 
+                this.commands["raise"].count > 0 && this.commands["with"].count > 0 && this.commands["except"].count > 0){
+                this.awardBadge("Exception Expert");
+            }
+
+            // Debugging Dynamo badge
+            if(!this.badges["Debugging Dynamo"].earned && tracker.debuggingCount >= 25){
+                this.awardBadge("Debugging Dynamo");
+            }
+        },
+
+        awardBadgesBasedOnMultipleCommandUsage(filteredCode: string) {
+            const threshhold = 6;
+            let countCommands = 0;
+            for (const command in this.commands) {
+                if(filteredCode.includes(command)){
+                    countCommands ++;
+                }
+                if (countCommands > threshhold) {
+                    break;
+                }
+            }
+            if (countCommands > threshhold){
+                this.trackingData.algorithms.programsWithMultipleCommands++;
+            }
+
+            // Complete Commander badge
+            if (this.trackingData.algorithms.programsWithMultipleCommands >= 3 && !this.badges["Complete Commander"].earned){
+                this.awardBadge("Control Conqueror");
+            }
+
+            // Command Master badge
+            if (this.trackingData.algorithms.programsWithMultipleCommands >= 10 && !this.badges["Command Master"].earned){
+                this.awardBadge("Syntax Mastermind");
+            }
+        },
+
+        awardBadgesBasedOnCommandUsage(userCode: string, filteredCode: string){
+            this.detectAlgorithms(filteredCode);
+            this.awardBadgesForFirstTimeCommandUsage(userCode, filteredCode);
+            this.awardBadgesBasedOnCommandFrequency();
+            this.awardBadgesBasedOnMultipleCommandUsage(filteredCode);
+        },
+
+        awardPointsForOperators(filteredCode: string){
+            // Points for using operators for the first time
+            let totalOperators = 0;
+            let usedOperators = 0;
+            for (const op in this.operators) {
+                if (filteredCode.includes(op)){
+                    if (!this.operators[op].count){
+                        this.currentPoints += this.operators[op].points;
+                    }
+                    this.operators[op].count += 1;
+                }
+                if (this.operators[op].count > 0){
+                    usedOperators ++;
+                }
+                totalOperators++;
+            }
+        
+            // Operator Overlord Badge for using 70% of the operators
+            const threshold = Math.floor(totalOperators * 0.7);
+            if (!this.badges["Operator Overlord"] && usedOperators >= threshold){
+                this.awardBadge("Operator Overlord");
+            }
+        },
+
+        awardBadgesBasedOnDataStructures(filteredCode: string){
+            let countUniqueDS = 0;
+            let totalDS = 0;
+            const dataStructurePatterns = [
+                { key: "list", pattern: /\b\w+\s*=\s*\[\s*([^\]]*,\s*)*[^\]]*\s*\]/ },
+                { key: "string", pattern: /\b\w+\s*=\s*(['"])[^\1]*?\1/ },
+                { key: "dictionary", pattern: /\b\w+\s*=\s*\{\s*([^}:]*:\s*[^},]*,\s*)*[^}]*\s*\}/ },
+                { key: "tuple", pattern: /\b\w+\s*=\s*\(\s*([^)]*,\s*)*[^)]*\s*\)/ },
+                { key: "set", pattern: /\b\w+\s*=\s*(set\(\s*[^)]*\s*\)|\{\s*([^},]+,\s*)*[^},]+\s*\})/ },
+                { key: "array", pattern: /array/ },
+            ];
+            // Check for each data structure and track if it's used for the first time
+            dataStructurePatterns.forEach(({ key, pattern }) => {
+                if (pattern.test(filteredCode)) {
+                    if (!this.trackingData.dataStructuresUsed[key]){
+                        this.trackingData.dataStructuresUsed[key] = 1;
+                        countUniqueDS++;
+                    }
+                    else if(!this.badges["Data Wrangler"].earned){
+                        totalDS++;
+                    } 
+                }
+            });
+            this.currentPoints += countUniqueDS * 3;
+
+            if (!this.badges["Data Wrangler"].earned && totalDS >= 5){
+                this.awardBadge("Data Wrangler");
+            }
+
+            let countComplexDS = 0;
+            let totalComplexDS = 0;
+            const complexDataStructurePatterns = [
+                { key: "nested-list", pattern: /\[[^\]]*\[[^\]]*\][^\]]*\]/ },
+                { key: "list-inside-dictionary", pattern: /\{\s*(['"]?\w+['"]?\s*:\s*\[.*?\])/ },
+                { key: "list-comprehension", pattern: /\[\s*.*\s+for\s+.*\s+in\s+.*\]/ },
+            ];
+            // Track complex structures if used for the first time
+            complexDataStructurePatterns.forEach(({ key, pattern }) => {
+                if (pattern.test(filteredCode)) {
+                    if (!this.trackingData.complexDataStructuresUsed[key]){
+                        this.trackingData.complexDataStructuresUsed[key] = 1;
+                        countComplexDS++;
+                    }
+                    else if(!this.badges["Data Architect"].earned){
+                        totalComplexDS++;
+                    } 
+                }
+            });
+            this.currentPoints += countComplexDS * 5;
+
+            if ( !this.badges["Data Architect"].earned && totalComplexDS >= 2){
+                this.awardBadge("Data Architect");
+            }
+        },
+
+        awardBadgesForOOP(filteredCode: string){
+            const oop = this.trackingData.oopProgress;
+            
+            const classPattern = /class\s+[A-Za-z_]\w*\s*(\([\w\s,]*\))?:/g;
+            const methodPattern = /def\s+(?!__init__)[A-Za-z_]\w*\s*\(.*\)\s*:\s*/g;
+            if (!oop.classWithMethod && classPattern.test(filteredCode) && methodPattern.test(filteredCode)) {
+                oop.classWithMethod = true;
+                this.currentPoints += 10;
+            }
+
+            const initPattern = /def\s+__init__\s*\(.*\)\s*:\s*/g;
+            if (!oop.initUsed && initPattern.test(filteredCode)) {
+                oop.initUsed = true;
+                this.currentPoints += 2;
+            }
+
+            const objectPattern = /\b[A-Za-z_]\w*\s*=\s*[A-Za-z_]\w*\(.*\)/g;
+            if (!oop.objectUsed && objectPattern.test(filteredCode)) {
+                oop.objectUsed = true;
+                this.currentPoints += 2;
+            }
+
+            const inheritancePattern = /class\s+[A-Za-z_]\w*\s*\(\s*[A-Za-z_]\w*\s*\)\s*:/g;
+            if (!oop.inheritanceUsed && inheritancePattern.test(filteredCode)) {
+                oop.inheritanceUsed = true;
+                this.currentPoints += 5;
+            }
+
+            const staticPattern = /@(classmethod|staticmethod)/g;
+            if (!oop.staticUsed && staticPattern.test(filteredCode)) {
+                oop.staticUsed = true;
+                this.currentPoints += 3;
+            }
+
+            const methodCallPattern = /\b[A-Za-z_]\w*\.[A-Za-z_]\w*\(\s*.*\)/g;
+            if (!oop.methodCallUsed && methodCallPattern.test(filteredCode)) {
+                oop.methodCallUsed = true;
+                this.currentPoints += 2;
+            }
+            
+            this.trackingData.oopProgress = oop;
+
+            // Bonus for multiple classes
+            const classMatches = filteredCode.match(classPattern) || [];
+            if (classMatches.length > 1) {
+                this.currentPoints += classMatches.length * 2;
+            }
+            
+            // Award badge if core OOP concepts were used
+            const allOOPUsed = oop.classWithMethod && oop.initUsed && oop.objectUsed && oop.methodCallUsed;
+            if (allOOPUsed && !this.badges["OOP Wizard"].earned){
+                this.awardBadge("OOP Wizard");
+            }
+        },
+
+        awardBadgesForConsistency(){
+            const tracker = this.trackingData.codingStreakTracker;
+            const currentDate = new Date();
+            const currentDay = new Date(currentDate.setHours(0, 0, 0, 0)).getTime();
+            const lastDay = tracker.lastCodingDay || 0;
+
+            if (!(tracker.codedWeekends instanceof Set)) {
+                tracker.codedWeekends = new Set();
+            }
+
+            // Daily Streak Tracking
+            if (currentDay > lastDay) {
+                // New day, not the same as last check-in
+                if (currentDay - lastDay === 86400000) {
+                    tracker.continuousDays++;
+                } 
+                else {
+                    tracker.longestStreak = Math.max(tracker.longestStreak, tracker.continuousDays);
+                    tracker.continuousDays = 1;
+                }
+        
+                this.showMessage(MessageDefinitions.DailyCheckIn, 5000);
+                tracker.lastCodingDay = currentDay;
+        
+                // Award badge if streak reaches 7
+                if ((tracker.continuousDays % 7)===0) {
+                    this.awardBadge("Coding Streak");
+                    // tracker.continuousDays = 0;
+                    tracker.streakCount++;
+                }
+            }
+
+            // Weekend Coder Tracking
+            const dayOfWeek = currentDate.getDay(); // 0 = Sun, 6 = Sat
+            const currentMonth = currentDate.getMonth();
+
+            // Reset weekend tracking on new month
+            if (tracker.currentMonth !== currentMonth) {
+                tracker.weekendsCoded = 0;
+                tracker.currentMonth = currentMonth;
+                tracker.codedWeekends.clear();
+            }
+
+            if (dayOfWeek === 6 || dayOfWeek === 0) {
+                if (!tracker.codedWeekends) {
+                    tracker.codedWeekends = new Set();
+                }
+                tracker.codedWeekends.add(dayOfWeek);
+
+                if (tracker.codedWeekends.has(6) && tracker.codedWeekends.has(0)) {
+                    tracker.weekendsCoded++;
+                    tracker.codedWeekends.clear();
+                }
+
+                if (tracker.weekendsCoded >= 4) {
+                    this.awardBadge("Weekend Coder");
+                    tracker.weekendsCoded = 0;
+                }
+            }
+            // Save tracker back
+            this.trackingData.codingStreakTracker = tracker;
+        },
+
+        awardBadgesBasedOnOverallProgress(){
+            const c = this.commands;
+            const op = this.operators;
+            const ds = this.trackingData.dataStructuresUsed;
+
+            const earnedCount = Object.keys(this.badges).filter((key) => this.badges[key as keyof typeof this.badges]?.earned).length;
+            const totalBadges = Object.keys(this.badges).length;
+
+            const usedArithOp = ["+", "-", "*", "/", "%"].some((o) => op[o]?.count > 0);
+            const usedCompOp = ["<", ">", "<=", ">=", "==", "!="].some((o) => op[o]?.count > 0);
+            const usedLogicalOp = ["and", "or", "not"].some((o) => op[o]?.count > 0);
+            const usedDS = ["string", "list", "set", "array", "dictionary"].some((type) => ds[type]);
+            const usedCommands = ["if", "else", "def", "for", "while"].every((cmd) => c[cmd]?.count > 0);
+            const isLegend = this.linesOfCode[25]?.coded===1 && usedCommands && usedArithOp && usedCompOp && usedLogicalOp && usedDS;
+
+            // Python Learner status if earned atleast 5 badges
+            if (this.badges["Beginner Coder"].earned && !this.badges["Python Legend"].earned && earnedCount >= Math.ceil(totalBadges * 0.15)) {
+                this.trackingData.userProgress.status = "Python Learner";
+            }
+            
+            // Python Legend status if coded more than 25 lines and major commands used
+            else if (!this.badges["Python Legend"].earned && isLegend && earnedCount >= Math.ceil(totalBadges * 0.3)) {
+                this.awardBadge("Python Legend");
+                this.trackingData.userProgress.status = "Python Legend";
+            }
+
+            // Python Legend status if 30% of badges are earned and major commands used
+            else if (this.badges["Python Legend"].earned && earnedCount >= Math.ceil(totalBadges * 0.3)) {
+                this.awardBadge("Python Expert");
+                this.trackingData.userProgress.status = "Python Expert";
+            }
+
+            // Python Master Snake status if 60% of badges are earned
+            else if (this.badges["Python Expert"].earned && !this.badges["Python Master Snake"].earned && earnedCount >= Math.ceil(totalBadges * 0.6)) {
+                this.awardBadge("Python Master Snake");
+                this.trackingData.userProgress.status = "Python Master Snake";
+            }
+
+            // Python Guru status if 90% of badges are earned
+            else if (!this.badges["Python Guru"].earned && earnedCount >= Math.ceil(totalBadges * 0.9)) {
+                this.awardBadge("Python Guru");
+                this.trackingData.userProgress.status = "Python Guru";
+            }
+
+        },
+
+        checkForBadges(userCode: string){
+            // Initialise data only once
+            if(!this.isFirstExecutionDone){
+                this.initialiseData();
+            }
+
+            const filteredCode = this.removeComments(this.removeStrings(userCode));
+
+            // Check if the user code has changed or this is the first execution
+            if (filteredCode != this.trackingData.userCode || this.trackingData.userCode==""){
+                // Award badges based on different criteria
+                this.awardBadgesForFirstTimeAcheivements(filteredCode);
+                this.awardBadgesBasedOnLinesOfCode(filteredCode);
+                this.awardBadgesBasedOnCommandUsage(userCode, filteredCode);
+                this.awardPointsForOperators(filteredCode);
+                this.awardBadgesBasedOnDataStructures(filteredCode);
+                this.awardBadgesForOOP(filteredCode);
+                this.awardBadgesForConsistency();
+                this.awardBadgesBasedOnOverallProgress();
+
+                // Update points and local storage
+                this.updatePoints();
+                this.updateLocalStorage();
+                this.trackingData.userCode = filteredCode;
+            }
+        },
+
+        updateLocalStorage(){
+            this.saveToLocalStorage("badges", this.badges);
+            this.saveToLocalStorage("trackingData", this.trackingData);
+            this.saveToLocalStorage("linesOfCode", this.linesOfCode);
+            this.saveToLocalStorage("commands", this.commands);
+            this.saveToLocalStorage("operators", this.operators);
         },
 
         updateStateBeforeChanges(release: boolean) {
@@ -2293,7 +2808,6 @@ export const useStore = defineStore("app", {
                 return LZString.compress(JSON.stringify(stateCopy));
             }  
         },
-       
         
         setStateFromJSONStr(payload: {stateJSONStr: string; errorReason?: string, showMessage?: boolean, readCompressed?: boolean}): Promise<void>{
             return new Promise((resolve, reject) => {
@@ -2367,7 +2881,7 @@ export const useStore = defineStore("app", {
                     // for ease of coding, we register a "one time" event listener on the modal
                         const execSetStateFunction = (event: BvModalEvent, dlgId: string) => {
                             if((event.trigger == "ok" || event.trigger=="event") && dlgId == getImportDiffVersionModalDlgId()){
-                                this.doSetStateFromJSONStr(newStateStr);      
+                                this.doSetStateFromJSONStr(newStateStr);
                                 vm.$root.$off("bv::modal::hide", execSetStateFunction); 
                                 resolve();
                             }
@@ -2399,6 +2913,7 @@ export const useStore = defineStore("app", {
             this.updateState(
                 JSON.parse(stateJSONStr)
             );
+
             // If the language has been updated, we need to also update the UI accordingly
             this.setAppLang(this.appLang);
 
@@ -2767,7 +3282,7 @@ export const useStore = defineStore("app", {
             // NOTE here that the one to be selected and the new current can be different. i.e. I am below the first child of an if and going up
             // the one to be selected is the one I am bellow, and the current is the body of the if! (i.e. the parent)
             const newCurrent = availablePositionsOfSiblings[indexOfCurrent+delta];
-          
+
             this.selectDeselectFrame({frameId: frameIdToBeSelected, direction: key.replace("Arrow","").toLowerCase()}); 
             this.setCurrentFrame({id:newCurrent.frameId, caretPosition: newCurrent.caretPosition} as CurrentFrame);
         },

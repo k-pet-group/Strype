@@ -31,10 +31,10 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
 import { useStore } from "@/store/store";
-import { MessageDefinedActions, MessageDefinitions, MessageDefinition, MessageTypes, VoidFunction} from "@/types/types";
+import { MessageDefinedActions, MessageDefinition, MessageDefinitions, MessageTypes, VoidFunction } from "@/types/types";
 import { mapStores } from "pinia";
+import Vue from "vue";
 
 export default Vue.extend({
     name: "MessageBanner",

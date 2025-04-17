@@ -5,9 +5,9 @@ import { DAPWrapper } from "@/helpers/partial-flashing";
 import { checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getDisabledBlockRootFrameId, getFlatNeighbourFieldSlotInfos, getParentOrJointParent, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { AppPlatform, AppVersion, vm } from "@/main";
-import { detectFunctionWithCalls, detectModules, detectNestedLoops, detectRecursion, initialBadges, initialTrackingData, trackCommands, trackLinesOfCode, trackOperators } from "@/store/badges";
 import initialStates from "@/store/initial-states";
-import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, BaseSlot, CaretPosition, CurrentFrame, EditableFocusPayload, EditableSlotReachInfos, EditorFrameObjects, EmptyFrameObject, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, FramesDefinitions, FuncDefContainerDefinition, ImportsContainerDefinition, LabelSlotsContent, MainFramesContainerDefinition, MessageDefinition, MessageDefinitions, NavigationPosition, ObjectPropertyDiff, PointsEarnedMessage, ProjectLocation, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotType, SlotsStructure, StateAppObject, StringSlot, StrypeSyncTarget, UserDefinedElement, areSlotCoreInfosEqual, generateAllFrameDefinitionTypes, isFieldBaseSlot } from "@/types/types";
+import { detectFunctionWithCalls, detectModules, detectNestedLoops, detectRecursion, initialBadges, initialTrackingData, trackCommands, trackLinesOfCode, trackOperators } from "@/store/progress";
+import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, BaseSlot, CaretPosition, CurrentFrame, EditableFocusPayload, EditableSlotReachInfos, EditorFrameObjects, EmptyFrameObject, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, FramesDefinitions, FuncDefContainerDefinition, ImportsContainerDefinition, LabelSlotsContent, MainFramesContainerDefinition, MessageDefinition, MessageDefinitions, NavigationPosition, ObjectPropertyDiff, PointsEarnedMessage, ProjectLocation, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotType, SlotsStructure, StateAppObject, StringSlot, StrypeSyncTarget, UserDefinedElement, areSlotCoreInfosEqual, generateAllFrameDefinitionTypes, isFieldBaseSlot } from "@/types/types"; //Added points earned message
 import { nextTick } from "@vue/composition-api";
 import { BvModalEvent } from "bootstrap-vue";
 import $ from "jquery";
@@ -625,20 +625,6 @@ export const useStore = defineStore("app", {
         isContainerCollapsed: (state) => (frameId: number) => {
             return state.frameObjects[frameId].isCollapsed ?? false;
         },
-
-        getPoints: (state) => {
-            return localStorage.getItem("points");
-        },
-
-        // getUserBadges: (state) => {
-        //     const earnedBadges: string[] = [];
-        //     for (const badgeName in state.badges){
-        //         if (state.badges[badgeName].earned === 1) {
-        //             earnedBadges.push(badgeName);
-        //         }
-        //     }
-        //     return earnedBadges;
-        // },
     },
     
 
@@ -701,7 +687,7 @@ export const useStore = defineStore("app", {
             this.points += this.currentPoints;
             this.saveToLocalStorage("points", this.points);
             if (this.currentPoints != 0){
-                this.showMessage(PointsEarnedMessage(this.currentPoints), 5000);
+                this.showMessage(PointsEarnedMessage(this.currentPoints), 7000);
                 this.currentPoints = 0;
             }
         },
@@ -871,12 +857,12 @@ export const useStore = defineStore("app", {
             }
 
             // Complete Commander badge
-            if (this.trackingData.algorithms.programsWithMultipleCommands >= 3 && !this.badges["Complete Commander"].earned){
+            if (this.trackingData.algorithms.programsWithMultipleCommands >= 3 && !this.badges["Control Conqueror"].earned){
                 this.awardBadge("Control Conqueror");
             }
 
             // Command Master badge
-            if (this.trackingData.algorithms.programsWithMultipleCommands >= 10 && !this.badges["Command Master"].earned){
+            if (this.trackingData.algorithms.programsWithMultipleCommands >= 10 && !this.badges["Syntax Mastermind"].earned){
                 this.awardBadge("Syntax Mastermind");
             }
         },
@@ -1136,7 +1122,7 @@ export const useStore = defineStore("app", {
             if(!this.isFirstExecutionDone){
                 this.initialiseData();
             }
-
+            
             const filteredCode = this.removeComments(this.removeStrings(userCode));
 
             // Check if the user code has changed or this is the first execution

@@ -1,5 +1,4 @@
 <template>
-    <!-- <transition name="slide-down"> -->
     <transition name="fade">
     <div v-if="isBadgeVisible" class="badge-popup">
         <div class="badge-content">
@@ -13,10 +12,8 @@
                 class="badge-image" 
             />
             </div>
+            <p class="message">{{ badgeMessage }}</p>
         </div>
-
-        <!-- Message below Congrats -->
-        <p class="message">{{ badgeMessage }}</p>
 
         </div>
         <button @click="close" class="badge-popup-close-btn">×</button>
@@ -28,7 +25,6 @@
 import Vue from "vue";
 
 import { useStore } from "@/store/store";
-// import { persistentStore } from "@/store/progressStore";
 import { mapStores } from "pinia";
 
 
@@ -68,7 +64,6 @@ export default Vue.extend({
 </script>
 
 <style scoped>
-/* Slide-down transition for popup */
 .slide-down-enter-active, .slide-down-leave-active {
     transition: transform 0.4s ease-out, opacity 0.4s;
 }
@@ -76,7 +71,6 @@ export default Vue.extend({
     transform: translateY(-100%);
     opacity: 0;
 }
-
 /* Main badge popup */
 .badge-popup {
     position: fixed;
@@ -96,7 +90,6 @@ export default Vue.extend({
     align-items: center;
     font-family: 'Arial', sans-serif;
 }
-
 .badge-popup-close-btn {
     background: none;
     border: none;
@@ -104,33 +97,22 @@ export default Vue.extend({
     font-size: 22px;
     cursor: pointer;
     padding: 5px;
-    position: absolute; /* Ensure it's positioned absolutely */
-    top: 10px; /* Position it at the top right */
-    right: 10px; /* Align it to the right */
+    position: absolute;
+    top: 10px; 
+    right: 10px; 
 }
 .badge-popup-close-btn:hover {
     opacity: 0.8;
 }
 
-/* Congrats message */
 .congrats-text {
     font-size: 22px;
     font-weight: bold;
     margin: 0;
 }
-
-/* Custom message for the badge */
 .message {
     font-size: 16px;
     margin-top: 5px;
 }
 
-@keyframes confetti-fall {
-    from {
-    transform: translateY(-100%);
-    }
-    to {
-    transform: translateY(100%);
-    }
-}
 </style>

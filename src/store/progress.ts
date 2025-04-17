@@ -220,7 +220,7 @@ export const initialTrackingData = {
         methodCallUsed: false,
     },
     codingStreakTracker: {
-        longestStreak : 1,
+        longestStreak : 0,
         lastCodingDay : 0,
         continuousDays: 0,
         streakCount: 0,

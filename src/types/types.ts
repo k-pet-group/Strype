@@ -776,8 +776,8 @@ export const MessageTypes = {
     gdriveFileAlreadyExists: "gdriveFileAlreadyExists",
     invalidPythonParseImport: "invalidPythonParseImport",
     invalidPythonParsePaste: "invalidPythonParsePaste",
-    pointsEarned: "pointsEarned",
-    dailyCheckIn: "dailyCheckIn",
+    pointsEarned: "pointsEarned", // Added to notify points earned
+    dailyCheckIn: "dailyCheckIn", // Added to notify daily check-in
 };
 
 //empty message

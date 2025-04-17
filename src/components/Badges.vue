@@ -11,15 +11,8 @@
             <!-- Badges Content -->
             <h3 class="badge-title">🏅 BADGES</h3>
 
-
             <!-- Display all badges -->
             <div class="badges-container">
-                <!-- Loop through earned badges and display them dynamically -->
-                <!-- <div v-for="badge in earnedBadges" :key="badge.name" class="badge">
-                    <img :src="require(`@/assets/badges/${badge.name}.png`)" :alt="badge.name" class="badge-image" />
-                    <p class="badge-label">{{ badge.name }}</p>
-                    <p class="badge-description">{{ badge.description }}</p>
-                </div> -->
                 <div 
                     v-for="badge in allBadges" 
                     :key="badge.name" 
@@ -33,11 +26,11 @@
                             :alt="badge.name" 
                             class="badge-image" 
                         />
-                        <span v-if="badge.earned !== 1" class="lock-icon">🔒</span>
+                        <span v-if="badge.earned !== true" class="lock-icon">🔒</span>
                     </div>
                     <p 
                         class="badge-label"
-                        :class="{ 'earned': badge.earned, 'unearned': badge.earned !== 1 }"
+                        :class="{ 'earned': badge.earned, 'unearned': badge.earned !== true }"
                     >
                         {{ badge.name }}
                     </p>
@@ -46,7 +39,7 @@
                     <div 
                         v-if="hoveredBadge && hoveredBadge.name === badge.name" 
                         class="badge-description"
-                        :class="{ 'earned': badge.earned === 1, 'unearned': badge.earned !== 1 }"
+                        :class="{ 'earned': badge.earned === true, 'unearned': badge.earned !== true }"
                     >
                         <p>{{ hoveredBadge.description }}</p>
                     </div>
@@ -60,12 +53,11 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import { initialBadges } from "@/store/badges";
+import { initialBadges } from "@/store/progress";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import Vue from "vue";
 
-// Define types for a badge
 interface Badge {
     points: number;
     message: string;
@@ -73,9 +65,8 @@ interface Badge {
     earned: number;
 }
 
-// Define the badges dictionary type
 interface BadgesDictionary {
-    [key: string]: Badge; // The key is the badge name, and the value is a Badge object
+    [key: string]: Badge;
 }
 
 export default Vue.extend({
@@ -133,43 +124,10 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-/* Overlay styling */
-// .popup-overlay {
-//     position: fixed;
-//     top: 0;
-//     left: 0;
-//     width: 100%;
-//     height: 100%;
-//     background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
-//     display: flex;
-//     justify-content: center;
-//     align-items: center;
-//     z-index: 1000; /* Make sure it's on top */
-// }
-
-// /* Content styling */
-// .popup-badge-content {
-//     position: relative; /* Needed to position the close button */
-//     background-color: white;
-//     padding: 20px;
-//     border-radius: 10px; //50% for circular
-//     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-//     width: 600px;
-//     height: 550px;
-//     max-width: 80%;
-//     max-height: 90vh;
-//     text-align: center;
-//     display: flex;
-//     flex-direction: column;
-//     overflow-y: auto;
-//     // overflow-x: hidden;
-//     // justify-content: center;
-//     // align-items: center;
-// }
 
 .popup-overlay {
-    background: rgba(0, 0, 0, 0.6); // Semi-transparent black
-    backdrop-filter: blur(4px);     // Optional: gives a frosted glass effect
+    background: rgba(0, 0, 0, 0.6);
+    backdrop-filter: blur(4px);  
     position: fixed;
     top: 0; left: 0;
     width: 100%;
@@ -195,39 +153,37 @@ export default Vue.extend({
 }
 
 .badge-title {
-    text-align: center; /* Centers the text horizontally */
-    font-size: 36px; /* Adjust size as needed */
-    font-weight: bold; /* Makes the text thick */
-    color: #ffffff; /* White text color */
-    text-transform: uppercase; /* Converts text to uppercase */
-    text-shadow: 2px 2px 0 #000000, /* Creates 3D effect */
+    text-align: center; 
+    font-size: 36px;
+    font-weight: bold; 
+    color: #ffffff;
+    text-transform: uppercase; 
+    text-shadow: 2px 2px 0 #000000, 
                 4px 4px 0 #555555;
-    position: relative; /* Needed for reflection positioning */
+    position: relative;
 }
 
-/* Reflection effect */
 .badge-title::after {
-    content: attr(data-text); /* Mirrors the text */
+    content: attr(data-text);
     position: absolute;
-    top: 100%; /* Positions below the original text */
+    top: 100%; 
     left: 0;
     width: 100%;
     height: 100%;
     color: #ffffff;
     text-shadow: 2px 2px 0 #000000,
                 4px 4px 0 #555555;
-    transform: rotateX(180deg); /* Flips the text vertically */
-    opacity: 0.5; /* Adjusts reflection transparency */
+    transform: rotateX(180deg); 
+    opacity: 0.5;
 }
 
 .badges-container {
     display: grid;
-    // grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); 
-    grid-template-columns: repeat(3, 1fr);/* Create 3 columns */
-    gap: 20px; /* Space between the badges */
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
     margin-top: 20px;
     width: 100%;
-    max-width: 600px; /* Optional: Set a maximum width for the badges container */
+    max-width: 600px; 
     margin-left: auto;
     margin-right: auto;
 }
@@ -241,12 +197,12 @@ export default Vue.extend({
     border-radius: 12px;
     width: 100%;
     max-width: 180px;
-    background-color: rgba(255, 255, 255, 0.05); /* Subtle overlay */
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);     /* Very light shadow */
+    background-color: rgba(255, 255, 255, 0.05); 
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     transition: transform 0.3s ease;
     word-wrap: break-word;
     overflow-wrap: break-word;
-    backdrop-filter: blur(3px); /* Optional: adds nice effect */
+    backdrop-filter: blur(3px); 
 }
 
 .badge-image-wrapper {
@@ -259,7 +215,7 @@ export default Vue.extend({
 }
 
 .badge-image {
-    width: 120px;   /* Increased from 80px */
+    width: 120px;
     height: 120px;
     border-radius: 50%;
     object-fit: cover;
@@ -282,14 +238,11 @@ export default Vue.extend({
 .badge-label {
     font-size: 14px;
     font-weight: bold;
-    // color: white;              /* Set text color to white */
-    text-transform: uppercase; /* Capitalize all letters */
+    text-transform: uppercase;
     margin-top: 8px;
 }
-.badge-label.earned {
-    color: white;
-}
 
+.badge-label.earned,
 .badge-description.earned {
     color: white;
 }
@@ -299,37 +252,18 @@ export default Vue.extend({
     color: grey;
 }
 
-// .badge-description {
-//     font-size: 0.75rem;
-//     color: #444;
-//     border: 1px solid #ccc;
-//     border-radius: 8px;
-//     padding: 6px 8px;
-//     background-color: #f9f9f9;
-//     max-width: 100px;
-//     margin: 0.5rem auto 0;
-//     word-wrap: break-word;
-//     white-space: normal;
-//     text-align: left;
-//     box-sizing: border-box;
-// }
-
 .badge-description {
     font-size: 0.6rem;
     color: #666;
     word-wrap: break-word;
     white-space: normal;
-    // max-width: 100px; /* or whatever fits your design */
     margin: 0 auto;
 }
 
-
-/* Close button styling */
 .close-btn {
     position: absolute;
     top: 10px;
     right: 10px;
-    // background-color: black;
     color: white;
     border: none;
     border-radius: 50%;

@@ -1,6 +1,6 @@
 <template>
     <div id="app" class="container-fluid print-full-height">
-        <BadgePopUp 
+        <BadgeBanner 
             v-if="isBadgeVisible" 
             :message="badgeMessage" 
             @close="$emit('close')" 
@@ -71,7 +71,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import BadgePopUp from "@/components/BadgePopUp.vue";
+import BadgeBanner from "@/components/BadgeBanner.vue";
 import Commands from "@/components/Commands.vue";
 import Frame from "@/components/Frame.vue";
 import FrameBody from "@/components/FrameBody.vue";
@@ -118,7 +118,7 @@ export default Vue.extend({
         SimpleMsgModalDlg,
         Splitpanes,
         Pane,
-        BadgePopUp,
+        BadgeBanner, //Added the badge banner component
     },
 
     data: function() {
@@ -128,7 +128,7 @@ export default Vue.extend({
             progressbarMessage: "",
             resetStrypeProjectFlag: false,
             isExpandedPythonExecArea: false,
-            badgeMessage: "You've earned the Python Beginner Badge!",
+            badgeMessage: "Hooray!", //Added for badge message
         };
     },
 

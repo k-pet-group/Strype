@@ -274,10 +274,10 @@ export default Vue.extend({
                     this.stopTurtleUIEventListeners = stopTurtleListeners;
                     if (finishedWithError) {
                         this.updateTurtleListeningEvents();
-                        this.appStore.trackingData.errorEncountered = true;
+                        this.appStore.trackingData.errorEncountered = true; // Increment the error count
                     }
                     else{
-                        // Award badges based on the code and progress
+                        // Awarding badges based on the code and progress
                         this.appStore.checkForBadges(userCode);
                     }
                     

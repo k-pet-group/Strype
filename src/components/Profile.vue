@@ -3,15 +3,7 @@
         <div class="popup-profile-content">
             <button class="close-btn" @click="$emit('close')">x</button>
             <!-- Profile Header -->
-            <h1 class="profile-title">YOUR ACHIEVEMENTS AWAIT!</h1>
-
-            <!-- Profile Content -->
-            <!-- <p class="points-text">Lines <strong>{{ line }}</strong> </p> -->
-            <!-- <p class="points-text">Commands <strong>{{ commands }}</strong> </p>
-            <p class="points-text">Badges <strong>{{ badges }}</strong> </p> -->
-            <!-- <p class="points-text">trackData <strong>{{ data }}</strong> </p> -->
-            <!-- <p class="points-text">Lines <strong>{{ lines }}</strong> </p> -->
-
+            <h1 class="profile-title">ACHIEVEMENTS AWAIT!</h1>
 
             <!-- Current Badge Display -->
             <div class="badge-section">
@@ -49,41 +41,33 @@
                     <p><strong>Miles Crossed:</strong> {{ milestoneLevel }} / {{ miles }}</p>
                     <p><strong>Current Status:</strong> {{ pythonStatus }} </p>
                 </div>
-                <!-- weekendWarriorProgress	e.g., “3/4 weekends completed this month” -->
 
                 <!-- Right Info -->
                 <div class="right-info" style="flex: 1; text-align: right;">
-                    <p><strong>Badges Earned:</strong> {{ badgeCount }}</p>
+                    <p><strong>Badges Earned:</strong> {{ badgeCount }} / {{ totalBadges}}</p>
                     <p><strong>Streaks Earned:</strong> {{ streakCount }}</p>
                     <p><strong>Last Check-in:</strong> {{ lastCodingDay }}</p>
                     <p><strong>Longest Streak:</strong> {{ longestStreak }} days</p>
                 </div>
-                <!-- totalCheckIns	Cumulative number of check-ins to show dedication -->
             </div>
 
-            <!-- Badges Section - Show when isBadgesVisible is true -->
+            <!-- Badges Section -->
             <div class="badge-section" v-if="isBadgesVisible">
                 <Badges @close="toggleBadges" />
             </div>
 
             <!-- Milestone Section -->
             <div class="milestone-section">
-                <!-- <h2>Milestone Reached!</h2> -->
                 <p>You've reached Level {{ milestoneLevel }} - {{ milestoneLabel }}!</p>
 
                 <div class="progress-container">
-                    <!-- <div class="progress-labels">
-                        <span>Beginner</span>
-                        <span class="middle-label">Learner</span>
-                        <span>Expert</span>
-                    </div> -->
                     <div class="progress-bar">
                         <div
                         class="progress-bar-fill"
                         :style="{ width: progressPercentage + '%' }"
                         ></div>
                     </div>
-                    <p class="progress-text">{{ progressPercentage }}% to next level</p>
+                    <p class="progress-text">{{ 100 - progressPercentage }}% to next level</p>
                 </div>
             </div>
         </div>
@@ -95,7 +79,7 @@
 //      Imports     //
 //////////////////////
 import Badges from "@/components/Badges.vue";
-import { initialTrackingData, trackCommands, trackLinesOfCode, trackOperators } from "@/store/badges";
+import { initialTrackingData, trackCommands, trackLinesOfCode, trackOperators } from "@/store/progress";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import Vue from "vue";
@@ -139,16 +123,16 @@ export default Vue.extend({
             return this.appStore.points;
         },
 
-        badges(): any {
-            return this.appStore.badges;
-        },
-
         currentBadge(): string {
             return this.appStore.trackingData.userProgress.currentBadge;
         },
 
         badgeCount(): number {
             return this.appStore.trackingData.userProgress.badgeCount;
+        },
+
+        totalBadges(): number {
+            return Object.keys(this.appStore.badges).length;
         },
 
         streakCount(): number {
@@ -165,22 +149,6 @@ export default Vue.extend({
             const month = (lastCodingDate.getMonth() + 1).toString().padStart(2, "0");
             const year = lastCodingDate.getFullYear();
             return `${day}.${month}.${year}`;
-        },
-
-        // lines(): number{
-        //     return this.appStore.linesOfCode;
-        // },
-
-        // line(): number{
-        //     return this.appStore.linesExecuted;
-        // },
-
-        // commands(): any{
-        //     return this.appStore.commands;
-        // },
-
-        data(): any {
-            return this.appStore.trackingData;
         },
 
         pythonStatus(): string {
@@ -239,27 +207,26 @@ export default Vue.extend({
 </script>
 
 <style lang="scss">
-/* Overlay styling */
+
 .popup-overlay {
     position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparent background */
+    background-color: rgba(0, 0, 0, 0.5);
     display: flex;
     justify-content: center;
     align-items: center;
-    z-index: 1000; /* Make sure it's on top */
+    z-index: 1000;
 }
 
-// /* Content styling */
 .popup-profile-content {
-    width: 80%; /* Responsive width */
-    max-width: 550px; /* Maximum width */
+    width: 80%;
+    max-width: 550px;
     max-height: 800px;
     background-color: rgba(240, 240, 240, 0.9);
-    border-radius: 50px; /* Pill-shaped corners */
+    border-radius: 50px;
     padding: 20px;
     box-shadow: 0 4px 8px rgba(0,0,0,0.1);
     text-align: center;
@@ -286,8 +253,6 @@ export default Vue.extend({
     margin-top: 1rem;
     padding: 1rem;
     gap: 3rem;
-//     font-family: Arial, sans-serif;
-//     font-size: 14px;
 }
 
 .left-info {
@@ -301,9 +266,8 @@ export default Vue.extend({
     text-align: left !important;
 }
 
-
 .badge-section {
-    margin-top: 2rem; /* Adjust as needed */
+    margin-top: 2rem;
 }
 
 .default-badge {
@@ -325,12 +289,10 @@ export default Vue.extend({
     margin-bottom: 15px;
 }
 
-/* Close button styling */
 .close-btn {
     position: absolute;
     top: 10px;
     right: 10px;
-    // background-color: black;
     color: white;
     border: none;
     border-radius: 50%;
@@ -341,9 +303,8 @@ export default Vue.extend({
 
 .close-btn:hover {
     background-color: grey;
-}
+} 
 
-/* Progress bar styling */
 .progress-bar-container {
     margin-top: 20px;
     text-align: center;
@@ -352,7 +313,7 @@ export default Vue.extend({
 .progress-bar {
     width: 100%;
     height: 25px;
-    background-color: #e0e0e0;
+    background-color: white;
     border-radius: 12px;
     overflow: hidden;
     margin-top: 10px;
@@ -360,9 +321,8 @@ export default Vue.extend({
 
 .progress-bar-fill {
     height: 100%;
-    background-color: #4caf50;
-    width: 0; /* Will be set dynamically */
-    transition: width 0.5s ease-in-out;
+    background-color: rgb(140, 178, 128);
+    width: 0; 
 }
 
 .progress-text {

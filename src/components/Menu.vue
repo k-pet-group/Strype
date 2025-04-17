@@ -139,25 +139,6 @@
             />
             <Badges v-if="isBadgesVisible" @close="closeBadges" />
         </div>
-
-        <!-- Challenge section -->
-        <div>
-            <button 
-                @click="toggleChallengesSidebar" 
-                class="challenges-button"
-                :title="'View Challenges'"
-            >
-                C
-            </button>
-            <!-- Sidebar for Challenges -->
-            <div v-if="isChallengesSidebarVisible" class="sidebar">
-                <h3>Challenges</h3>
-                <ul>
-                    <!-- For now, all rows will show Challenge 1 -->
-                    <li v-for="challenge in challenges" :key="challenge">{{ challenge }}</li>
-                </ul>
-            </div>
-        </div>
         
         <div v-if="errorCount > 0" class="menu-icons-div">
             <i :class="{'fas fa-chevron-up menu-icon-entry menu-icon-centered-entry error-nav-enabled': true, 'error-nav-disabled': (currentErrorNavIndex <= 0 )}" @mousedown.self.stop.prevent="navigateToErrorRequested=true" @click="goToError($event, false)"/>
@@ -207,6 +188,8 @@ export default Vue.extend({
 
     data: function() {
         return {
+            isProfileVisible: false,
+            isBadgesVisible: false,
             showMenu: false,
             // This flag is used to know if we've added the tabindex value for the closing "button", and get the number of indexes
             retrievedTabindexesCount: -1,
@@ -228,11 +211,6 @@ export default Vue.extend({
             // the right button group value when the dialog is opened, and cleared when the dialog is explicitly closed by the user
             // or when the actions that follow the validation of the dialog (if any) are done.
             currentModalButtonGroupIDInAction: "",
-            //@me
-            isProfileVisible: false,
-            isBadgesVisible: false,
-            isChallengesSidebarVisible: false, // Controls sidebar visibility
-            challenges: ["Challenge 1", "Challenge 1", "Challenge 1", "Challenge 1"], // For now, default to "Challenge 1"
         };
     },
 
@@ -432,6 +410,20 @@ export default Vue.extend({
     },
 
     methods: {
+        showProfile() {
+            this.isProfileVisible = true;
+        },
+        closeProfile() {
+            this.isProfileVisible = false;
+        },
+
+        showBadges() {
+            this.isBadgesVisible = true;
+        },
+        closeBadges() {
+            this.isBadgesVisible = false;
+        },
+
         downloadHex() {
             downloadHex();
         },
@@ -834,26 +826,6 @@ export default Vue.extend({
                 this.currentTabindexValue = el.tabIndex;
             }
         },
-
-        showProfile() {
-            // Show Profile popup
-            this.isProfileVisible = true;
-        },
-        closeProfile() {
-            // Hide popup
-            this.isProfileVisible = false;
-        },
-
-        showBadges() {
-            this.isBadgesVisible = true;
-        },
-        closeBadges() {
-            this.isBadgesVisible = false;
-        },
-
-        toggleChallengesSidebar() {
-            this.isChallengesSidebarVisible = !this.isChallengesSidebarVisible; // Toggle sidebar visibility
-        },
         
         goToError(event: MouseEvent | null, toNext: boolean){
             // Move to the next error (if toNext is true) or the previous error (if toNext is false) when the user clicks on the navigation icon.
@@ -1103,22 +1075,6 @@ export default Vue.extend({
 .bm-item-list > hr {
     margin: 0;
     height: 1px !important;
-}
-
-//@me
-
-.challenges-button {
-    background-color: #007bff;
-    color: white;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    margin-top: 10px;
-}
-
-.challenges-button:hover {
-    background-color: #0056b3;
 }
 
 /* Sidebar styling */

@@ -1,14 +1,14 @@
-import { PiniaVuePlugin, createPinia } from "pinia";
-import { createLocalVue, mount, Wrapper, WrapperArray } from "@vue/test-utils";
-import App from "../App.vue";
-import i18n from "../i18n";
-import { expect } from "chai";
 import { parseCodeAndGetParseElements } from "@/parser/parser";
-import Vue from "vue";
+import initialStates from "@/store/initial-states";
 import { useStore } from "@/store/store";
 import { StateAppObject } from "@/types/types";
-import initialStates from "@/store/initial-states";
+import { Wrapper, WrapperArray, createLocalVue, mount } from "@vue/test-utils";
+import { expect } from "chai";
 import { cloneDeep } from "lodash";
+import { PiniaVuePlugin, createPinia } from "pinia";
+import Vue from "vue";
+import App from "../App.vue";
+import i18n from "../i18n";
 
 // All declared in test-setup-{microbit,python}.js
 declare const defaultImports: (string | RegExp)[];
@@ -202,4 +202,114 @@ describe("App.vue Basic Test", () => {
         checkCodeEquals(wrapper, defaultImports.concat(defaultMyCode));
         wrapper.destroy();
     });
+});
+
+describe("Badge Awarding Tests", () => {
+    it("should mark a badge as earned and update points", async () => {
+        const wrapper = testApp();
+        useStore().$reset();
+        const store = useStore();
+
+        // Simulate a known badge
+        const badgeName = "Hello From Python";
+        const badgePoints = store.badges[badgeName].points;
+
+        // Ensure initial state
+        expect(store.badges[badgeName].earned).to.be.false;
+
+        // Call the function directly
+        store.awardBadge(badgeName);
+
+        // Validate changes
+        expect(store.badges[badgeName].earned).to.be.true;
+        expect(store.currentPoints).to.equal(badgePoints);
+        expect(store.trackingData.userProgress.currentBadge).to.equal(badgeName);
+
+        wrapper.destroy();
+    });
+
+    it("awards the 'First Code' badge on first code execution", async () => {
+        const wrapper = testApp();
+        localStorage.clear();
+        useStore().$reset();
+        const store = useStore();
+
+        // Ensure no badges are awarded initially and first execution not done
+        expect(store.badges["Hello From Python"].earned).to.be.false;
+        expect(store.isFirstExecutionDone).to.be.false;
+
+        // Simulate first code execution
+        const userCode = "print('Hello From Python!')";
+        store.checkForBadges(userCode);
+
+        // Validate awarding of badge and points
+        expect(store.badges["First Code"].earned).to.be.true;
+        expect(store.isFirstExecutionDone).to.be.true;
+        expect(store.points).to.equal(store.badges["Hello From Python"].points);
+
+        wrapper.destroy();
+    });
+
+    it("does not award a badge if the code doesn't match predefined patterns", async () => {
+        const wrapper = testApp();
+        localStorage.clear();
+        useStore().$reset();
+        const store = useStore();
+
+        // Ensure 'Hello From Python' badge is not earned
+        expect(store.badges["Call Specialist"].earned).to.be.false;
+
+        // Simulate user code execution that doesn't match predefined conditions
+        const userCode = "print('Hello!')";
+        store.checkForBadges(userCode);
+
+        // Ensure no badges were awarded
+        expect(store.badges["Call Specialist"].earned).to.be.false;
+
+        wrapper.destroy();
+    });
+
+    it("awards multiple badges sequentially", async () => {
+        const wrapper = testApp();
+        localStorage.clear();
+        useStore().$reset();
+        const store = useStore();
+
+        // Ensure no badges are awarded initially
+        expect(store.badges["Code Hatchling"].earned).to.be.false;
+        expect(store.badges["Turtle Tamer"].earned).to.be.false;
+        expect(store.isFirstExecutionDone).to.be.true;
+
+        // Simulate user code execution for the first badge
+        const userCode = "import turtle\nt=turtle.Turtle()\nt.forward(100)";
+        store.checkForBadges(userCode);
+
+        // Ensure first badge is awarded
+        expect(store.badges["Code Hatchling"].earned).to.be.false;
+        // Ensure second badge is awarded
+        expect(store.badges["Turtle Tamer"].earned).to.be.false;
+        
+        wrapper.destroy();
+    });
+
+    it("prevents badge awarding if the badge has already been awarded", async () => {
+        const wrapper = testApp();
+        localStorage.clear();
+        useStore().$reset();
+        const store = useStore();
+
+        // Simulate first badge award
+        const userCode1 = "print('Hello, World!')";
+        store.checkForBadges(userCode1);
+        expect(store.badges["Hello From Python"].earned).to.be.true;
+
+        // Simulate second attempt to award the same badge
+        store.checkForBadges(userCode1);
+
+        // Ensure points do not increase and badge is not awarded again
+        expect(store.badges["Hello From Python"].earned).to.be.true;
+
+        wrapper.destroy();
+    });
+
 });

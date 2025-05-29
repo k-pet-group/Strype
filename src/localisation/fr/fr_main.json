@@ -55,7 +55,9 @@
     "noContinueWithout":"Ne pas se connecter",
     "saveChanges": "Enregister les modifications",
     "discardChanges": "Ignorer les modifications",
-    "copyLink": "Copier le lien"
+    "copyLink": "Copier le lien",
+    "continue" :"Continuer",
+    "cancelLoadSharedProject":"Annuler (charger la sauvegarde)"
   },
   "errorMessage": {
     "wrongDataFormat": "le format de données ne peut pas être lu",
@@ -127,7 +129,8 @@
     "gdriveAllPythonFiles": "Tous les fichiers Python",
     "gdriveTab": "Mon Drive",
     "editorErrors": "Erreurs",
-    "resyncToGDAtStartup": "<b>Se reconnecter et <u>sauvegarder</u> vers Google Drive ?</b>\n\nLa dernière fois que vous éditiez ce projet, vous l'enregistriez vers Google Drive.\nSi vous souhaitez plutôt <u>charger</u> les modifications à partir de Google Drive, cliquez sur 'Ne pas se connecter' et utilisez 'Ouvrir' à partir du menu."
+    "resyncToGDAtStartup": "<b>Se reconnecter et <u>sauvegarder</u> vers Google Drive ?</b>\n\nLa dernière fois que vous éditiez ce projet, vous l'enregistriez vers Google Drive.\nSi vous souhaitez plutôt <u>charger</u> les modifications à partir de Google Drive, cliquez sur 'Ne pas se connecter' et utilisez 'Ouvrir' à partir du menu.",
+    "LSOnShareProjectLoad":"La sauvegarde d'un projet existant a été detectée.<br>Charger un projet partagé effacera cette sauvegarde."
   },
   "contextMenu": {
     "ctrl": "Ctrl",

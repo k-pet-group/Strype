@@ -53,9 +53,10 @@ export enum CustomEventTypes {
     requestEditorProjectSaveNow = "requestProjectSaveNow",
     saveStrypeProjectDoneForLoad = "saveProjDoneForLoad",
     unsupportedByStrypeFilePicked = "unsupportedByStrypeFilePicked",
-    acItemHovered="acItemHovered",
-    openSharedFileDone="openSharedFileDone",
-    dropFramePositionsUpdated="dropFramePositionsUpdated",
+    acItemHovered = "acItemHovered",
+    openSharedFileDone = "openSharedFileDone",
+    dropFramePositionsUpdated = "dropFramePositionsUpdated",
+    resetLSOnShareProjectLoadConfirmed = "resetLSOnShareProjectLoadConfirmed",
     /* IFTRUE_isPython */
     pythonExecAreaMounted = "peaMounted",
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",

@@ -69,7 +69,7 @@
                     </div>
                 </div>
             </ModalDlg>
-                <ModalDlg :dlgId="saveOnLoadModalDlgId" :autoFocusButton="'ok'" :okCustomTitle="$t('buttonLabel.saveChanges')" :cancelCustomTitle="$t('buttonLabel.discardChanges')">
+            <ModalDlg :dlgId="saveOnLoadModalDlgId" :autoFocusButton="'ok'" :okCustomTitle="$t('buttonLabel.saveChanges')" :cancelCustomTitle="$t('buttonLabel.discardChanges')">
                 <div>
                     <span  v-t="'appMessage.editorAskSaveChangedCode'" class="load-project-lost-span"/>
                     <br/>

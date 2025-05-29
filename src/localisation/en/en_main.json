@@ -55,7 +55,9 @@
     "noContinueWithout":"Do not connect",
     "saveChanges": "Save changes",
     "discardChanges": "Discard changes",
-    "copyLink": "Copy link"
+    "copyLink": "Copy link",
+    "continue" :"Continue",
+    "cancelLoadSharedProject":"Cancel (load backup)"
   },
   "errorMessage": {
     "wrongDataFormat": "the data format cannot be read",
@@ -127,7 +129,8 @@
     "gdriveAllPythonFiles": "All Python files",
     "gdriveTab": "My Drive",
     "editorErrors": "Errors",
-    "resyncToGDAtStartup": "<b>Reconnect and <u>save</u> to Google Drive?</b>\n\nLast time you were editing, you were saving to Google Drive.\nIf you want to instead <u>load</u> changes from Google Drive, click 'Do not connect' and use 'Open' from the menu."
+    "resyncToGDAtStartup": "<b>Reconnect and <u>save</u> to Google Drive?</b>\n\nLast time you were editing, you were saving to Google Drive.\nIf you want to instead <u>load</u> changes from Google Drive, click 'Do not connect' and use 'Open' from the menu.",
+    "LSOnShareProjectLoad":"An existing project backup has been detected.<br>Loading the shared project will erase this backup."
   },
   "contextMenu": {
     "ctrl": "Ctrl",

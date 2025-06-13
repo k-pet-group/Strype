@@ -4,6 +4,7 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html
 import os
 import sys
+# Note: this path command must come before the shared import because otherwise is not located correctly:
 sys.path.insert(0, os.path.abspath('.'))
 import strype_sphinx_conf_defaults
 sys.path.insert(0, os.path.abspath('../../public/public_libraries'))

@@ -1546,7 +1546,7 @@
                 },
                 {
                     "name": "verbosity",
-                    "defaultValue": "<unittest.loader.TestLoader object at 0x10391f8e0>"
+                    "defaultValue": "<unittest.loader.TestLoader object>"
                 },
                 {
                     "name": "failfast",
@@ -1672,7 +1672,7 @@
                 },
                 {
                     "name": "data",
-                    "defaultValue": "<object object at 0x102f41c50>"
+                    "defaultValue": "<object object>"
                 },
                 {
                     "name": "timeout",
@@ -2343,7 +2343,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x103e1baf0>"
+                    "defaultValue": "<function deepcopy>"
                 }
             ]
         },
@@ -2385,7 +2385,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x103e1baf0>"
+                    "defaultValue": "<function deepcopy>"
                 }
             ]
         },
@@ -2413,7 +2413,7 @@
                 },
                 {
                     "name": "deepcopy",
-                    "defaultValue": "<function deepcopy at 0x103e1baf0>"
+                    "defaultValue": "<function deepcopy>"
                 }
             ]
         },
@@ -2455,7 +2455,7 @@
                 },
                 {
                     "name": "state",
-                    "defaultValue": "<function deepcopy at 0x103e1baf0>"
+                    "defaultValue": "<function deepcopy>"
                 },
                 {
                     "name": "listiter",
@@ -14245,6 +14245,36 @@
             ]
         },
         {
+            "acResult": "_MouseDetails",
+            "documentation": "MouseDetails(x, y, button0, button1, button2)",
+            "type": [
+                "function",
+                "type"
+            ],
+            "version": 0,
+            "params": [
+                {
+                    "name": "_cls",
+                    "hide": true
+                },
+                {
+                    "name": "x"
+                },
+                {
+                    "name": "y"
+                },
+                {
+                    "name": "button0"
+                },
+                {
+                    "name": "button1"
+                },
+                {
+                    "name": "button2"
+                }
+            ]
+        },
+        {
             "acResult": "__doc__",
             "documentation": "",
             "type": [],
@@ -14403,8 +14433,16 @@
             "version": 0
         },
         {
+            "acResult": "get_mouse",
+            "documentation": "\n    Get the details for current mouse state.\n    \n    :return: A named tuple with details of the mouse state: `(x, y, button0, button1, button2)` where the last three items are booleans where True indicates the button is held: button0 for primary (left), button1 for secondary (right), button2 for middle.\n    ",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
             "acResult": "get_mouse_click",
-            "documentation": "\n    Get the details for the last mouse click.  If the mouse was not clicked since this function was last called, None is returned.\n    Every click will be reported only once -- a second call to this function in quick succession will return None.\n    \n    This function is independent of `get_clicked_actor()`; they will potentially report details of the same mouse click it was on an actor.\n    \n    :return: A named tuple with details of the last click: `(x, y, button, click_count)` where button is 0 for primary (left), 1 for secondary (right); or None if the mouse was not clicked since the last call.\n    ",
+            "documentation": "\n    Get the details for the last mouse click.  If the mouse was not clicked since this function was last called, None is returned.\n    Every click will be reported only once -- a second call to this function in quick succession will return None.\n    \n    This function is independent of `get_clicked_actor()`; they will potentially report details of the same mouse click it was on an actor.\n    \n    :return: A named tuple with details of the last click: `(x, y, button, click_count)` where button is 0 for primary (left), 1 for secondary (right) or 2 for middle; or None if the mouse was not clicked since the last call.\n    ",
             "type": [
                 "function"
             ],
@@ -14551,6 +14589,14 @@
         {
             "acResult": "_strype_sound_internal",
             "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "_time",
+            "documentation": "This module provides various functions to manipulate time values.\n\nThere are two standard representations of time.  One is the number\nof seconds since the Epoch, in UTC (a.k.a. GMT).  It may be an integer\nor a floating point number (to represent fractions of seconds).\nThe Epoch is system-defined; on Unix, it is generally January 1st, 1970.\nThe actual value can be retrieved by calling gmtime(0).\n\nThe other representation is a tuple of 9 integers giving local time.\nThe tuple items are:\n  year (including century, e.g. 1998)\n  month (1-12)\n  day (1-31)\n  hours (0-23)\n  minutes (0-59)\n  seconds (0-59)\n  weekday (0-6, Monday is 0)\n  Julian day (day in the year, 1-366)\n  DST (Daylight Savings Time) flag (-1, 0 or 1)\nIf the DST flag is 0, the time is given in the regular time zone;\nif it is 1, the time is given in the DST time zone;\nif it is -1, mktime() should guess based on the date and time.",
             "type": [
                 "module"
             ],

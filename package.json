@@ -13,7 +13,7 @@
         "i18n:report": "vue-cli-service i18n:report --src './src/**/*.?(js|vue)' --locales './src/localisation/**/*.json'",
         "library:make-ac-json": "cd scripts && npm install && npx tsc && (node -e \"console.log('library_arg = \\'' + process.env.LIBRARY + '\\';')\" && npx esbuild --bundle compiled/scripts/process-skulpt-api.js) | npx browser-run -s ../public > ../autocomplete.json",
         "preprocess:update-microbit-api": "python3.9 scripts/process-microbit-api.py | python3.8 scripts/add-docs-from-python.py > src/autocompletion/microbit-api.json",
-        "preprocess:update-skulpt-api": "cd scripts && npm install && npx tsc && npx esbuild --define:library_arg='undefined' --bundle compiled/scripts/process-skulpt-api.js | npx browser-run  -s ../public | python3.9 add-docs-from-python.py > ../src/autocompletion/skulpt-api.json",
+        "preprocess:update-skulpt-api": "cd scripts && npm install && npx tsc && (npx esbuild --define:library_arg='' --bundle compiled/scripts/process-skulpt-api.js | npx browser-run  -s ../public | python3.9 add-docs-from-python.py) > ../src/autocompletion/skulpt-api.json",
         "preprocess:build-docs": "cd docs-sphinx && make clean && make html",
         "serve:https": "HTTPS=true vue-cli-service serve",
         "cy:run:microbit": "cypress run --env mode=microbit",

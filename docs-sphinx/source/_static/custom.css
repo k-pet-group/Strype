@@ -1,5 +1,5 @@
 div.sphinxsidebar {
-    width: 24em !important;
+    width: 20em !important;
     background-color: seashell;
     top: 0px;
 }
@@ -24,7 +24,7 @@ div.footer {
 }
 
 div.bodywrapper {
-    margin: 0 0 0 calc(24em + 30px) !important;
+    margin: 0 0 0 calc(20em + 30px) !important;
 }
 div.document {
     background-color: white;

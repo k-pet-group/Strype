@@ -93,7 +93,7 @@ for mod in targetAPI:
                     doubleNL = doc.find("\n\n")
                     if doubleNL > 0:
                         doc = doc[doubleNL:]
-                item['documentation'] = doc.strip()
+                item['documentation'] = doc.strip().replace('\r\n', '\n')
             except:
                 # If we get an AttributeError or any other error, we just can't provide the doc:
                 pass
@@ -122,7 +122,11 @@ for mod in targetAPI:
                         # So if you have 5 args, and 2 in the default, they apply to the fifth and fourth arg
                         if argspec.defaults and ((numArgs - i) <= len(argspec.defaults)):
                             try:
-                                details['defaultValue'] = str(argspec.defaults[numArgs - i - 1])
+                                defVal = str(argspec.defaults[numArgs - i - 1])
+                                # Don't record things like "<unittest.loader.TestLoader object at 0x10391f8e0>" as a defaultValue,
+                                # as it changes each run:
+                                defVal = re.sub(r' at 0x[0-9a-fA-F]+', "", defVal)
+                                details['defaultValue'] = defVal 
                             except:
                                 pass
                         item['params'].append(details)

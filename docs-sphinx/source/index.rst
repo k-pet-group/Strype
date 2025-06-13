@@ -6,6 +6,8 @@
 Strype API documentation
 ========================
 
+You can see more documentation for Strype on the `main documentation page <https://strype.org/doc/>`
+
 strype.graphics module
 ----------------------
 

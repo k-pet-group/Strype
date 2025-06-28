@@ -101,7 +101,7 @@ export default Vue.extend({
 
 .label-slots-struct-wrapper  {
     max-width:100%;
-    flex-wrap:wrap;
+    flex-wrap: nowrap;
 }
 
 .hidden {

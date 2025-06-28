@@ -98,9 +98,10 @@ function interleave<T>(a: T[], b: T[]): T[] {
 // Checks if the level will parse as-is given the arrangement of operators and operands
 // If not, it transforms it into a special call ___strype_invalid_ops([]) where each
 // item in the list is an operand, or a ___strype_operator_uXXXX escaped operator.
-function transformSlotLevel(slots: SlotsStructure) {
+function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string, slotIndex: number}): SlotsStructure {
     // Here's what prevents parsing:
     // - A unary operator (like "not", "~") with something non-blank before it.
+    // - Commas at the top-level of most constructs (only assignments, return, for allow it)
     // - Anything with a blank operator between two adjacent non-blank items, except
     //     if the right-hand item is a round or square bracket (function call and list index, respectively)
     let valid = true;
@@ -133,6 +134,15 @@ function transformSlotLevel(slots: SlotsStructure) {
                         valid = false;
                         break;
                     }
+                }
+            }
+        }
+        if (slots.operators[i].code.trim() === ",") {
+            if (topLevel) {
+                if (![AllFrameTypesIdentifier.varassign,
+                    AllFrameTypesIdentifier.for,
+                    AllFrameTypesIdentifier.return].includes(topLevel.frameType)) {
+                    valid = false;
                 }
             }
         }
@@ -298,7 +308,7 @@ export default class Parser {
             if(label.showSlots??true){
                 // Record each slots' vertical positions for that label.
                 const currentPosition = output.length;
-                const slotStartsLengthsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition, label.optionalSlot ?? false, label.allowedSlotContent ?? AllowedSlotContent.TERMINAL_EXPRESSION);
+                const slotStartsLengthsAndCode = this.getSlotStartsLengthsAndCodeForFrameLabel(useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures, currentPosition, label.optionalSlot ?? false, label.allowedSlotContent ?? AllowedSlotContent.TERMINAL_EXPRESSION, {frameType: statement.frameType.type, slotIndex: labelSlotsIndex});
                 labelSlotsPositionLengths[labelSlotsIndex] = {
                     slotStarts: slotStartsLengthsAndCode.slotStarts, 
                     slotLengths: slotStartsLengthsAndCode.slotLengths,
@@ -603,7 +613,7 @@ export default class Parser {
         return this.framePositionMap;
     }
 
-    public getSlotStartsLengthsAndCodeForFrameLabel(slotStructures: SlotsStructure, currentOutputPosition: number, optionalSlot: boolean, allowed: AllowedSlotContent): LabelSlotPositionsAndCode {
+    public getSlotStartsLengthsAndCodeForFrameLabel(slotStructures: SlotsStructure, currentOutputPosition: number, optionalSlot: boolean, allowed: AllowedSlotContent, topLevel?: {frameType: string, slotIndex: number}): LabelSlotPositionsAndCode {
         // To retrieve this information, we procede with the following: 
         // we get the flat map of the slots and operate a consumer at each iteration to retrieve the infos we need
         let code = "";
@@ -671,7 +681,7 @@ export default class Parser {
                 }
                 addSlotInPositionLengths(flatSlotCode.length, flatSlot.id, flatSlotCode, flatSlot.type);
             }
-        }, this.saveAsSPY ? transformSlotLevel : ((s) => s));
+        }, this.saveAsSPY ? transformSlotLevel : ((s) => s), topLevel);
 
         // There are a few fields which are permitted to be blank:
         if (this.saveAsSPY && code == "" && !optionalSlot) {

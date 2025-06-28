@@ -47,7 +47,7 @@ export const retrieveParentSlotFromSlotInfos = (slotInfos: SlotCoreInfos): Field
 // for example if the root slot has only 3 same level children (field/operator/field), ids will respectively be "0", "0" and "1"
 // if the root slot as 3 level children and the second of them has 3 same level children (again field/operator/field), ids will respectively be:
 // "0", "1,0", "1,0", "1,1", "2"
-export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: string, flatSlotConsumer?: (slot: FlatSlotBase, besidesOp: boolean, opAfter?: string) => void, transformEachLevel?: (oneLevel: SlotsStructure) => SlotsStructure): FlatSlotBase[] => {
+export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: string, flatSlotConsumer?: (slot: FlatSlotBase, besidesOp: boolean, opAfter?: string) => void, transformEachLevel?: (oneLevel: SlotsStructure, topLevel?: {frameType: string, slotIndex: number}) => SlotsStructure, topLevel?: {frameType: string, slotIndex: number}): FlatSlotBase[] => {
     // The operators always get in between the fields, and we always have one 1 root structure for a label,
     // and bracketed structures can never be found at 1st or last position
     let currIndex = -1;
@@ -61,7 +61,7 @@ export const generateFlatSlotBases = (slotStructure: SlotsStructure, parentId?: 
     };
     
     if (transformEachLevel) {
-        slotStructure = transformEachLevel(slotStructure);
+        slotStructure = transformEachLevel(slotStructure, topLevel);
     }
 
     slotStructure.operators.forEach((operatorSlot, index) => {

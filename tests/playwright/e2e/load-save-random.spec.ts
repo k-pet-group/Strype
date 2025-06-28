@@ -993,4 +993,14 @@ test.describe("Enters, saves and loads specific frames", () => {
             {frameType: "funccall", slotContent: ["_0üB!_1_#[(B\\üB0)@{+ not in  not }( is not ) is not ]"]},
         ]]);
     });
+
+    test("Invalid commas", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {frameType: "if", slotContent: ["a,b,c==d"], body: [], joint: []},
+            {frameType: "while", slotContent: ["a,b,c==d"], body: []},
+            {frameType: "with", slotContent: ["a,b,c==d", "x,y,z"], body: []},
+            {frameType: "for", slotContent: ["a,b,c", "x,y,z==d"], body: [], joint: []},
+            {frameType: "varassign", slotContent: ["a,b,c", "x,y,z+5"]},
+        ]]);
+    });
 });

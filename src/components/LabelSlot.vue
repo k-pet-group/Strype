@@ -636,7 +636,7 @@ export default Vue.extend({
             this.appStore.isSelectingMultiSlots = false; // reset the flag
             const isArrowUp = (event.key == "ArrowUp");
            
-            // Check if we could potentilly reach another VISUAL line in a comment (this method returns false if we're not in a comment frame or that comment is empty)
+            // Check if we could potentially reach another VISUAL line in a comment (this method returns false if we're not in a comment frame or that comment is empty)
             const couldReachAnotherCommentLine = this.frameType == AllFrameTypesIdentifier.comment && ((document.getElementById(getLabelSlotUID(this.coreSlotInfo)) as HTMLSpanElement).textContent as string).replaceAll("\u200b","").length > 0;            
             // When no key modifier is hit, we either navigate in A/C or leave the frame or move to another line of text for comments, depending on the context
             // Everything is handled manually except when navigating within a comment.
@@ -779,9 +779,9 @@ export default Vue.extend({
                     // When we add the line return, we check that if we are adding it at the end of the comment, we double that line return:
                     // span do not render a line break that isn't followed by something. So we use this workaround to visually show a line return.
                     // (The text cursor will never be able to be past that terminating line feed so it doesn't offset the navigation from the user's point of view)
-                    const inputSpanFieldContent = (inputSpanField.textContent ?? "").substring(0, startSlotCursorInfos.cursorPos)
+                    const inputSpanFieldContent = ((inputSpanField.textContent?.replaceAll("\u200B", "")) ?? "").substring(0, startSlotCursorInfos.cursorPos)
                         + "\n" 
-                        + ((endSlotCursorInfos.cursorPos == (inputSpanField.textContent??"").length) ? "\n" : (inputSpanField.textContent ?? "").substring(endSlotCursorInfos.cursorPos));
+                        + ((endSlotCursorInfos.cursorPos == ((inputSpanField.textContent?.replaceAll("\u200B", ""))??"").length) ? "\n" : ((inputSpanField.textContent?.replaceAll("\u200B", "")) ?? "").substring(endSlotCursorInfos.cursorPos));
                     this.appStore.setFrameEditableSlotContent(
                         {
                             ...focusSlotCursorInfos.slotInfos,

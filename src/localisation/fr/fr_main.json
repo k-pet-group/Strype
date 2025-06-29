@@ -101,7 +101,7 @@
     "saveToTarget": "Enregister vers :",
     "targetFS": "Cet ordinateur",
     "fileName": "Nom de fichier :",
-    "createShareLink": "Créer un lien de partage pour projet Strype",
+    "createShareProjectLink": "Créer un lien de partage pour projet Strype",
     "shareProjectModeLabel":"Utilisateurs pouvant accéder ce projet :",
     "shareProjectPublicMode":"Tout utilisateur",
     "shareProjectPublicModeDetails":"Tout utilisateur possédant le lien",

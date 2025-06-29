@@ -169,6 +169,7 @@ function getIndent(codeLine: string) {
 }
 
 const STRYPE_COMMENT_PREFIX = "___strype_comment_";
+const STRYPE_MULTILINES_COMMENT_PREFIX = "___strype_multlines_comment_";
 const STRYPE_LIBRARY_PREFIX = "___strype_library_";
 
 const STRYPE_WHOLE_LINE_BLANK = "___strype_whole_line_blank";
@@ -235,12 +236,12 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
 
     // Skulpt doesn't preserve blanks or comments so we must find them and transform
     // them into something that does parse.
-    // Find all comments.  This isn't quite perfect (with respect to # in strings) but it will do:
-    let mostRecentIndent = "";
+    // Find all comments.  This isn't quite perfect (with respect to # in strings and triple quotes tokens) but it will do:
+    let mostRecentIndent = "", isParsingMultiLinesComment = false;
     for (let i = 0; i < codeLines.length; i++) {
-        // Look for # with only space before them, or a # with no quote after:
+        // Look for # with only space before them, or a # with no quote after (if we are not in the context of a multlines comment):
         const match = /^( *)#(.*)$/.exec(codeLines[i]) ?? /^([^#]*)#([^"]+)$/.exec(codeLines[i]);
-        if (match) {
+        if (match && !isParsingMultiLinesComment) {
             const directiveMatch = new RegExp("^ *#" + escapeRegExp(AppSPYPrefix) + "([^:]+):(.*)$").exec(codeLines[i]);
             if (directiveMatch) {
                 // By default, directives are just added to the map:
@@ -271,7 +272,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
             }
             else {
                 if (match[1].trim() == "") {
-                    // Just a comment:
+                    // Just a single line comment:
                     transformedLines.push(match[1] + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(match[2]));
                     mostRecentIndent = match[1];
                     aCommentBlockLines.push(transformedLines.length-1);
@@ -285,7 +286,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                 }
             }
         }
-        else if (codeLines[i].trim() === "") {
+        else if (codeLines[i].trim() === "" && !isParsingMultiLinesComment) {
             // Blank line:
             // We indent this to the largest of its indent,
             // and the (smallest of the indent before us and the indent after us).
@@ -305,10 +306,43 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
             }
             checkRearrangeCommentsIdent();
         }
+        else if(codeLines[i].trim().startsWith("'''") || codeLines[i].trim().endsWith("'''")){
+            // Note: we ignore the triple quotes *strings* in our code.
+            const indexOfFirstToken = codeLines[i].indexOf("'''");
+            if(codeLines[i].trim().startsWith("'''") && codeLines[i].trim().endsWith("'''") && codeLines[i].trimStart().length >= 6){
+                // If we have triple quote token both at the start and at the end, it's actually a single line comment...
+                transformedLines.push(codeLines[i].substring(0, indexOfFirstToken) + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(codeLines[i].slice(codeLines[i].indexOf("'''") + 3, codeLines[i].indexOf("'''", indexOfFirstToken + 3))));
+                mostRecentIndent = codeLines[i].substring(0, indexOfFirstToken);
+                aCommentBlockLines.push(transformedLines.length-1);
+            }
+            else{
+                // A multlines comment: we treat every line as part of a multilines comment,
+                // further parsing will notice we are in inside a multilines comment.
+                // We need to set a flag that we are starting/ending a multilines comment for this parsing context.
+                // The comment token (''') needs to be kept for later knowing when we start/end a comment.
+                // (note: we need a specific comment SPY token to make a distinction between comments and multine comments, 
+                // otherwise a code like "#'''" would become ambiguous once parsed...)
+                const transformedCodeContent = (isParsingMultiLinesComment) 
+                    ? mostRecentIndent + STRYPE_MULTILINES_COMMENT_PREFIX + toUnicodeEscapes((codeLines[i].slice(0, mostRecentIndent.length).trim().length == 0) ? codeLines[i].slice(mostRecentIndent.length) : codeLines[i].trimStart())
+                    : codeLines[i].slice(0, indexOfFirstToken) + STRYPE_MULTILINES_COMMENT_PREFIX + toUnicodeEscapes(codeLines[i].slice(indexOfFirstToken));
+                transformedLines.push(transformedCodeContent);
+                if(!isParsingMultiLinesComment) {
+                    mostRecentIndent = codeLines[i].slice(0, indexOfFirstToken);
+                }
+                aCommentBlockLines.push(transformedLines.length-1);
+                isParsingMultiLinesComment = !isParsingMultiLinesComment;
+            }
+        }
         else {
-            transformedLines.push(codeLines[i].trimEnd());
-            mostRecentIndent = getIndent(codeLines[i].trimEnd());
-            checkRearrangeCommentsIdent();
+            // Any other valid code, except if we are in the context of multilines comment (see above)
+            if(isParsingMultiLinesComment){
+                transformedLines.push(mostRecentIndent+STRYPE_MULTILINES_COMMENT_PREFIX + toUnicodeEscapes((codeLines[i].slice(0, mostRecentIndent.length).trim().length == 0) ? codeLines[i].slice(mostRecentIndent.length) : codeLines[i].trimStart()));
+            }
+            else {
+                transformedLines.push(codeLines[i].trimEnd());
+                mostRecentIndent = getIndent(codeLines[i].trimEnd());
+                checkRearrangeCommentsIdent();
+            }
         }
     }
     // We might have comments at the end of the code, so we need to check their indentation:
@@ -720,16 +754,17 @@ function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywo
     return {s: s, frame: frame};
 }
 
-// Process the given node in the tree at the current point designed by CopyState 
+// Process the given node in the tree at the current point designed by CopyState,
+// and maintain an object, extraInfos, for things that need to be deferred (for example, multilines comments).
 // Returns a copy state, including the frame ID of the next insertion point for any following statements
-function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState {
+function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState, extraInfos: {multiLinesCommentContent: string | null} = {multiLinesCommentContent: null}) : CopyState {
     //console.log("Processing type: " + (Sk.ParseTables.number2symbol[p.type] || ("#" + p.type)));
-    
+        
     switch (p.type) {
     case Sk.ParseTables.sym.file_input:
         // The outer wrapper for the whole file, just dig in:
         for (const child of children(p)) {
-            s = copyFramesFromPython(child, s);
+            s = copyFramesFromPython(child, s, extraInfos);
         }
         break;
     case Sk.ParseTables.sym.stmt:
@@ -740,7 +775,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
     case Sk.ParseTables.sym.import_stmt: 
         // Wrappers where we just skip to the children:
         for (const child of children(p)) {
-            s = copyFramesFromPython(child, s);
+            s = copyFramesFromPython(child, s, extraInfos);
         }
         break;
     case Sk.ParseTables.sym.expr_stmt:
@@ -755,8 +790,31 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
             else {
                 const slots = toSlots(p);
                 if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code.startsWith(STRYPE_COMMENT_PREFIX)) {
+                    // A single line comment: we retrieve and decode the comment part following the STRYPE_COMMENT_PREFIX placeholder.
                     const comment = fromUnicodeEscapes((slots.fields[0] as BaseSlot).code.slice(STRYPE_COMMENT_PREFIX.length));
-                    s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: comment}], operators: []}}}), p.lineno, s);
+                    s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: comment}], operators: []}}}), p.lineno, s);    
+                }
+                else if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code.startsWith(STRYPE_MULTILINES_COMMENT_PREFIX)){
+                    // Part of a multilines comment: we look for the comment token (''') to know if we are starting/ending parsing that comment.
+                    // We save the comment's content without making a frame until we find the end the comment, and can create the frame with its content
+                    const commentCodeLine = fromUnicodeEscapes((slots.fields[0] as BaseSlot).code.slice(STRYPE_MULTILINES_COMMENT_PREFIX.length));
+                    if(commentCodeLine.startsWith("'''") || commentCodeLine.endsWith("'''")){
+                        // It's the start or the end of a multilines comment: we know we started one if multiLinesCommentContent is null.
+                        if(extraInfos.multiLinesCommentContent == null){
+                            // Starting a multilines comment (got past the comment token, 3 chars length) and add \n if there is already some comment content.
+                            extraInfos.multiLinesCommentContent = (commentCodeLine.slice(3) + ((commentCodeLine.length > 3) ? "\n" : ""));
+                        }
+                        else{
+                            // Ending a mulilines comment: we get potential comment's part that is starting the line, and we add that comment in a frame, and reset multiLinesCommentContent.
+                            (extraInfos.multiLinesCommentContent  as string) += commentCodeLine.slice(0, -3);
+                            s = addFrame(makeFrame(AllFrameTypesIdentifier.comment, {0: {slotStructures: {fields: [{code: extraInfos.multiLinesCommentContent}], operators: []}}}), p.lineno, s);
+                            extraInfos.multiLinesCommentContent = null;
+                        }
+                    }
+                    else{
+                        // It's the content of a multilines comment (not the start, not the end), we add it up with an appeneded \n to mark the line return of the comment.                       
+                        (extraInfos.multiLinesCommentContent as unknown as string) += (commentCodeLine + "\n");
+                    }
                 }
                 else if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code.startsWith(STRYPE_LIBRARY_PREFIX)) {
                     const library = fromUnicodeEscapes((slots.fields[0] as BaseSlot).code.slice(STRYPE_LIBRARY_PREFIX.length));
@@ -926,7 +984,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         // but it seems if we ignore these extra children we can proceed and it will all work:
         for (const child of children(p)) {
             if (child.type > 250) { // Only count the non-expression nodes
-                s = copyFramesFromPython(child, s);
+                s = copyFramesFromPython(child, s, extraInfos);
             }
         }
         break;

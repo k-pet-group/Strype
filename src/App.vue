@@ -640,6 +640,8 @@ export default Vue.extend({
                                 ).then(() => {
                                     alertMsgKey = "appMessage.retrievedSharedGenericProject";
                                     alertParams = this.appStore.projectName;
+                                    // A generic project is saved in memory, so we must make sure there is no target destination saved.
+                                    (this.$refs[this.menuUID] as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.none);
                                 },
                                 (reason) => {
                                     alertMsgKey = "errorMessage.retrievedSharedGenericProject";

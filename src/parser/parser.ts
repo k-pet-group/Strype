@@ -299,7 +299,7 @@ export default class Parser {
             
             return (this.excludeLoopsAndCommentsAndCloseTry)
                 ? passLine // This will just be an empty code placeholder, so it shouldn't be a problem for the code
-                : ((commentContent.includes("\n")) ? (indentation+"'''\n" + indentation + commentContent.replaceAll("\n", ("\n"+indentation)).replaceAll("'''","\\'\\'\\'") + "'''\n") : (indentation + "#" + commentContent + "\n"));
+                : ((commentContent.includes("\n")) ? (indentation+"'''" + commentContent.replaceAll("\n", ("\n"+indentation)).replaceAll("'''","\\'\\'\\'") + "'''\n") : (indentation + "#" + commentContent + "\n"));
         }
             
         statement.frameType.labels.forEach((label, labelSlotsIndex) => {

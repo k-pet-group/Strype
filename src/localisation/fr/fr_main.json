@@ -85,7 +85,28 @@
     "gdriveNoFile": "Le projet n'existe pas dans Google Drive.",
     "gdriveError": "Une erreur est survenue lors de la tentative de chargement de votre projet Google Drive (erreur : {error}).",
     "gdPublicShareFailed":"Le projet n'a pas pu être partagé publiquement.<br>(Erreur : {error})",
-    "unexpectedCharsPython": "caractère(s) inattendu(s)"
+    "unexpectedCharsPython": "caractère(s) inattendu(s)",
+    "fileIO": {
+      "openReadingError":"Strype a rencontré une erreur interne lors de l'ouverture du fichier (problème de lecture du contenu).",
+      "notConnectedToCloud":"l'accès aux fichiers lors d'opérations d'entrées/sorties n'est possible qu'à partir d'un projet Strype enregistré dans le Cloud.",
+      "parentDirRefNotSupported":"références à un dossier parent dans les chemins d'accès (\"..\") n'est pas supporté par Strype.",
+      "fileLocationNotFound":"l'emplacement du fichier \"{filename}\" n'a pas été trouvé.",
+      "unsupportedFile":"Strype interdit les opérations de lecture sur ce fichier \"{filename}\", à cause de son type.",
+      "fileNotWritableErr":"le fichier n'est pas ouvert en mode écriture.",
+      "fileWriteNotBytesErr":"un objet de type tableau d'octets est requis, pas '{type}'",
+      "fileWriteNotStrErr": "l'argument de write() doit être str, pas {type}",
+      "fileWriteLinesNotArrayErr":"l'argument de writelines() doit être une liste",
+      "fileNotReadableErr":"le fichier n'est pas ouvert en mode lecture.",
+      "fileClosedErr":"opération d'entrées/sorties sur un fichier fermé.",
+      "fileModeErr":"mode d'ouverture de fichier invalide : {mode}.",
+      "fileNotFound":"le fichier \"{filename}\" n'a pas été trouvé.",
+      "fileFetchError":"récupération du fichier \"{filename}\" impossible. (erreur : {error})",
+      "accessToGDError":"accès au fichier \"{filename}\" dans Google Drive impossible. (erreur : {error})",
+      "readonlyFile":"le fichier \"{filename}\" est en lecture seule.",
+      "writingFileFailed":"écriture du fichier \"{filename}\" impossible. (erreur : {error})",
+      "fileAlreadyExists":"le fichier \"{filename}\" existe déjà (un fichier ouvert avec le mode 'création exclusive' ne peut exister).",
+      "closeInternalError":"Strype a rencontré une erreur interne lors de la fermeture du fichier (le fichier n'a pas été trouvé)."
+    }
   },
   "appMessage": {
     "editorFileUpload": "Chargement de votre fichier dans l'éditeur...",

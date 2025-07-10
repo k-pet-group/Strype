@@ -36,6 +36,7 @@
                         :class="{'d-flex': true, 'open-demo-dlg-demo-item': true, 'open-demo-dlg-selected-demo-item': selectedDemoItemIndex === i}"
                         type="button"
                         @click="selectedDemoItemIndex = i"
+                        @dblclick="onDblClick"
                         @keydown.space.self="selectedDemoItemIndex = i"
                     >
                         <!-- 1x1 transparent image if image is missing: -->
@@ -53,11 +54,14 @@
 <script lang="ts">
 
 import Vue from "vue";
+import MenuComponent from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import {Demo, DemoGroup, getBuiltinDemos, getThirdPartyLibraryDemos} from "@/helpers/demos";
 import Parser from "@/parser/parser";
 import {AppSPYPrefix} from "@/main";
 import {escapeRegExp} from "lodash";
+import { BvModalEvent } from "bootstrap-vue";
+import { getMenuLeftPaneUID } from "@/helpers/editor";
 
 export default Vue.extend({
     components: {ModalDlg},
@@ -75,7 +79,7 @@ export default Vue.extend({
         };
     },
     
-    methods: {
+    methods: {       
         updateAvailableDemos() {
             // We must update the available demos based on the code.
             // Our built-in demos are always available:
@@ -139,6 +143,14 @@ export default Vue.extend({
                 return {name: d.name, demoFile: d.demoFile()};
             }
             return undefined;
+        },
+
+        onDblClick(){
+            // Triggers the modal's OK event to load the selected example. The click event is fired before the double-click event:
+            // selectedDemoItemIndex is already set to the right value.
+            // We first close the dialog, than simulate a "close with action" in the Menu (since we can't close with "OK" status.)
+            this.$root.$emit("bv::hide::modal", this.dlgId);
+            (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.dlgId);
         },
 
         addSpecifiedLibrary() {

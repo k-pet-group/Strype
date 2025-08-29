@@ -1,26 +1,45 @@
 import {AcResultsWithCategory, AllFrameTypesIdentifier, BaseSlot, FrameObject, AcResultType, SlotsStructure, FieldSlot, StringSlot, isFieldBaseSlot} from "@/types/types";
 
 import {useStore} from "@/store/store";
-import microbitPythonAPI from "@/autocompletion/microbit-api.json";
-import { pythonBuiltins } from "@/autocompletion/pythonBuiltins";
-import skulptPythonAPI from "@/autocompletion/skulpt-api.json";
-import microbitModuleDescription from "@/autocompletion/microbit.json";
 import {extractFormalParamsFromSlot, getMatchingBracket, transformFieldPlaceholders} from "@/helpers/editor";
 import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
-import {OUR_PUBLIC_LIBRARY_MODULES} from "@/autocompletion/ac-skulpt";
 import {Signature, TPyParser} from "tigerpython-parser";
-import graphicsMod from "../../public/public_libraries/strype/graphics.py";
-import soundMod from "../../public/public_libraries/strype/sound.py";
-import turtleMod from "../../public/pyi/turtle.pyi";
 import {getAvailablePyPyiFromLibrary, getPossibleImports, getTextFileFromLibraries} from "@/helpers/libraryManager";
 import Parser from "@/parser/parser";
 import { z } from "zod";
 import {extractPYI} from "@/helpers/python-pyi";
-
+/* IFTRUE_isPython */
+import { pythonBuiltins } from "@/autocompletion/pythonBuiltins";
+import skulptPythonAPI from "@/autocompletion/skulpt-api.json";
+import {OUR_PUBLIC_LIBRARY_MODULES} from "@/autocompletion/ac-skulpt";
+import graphicsMod from "../../public/public_libraries/strype/graphics.py";
+import soundMod from "../../public/public_libraries/strype/sound.py";
+import turtleMod from "../../public/pyi/turtle.pyi";
 TPyParser.defineModule("strype.graphics", extractPYI(graphicsMod), "pyi");
 TPyParser.defineModule("strype.sound", extractPYI(soundMod), "pyi");
 TPyParser.defineModule("turtle", turtleMod, "pyi");
+/* FITRUE_isPython */
+/* IFTRUE_isMicrobit */
+import microbitPythonAPI from "@/autocompletion/microbit-api.json";
+import microbitDescriptions from "@/autocompletion/microbit.json";
+// Import all the micro:bit PYI files and load the modules in TigerPython.
+// If these files need update, replace "audio.pyi" in the root folder
+// by the one in /microbit/ because it seems reimports don't work well.
+// Remove "VERSIONS" as well.
+const mbPYIContextFolderContext = require.context("../../public/public_libraries/microbit/");
+const mbPYContextPaths = mbPYIContextFolderContext.keys();
+mbPYContextPaths.forEach((mbPYContextPath) => {
+    if(mbPYContextPath.endsWith("pyi")) {        
+        const mbPYIAsModule = mbPYIContextFolderContext(mbPYContextPath); // Immediately loads the module
+        // Module paths start with "./" and finish with ".pyi", 
+        // to get the module name we scrap these off, change "/"
+        // to "." and remove the file name altogether if we have "__init__".
+        const moduleName = mbPYContextPath.slice(2, -4).replaceAll("/", ".").replace(".__init__", "");
+        TPyParser.defineModule(moduleName, (mbPYIAsModule as any).default, "pyi");
+    }   
+});
+/* FITRUE_isMicrobit */
 
 // Given a FieldSlot, get the program code corresponding to it, to use
 // as the prefix (context) for code completion.
@@ -300,6 +319,7 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
         if(isSimpleImport && context != module) {
             if (soFar[importedModulesCategory] == undefined || !soFar[importedModulesCategory].some((acRes) => acRes.acResult.localeCompare(realModule) == 0)) {
                 // In the case of an import frame, we can add the module in the a/c as such in the imported module modules section (if non-present)
+                /* IFTRUE_isPython */
                 if (pythonBuiltins[realModule]) {
                     const moduleDoc = (pythonBuiltins[realModule].documentation ?? "");
                     const imports = soFar[importedModulesCategory] ?? [];
@@ -311,6 +331,16 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
                     imports.push({acResult: module, documentation: "", type: ["module"], version: 0});
                     soFar[importedModulesCategory] = imports;
                 }
+                /* FITRUE_isPython */
+                /* IFTRUE_isMicrobit */
+                if((microbitDescriptions.modules as any as Record<string, AcResultType>)[realModule]){
+                    const moduleEntry = (microbitDescriptions.modules as any as Record<string, AcResultType>)[realModule];
+                    const moduleDoc = (moduleEntry.documentation ?? "");
+                    const imports = soFar[importedModulesCategory] ?? [];
+                    imports.push({acResult: module, documentation: moduleDoc, type: ["module"], version: moduleEntry.version});
+                    soFar[importedModulesCategory] = imports;
+                }
+                /* FITRUE_isMicrobit */
             }
         }
         else{
@@ -322,6 +352,12 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
             const allMicrobitItems : AcResultType[] = microbitPythonAPI[realModule as keyof typeof microbitPythonAPI] as AcResultType[];
             if (allMicrobitItems) {
                 allItems = [...allMicrobitItems.filter((x) => !x.acResult.startsWith("_"))];
+                // Check if the context (e.g. compass) exactly matches a re-exported module in microbit.
+                // If so, copy the contents of microbit.<context> into an item named <context>
+                const reExported = allMicrobitItems.find((ac) => ac.acResult === context && ac.type.includes("module"));
+                if (reExported && microbitPythonAPI["microbit." + reExported.acResult as keyof typeof microbitPythonAPI]) {
+                    soFar[reExported.acResult] = [...(microbitPythonAPI["microbit." + reExported.acResult as keyof typeof microbitPythonAPI] as AcResultType[]).filter((x) => !x.acResult.startsWith("_"))];
+                }
             }
             /* FITRUE_isMicrobit */
 
@@ -351,10 +387,6 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
 }
 
 export async function getAvailableModulesForImport() : Promise<AcResultsWithCategory> {
-    /* IFTRUE_isMicrobit */
-    return {[""]: microbitModuleDescription.modules.map((m) => ({acResult: m, documentation: m in microbitPythonAPI ? (microbitPythonAPI[m as keyof typeof microbitPythonAPI].find((ac) => ac.acResult === "__doc__")?.documentation || "") : "", type: ["module"], version: 0}))};
-    /* FITRUE_isMicrobit */
-    /* IFTRUE_isPython */
     // To get library imports, we first get the libraries:
     const p = new Parser();
     // We only need to parse the imports container:
@@ -369,12 +401,16 @@ export async function getAvailableModulesForImport() : Promise<AcResultsWithCate
             fromLibraries.push(...getPossibleImports(paths as string[]));
         }
     }
-    return {[""] : Object.keys(pythonBuiltins)
-        .filter((k) => pythonBuiltins[k]?.type === "module")
-        .map((k) => ({acResult: k, documentation: pythonBuiltins[k].documentation||"", type: [pythonBuiltins[k].type], version: 0}))
-        .concat(fromLibraries.map((m) => ({acResult: m, documentation: "", type: ["module"], version: 0})))
-        .concat(OUR_PUBLIC_LIBRARY_MODULES.map((m) => ({acResult: m, documentation: "", type: ["module"], version: 0})))};
-    /* FITRUE_isPython */
+
+    // eslint-disable-next-line prefer-const
+    let isMicrobit = false;
+    /* IFTRUE_isMicrobit isMicrobit = true; FITRUE_isMicrobit */
+    const apiModules = (isMicrobit) ? (microbitDescriptions.modules as any as Record<string, {type: "module", documentation?: string, version: number}>) : pythonBuiltins;   
+    // Only add our own public libraries (at the end of this chain) when we are in the standard Stype version.
+    return {[""] : Object.keys(apiModules)
+        .filter((k) => apiModules[k]?.type === "module" && !k.startsWith("_"))
+        .map((k) => ({acResult: k, documentation: apiModules[k].documentation||"", type: [apiModules[k].type], version: apiModules[k].version}))
+        .concat(fromLibraries.map((m) => ({acResult: m, documentation: "", type: ["module"], version: 0}))) /*IFTRUE_isPython .concat(OUR_PUBLIC_LIBRARY_MODULES.map((m) => ({acResult: m, documentation: "", type: ["module"], version: 0}))) FITRUE_isPython */};    
 }
 
 const SignatureArgSchema = z.object({

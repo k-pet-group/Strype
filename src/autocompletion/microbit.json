@@ -1,232 +1,1102 @@
 {
-    "modules": ["audio","machine","microbit","micropython","music","neopixel","os","radio","random","speech","time","utime"],
-    "versions":{
-        "microbit":{
-            "set_volume": 2,
-            "__Microphone":2,
-            "microphone":2,
-            "speaker":2,
-            "pin_logo":2,
-            "pin_speaker":2,
-            "__PinDigital()":{
-                "PULL_UP":2,
-                "PULL_DOWN":2,
-                "NO_PULL":2,
-                "set_pull":2,
-                "get_pull":2,
-                "get_mode":2
-            },            
-            "__PinTouch":{
-                "CAPACITIVE":2,
-                "RESISITVE":2,
-                "set_touch_mode":2
-            },
-            "SoundEvent":2,
-            "__Audio":2,
-            "audio":2,
-            "Sound":2
+    "modules": {
+        "microbit.accelerometer": {
+            "type": "module",
+            "documentation": "Measure the acceleration of the micro:bit and recognise gestures.",
+            "version": 1
+        },
+        "microbit.audio": {
+            "type": "module",
+            "documentation": "Play sounds using the micro:bit (import ``audio`` for V1 compatibility).",
+            "version": 1
+        },
+        "microbit.compass": {
+            "type": "module",
+            "documentation": "Use the built-in compass.",
+            "version": 1
+        },
+        "microbit.display": {
+            "type": "module",
+            "documentation": "Show text, images and animations on the 5\u00d75 LED display.",
+            "version": 1
+        },
+        "microbit.i2c": {
+            "type": "module",
+            "documentation": "Communicate with devices using the I\u00b2C bus protocol.",
+            "version": 1
+        },
+        "microbit.microphone": {
+            "type": "module",
+            "documentation": "Respond to sound using the built-in microphone (V2 only).",
+            "version": 2
+        },
+        "microbit.speaker": {
+            "type": "module",
+            "documentation": "Control the built-in speaker (V2 only).",
+            "version": 2
+        },
+        "microbit.spi": {
+            "type": "module",
+            "documentation": "Communicate with devices using the serial peripheral interface (SPI) bus.",
+            "version": 1
+        },
+        "microbit.uart": {
+            "type": "module",
+            "documentation": "Communicate with a device using a serial interface.",
+            "version": 1
+        },
+        "microbit": {
+            "type": "module",
+            "documentation": "Pins, images, sounds, temperature and volume.",
+            "version": 1
+        },
+        "abc": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "antigravity": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "array": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "audio": {
+            "type": "module",
+            "documentation": "Play sounds using the micro:bit (import ``audio`` for V1 compatibility).",
+            "version": 1
+        },
+        "collections": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "errno": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "gc": {
+            "type": "module",
+            "documentation": "Control the garbage collector",
+            "version": 1
+        },
+        "log": {
+            "type": "module",
+            "documentation": "Log data to your micro:bit V2.",
+            "version": 2
+        },
+        "love": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "machine": {
+            "type": "module",
+            "documentation": "Low-level utilities.",
+            "version": 1
+        },
+        "math": {
+            "type": "module",
+            "documentation": "Mathematical functions.",
+            "version": 1
+        },
+        "micropython": {
+            "type": "module",
+            "documentation": "MicroPython internals.",
+            "version": 1
+        },
+        "music": {
+            "type": "module",
+            "documentation": "Create and play melodies.",
+            "version": 1
+        },
+        "neopixel": {
+            "type": "module",
+            "documentation": "Individually addressable RGB and RGBW LED strips.",
+            "version": 1
+        },
+        "os": {
+            "type": "module",
+            "documentation": "Access the file system.",
+            "version": 1
+        },
+        "power": {
+            "type": "module",
+            "documentation": "Manage the power modes of the micro:bit (V2 only).",
+            "version": 2
+        },
+        "radio": {
+            "type": "module",
+            "documentation": "Communicate between micro:bits with the built-in radio.",
+            "version": 1
+        },
+        "random": {
+            "type": "module",
+            "documentation": "Generate random numbers.",
+            "version": 1
+        },
+        "speech": {
+            "type": "module",
+            "documentation": "Make the micro:bit talk, sing and make other speech like sounds.",
+            "version": 1
+        },
+        "struct": {
+            "type": "module",
+            "documentation": "Pack and unpack primitive data types.",
+            "version": 1
+        },
+        "sys": {
+            "type": "module",
+            "documentation": "System specific functions",
+            "version": 1
+        },
+        "this": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "time": {
+            "type": "module",
+            "documentation": "Measure time and add delays to programs.",
+            "version": 1
+        },
+        "types": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "typing": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "typing_extensions": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "uarray": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "ucollections": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "uerrno": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "urandom": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "ustruct": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "usys": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "utime": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
+        },
+        "_typeshed": {
+            "type": "module",
+            "documentation": null,
+            "version": 1
         }
     },
-    "api":[
-        {"name":"led","codePortion":"display.","children":[
-            {"name":"ledScroll","codePortion":"scroll(value)","extraCodePortion":"scroll(value, delay=150, wait=True, loop=False, monospace=False)"},
-            {"name":"ledShowIm","codePortion":"show(image)"},
-            {"name":"ledShowImTxt","codePortion":"show(value)","extraCodePortion":"show(value, delay=400, wait=True, loop=False, clear=False)"},
-            {"name":"ledGetPix","codePortion":"getPixel(x,y)"},
-            {"name":"ledSetPix","codePortion":"setPixel(x,y,value)"},
-            {"name":"ledClear","codePortion":"clear()"},
-            {"name":"ledOn","codePortion":"on()"},
-            {"name":"ledOff","codePortion":"off()"},
-            {"name":"ledIsOn","codePortion":"is_on()"},
-            {"name":"ledReadLight","codePortion":"read_light_level()"}]},
-        {"name":"Img","codePortion":"","children": [
-            {"name":"ImgBuiltin","codePortion":"Image.", "children":[
-                {"name":"Img01","codePortion":"HEART"},
-                {"name":"Img02","codePortion":"HEART_SMALL"},
-                {"name":"Img03","codePortion":"HAPPY"},
-                {"name":"Img04","codePortion":"SMILE"},
-                {"name":"Img05","codePortion":"SAD"},
-                {"name":"Img06","codePortion":"CONFUSED"},
-                {"name":"Img07","codePortion":"ANGRY"},
-                {"name":"Img08","codePortion":"ASLEEP"},
-                {"name":"Img09","codePortion":"SURPRISED"},
-                {"name":"Img10","codePortion":"SILLY"},
-                {"name":"Img11","codePortion":"FABULOUS"},
-                {"name":"Img12","codePortion":"MEH"},
-                {"name":"Img13","codePortion":"YES"},
-                {"name":"Img14","codePortion":"NO"},
-                {"name":"Img15","codePortion":"CLOCK12"},
-                {"name":"Img16","codePortion":"CLOCK11"},
-                {"name":"Img17","codePortion":"CLOCK10"},
-                {"name":"Img18","codePortion":"CLOCK9"},
-                {"name":"Img19","codePortion":"CLOCK8"},
-                {"name":"Img20","codePortion":"CLOCK7"},
-                {"name":"Img21","codePortion":"CLOCK6"},
-                {"name":"Img22","codePortion":"CLOCK5"},
-                {"name":"Img23","codePortion":"CLOCK4"},
-                {"name":"Img24","codePortion":"CLOCK3"},
-                {"name":"Img25","codePortion":"CLOCK2"},
-                {"name":"Img26","codePortion":"CLOCK1"},
-                {"name":"Img27","codePortion":"ARROW_N"},
-                {"name":"Img28","codePortion":"ARROW_NE"},
-                {"name":"Img29","codePortion":"ARROW_E"},
-                {"name":"Img30","codePortion":"ARROW_SE"},
-                {"name":"Img31","codePortion":"ARROW_S"},
-                {"name":"Img32","codePortion":"ARROW_SW"},
-                {"name":"Img33","codePortion":"ARROW_W"},
-                {"name":"Img34","codePortion":"ARROW_NW"},
-                {"name":"Img35","codePortion":"TRIANGLE"},
-                {"name":"Img36","codePortion":"TRIANGLE_LEFT"},
-                {"name":"Img37","codePortion":"CHESSBOARD"},
-                {"name":"Img38","codePortion":"DIAMOND"},
-                {"name":"Img39","codePortion":"DIAMOND_SMALL"},
-                {"name":"Img40","codePortion":"SQUARE"},
-                {"name":"Img41","codePortion":"SQUARE_SMALL"},
-                {"name":"Img42","codePortion":"RABBIT"},
-                {"name":"Img43","codePortion":"COW"},
-                {"name":"Img44","codePortion":"MUSIC_CROTCHET"},
-                {"name":"Img45","codePortion":"MUSIC_QUAVER"},
-                {"name":"Img46","codePortion":"MUSIC_QUAVERS"},
-                {"name":"Img47","codePortion":"PITCHFORK"},
-                {"name":"Img48","codePortion":"XMAS"},
-                {"name":"Img49","codePortion":"PACMAN"},
-                {"name":"Img50","codePortion":"TARGET"},
-                {"name":"Img51","codePortion":"TSHIRT"},
-                {"name":"Img52","codePortion":"ROLLERSKATE"},
-                {"name":"Img53","codePortion":"DUCK"},
-                {"name":"Img54","codePortion":"HOUSE"},
-                {"name":"Img55","codePortion":"TORTOISE"},
-                {"name":"Img56","codePortion":"BUTTERFLY"},
-                {"name":"Img57","codePortion":"STICKFIGURE"},
-                {"name":"Img58","codePortion":"GHOST"},
-                {"name":"Img59","codePortion":"SWORD"},
-                {"name":"Img60","codePortion":"GIRAFFE"},
-                {"name":"Img61","codePortion":"SKULL"},
-                {"name":"Img62","codePortion":"UMBRELLA"},
-                {"name":"Img63","codePortion":"SNAKE"},
-                {"name":"ImgClocks","codePortion":"ALL_CLOCKS"},
-                {"name":"ImgArrows","codePortion":"ALL_ARROWS"}]},
-            {"name":"ImgNew","codePortion":"", "children":[
-                {"name":"ImgStr","codePortion":"Image(value)"},
-                {"name":"ImgParam","codePortion":"Image(width, height, buffer)"}]},
-            {"name":"ImgEx","codePortion":"img.", "children":[
-                {"name":"ImgW","codePortion":"width()"},
-                {"name":"ImgH","codePortion":"height()"},
-                {"name":"ImgSetPix","codePortion":"set_pixel(x, y, value)"},
-                {"name":"ImgGetPix","codePortion":"get_pixel(x, y)"},
-                {"name":"ImgCpy","codePortion":"copy()"},
-                {"name":"imgInv","codePortion":"invert()"},
-                {"name":"ImgLeft","codePortion":"shift_left(n)"},
-                {"name":"ImgRight","codePortion":"shift_right(n)"},
-                {"name":"ImgUp","codePortion":"shift_up(n)"},
-                {"name":"imgDown","codePortion":"shift_down(n)"},
-                {"name":"ImgCrop","codePortion":"crop(x, y, w, h)"},
-                {"name":"ImgFill","codePortion":"fill(value)"}]}]},
-        {"name":"button","codePortion":"button_a.","children":[
-            {"name":"buttonIsPress","codePortion":"is_pressed()"},
-            {"name":"buttonWasPress","codePortion":"was_pressed()"},
-            {"name":"buttonGetPress","codePortion":"get_presses()"}]},
-        {"name":"sounds","codePortion":"Sound.","version":2,"children":[
-                {"name":"sound01","codePortion":"GIGGLE"},
-                {"name":"sound02","codePortion":"HAPPY"},
-                {"name":"sound03","codePortion":"HELLO"},
-                {"name":"sound04","codePortion":"MYSTERIOUS"},
-                {"name":"sound05","codePortion":"SAD"},
-                {"name":"sound06","codePortion":"SLIDE"},
-                {"name":"sound07","codePortion":"SOARING"},
-                {"name":"sound08","codePortion":"SPRING"},
-                {"name":"sound09","codePortion":"TWINKLE"},
-                {"name":"sound10","codePortion":"YAWN"}]},
-        {"name":"audio","codePortion":"audio.","children":[
-            {"name":"audioPlay","codePortion": "play(source)","extraCodePortion":"play(source, wait=True, pin=pin0, return_pin=None)"},
-            {"name":"audioFrame","codePortion":"AudioFrame"}]},
-        {"name":"acc","codePortion":"accelerometer.","children":[
-            {"name":"accGest","codePortion":"current_gesture()"},
-            {"name":"accXYZ","codePortion":"get_values()"},
-            {"name":"accX","codePortion":"get_x()"},
-            {"name":"accY","codePortion":"get_y()"},
-            {"name":"accZ","codePortion":"get_z()"}]},
-        {"name":"comp","codePortion":"compass.","children":[
-            {"name":"compHead","codePortion":"heading()"},
-            {"name":"compIsCalib","codePortion":"is_calibrated()"},
-            {"name":"compCalib","codePortion":"calibrate()"},
-            {"name":"compClear","codePortion":"clear_calibration()"},
-            {"name":"compGetX","codePortion":"get_x()"},
-            {"name":"compGetY","codePortion":"get_y()"},
-            {"name":"compGetZ","codePortion":"get_z()"},    
-            {"name":"compGetField","codePortion":"get_field_strength()"}]},
-        {"name":"music","codePortion":"music.","children":[
-            {"name":"musicBuiltin","codePortion":"","children":[
-                {"name":"music1","codePortion":"DADADADUM"},
-                {"name":"music2","codePortion":"ENTERTAINER"},
-                {"name":"music3","codePortion":"PRELUDE"},
-                {"name":"music4","codePortion":"ODE"},
-                {"name":"music5","codePortion":"NYAN"},
-                {"name":"music6","codePortion":"RINGTONE"},
-                {"name":"music7","codePortion":"FUNK"},
-                {"name":"music8","codePortion":"BLUES"},
-                {"name":"music9","codePortion":"BIRTHDAY"},
-                {"name":"music10","codePortion":"WEDDING"},
-                {"name":"music11","codePortion":"FUNERAL"},
-                {"name":"music12","codePortion":"PUNCHLINE"},
-                {"name":"music13","codePortion":"PYTHON"},
-                {"name":"music14","codePortion":"BADDY"},
-                {"name":"music15","codePortion":"CHASE"},
-                {"name":"music16","codePortion":"BA_DING"},
-                {"name":"music17","codePortion":"WAWAWAWAA"},
-                {"name":"music18","codePortion":"JUMP_UP"},
-                {"name":"music19","codePortion":"JUMP_DOWN"},
-                {"name":"music20","codePortion":"POWER_UP"},
-                {"name":"music21","codePortion":"POWER_UP"}
-            ]},
-            {"name":"musicPlay","codePortion":"play(music)","extraCodePortion":"play(music, pin=microbit.pin0, wait=True, loop=False)"},
-            {"name":"musicSetTempo","codePortion":"set_tempo(ticks=4, bpm=120)"},
-            {"name":"musicGetTempo","codePortion":"get_tempo()"},
-            {"name":"musicStop","codePortion":"stop()","extraCodePortion":"stop(pin=microbit.pin0)"},
-            {"name":"musicPitch","codePortion":"pitch(frequency)","extraCodePortion":"pitch(frequency, duration=-1, pin=microbit.pin0, wait=True)"},    
-            {"name":"musicReset","codePortion":"reset()"}]},
-        {"name":"mic","codePortion":"microphone.","version":2, "children":[
-            {"name":"currSoundEvent","codePortion":"current_event()"},
-            {"name":"wasSoundEvent","codePortion":"was_event(event)"},
-            {"name":"isSoundEvent","codePortion":"is_event(event)"},
-            {"name":"soundEvents","codePortion":"get_events()"},
-            {"name":"soundEvThres","codePortion":"set_threshold(event, value)"},
-            {"name":"soundLevel","codePortion":"sound_level()"}]},
-        {"name":"speaker","codePortion":"speaker.","version":2, "children":[
-                {"name":"speakerOn","codePortion":"on()"},
-                {"name":"speakerOff","codePortion":"off()"}]},
-        {"name":"pin","codePortion":"","children":[
-            {"name":"pinDig","codePortion":"pin5.","children":[
-                {"name":"pinDigR","codePortion":"read_digital()"},
-                {"name":"pintDigW","codePortion":"write_digital(value)"}
-            ]},
-            {"name":"pinAna","codePortion":"pin3.", "children":[
-                {"name":"pinAnaR","codePortion":"read_analog()"},
-                {"name":"pinAnaW","codePortion":"write_analog(value)"},
-                {"name":"pinAnaTMls","codePortion":"set_analog_period(period)"},
-                {"name":"pinAnaTMcs","codePortion":"set_analog_period_microseconds(period)"},
-                {"name":"pinAnaRD","codePortion":"read_digital()"},
-                {"name":"pinAnaWD","codePortion":"write_digital(value)"}]},
-            {"name":"pinTou","codePortion":"pin0.","children":[
-                {"name":"pinTouR","codePortion":"is_Touched()"},
-                {"name":"pinTouRA","codePortion":"read_analog()"},
-                {"name":"pinTouWA","codePortion":" write_analog(value)"},
-                {"name":"pinTouTMls","codePortion":"set_analog_period(period)"},
-                {"name":"pinTouTMcs","codePortion":"set_analog_period_microseconds(period)"},
-                {"name":"pinTouRD","codePortion":"read_digital()"},    
-                {"name":"pintTouWD","codePortion":"write_digital()"}]}]},
-        {"name":"speech","codePortion":"speech.","children":[
-            {"name":"speechSay","codePortion":"say(words)","extraCodePortion":"say(words, pitch=64, speed=72, mouth=128, throat=128,pin=pin0)"},
-            {"name":"speechSing","codePortion":"sing(phonemes)","extraCodePortion":"sing(phonemes, pitch=64, speed=72, mouth=128, throat=128,pin=pin0)"},
-            {"name":"speechT","codePortion":"translate(words)"},
-            {"name":"speechP","codePortion":"pronounce(phonemes)", "extraCodePortion":"pronounce(phonemes, pitch=64, speed=72, mouth=128, throat=128,pin=pin0)"}]},
-        {"name":"microbit","codePortion":"","children":[
-            {"name": "setVol","codePortion": "set_volume(n)","version":2},
-            {"name":"temp","codePortion":"temperature()"},
-            {"name":"reset","codePortion":"reset()"},
-            {"name":"runned","codePortion":"running_time()"},
-            {"name":"sleep","codePortion":"sleep(n)"},
-            {"name":"panic","codePortion":"panic(n)"}
-        ]}
+    "versions": {
+        "audio": {
+            "SoundEffect": 2
+        },
+        "microbit": {
+            "audio": {
+                "SoundEffect": 2
+            },
+            "set_volume": 2,
+            "__Microphone": 2,
+            "microphone": 2,
+            "speaker": 2,
+            "pin_logo": 2,
+            "pin_speaker": 2,
+            "__PinDigital()": {
+                "PULL_UP": 2,
+                "PULL_DOWN": 2,
+                "NO_PULL": 2,
+                "set_pull": 2,
+                "get_pull": 2,
+                "get_mode": 2
+            },
+            "__PinTouch": {
+                "CAPACITIVE": 2,
+                "RESISITVE": 2,
+                "set_touch_mode": 2
+            },
+            "SoundEvent": 2,
+            "Sound": 2
+        },
+        "power": 2,
+        "log": 2,
+        "speaker": 2,
+        "microphone": 2
+    },
+    "api": [
+        {
+            "name": "led",
+            "codePortion": "display.",
+            "children": [
+                {
+                    "name": "ledScroll",
+                    "codePortion": "scroll(value)",
+                    "extraCodePortion": "scroll(value, delay=150, wait=True, loop=False, monospace=False)"
+                },
+                {
+                    "name": "ledShowIm",
+                    "codePortion": "show(image)"
+                },
+                {
+                    "name": "ledShowImTxt",
+                    "codePortion": "show(value)",
+                    "extraCodePortion": "show(value, delay=400, wait=True, loop=False, clear=False)"
+                },
+                {
+                    "name": "ledGetPix",
+                    "codePortion": "getPixel(x,y)"
+                },
+                {
+                    "name": "ledSetPix",
+                    "codePortion": "setPixel(x,y,value)"
+                },
+                {
+                    "name": "ledClear",
+                    "codePortion": "clear()"
+                },
+                {
+                    "name": "ledOn",
+                    "codePortion": "on()"
+                },
+                {
+                    "name": "ledOff",
+                    "codePortion": "off()"
+                },
+                {
+                    "name": "ledIsOn",
+                    "codePortion": "is_on()"
+                },
+                {
+                    "name": "ledReadLight",
+                    "codePortion": "read_light_level()"
+                }
+            ]
+        },
+        {
+            "name": "Img",
+            "codePortion": "",
+            "children": [
+                {
+                    "name": "ImgBuiltin",
+                    "codePortion": "Image.",
+                    "children": [
+                        {
+                            "name": "Img01",
+                            "codePortion": "HEART"
+                        },
+                        {
+                            "name": "Img02",
+                            "codePortion": "HEART_SMALL"
+                        },
+                        {
+                            "name": "Img03",
+                            "codePortion": "HAPPY"
+                        },
+                        {
+                            "name": "Img04",
+                            "codePortion": "SMILE"
+                        },
+                        {
+                            "name": "Img05",
+                            "codePortion": "SAD"
+                        },
+                        {
+                            "name": "Img06",
+                            "codePortion": "CONFUSED"
+                        },
+                        {
+                            "name": "Img07",
+                            "codePortion": "ANGRY"
+                        },
+                        {
+                            "name": "Img08",
+                            "codePortion": "ASLEEP"
+                        },
+                        {
+                            "name": "Img09",
+                            "codePortion": "SURPRISED"
+                        },
+                        {
+                            "name": "Img10",
+                            "codePortion": "SILLY"
+                        },
+                        {
+                            "name": "Img11",
+                            "codePortion": "FABULOUS"
+                        },
+                        {
+                            "name": "Img12",
+                            "codePortion": "MEH"
+                        },
+                        {
+                            "name": "Img13",
+                            "codePortion": "YES"
+                        },
+                        {
+                            "name": "Img14",
+                            "codePortion": "NO"
+                        },
+                        {
+                            "name": "Img15",
+                            "codePortion": "CLOCK12"
+                        },
+                        {
+                            "name": "Img16",
+                            "codePortion": "CLOCK11"
+                        },
+                        {
+                            "name": "Img17",
+                            "codePortion": "CLOCK10"
+                        },
+                        {
+                            "name": "Img18",
+                            "codePortion": "CLOCK9"
+                        },
+                        {
+                            "name": "Img19",
+                            "codePortion": "CLOCK8"
+                        },
+                        {
+                            "name": "Img20",
+                            "codePortion": "CLOCK7"
+                        },
+                        {
+                            "name": "Img21",
+                            "codePortion": "CLOCK6"
+                        },
+                        {
+                            "name": "Img22",
+                            "codePortion": "CLOCK5"
+                        },
+                        {
+                            "name": "Img23",
+                            "codePortion": "CLOCK4"
+                        },
+                        {
+                            "name": "Img24",
+                            "codePortion": "CLOCK3"
+                        },
+                        {
+                            "name": "Img25",
+                            "codePortion": "CLOCK2"
+                        },
+                        {
+                            "name": "Img26",
+                            "codePortion": "CLOCK1"
+                        },
+                        {
+                            "name": "Img27",
+                            "codePortion": "ARROW_N"
+                        },
+                        {
+                            "name": "Img28",
+                            "codePortion": "ARROW_NE"
+                        },
+                        {
+                            "name": "Img29",
+                            "codePortion": "ARROW_E"
+                        },
+                        {
+                            "name": "Img30",
+                            "codePortion": "ARROW_SE"
+                        },
+                        {
+                            "name": "Img31",
+                            "codePortion": "ARROW_S"
+                        },
+                        {
+                            "name": "Img32",
+                            "codePortion": "ARROW_SW"
+                        },
+                        {
+                            "name": "Img33",
+                            "codePortion": "ARROW_W"
+                        },
+                        {
+                            "name": "Img34",
+                            "codePortion": "ARROW_NW"
+                        },
+                        {
+                            "name": "Img35",
+                            "codePortion": "TRIANGLE"
+                        },
+                        {
+                            "name": "Img36",
+                            "codePortion": "TRIANGLE_LEFT"
+                        },
+                        {
+                            "name": "Img37",
+                            "codePortion": "CHESSBOARD"
+                        },
+                        {
+                            "name": "Img38",
+                            "codePortion": "DIAMOND"
+                        },
+                        {
+                            "name": "Img39",
+                            "codePortion": "DIAMOND_SMALL"
+                        },
+                        {
+                            "name": "Img40",
+                            "codePortion": "SQUARE"
+                        },
+                        {
+                            "name": "Img41",
+                            "codePortion": "SQUARE_SMALL"
+                        },
+                        {
+                            "name": "Img42",
+                            "codePortion": "RABBIT"
+                        },
+                        {
+                            "name": "Img43",
+                            "codePortion": "COW"
+                        },
+                        {
+                            "name": "Img44",
+                            "codePortion": "MUSIC_CROTCHET"
+                        },
+                        {
+                            "name": "Img45",
+                            "codePortion": "MUSIC_QUAVER"
+                        },
+                        {
+                            "name": "Img46",
+                            "codePortion": "MUSIC_QUAVERS"
+                        },
+                        {
+                            "name": "Img47",
+                            "codePortion": "PITCHFORK"
+                        },
+                        {
+                            "name": "Img48",
+                            "codePortion": "XMAS"
+                        },
+                        {
+                            "name": "Img49",
+                            "codePortion": "PACMAN"
+                        },
+                        {
+                            "name": "Img50",
+                            "codePortion": "TARGET"
+                        },
+                        {
+                            "name": "Img51",
+                            "codePortion": "TSHIRT"
+                        },
+                        {
+                            "name": "Img52",
+                            "codePortion": "ROLLERSKATE"
+                        },
+                        {
+                            "name": "Img53",
+                            "codePortion": "DUCK"
+                        },
+                        {
+                            "name": "Img54",
+                            "codePortion": "HOUSE"
+                        },
+                        {
+                            "name": "Img55",
+                            "codePortion": "TORTOISE"
+                        },
+                        {
+                            "name": "Img56",
+                            "codePortion": "BUTTERFLY"
+                        },
+                        {
+                            "name": "Img57",
+                            "codePortion": "STICKFIGURE"
+                        },
+                        {
+                            "name": "Img58",
+                            "codePortion": "GHOST"
+                        },
+                        {
+                            "name": "Img59",
+                            "codePortion": "SWORD"
+                        },
+                        {
+                            "name": "Img60",
+                            "codePortion": "GIRAFFE"
+                        },
+                        {
+                            "name": "Img61",
+                            "codePortion": "SKULL"
+                        },
+                        {
+                            "name": "Img62",
+                            "codePortion": "UMBRELLA"
+                        },
+                        {
+                            "name": "Img63",
+                            "codePortion": "SNAKE"
+                        },
+                        {
+                            "name": "ImgClocks",
+                            "codePortion": "ALL_CLOCKS"
+                        },
+                        {
+                            "name": "ImgArrows",
+                            "codePortion": "ALL_ARROWS"
+                        }
+                    ]
+                },
+                {
+                    "name": "ImgNew",
+                    "codePortion": "",
+                    "children": [
+                        {
+                            "name": "ImgStr",
+                            "codePortion": "Image(value)"
+                        },
+                        {
+                            "name": "ImgParam",
+                            "codePortion": "Image(width, height, buffer)"
+                        }
+                    ]
+                },
+                {
+                    "name": "ImgEx",
+                    "codePortion": "img.",
+                    "children": [
+                        {
+                            "name": "ImgW",
+                            "codePortion": "width()"
+                        },
+                        {
+                            "name": "ImgH",
+                            "codePortion": "height()"
+                        },
+                        {
+                            "name": "ImgSetPix",
+                            "codePortion": "set_pixel(x, y, value)"
+                        },
+                        {
+                            "name": "ImgGetPix",
+                            "codePortion": "get_pixel(x, y)"
+                        },
+                        {
+                            "name": "ImgCpy",
+                            "codePortion": "copy()"
+                        },
+                        {
+                            "name": "imgInv",
+                            "codePortion": "invert()"
+                        },
+                        {
+                            "name": "ImgLeft",
+                            "codePortion": "shift_left(n)"
+                        },
+                        {
+                            "name": "ImgRight",
+                            "codePortion": "shift_right(n)"
+                        },
+                        {
+                            "name": "ImgUp",
+                            "codePortion": "shift_up(n)"
+                        },
+                        {
+                            "name": "imgDown",
+                            "codePortion": "shift_down(n)"
+                        },
+                        {
+                            "name": "ImgCrop",
+                            "codePortion": "crop(x, y, w, h)"
+                        },
+                        {
+                            "name": "ImgFill",
+                            "codePortion": "fill(value)"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "button",
+            "codePortion": "button_a.",
+            "children": [
+                {
+                    "name": "buttonIsPress",
+                    "codePortion": "is_pressed()"
+                },
+                {
+                    "name": "buttonWasPress",
+                    "codePortion": "was_pressed()"
+                },
+                {
+                    "name": "buttonGetPress",
+                    "codePortion": "get_presses()"
+                }
+            ]
+        },
+        {
+            "name": "sounds",
+            "codePortion": "Sound.",
+            "version": 2,
+            "children": [
+                {
+                    "name": "sound01",
+                    "codePortion": "GIGGLE"
+                },
+                {
+                    "name": "sound02",
+                    "codePortion": "HAPPY"
+                },
+                {
+                    "name": "sound03",
+                    "codePortion": "HELLO"
+                },
+                {
+                    "name": "sound04",
+                    "codePortion": "MYSTERIOUS"
+                },
+                {
+                    "name": "sound05",
+                    "codePortion": "SAD"
+                },
+                {
+                    "name": "sound06",
+                    "codePortion": "SLIDE"
+                },
+                {
+                    "name": "sound07",
+                    "codePortion": "SOARING"
+                },
+                {
+                    "name": "sound08",
+                    "codePortion": "SPRING"
+                },
+                {
+                    "name": "sound09",
+                    "codePortion": "TWINKLE"
+                },
+                {
+                    "name": "sound10",
+                    "codePortion": "YAWN"
+                }
+            ]
+        },
+        {
+            "name": "audio",
+            "codePortion": "audio.",
+            "children": [
+                {
+                    "name": "audioPlay",
+                    "codePortion": "play(source)",
+                    "extraCodePortion": "play(source, wait=True, pin=pin0, return_pin=None)"
+                },
+                {
+                    "name": "audioFrame",
+                    "codePortion": "AudioFrame"
+                }
+            ]
+        },
+        {
+            "name": "acc",
+            "codePortion": "accelerometer.",
+            "children": [
+                {
+                    "name": "accGest",
+                    "codePortion": "current_gesture()"
+                },
+                {
+                    "name": "accXYZ",
+                    "codePortion": "get_values()"
+                },
+                {
+                    "name": "accX",
+                    "codePortion": "get_x()"
+                },
+                {
+                    "name": "accY",
+                    "codePortion": "get_y()"
+                },
+                {
+                    "name": "accZ",
+                    "codePortion": "get_z()"
+                }
+            ]
+        },
+        {
+            "name": "comp",
+            "codePortion": "compass.",
+            "children": [
+                {
+                    "name": "compHead",
+                    "codePortion": "heading()"
+                },
+                {
+                    "name": "compIsCalib",
+                    "codePortion": "is_calibrated()"
+                },
+                {
+                    "name": "compCalib",
+                    "codePortion": "calibrate()"
+                },
+                {
+                    "name": "compClear",
+                    "codePortion": "clear_calibration()"
+                },
+                {
+                    "name": "compGetX",
+                    "codePortion": "get_x()"
+                },
+                {
+                    "name": "compGetY",
+                    "codePortion": "get_y()"
+                },
+                {
+                    "name": "compGetZ",
+                    "codePortion": "get_z()"
+                },
+                {
+                    "name": "compGetField",
+                    "codePortion": "get_field_strength()"
+                }
+            ]
+        },
+        {
+            "name": "music",
+            "codePortion": "music.",
+            "children": [
+                {
+                    "name": "musicBuiltin",
+                    "codePortion": "",
+                    "children": [
+                        {
+                            "name": "music1",
+                            "codePortion": "DADADADUM"
+                        },
+                        {
+                            "name": "music2",
+                            "codePortion": "ENTERTAINER"
+                        },
+                        {
+                            "name": "music3",
+                            "codePortion": "PRELUDE"
+                        },
+                        {
+                            "name": "music4",
+                            "codePortion": "ODE"
+                        },
+                        {
+                            "name": "music5",
+                            "codePortion": "NYAN"
+                        },
+                        {
+                            "name": "music6",
+                            "codePortion": "RINGTONE"
+                        },
+                        {
+                            "name": "music7",
+                            "codePortion": "FUNK"
+                        },
+                        {
+                            "name": "music8",
+                            "codePortion": "BLUES"
+                        },
+                        {
+                            "name": "music9",
+                            "codePortion": "BIRTHDAY"
+                        },
+                        {
+                            "name": "music10",
+                            "codePortion": "WEDDING"
+                        },
+                        {
+                            "name": "music11",
+                            "codePortion": "FUNERAL"
+                        },
+                        {
+                            "name": "music12",
+                            "codePortion": "PUNCHLINE"
+                        },
+                        {
+                            "name": "music13",
+                            "codePortion": "PYTHON"
+                        },
+                        {
+                            "name": "music14",
+                            "codePortion": "BADDY"
+                        },
+                        {
+                            "name": "music15",
+                            "codePortion": "CHASE"
+                        },
+                        {
+                            "name": "music16",
+                            "codePortion": "BA_DING"
+                        },
+                        {
+                            "name": "music17",
+                            "codePortion": "WAWAWAWAA"
+                        },
+                        {
+                            "name": "music18",
+                            "codePortion": "JUMP_UP"
+                        },
+                        {
+                            "name": "music19",
+                            "codePortion": "JUMP_DOWN"
+                        },
+                        {
+                            "name": "music20",
+                            "codePortion": "POWER_UP"
+                        },
+                        {
+                            "name": "music21",
+                            "codePortion": "POWER_UP"
+                        }
+                    ]
+                },
+                {
+                    "name": "musicPlay",
+                    "codePortion": "play(music)",
+                    "extraCodePortion": "play(music, pin=microbit.pin0, wait=True, loop=False)"
+                },
+                {
+                    "name": "musicSetTempo",
+                    "codePortion": "set_tempo(ticks=4, bpm=120)"
+                },
+                {
+                    "name": "musicGetTempo",
+                    "codePortion": "get_tempo()"
+                },
+                {
+                    "name": "musicStop",
+                    "codePortion": "stop()",
+                    "extraCodePortion": "stop(pin=microbit.pin0)"
+                },
+                {
+                    "name": "musicPitch",
+                    "codePortion": "pitch(frequency)",
+                    "extraCodePortion": "pitch(frequency, duration=-1, pin=microbit.pin0, wait=True)"
+                },
+                {
+                    "name": "musicReset",
+                    "codePortion": "reset()"
+                }
+            ]
+        },
+        {
+            "name": "mic",
+            "codePortion": "microphone.",
+            "version": 2,
+            "children": [
+                {
+                    "name": "currSoundEvent",
+                    "codePortion": "current_event()"
+                },
+                {
+                    "name": "wasSoundEvent",
+                    "codePortion": "was_event(event)"
+                },
+                {
+                    "name": "isSoundEvent",
+                    "codePortion": "is_event(event)"
+                },
+                {
+                    "name": "soundEvents",
+                    "codePortion": "get_events()"
+                },
+                {
+                    "name": "soundEvThres",
+                    "codePortion": "set_threshold(event, value)"
+                },
+                {
+                    "name": "soundLevel",
+                    "codePortion": "sound_level()"
+                }
+            ]
+        },
+        {
+            "name": "speaker",
+            "codePortion": "speaker.",
+            "version": 2,
+            "children": [
+                {
+                    "name": "speakerOn",
+                    "codePortion": "on()"
+                },
+                {
+                    "name": "speakerOff",
+                    "codePortion": "off()"
+                }
+            ]
+        },
+        {
+            "name": "pin",
+            "codePortion": "",
+            "children": [
+                {
+                    "name": "pinDig",
+                    "codePortion": "pin5.",
+                    "children": [
+                        {
+                            "name": "pinDigR",
+                            "codePortion": "read_digital()"
+                        },
+                        {
+                            "name": "pintDigW",
+                            "codePortion": "write_digital(value)"
+                        }
+                    ]
+                },
+                {
+                    "name": "pinAna",
+                    "codePortion": "pin3.",
+                    "children": [
+                        {
+                            "name": "pinAnaR",
+                            "codePortion": "read_analog()"
+                        },
+                        {
+                            "name": "pinAnaW",
+                            "codePortion": "write_analog(value)"
+                        },
+                        {
+                            "name": "pinAnaTMls",
+                            "codePortion": "set_analog_period(period)"
+                        },
+                        {
+                            "name": "pinAnaTMcs",
+                            "codePortion": "set_analog_period_microseconds(period)"
+                        },
+                        {
+                            "name": "pinAnaRD",
+                            "codePortion": "read_digital()"
+                        },
+                        {
+                            "name": "pinAnaWD",
+                            "codePortion": "write_digital(value)"
+                        }
+                    ]
+                },
+                {
+                    "name": "pinTou",
+                    "codePortion": "pin0.",
+                    "children": [
+                        {
+                            "name": "pinTouR",
+                            "codePortion": "is_Touched()"
+                        },
+                        {
+                            "name": "pinTouRA",
+                            "codePortion": "read_analog()"
+                        },
+                        {
+                            "name": "pinTouWA",
+                            "codePortion": " write_analog(value)"
+                        },
+                        {
+                            "name": "pinTouTMls",
+                            "codePortion": "set_analog_period(period)"
+                        },
+                        {
+                            "name": "pinTouTMcs",
+                            "codePortion": "set_analog_period_microseconds(period)"
+                        },
+                        {
+                            "name": "pinTouRD",
+                            "codePortion": "read_digital()"
+                        },
+                        {
+                            "name": "pintTouWD",
+                            "codePortion": "write_digital()"
+                        }
+                    ]
+                }
+            ]
+        },
+        {
+            "name": "speech",
+            "codePortion": "speech.",
+            "children": [
+                {
+                    "name": "speechSay",
+                    "codePortion": "say(words)",
+                    "extraCodePortion": "say(words, pitch=64, speed=72, mouth=128, throat=128,pin=pin0)"
+                },
+                {
+                    "name": "speechSing",
+                    "codePortion": "sing(phonemes)",
+                    "extraCodePortion": "sing(phonemes, pitch=64, speed=72, mouth=128, throat=128,pin=pin0)"
+                },
+                {
+                    "name": "speechT",
+                    "codePortion": "translate(words)"
+                },
+                {
+                    "name": "speechP",
+                    "codePortion": "pronounce(phonemes)",
+                    "extraCodePortion": "pronounce(phonemes, pitch=64, speed=72, mouth=128, throat=128,pin=pin0)"
+                }
+            ]
+        },
+        {
+            "name": "microbit",
+            "codePortion": "",
+            "children": [
+                {
+                    "name": "setVol",
+                    "codePortion": "set_volume(n)",
+                    "version": 2
+                },
+                {
+                    "name": "temp",
+                    "codePortion": "temperature()"
+                },
+                {
+                    "name": "reset",
+                    "codePortion": "reset()"
+                },
+                {
+                    "name": "runned",
+                    "codePortion": "running_time()"
+                },
+                {
+                    "name": "sleep",
+                    "codePortion": "sleep(n)"
+                },
+                {
+                    "name": "panic",
+                    "codePortion": "panic(n)"
+                }
+            ]
+        }
     ]
 }

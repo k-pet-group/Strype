@@ -34,7 +34,7 @@ export interface AcResultType {
     // hide means we should hide this parameter (e.g. self, type) from all completion
     params?: {name: string, defaultValue?: string, hide?: boolean}[];
     signature?: Signature;
-    // The version.  Only used on microbit to distinguish v2 and v3:
+    // The version.  Only used on microbit to distinguish v1 and v2:
     version: number;
 }
 
@@ -52,3 +52,9 @@ export interface IndexedAcResultWithCategory {
 export interface AcResultsWithCategory {
     [category: string]: AcResultType[];
 }
+
+/* IFTRUE_isMicrobit */
+export interface AcMicrobitResultType extends AcResultType {
+    mbVarType?: string;
+}
+/* FITRUE_isMicrobit */

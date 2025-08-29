@@ -102,6 +102,7 @@ import { mapStores } from "pinia";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { isMacOSPlatform } from "@/helpers/common";
+import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 /* IFTRUE_isPython */
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
@@ -514,9 +515,12 @@ export default Vue.extend({
                             }
                         }
                         else if(event.key == " " && this.appStore.selectedFrames.length == 0){
-                            // If ctrl/meta + space is activated on caret, we add a new functional call frame and trigger the a/c
-                            this.appStore.addFrameWithCommand(this.addFrameCommands[eventKeyLowCase][0].type);
-                            this.$nextTick(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true})));
+                            const currentStrypeLocation = findCurrentStrypeLocation();
+                            if(currentStrypeLocation == STRYPE_LOCATION.MAIN_CODE_SECTION || currentStrypeLocation == STRYPE_LOCATION.IN_FUNCDEF){
+                                // If ctrl/meta + space is activated on caret (in a function/class definition or in the main section), we add a new functional call frame and trigger the a/c
+                                this.appStore.addFrameWithCommand(this.addFrameCommands[eventKeyLowCase][0].type);
+                                this.$nextTick(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true})));
+                            }
                         }
                     }
                     /* IFTRUE_isPython */

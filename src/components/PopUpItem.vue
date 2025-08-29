@@ -12,7 +12,7 @@
         <!-- One or the other: -->
         <span v-if="itemHTML" v-html="itemHTML" @mousedown.prevent.stop @mouseup.self="$emit('acItemClicked',id)"></span>
         <span v-else @mousedown.prevent.stop @mouseup.self="$emit('acItemClicked',id)">{{ item }}</span>
-        <span v-if="version > 1" class="api-item-version" :title="$t('apidiscovery.v2InfoMsg')">v{{version}}</span>
+        <span v-if="version > 1" class="api-item-version ac-item-version" :title="$t('apidiscovery.v2InfoMsg')">v{{version}}</span>
     </li>
 </template>
 
@@ -71,6 +71,10 @@ export default Vue.extend({
 .ac-indent-wrapped {
     padding-left: 20px !important;
     text-indent: -15px;
+}
+
+.ac-item-version {
+    float: none !important;
 }
 </style>
 

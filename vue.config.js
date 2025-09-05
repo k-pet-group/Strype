@@ -18,8 +18,8 @@ const configureWebpackExtraProps =
                 after: {                    
                     include: (process.env.npm_config_microbit)
                         ? ["./dist/demos/console", "./dist/demos/graphics", "./dist/demos/turtle", "./dist/graphics_images", "./dist/sounds", "./dist/public_libraries/strype", "./dist/pyi"]
-                        : ["./dist/demos/microbit", "./dist/public/public_libraries/microbit"],
-                    trash: true,
+                        : ["./dist/demos/microbit", "./dist/public_libraries/microbit"],
+                    trash: false,
                 },
             }),
         ],

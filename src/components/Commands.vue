@@ -79,10 +79,10 @@
                 </div>
             </div>
             <div class="commands-container">    
-                <iframe id="mbSimulatorIframe" src="https://python-simulator.usermbit.org/v/0.1/simulator.html?color=%23bbc6b6" frameborder="0" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe>
+                <iframe id="mbSimulatorIframe" src="https://python-simulator.usermbit.org/v/0.1/simulator.html?color=%2300FF00" frameborder="0" scrolling="no" sandbox="allow-scripts allow-same-origin"></iframe>
                 <br>
-                <button type="button" @click="stopMBSimulator" v-t="'buttonLabel.stopMBSimulator'" :class="{'btn btn-secondary cmd-button': true,  hidden: !isMBSimulatorRunning}"/>
                 <button type="button" @click="runToMicrobit" v-t="'buttonLabel.runOnMicrobit'" class="btn btn-secondary cmd-button"/>
+                <button v-if="isMBSimulatorRunning" type="button" @click="stopMBSimulator" v-t="'buttonLabel.stopMBSimulator'" class="btn btn-secondary cmd-button stop-mb-sim-btn "/>
             </div>
         </div>
         <SimpleMsgModalDlg :dlgId="startMBSimulatorlDlgId" />
@@ -1028,9 +1028,11 @@ export default Vue.extend({
 }
 
 .commands-container > button:first-of-type{
-    display: inline-block;    
     margin-right: 5px;
-    background-color: red !important;
+}
+
+.stop-mb-sim-btn {
+   background-color: red !important;
 }
 
 #mbSimulatorIframe {      

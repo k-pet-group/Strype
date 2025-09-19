@@ -20,6 +20,7 @@ import AppComponent from "@/App.vue";
 import PEAComponent from "@/components/PythonExecutionArea.vue";
 import CommandsComponent from "@/components/Commands.vue";
 import { actOnTurtleImport, getPEAComponentRefId } from "@/helpers/editor";
+import emptyState from "@/store/initial-states/empty-state";
 /* FITRUE_isPython */
 
 function getState(): StateAppObject {
@@ -2440,8 +2441,9 @@ export const useStore = defineStore("app", {
                     // We need to check the JSON string is:
                     // 1) a valid JSON description of an object --> easy, we can just try to convert
                     // 2) an object that matches the state (checksum checker)
-                    // 3) contains frame type names that are valid, and if so, replace the type names by the equivalent JS object (we replace the objects by the type name string to save space)    
-                    // 4) if the object is valid, we just verify the version is correct (and attempt loading) + for newer versions (> 1) make sure the target Strype "platform" is the same as the source's
+                    // 3) contains frame type names that are valid, and if so, replace the type names by the equivalent JS object (we replace the objects by the type name string to save space)
+                    // 4) if the project predates having project documentation, we add this frame in.
+                    // 5) if the object is valid, we just verify the version is correct (and attempt loading) + for newer versions (> 1) make sure the target Strype "platform" is the same as the source's
                     try {
                     //Check 1)
                         newStateObj = JSON.parse(payload.stateJSONStr);
@@ -2464,7 +2466,13 @@ export const useStore = defineStore("app", {
                                     errorDetailMessage = i18n.t("errorMessage.stateWrongPlatform") as string;
                                 }
                                 else{
-                                // Check 4) as 3) is validated
+                                // Check 4) and 5) as 3) is validated
+                                    // If missing project doc frame, copy it in from the empty state and add it as first root child:
+                                    if (!newStateObj["frameObjects"]["-10"]) {
+                                        newStateObj["frameObjects"]["-10"] = emptyState["-10"];
+                                        newStateObj["frameObjects"]["0"]["childrenIds"].unshift(-10);
+                                    }
+                                    
                                     if(!restoreSavedStateFrameTypes(newStateObj)){
                                     // There was something wrong with the type name (it should not happen, but better check anyway)
                                         isStateJSONStrValid = false;

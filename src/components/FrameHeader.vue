@@ -1,5 +1,5 @@
 <template>
-    <div tabindex="-1" @focus="onFocus(true)" @blur="onFocus(false)" :style="'outline: none;' + (frameType == 'projectDocFrameType' ? 'padding:10px;' : '')">
+    <div tabindex="-1" @focus="onFocus(true)" @blur="onFocus(false)" :style="'outline: none;' + (frameType == projectDocFrameType ? 'padding:10px;' : '')">
         <div :class="'frame-header-div-line' + (groupIndex > 0 ? ' frame-header-later-line' : '')"
              v-for="(group, groupIndex) in splitLabels"
              :key="groupIndex">
@@ -90,6 +90,10 @@ export default Vue.extend({
         scssVars() {
             // just to be able to use in template
             return scssVars;
+        },
+
+        projectDocFrameType() {
+            return AllFrameTypesIdentifier.projectDocumentation;
         },
         
         splitLabels() {

@@ -19,9 +19,12 @@
             <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
                 Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
             <vue-context :id="getFrameContextMenuUID" ref="menu" v-show="allowContextMenu" @open="handleContextMenuOpened" @close="handleContextMenuClosed">
-                <li v-for="menuItem, index in frameContextMenuItems" :key="`frameContextMenuItem_${frameId}_${index}`" :action-name="menuItem.actionName">
+                <li v-for="menuItem, index in frameContextMenuItems" :key="`frameContextMenuItem_${frameId}_${index}`" :action-name="menuItem.actionName" class="context-menu-item">
                     <hr v-if="menuItem.type === 'divider'" />
-                    <a v-else @click.stop="menuItem.method();closeContextMenu();" @mouseover="handleContextMenuHover">{{menuItem.name}}</a>
+                    <a v-else @click.stop="menuItem.method();closeContextMenu();" @mouseover="handleContextMenuHover">
+                        <span>{{menuItem.name}}</span>
+                        <span class="context-menu-item-shortcut" v-if="menuItem.shortcut">{{typeof menuItem.shortcut === "string" ? menuItem.shortcut : menuItem.shortcut[isMacOSPlatform() ? 1 : 0]}}</span>
+                    </a>
                 </li>
             </vue-context>
 
@@ -99,7 +102,7 @@ import { BPopover } from "bootstrap-vue";
 import html2canvas from "html2canvas";
 import { saveAs } from "file-saver";
 import scssVars from "@/assets/style/_export.module.scss";
-import { getDateTimeFormatted } from "@/helpers/common";
+import {getDateTimeFormatted, isMacOSPlatform} from "@/helpers/common";
 
 //////////////////////
 //     Component    //
@@ -142,7 +145,7 @@ export default Vue.extend({
         return {
             scssVars, // just to be able to use in template
             // Prepare an empty version of the menu: it will be updated as required in handleClick()
-            frameContextMenuItems: [] as {name: string; method: VoidFunction; type?: "divider", actionName?: FrameContextMenuActionName}[],
+            frameContextMenuItems: [] as {name: string; method: VoidFunction; type?: "divider", actionName?: FrameContextMenuActionName, shortcut?: string | string[]}[],
             // Flag to indicate a frame is selected via the context menu (differs from a user selection)
             contextMenuEnforcedSelect: false,
             // And an associated observer used to check when the menu made hidden to change the flag above
@@ -375,6 +378,7 @@ export default Vue.extend({
     },
 
     methods: {
+        isMacOSPlatform,
         onKeyDown(event: KeyboardEvent) {
             // Cutting/copying by shortcut is only available for a frame selection*, and if the user's code isn't being executed.
             // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
@@ -463,9 +467,10 @@ export default Vue.extend({
                 return;
             }
 
+            // If there's a windows and Mac shortcut they are put in an array:
             this.frameContextMenuItems = [
-                {name: this.$i18n.t("contextMenu.cut") as string, method: this.cut, actionName: FrameContextMenuActionName.cut},
-                {name: this.$i18n.t("contextMenu.copy") as string, method: this.copy, actionName: FrameContextMenuActionName.copy},
+                {name: this.$i18n.t("contextMenu.cut") as string, method: this.cut, actionName: FrameContextMenuActionName.cut, shortcut: ["Ctrl-X", "⌘X"]},
+                {name: this.$i18n.t("contextMenu.copy") as string, method: this.copy, actionName: FrameContextMenuActionName.copy, shortcut: ["Ctrl-C", "⌘C"]},
                 {name: this.$i18n.t("contextMenu.downloadAsImg") as string, method: this.downloadAsImg},
                 {name: this.$i18n.t("contextMenu.duplicate") as string, method: this.duplicate},
                 {name: "", method: () => {}, type: "divider"},
@@ -474,7 +479,7 @@ export default Vue.extend({
                 {name: "", method: () => {}, type: "divider"},
                 {name: this.$i18n.t("contextMenu.disable") as string, method: this.disable},
                 {name: "", method: () => {}, type: "divider"},
-                {name: this.$i18n.t("contextMenu.delete") as string, method: this.delete, actionName: FrameContextMenuActionName.delete},
+                {name: this.$i18n.t("contextMenu.delete") as string, method: this.delete, actionName: FrameContextMenuActionName.delete, shortcut: "Delete"},
                 {name: this.$i18n.t("contextMenu.deleteOuter") as string, method: this.deleteOuter}];
 
             // Not all frames should be duplicated (e.g. Else)
@@ -1250,5 +1255,16 @@ export default Vue.extend({
 .selectedTopBottom{
     border-top: 3px solid #000000 !important;
     border-bottom: 3px solid #000000 !important;
+}
+
+.context-menu-item > a {
+    display: flex !important;
+    align-items: baseline;
+}
+
+.context-menu-item-shortcut {
+    margin-left: auto;
+    font-size: 70%;
+    color: grey;
 }
 </style>

@@ -348,7 +348,10 @@ export default Vue.extend({
 }
 
 .static-caret-container{
-    height: $caret-height-value + px;
+    // Put cursor in middle of the reserved gap, and still add height (i.e. use padding not height) to avoid later 
+    // sections moving up and down by the caret height as the caret moves in and out of a reserved gap.
+    padding-top: ($caret-height-value/2) + px !important;
+    padding-bottom: ($caret-height-value/2) + px !important;
 }
 
 .#{$strype-classname-caret-container}:not(.#{$strype-classname-dragging-frame}):hover{

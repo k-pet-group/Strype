@@ -193,11 +193,11 @@ export const useStore = defineStore("app", {
 
             strypeProjectLocation: undefined as ProjectLocation, // the last location where the strype project has been saved OR opened
 
-            strypeProjectLocationAlias: "", // for Drive, the name of the location (strypeProjectLocation saves the ID, not the name)
+            strypeProjectLocationAlias: "", // for cloud drives using a folder ID, this saves the name of the location (strypeProjectLocation saves the ID, not the name)
 
             isProjectUnsaved: true, // flag indicating if we have notified changes that haven't been saved
 
-            currentGoogleDriveSaveFileId: undefined as undefined|string,
+            currentCloudSaveFileId: undefined as undefined|string,
 
             projectLastSaveDate: -1, // Date ticks
 

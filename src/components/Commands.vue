@@ -8,10 +8,10 @@
                     <div :class="scssVars.strypeProjectNameContainerClassName">
                         <span class="project-name">{{projectName}}</span>
                         <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
-                            <img v-if="isProjectFromGoogleDrive" :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive" class="project-target-logo"/> 
-                            <img v-else-if="isProjectFromFS" :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')" class="project-target-logo"/> 
-                            <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag" v-t="'appMessage.savedGDrive'" />
-                            <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifGDrive'" :class="{'modifed-label-span': isProjectNotSourced}" />                     
+                            <img v-if="isProjectFromCloudDrive" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
+                            <img v-else-if="isProjectFromFS" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
+                            <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag" v-t="'appMessage.savedCloudFile'" />
+                            <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifCloudFile'" :class="{'modifed-label-span': isProjectNotSourced}" />                     
                         </div>
                     </div>     
                     <div @mousedown.prevent.stop @mouseup.prevent.stop>
@@ -92,7 +92,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope, getEditorMiddleUID, getFrameUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCloudDriveHandlerComponentRefId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectionScope,getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesFuncDefScope, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -102,6 +102,9 @@ import { mapStores } from "pinia";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { isMacOSPlatform } from "@/helpers/common";
+import fsIcon from "@/assets/images/FSicon.png";
+import gdIcon from "@/assets/images/logoGDrive.png";
+import odIcon from "@/assets/images/logoOneDrive.svg";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 /* IFTRUE_isPython */
 import {Splitpanes, Pane, PaneData} from "splitpanes";
@@ -111,6 +114,7 @@ import {getPEAConsoleId, getPEAGraphicsDivId, getPEATabContentContainerDivId, ge
 /* IFTRUE_isMicrobit */
 import APIDiscovery from "@/components/APIDiscovery.vue";
 import { flash } from "@/helpers/webUSB";
+import CloudDriveHandlerComponent from "./CloudDriveHandler.vue";
 import { downloadHex, getPythonContent } from "@/helpers/download";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 /* FITRUE_isMicrobit */
@@ -173,8 +177,8 @@ export default Vue.extend({
             return (this.appStore.isEditorContentModified);
         },
 
-        isProjectFromGoogleDrive(): boolean {
-            return this.appStore.syncTarget == StrypeSyncTarget.gd;
+        isProjectFromCloudDrive(): boolean {
+            return this.appStore.syncTarget != StrypeSyncTarget.fs && this.appStore.syncTarget != StrypeSyncTarget.none;
         },
 
         isProjectFromFS(): boolean {
@@ -183,6 +187,33 @@ export default Vue.extend({
         
         isProjectNotSourced(): boolean {
             return this.appStore.syncTarget == StrypeSyncTarget.none;
+        },
+
+        syncedTargetLogo(): string {
+            switch(this.appStore.syncTarget){
+            case StrypeSyncTarget.fs:
+                return fsIcon;                
+            case StrypeSyncTarget.gd:
+                return gdIcon;
+            case StrypeSyncTarget.od:
+                return odIcon;
+            default:
+                return "";
+            }
+        },
+
+        syncedTargetName(): string {
+            const cloudDriveHandlerComponent =  ((this.$root.$children[0].$refs[getMenuLeftPaneUID()] as Vue).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>);
+            switch(this.appStore.syncTarget){
+            case StrypeSyncTarget.fs:
+                return this.$t("appMessage.targetFS") as string;
+            case StrypeSyncTarget.gd:
+                return cloudDriveHandlerComponent.getDriveName();
+            case StrypeSyncTarget.od:
+                return cloudDriveHandlerComponent.getDriveName();
+            default:
+                return "";
+            }
         },
         
         /* IFTRUE_isPython */

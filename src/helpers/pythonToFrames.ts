@@ -3,7 +3,7 @@ import {useStore} from "@/store/store";
 import {getCaretContainerComponent, getFrameComponent, operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
-import {AppName, AppSPYPrefix} from "@/main";
+import {AppName, AppSPYFullPrefix} from "@/main";
 import {toUnicodeEscapes} from "@/parser/parser";
 import FrameContainer from "@/components/FrameContainer.vue";
 
@@ -283,7 +283,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
         // Look for # with only space before them, or a # with no quote after (if we are not in the context of a multlines comment):
         const match = /^( *)#(.*)$/.exec(codeLines[i]) ?? /^([^#]*)#([^"]+)$/.exec(codeLines[i]);
         if (match && !isParsingTripleQuotesStr) {
-            const directiveMatch = new RegExp("^ *#" + escapeRegExp(AppSPYPrefix) + "([^:]+):(.*)$").exec(codeLines[i]);
+            const directiveMatch = new RegExp("^ *" + escapeRegExp(AppSPYFullPrefix) + "([^:]+):(.*)$").exec(codeLines[i]);
             if (directiveMatch) {
                 // By default, directives are just added to the map:
                 // Note we trim() keys but not values; space may well be important in values:
@@ -1237,7 +1237,7 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
     //  - we're loading a .spy with section headings, or
     //  - we're loading a .py where we must infer it.
     // Easy way to find out: check if the first line is a .spy header:
-    if (allLines[0].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *" + AppName + " *:"))) {
+    if (allLines[0].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *" + AppName + " *:"))) {
         // It's a .spy!  Easy street, let's find the headings:
         let line = 1;
         const r = {
@@ -1251,9 +1251,9 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
             headers: {} as Record<string, string>,
             format: "spy" as "py" | "spy",
         };
-        while (line < allLines.length && !allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *Section *:Imports"))) {
+        while (line < allLines.length && !allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:Imports"))) {
             // Everything here should be metadata, add it to headers:
-            const m = allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + "([^:]+):(.*)"));
+            const m = allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + "([^:]+):(.*)"));
             if (m) {
                 // Note: we only trim left-hand side, right-hand side is as-is:
                 r.headers[m[1].trim()] = m[2];
@@ -1265,21 +1265,21 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
         }
         line += 1;
         const firstImportLine = line;
-        while (line < allLines.length && !allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *Section *:Definitions"))) {
+        while (line < allLines.length && !allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:Definitions"))) {
             r.imports.push(allLines[line]);
             r.importsMapping[line - firstImportLine] = line;
             line += 1;
         }
         line += 1;
         const firstDefsLine = line;
-        while (line < allLines.length && !allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *Section *:Main"))) {
+        while (line < allLines.length && !allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:Main"))) {
             r.defs.push(allLines[line]);
             r.defsMapping[line - firstDefsLine] = line;
             line += 1;
         }
         line += 1;
         const firstMainLine = line;
-        while (line < allLines.length && !allLines[line].match(new RegExp("^#" + escapeRegExp(AppSPYPrefix) + " *Section *:Main"))) {
+        while (line < allLines.length && !allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:Main"))) {
             r.main.push(allLines[line]);
             r.mainMapping[line - firstMainLine] = line;
             line += 1;

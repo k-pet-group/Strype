@@ -481,8 +481,8 @@ export function getImportFileInputId(): string {
     return "importFileInput";
 }
 
-export function getGoogleDriveComponentRefId(): string {
-    return "googleDriveComponent";
+export function getCloudDriveHandlerComponentRefId(): string {
+    return "cloudDriveHandlerComponent";
 }
 
 export function getLoadFromFSStrypeButtonId(): string {

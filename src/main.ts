@@ -28,6 +28,7 @@ export const AppName = "Strype";
 // The prefix to use in comments directly after the "#" to indicate a Strype
 // special directive or metadata:
 export const AppSPYPrefix = "(=>";
+export const AppSPYFullPrefix = "#" + AppSPYPrefix;
 let appPlatform = StrypePlatform.standard;
 /* IFTRUE_isMicrobit */
 appPlatform = StrypePlatform.microbit;

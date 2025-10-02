@@ -82,7 +82,7 @@
         <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
             <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
         </ModalDlg>
-        <ModalDlg :dlgId="resyncGDAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
+        <ModalDlg :dlgId="resyncToCloudAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
             <span style="white-space:pre-wrap" v-html="$t('appMessage.resyncToGDAtStartup')"></span>
         </ModalDlg>
         <MediaPreviewPopup ref="mediaPreviewPopup" />
@@ -113,8 +113,9 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition } from "@/types/types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition } from "@/types/types";
+import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
+import { getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
 /* IFTRUE_isPython */
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
@@ -129,7 +130,7 @@ import { cloneDeep } from "lodash";
 import { VueContextConstructor } from "vue-context";
 import { BACKEND_SKULPT_DIV_ID } from "@/autocompletion/ac-skulpt";
 import {pasteMixedPython} from "@/helpers/pythonToFrames";
-import GoogleDrive from "@/components/GoogleDrive.vue";
+import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
 import { BvEvent, BvModalEvent } from "bootstrap-vue";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 import EditImageDlg from "@/components/EditImageDlg.vue";
@@ -271,8 +272,8 @@ export default Vue.extend({
             return getImportDiffVersionModalDlgId();
         },
 
-        resyncGDAtStartupModalDlgId(): string {
-            return "resyncGDAtStartupModalDlg";
+        resyncToCloudAtStartupModalDlgId(): string {
+            return "resyncToCloudAtStartupModalDlg";
         },
 
         getSkulptBackendTurtleDivId(): string {
@@ -323,7 +324,7 @@ export default Vue.extend({
         // Strype locale:
         this.setStrypeLocale();
 
-        projectSaveFunctionsState[0] = {name: "WS", function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
+        projectSaveFunctionsState[0] = {syncTarget: StrypeSyncTarget.ws, function: (reason: SaveRequestReason) => this.autoSaveStateToWebLocalStorage(reason)};
         window.addEventListener("beforeunload", (event) => {
             // No matter the choice the user will make on saving the page, and because it is not straight forward to know what action has been done,
             // we systematically exit any slot being edited to have a state showing the blue caret.
@@ -356,6 +357,9 @@ export default Vue.extend({
                 }, 10000);
                 
             }
+
+            // We clear the session storage as well. This is notably used to clear MSAL authentication data (when using OneDrive).
+            sessionStorage.clear();
         });
 
         // By means of protection against browser crashes or anything that could prevent auto-backup, we do a backup every 2 minutes
@@ -590,56 +594,68 @@ export default Vue.extend({
     mounted() {
         // When the App is ready, we want to either open a project present in the local storage,
         // or open a shared project that is given by the URL (this takes priority over local storage).
-        // If we need to open a shared project, we may need to wait for the Google API (GAPI) to be loaded before doing anything.
+        // If we need to open a shared project, when Google Drive is deteced, we may need to wait for the Google API (GAPI) to be loaded before doing anything.
 
         // Check whether Strype is opening a shared project.
-        // We check the type of sharing (for now it's only Google Drive and generic) and get the retrieve path from the query parameters.
+        // We check the type of sharing (for now it's only a Cloud Drive we support or generic) and get the retrieve path from the query parameters.
         const queryParams = new URLSearchParams(window.location.search);
-        const sharedProjectTarget= queryParams.get(sharedStrypeProjectTargetKey);
+        const sharedProjectTarget= queryParams.get(sharedStrypeProjectTargetKey); // if provided, appears like the numbered value of the SyncTarget enum
         const shareProjectId = queryParams.get(sharedStrypeProjectIdKey);
-        if(shareProjectId && sharedProjectTarget == StrypeSyncTarget.gd.toString()) {
-            // When there is a shared project, we do like if we were opening a Google Drive project BUT we use a special
-            // mode that does not ask for the target selection (which shows with "open" in the menu) and breaks links to Google Drive
-            // (it's only a retrieval of the code)
-            const loadGDSharedProject = () => {
-                (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectTarget = StrypeSyncTarget.gd;
+        // When there is a shared project shared within a Cloud Drive, we do like if we were opening that Cloud Drive project BUT we use a special
+        // mode that does not ask for the target selection (which shows with "open" in the menu) and breaks links to the Cloud Drive
+        // (it's only a retrieval of the code)
+        if(shareProjectId && sharedProjectTarget && isSyncTargetCloudDrive(parseInt(sharedProjectTarget))) {
+            const loadCloudSharedProject = () => {
+                const cloudTarget = parseInt(sharedProjectTarget) as StrypeSyncTarget;
+                (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectTarget = cloudTarget;
                 (this.$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).openSharedProjectId = shareProjectId;
-                // Wait a bit, Google API must have been loaded first.
-                ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>)
-                    ?.getGAPIStatusWhenLoadedOrFailed()
-                    .then((gapiState) =>{
-                        // Only open the project is the GAPI is loaded, and show a message of error if it hasn't.
-                        if(gapiState == GAPIState.loaded){
-                            document.getElementById(getLoadProjectLinkId())?.click();
-                        }
-                        else{
-                            this.finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.GAPIFailed") as string);
-                        }
-                    });
+                const afterAPILoaded = () => {
+                    document.getElementById(getLoadProjectLinkId())?.click();
+                };
+                const cloudDriveHandlerComponent = (this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>;
+                // For Google API, we wait a bit as it must have been loaded first.
+                const specifcDriveComponent = cloudDriveHandlerComponent.getSpecificCloudDriveComponent(cloudTarget);
+                if(cloudTarget == StrypeSyncTarget.gd){                    
+                    cloudDriveHandlerComponent.getCloudAPIStatusWhenLoadedOrFailed(StrypeSyncTarget.gd)
+                        ?.then((gapiState) =>{
+                            // Only open the project is the GAPI is loaded, and show a message of error if it hasn't.
+                            if(gapiState == CloudDriveAPIState.LOADED){
+                                afterAPILoaded();
+                            }
+                            else{
+                                this.finaliseOpenShareProject("errorMessage.retrievedSharedGenericProject", this.$i18n.t("errorMessage.cloudAPIFailed",{apiname: specifcDriveComponent?.apiName}) as string);
+                            }
+                        });
+                }
+                else {
+                    // We don't use a client OneDrive API so we can request the file right away.
+                    afterAPILoaded();
+                }
             };
 
             this.checkLocalStorageHasProject().then(() => {
                 // A project exists in the local storage, we ask the user if they want to keep it (and cancel the load of the shared project)
-                this.confirmResetLSOnShareProjectLoad().then((continueLoadingSharedProject) => (continueLoadingSharedProject) ? loadGDSharedProject() : this.loadLocalStorageProjectOnStart());
+                this.confirmResetLSOnShareProjectLoad().then((continueLoadingSharedProject) => (continueLoadingSharedProject) ? loadCloudSharedProject() : this.loadLocalStorageProjectOnStart());
             },
             // No project in the local storage, we can continue loading the shared project
-            () => loadGDSharedProject());            
-        }
+            () => loadCloudSharedProject());            
+        }        
+        // Generic opening
         else if(shareProjectId && shareProjectId.match(/^https?:\/\/.*$/g) != null){
             // The "fall out" case of a generic share: we don't care about the source target, it is only a URL to get to and retrive the Strype file.
             // We just do a small sanity check that it is a HTTP(S) link.
             // IMPORTANT: it is custom to the source to expose the file as such or not. So the generic share does NOT guarantee we can get the Strype file.
-            // Google Drive will not expose the file directly, so we can *try* to extract the file ID and then get the data with the API (without authentication).
             const loadPublicSharedProject = () => {
                 const googleDrivePublicURLPreamble = "https://drive.google.com/file/d/";
                 const isPublicShareFromGD = shareProjectId.startsWith(googleDrivePublicURLPreamble);
                 let alertMsgKey = "";
                 let alertParams = "";
                 if(isPublicShareFromGD){
+                    // Google Drive will not expose the file directly, so we can *try* to extract the file ID and then get the data with the API (without authentication).
                     // Extract the file ID and attempt a retrieving of the file with the Google Drive API (it waits a bit for the API to be loaded)
                     const sharedFileID = shareProjectId.substring(googleDrivePublicURLPreamble.length).match(/^([^/]+)\/.*$/)?.[1];
-                    ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>)
-                        ?.getPublicSharedProjectContent(sharedFileID??"");
+                    ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>)
+                        ?.getPublicSharedProjectContent(StrypeSyncTarget.gd, sharedFileID??"");
                 
                 }
                 else{
@@ -656,7 +672,7 @@ export default Vue.extend({
                                         stateJSONStr: resp.data,
                                         showMessage: false,
                                     }) :
-                                    this.setStateFromPythonFile(resp.data, filename, 0)
+                                    this.setStateFromPythonFile(resp.data, filename, 0, false)
                                 ).then(() => {
                                     alertMsgKey = "appMessage.retrievedSharedGenericProject";
                                     alertParams = this.appStore.projectName;
@@ -675,7 +691,10 @@ export default Vue.extend({
                         })
                         .catch((error) => {
                             alertMsgKey = "errorMessage.retrievedSharedGenericProject";
-                            alertParams = error;
+                            alertParams = `${error?.message??error.toString()}<br/><br/><b>${this.$i18n.t("appMessage.publicSharedProjectUserDownloadAttempt")}`;
+                            setTimeout(() => {
+                                window.open(shareProjectId, "_blank");
+                            }, 3000);                            
                         })
                         .finally(() => {
                             this.finaliseOpenShareProject(alertMsgKey, alertParams);
@@ -712,7 +731,7 @@ export default Vue.extend({
             // That is because, if the new function is added just before the next tick of the timer is due, we don't want to excecuted actions just yet to give
             // time to the user to sign in to Google Drive first, then load a potential project without saving the project that is in the editor in between.
             window.clearInterval(autoSaveTimerId);
-            const psfEntry = projectSaveFunctionsState.find((psfEntry) => (psfEntry.name == psf.name));
+            const psfEntry = projectSaveFunctionsState.find((psfEntry) => (psfEntry.syncTarget == psf.syncTarget));
             if(psfEntry){
                 // There is already some function set for that type of project save, we just update the function
                 psfEntry.function = psf.function;
@@ -724,8 +743,8 @@ export default Vue.extend({
             this.setAutoSaveState();
         });
 
-        this.$root.$on(CustomEventTypes.removeFunctionToEditorProjectSave, (psfName: string) => {
-            const toDeleteIndex = projectSaveFunctionsState.findIndex((psf) => psf.name == psfName);
+        this.$root.$on(CustomEventTypes.removeFunctionToEditorProjectSave, (psfSyncTarget: StrypeSyncTarget) => {
+            const toDeleteIndex = projectSaveFunctionsState.findIndex((psf) => psf.syncTarget == psfSyncTarget);
             if(toDeleteIndex > -1){
                 window.clearInterval(autoSaveTimerId);
                 projectSaveFunctionsState.splice(toDeleteIndex, 1);
@@ -758,7 +777,7 @@ export default Vue.extend({
             // The autosave is only performed on the webstore
             autoSaveTimerId = window.setInterval(() => {
                 projectSaveFunctionsState.forEach((psf) => {
-                    if(psf.name == "WS") {
+                    if(psf.syncTarget == StrypeSyncTarget.ws) {
                         psf.function(SaveRequestReason.autosave);
                     }
                 });
@@ -872,19 +891,17 @@ export default Vue.extend({
                 ).then(() => {
                     // When a file had been reloaded and it was previously synced with Google Drive, we want to ask the user
                     // about reloading the project from Google Drive again (only if we were not attempting to open a shared project via the URL)
-                    if(this.appStore.currentGoogleDriveSaveFileId) {
+                    if(this.appStore.currentCloudSaveFileId) {
                         const execGetGDFileFunction = (event: BvModalEvent, dlgId: string) => {
-                            if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncGDAtStartupModalDlgId){
-                                // Fetch the Google Drive component
-                                const gdVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDrive>);
+                            if((event.trigger == "ok" || event.trigger=="event") && dlgId == this.resyncToCloudAtStartupModalDlgId){
+                                const cloudHandlerVueComponent = ((this.$refs[this.menuUID] as InstanceType<typeof Menu>).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>);
                                 // Initiate a connection to Google Drive via saving mechanisms (for updating Google Drive with local changes)
-                                gdVueComponent.saveFile(SaveRequestReason.reloadBrowser);
-
+                                cloudHandlerVueComponent.saveFile(StrypeSyncTarget.gd, SaveRequestReason.reloadBrowser);
                                 this.$root.$off("bv::modal::hide", execGetGDFileFunction); 
                             }
                         };
                         this.$root.$on("bv::modal::hide", execGetGDFileFunction); 
-                        this.$root.$emit("bv::show::modal", this.resyncGDAtStartupModalDlgId);
+                        this.$root.$emit("bv::show::modal", this.resyncToCloudAtStartupModalDlgId);
                     }
                 }, () => {});
             }, () => {});
@@ -1308,7 +1325,7 @@ export default Vue.extend({
             /* FITRUE_isPython */
         },
         
-        setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle) : Promise<void> {
+        setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, requestFSFileLoadedNotification: boolean, fileLocation?: FileSystemFileHandle) : Promise<void> {
             return new Promise((resolve) => {
                 const s = pasteMixedPython(completeSource, true);
 
@@ -1332,8 +1349,10 @@ export default Vue.extend({
                         loadDivider(s.headers["peaSplitViewSplitterPane1Size"]),
                         loadDivider(s.headers["peaExpandedSplitterPane2Size"]),
                         () => {
-                            // Finally, we can trigger the notifcation a file has been loaded.
-                            (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
+                            // Finally, we can trigger the notifcation a file from FS has been loaded.
+                            if(requestFSFileLoadedNotification){
+                                (this.$refs[this.menuUID] as InstanceType<typeof Menu>).onFileLoaded(fileName, lastSaveDate, fileLocation);
+                            }
                             resolve();
                         }
                     );

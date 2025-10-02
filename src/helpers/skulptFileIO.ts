@@ -6,33 +6,19 @@
  */
 import { vm } from "@/main";
 import path from "path-browserify";
-import { getGoogleDriveComponentRefId, getMenuLeftPaneUID } from "./editor";
-import GoogleDriveComponent from "@/components/GoogleDrive.vue";
+import { getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID } from "./editor";
+import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
 import MenuComponent from "@/components/Menu.vue";
 import { useStore } from "@/store/store";
 import { StrypeSyncTarget } from "@/types/types";
 import i18n from "@/i18n";
+import { CloudFileWithMetaData, CloudFolder, GDFile } from "@/types/cloud-drive-types";
 
 declare const Sk: any;
 // Will be set later as we need to make sure Vue application has started...
-let googleDriveComponent: InstanceType<typeof GoogleDriveComponent>;
+let cloudDriveHandlerComponent: InstanceType<typeof CloudDriveHandlerComponent>;
 
-// We maintain a list of files for operability between Skulpt and Google Drive
-// so we can easily work with file ID in Google Drive.
-// This is per-project object, therefore the file paths in this object are unique.
-interface GDFile  {
-    name: string, // The file name (not including path)
-    id: string, // The file ID on Google Drive
-    content: string | Uint8Array, // The file content when opened
-    // Capabilities used to evaluate readonly status
-    capabilities: {canEdit: boolean, canModifyContent: boolean}, contentRestrictions?: {readOnly?: boolean}
-}
-interface GDFileWithMetaData extends GDFile{
-    filePath: string, // The file path as specified in the user code, and "visually" represented in Google Drive
-    locationId: string, // The file location's Google Drive folder ID
-    readOnly: boolean, // Readonly status of the file in Google Drive
-}
-const gdFilesMap: GDFileWithMetaData[] = [];
+const cloudFilesMap: CloudFileWithMetaData[] = [];
 
 // The TS typing to describe the file object implemented by Skulpt
 // it depends on Skulpt implementation of course, but having it here is just for ease of using TS.
@@ -51,21 +37,15 @@ interface SkulptFile {
     isInError?: boolean, // custom flag to indicate an error state, we need to know that when closing files.
 }
 
-// A simple Google Drive folder typing for the Strype project's location folder tree structure
-interface gdFolder {
-    id: string,
-    name: string,
-    children: gdFolder[],
-}
 // The cached tree of the Strype's project folder descendants (children their children etc).
 // The tree is constructed "on demand", that is we only add the folders when they are referenced in a file path
 // that we want to resolve; we don't retrieve all the descendants at once.
-const currentStrypeProjectGDFolderTree: gdFolder[] =  [];
+const currentStrypeProjectCloudFolderTree: CloudFolder[] =  [];
 
 // Clearing method for cached elements (need to be called externally by the code runner)
 export function clearFileIOCaches(): void {
-    gdFilesMap.splice(0);
-    currentStrypeProjectGDFolderTree.splice(0);
+    cloudFilesMap.splice(0);
+    currentStrypeProjectCloudFolderTree.splice(0);
 }
 
 // This small helper method is used during writing operations (either for Skulpt internally or for us in the cloud)
@@ -82,7 +62,7 @@ const concatFileContentParts = (part1: string | Uint8Array, part2: string | Uint
     }
 };
 
-// Entry point for matching a file in the user code to Google Drive.
+// Entry point for matching a file in the user code to a Cloud Drive.
 // This is a promise that returns an object with a property "succeeded", boolean value, and "errorMsg" for passing the error message.
 // On success, the file is mapped in gdFilesMap for future references.
 export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, errorMsg: string} => {
@@ -92,8 +72,8 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
     }
 
     // Initialisator of the variable
-    if(googleDriveComponent == undefined){
-        googleDriveComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getGoogleDriveComponentRefId()] as InstanceType<typeof GoogleDriveComponent>);
+    if(cloudDriveHandlerComponent == undefined){
+        cloudDriveHandlerComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof cloudDriveHandlerComponent>);
     }
 
     // We cannot make any assumption on what the file name path separator is.
@@ -105,30 +85,21 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
     const posixPathObj = path.parse(posixPath);
     const fileName = posixPathObj.name + posixPathObj.ext;
 
-    // Look up the file on Google Drive in the location:
+    // Look up the file on the Cloud Drive in the location:
     // We don't support parent directory references, so if there are any, we can already return in error...
     if(posixPathObj.dir.split("/").includes("..")){
         return {succeeded: false,errorMsg: i18n.t("errorMessage.fileIO.parentDirRefNotSupported") as string};
     }   
     else {
-        let gdFile: GDFile;
         return new Sk.misceval.promiseToSuspension(
             // First we need to check/retrieve the file's containing folder.
-            getgdFileFolderIdFromPath(posixPathObj)
+            getCloudFileFolderIdFromPath(posixPathObj)
                 .then((fileFolderId) => {
                     // We have a fileFolder Id so we can now get the file itself within that location
-                    return googleDriveComponent.searchGoogleDriveElement(`name='${fileName}' and parents='${fileFolderId}' and trashed=false`, {orderBy: "modifiedTime", fileFields: "files(id,name,capabilities,contentRestrictions)"})
-                        .then((response) => {    
-                            const filesArray: GDFile[] = JSON.parse(response.body).files;
-                            // See GoogleDrive.vue: the results are not always what expected, so double check is required.
-                            // Files are ordered by ascending modified date, we always use the most recent one if there duplicated names.
-                            filesArray.forEach((file) => {
-                                if(file.name == fileName){
-                                    gdFile = file;
-                                }
-                            });
-
-                            if(gdFile){
+                    return cloudDriveHandlerComponent.searchCloudDriveElements(StrypeSyncTarget.gd, fileName, fileFolderId, false, {orderBy: "modifiedTime", fileFields: "files(id,name,capabilities,contentRestrictions)"})
+                        .then((cloudFiles) => {
+                            if(cloudFiles[0]){
+                                const gdFile = cloudFiles[0] as GDFile;
                                 // Before adding the file in the map, we do some basic checks.
                                 // Check 1: if the file is in x mode, it can't exist
                                 if(skFile.mode.v.startsWith("x")){
@@ -141,15 +112,15 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
                                     return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.readonlyFile", {filename: filePath}) as string};
                                 }
                                 // Can add the matched file to the mapping object unless we are in "x" mode which requires the file not to exist.
-                                const fileMapEntry: GDFileWithMetaData = {...gdFile, filePath: filePath, locationId: fileFolderId, readOnly: isReadonly};
-                                gdFilesMap.push(fileMapEntry);     
+                                const fileMapEntry: CloudFileWithMetaData = {...gdFile, filePath: filePath, locationId: fileFolderId, readOnly: isReadonly};
+                                cloudFilesMap.push(fileMapEntry);     
                                 
                                 // If we are in reading mode or append mode, we need to retrieve the file's content.
                                 // This is for internal mechanisms, but if we fail to read the file at this stage, we'll raise an error.
                                 // For writing mode, we just set the file content to empty as it will be truncated anyway.
                                 if(!skFile.mode.v.startsWith("w")){
                                     return skupltReadFileIO(filePath, skFile.mode.v.includes("b")).then((fileContent) => {                                           
-                                        (gdFilesMap.at(-1)as GDFile).content = fileContent;
+                                        (cloudFilesMap.at(-1)as GDFile).content = fileContent;
                                         // Very importantly, the Skulpt internal data buffer is updated here for reading mode:
                                         if(skFile.mode.v.startsWith("r")){
                                             skFile.data$ = Sk.ffi.remapToPy(fileContent);
@@ -174,10 +145,10 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
                                     return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.fileNotFound", {filename: filePath}) as string};
                                 }
                                 else if(skFile.mode.v.startsWith("w") || skFile.mode.v.startsWith("a") || skFile.mode.v.startsWith("x")){
-                                    return googleDriveComponent.writeFileContentForIO((skFile.mode.v.includes("b") ? new Uint8Array(0) : ""), {filePath: filePath, fileName: fileName, folderId: fileFolderId})
+                                    return cloudDriveHandlerComponent.writeFileContentForIO(StrypeSyncTarget.gd, (skFile.mode.v.includes("b") ? new Uint8Array(0) : ""), {filePath: filePath, fileName: fileName, folderId: fileFolderId})
                                         .then((newFileId) => {
                                             // Since the file has been created we can now keep it's fileId in the map:
-                                            gdFilesMap.push({name: fileName, content: "", filePath: filePath, id: newFileId, locationId: fileFolderId,
+                                            cloudFilesMap.push({name: fileName, content: "", filePath: filePath, id: newFileId, locationId: fileFolderId,
                                                 readOnly: false, capabilities: {canEdit: true, canModifyContent: true}});
                                             return {succeeded: true, errorMsg: ""};
                                         },
@@ -187,7 +158,7 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
                                 }
                             }
                         },
-                        (reason) => {
+                        (reason: any) => {
                             const errorMsg = i18n.t("errorMessage.fileIO.accessToGDError", {fileName: filePath, error: (typeof reason == "string") ? reason : (reason.status??"unknown")});
                             return {succeeded:false,errorMsg: errorMsg};
                         });
@@ -199,20 +170,20 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
     }
 };
 
-const getgdFileFolderIdFromPath = (fileFolderPath: path.PathObject): Promise<string> => {
+const getCloudFileFolderIdFromPath = (fileFolderPath: path.PathObject): Promise<string> => {
     // We retrieve (and check) the location of the file, specified by fileFolderPath.
-    // The base location of the Google Drive search is the project's current directory.
+    // The base location of the Cloud Drive search is the project's current directory.
     // We do not allow references to parent directories, therefore we can never go "up" the Strype project directory.
-    // Also, we resolve the path one folder at a time, and keep it for reference in our folder tree, currentStrypeProjectGDFolderTree.
+    // Also, we resolve the path one folder at a time, and keep it for reference in our folder tree, currentStrypeProjectCloudFolderTree.
     const baseFolderLocationId = useStore().strypeProjectLocation as string;
     if(fileFolderPath.dir && fileFolderPath.dir != "./"){
-        // We need to look up the directory/directories from top to bottom, unless it is already cached in currentStrypeProjectGDFolderTree.
+        // We need to look up the directory/directories from top to bottom, unless it is already cached in currentStrypeProjectCloudFolderTree.
         const cleanedPath = fileFolderPath.dir.replace(/^.\//,"");
         const userGivenFolderParts = cleanedPath.split("/");
-        let currentCachedFolder = null as gdFolder | null;       
+        let currentCachedFolder = null as CloudFolder | null;       
 
         const resolveFilePath = (folderNameToCheck: string, folderChildrenNames: string[]): Promise<string> => {
-            const handleFoundFolder = (foundCachedFolder: gdFolder): Promise<string> => {
+            const handleFoundFolder = (foundCachedFolder: CloudFolder): Promise<string> => {
                 if(folderChildrenNames.length > 0){
                     currentCachedFolder = foundCachedFolder;
                     return resolveFilePath(folderChildrenNames[0], folderChildrenNames.slice(1));
@@ -234,24 +205,22 @@ const getgdFileFolderIdFromPath = (fileFolderPath: path.PathObject): Promise<str
             }
 
             // Is this path part already cached?
-            const toLookIn = (currentCachedFolder) ? currentCachedFolder.children : currentStrypeProjectGDFolderTree;
-            const cachedChildFolder = toLookIn.find((folder: gdFolder) => folder.name == folderNameToCheck); 
+            const toLookIn = (currentCachedFolder) ? currentCachedFolder.children : currentStrypeProjectCloudFolderTree;
+            const cachedChildFolder = toLookIn.find((folder: CloudFolder) => folder.name == folderNameToCheck); 
             if(cachedChildFolder){
                 // It's cached, we either return the file ID when there is nothing else to resolve, otherwise we change our pointers and keep resolving
                 return handleFoundFolder(cachedChildFolder);
             }
             else{
-                // It's not cached: we need to look for it against Google Drive.
-                return googleDriveComponent.searchGoogleDriveElement(`name='${folderNameToCheck}' and parents='${(currentCachedFolder?.id)??baseFolderLocationId}' and mimeType = 'application/vnd.google-apps.folder' and 'me' in owners and trashed=false`, 
-                    {orderBy: "modifiedTime", fileFields: "files(id,name)"})
-                    .then((response) => {                             
+                // It's not cached: we need to look for it against the Cloud Drive.
+                return cloudDriveHandlerComponent.searchCloudDriveElements(StrypeSyncTarget.gd, folderNameToCheck, (currentCachedFolder?.id)??baseFolderLocationId, false, {orderBy: "modifiedTime", fileFields: "files(id,name)"})
+                    .then((cloudFolderFiles) => {                             
                         // The search succeeded and we expect only one folder to be found (if any, so we'll use the first one returned).
                         // We can save that folder in the cache and either return it's ID if we don't have other folder to resolve, or continue resolving otherwise.
-                        const foundFolders: {id: string, name: string}[] = JSON.parse(response.body).files;
-                        if(foundFolders.length > 0){
-                            const toAppendIn = (currentCachedFolder) ? currentCachedFolder.children : currentStrypeProjectGDFolderTree;
-                            toAppendIn.push({id: foundFolders[0].id, name: foundFolders[0].name, children: []});
-                            currentCachedFolder = toAppendIn.at(-1) as gdFolder;
+                        if(cloudFolderFiles.length > 0){
+                            const toAppendIn = (currentCachedFolder) ? currentCachedFolder.children : currentStrypeProjectCloudFolderTree;
+                            toAppendIn.push({id: cloudFolderFiles[0].id, name: cloudFolderFiles[0].name, children: []});
+                            currentCachedFolder = toAppendIn.at(-1) as CloudFolder;
                             return handleFoundFolder(currentCachedFolder);
                         }
                         else{
@@ -268,10 +237,10 @@ const getgdFileFolderIdFromPath = (fileFolderPath: path.PathObject): Promise<str
     return Promise.resolve(baseFolderLocationId as string);
 };
 
-// Handling the closing request of a file from Skulpt. In our Google Drive context.
+// Handling the closing request of a file from Skulpt. In our Cloud Drive context.
 // We make sure to make the actual writing of the file on the Drive, and clean up the file map. 
 export const skulptCloseFileIO = (skFile: SkulptFile): {succeeded: boolean, errorMsg: string} => {
-    const fileEntryIndex = gdFilesMap.findIndex((entry) => entry.filePath == skFile.name);
+    const fileEntryIndex = cloudFilesMap.findIndex((entry) => entry.filePath == skFile.name);
     if(fileEntryIndex == -1){
         return {succeeded: false, errorMsg: i18n.t("errorMessage.fileIO.closeInternalError") as string};
     }
@@ -282,14 +251,14 @@ export const skulptCloseFileIO = (skFile: SkulptFile): {succeeded: boolean, erro
     // In all cases when we need to write something, we just write the buffer content.
     // One exception to this: append mode will write at the end of the file.
     const finaliseClose = (): {succeeded: boolean, errorMsg: string} => {
-        gdFilesMap.splice(fileEntryIndex, 1);
+        cloudFilesMap.splice(fileEntryIndex, 1);
         return {succeeded: true, errorMsg: ""};
     };
 
     const needWriting = (!skFile.isInError ) && (!/^rb?$/.test(skFile.mode.v));
     // Prepare what to write. 
     if(needWriting){
-        const toWrite = (skFile.mode.v.startsWith("a")) ? concatFileContentParts(gdFilesMap[fileEntryIndex].content, Sk.ffi.remapToJs(skFile.data$)) : Sk.ffi.remapToJs(skFile.data$);
+        const toWrite = (skFile.mode.v.startsWith("a")) ? concatFileContentParts(cloudFilesMap[fileEntryIndex].content, Sk.ffi.remapToJs(skFile.data$)) : Sk.ffi.remapToJs(skFile.data$);
         return new Sk.misceval.promiseToSuspension(
             skulptWriteFileIO(skFile, toWrite)
                 .then((successData: {succeeded: boolean, errorMsg: string}) => {
@@ -307,14 +276,14 @@ export const skulptCloseFileIO = (skFile: SkulptFile): {succeeded: boolean, erro
     }
 };
 
-// Read method, with retrieves the content of a file on Google Drive.
+// Read method, with retrieves the content of a file on Cloud Drive.
 // The content is either a string content for text modes, bytes for binary modes.
 // On failure, the content contains the error message.
 const skupltReadFileIO = (filePath: string, isBinary: boolean): Promise<string|Uint8Array> => {
-    // We retrieve the Google Drive file ID - it should be valid as no call to this when a file is closed in Skulpt should happen.
-    const fileId = gdFilesMap.find((mapEntry) => mapEntry.filePath == filePath)?.id??"";
+    // We retrieve the Cloud Drive file ID - it should be valid as no call to this when a file is closed in Skulpt should happen.
+    const fileId = cloudFilesMap.find((mapEntry) => mapEntry.filePath == filePath)?.id??"";
     return new Promise<string|Uint8Array>((resolve, reject) => {
-        googleDriveComponent.readFileContentForIO(fileId, isBinary, filePath)
+        cloudDriveHandlerComponent.readFileContentForIO(StrypeSyncTarget.gd, fileId, isBinary, filePath)
             .then((fileContent) => {
                 resolve(fileContent as string|Uint8Array);
             }, (error) => {
@@ -360,9 +329,9 @@ export const skulptInteralFileWrite = (skFile: SkulptFile, toWrite: string | Uin
 // Note: we write a full file content every time. That means that sometimes we need to write more than the internal buffer content,
 // for example in append mode. It is the job of skulptCloseFileIO to check all that - this methods just writes.
 const skulptWriteFileIO = (skFile: SkulptFile, toWrite: string|Uint8Array): Promise<{succeeded: boolean, errorMsg: string}> => {
-    // We retrieve the Google Drive file ID - it should be valid as no call to this after a file is closed in Skulpt should happen.
-    const fileId = gdFilesMap.find((mapEntry) => mapEntry.filePath == skFile.name)?.id??"";
-    return googleDriveComponent.writeFileContentForIO(toWrite, {filePath: skFile.name, fileId: fileId})
+    // We retrieve the Cloud Drive file ID - it should be valid as no call to this after a file is closed in Skulpt should happen.
+    const fileId = cloudFilesMap.find((mapEntry) => mapEntry.filePath == skFile.name)?.id??"";
+    return cloudDriveHandlerComponent.writeFileContentForIO(StrypeSyncTarget.gd, toWrite, {filePath: skFile.name, fileId: fileId})
         .then((_) => {
             return {succeeded: true, errorMsg: ""};
         },

@@ -74,7 +74,7 @@ export const useStore = defineStore("app", {
 
             importContainerId: -1,
 
-            functionDefContainerId: -2,
+            defsContainerId: -2,
             /** END of flags that need checking when a build is done **/
 
             currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
@@ -101,6 +101,7 @@ export const useStore = defineStore("app", {
             // This is the selected tab index of the Commands' tab panel.
             commandsTabIndex: 0, 
 
+            // Are we editing a text slot?
             isEditing: false,
 
             /* These state properties are for saving the layout of the UI.
@@ -670,8 +671,8 @@ export const useStore = defineStore("app", {
                 // - imports container
                 // - function definition container
                 const currentFrame = state.frameObjects[state.currentFrame.id];
-                return (state.currentFrame.caretPosition == CaretPosition.body && currentFrame.id != state.importContainerId && currentFrame.id != state.functionDefContainerId) 
-                    || (state.currentFrame.caretPosition == CaretPosition.below && currentFrame.parentId !== undefined && currentFrame.parentId != state.importContainerId && currentFrame.parentId != state.functionDefContainerId);        
+                return (state.currentFrame.caretPosition == CaretPosition.body && currentFrame.id != state.importContainerId && currentFrame.id != state.defsContainerId) 
+                    || (state.currentFrame.caretPosition == CaretPosition.below && currentFrame.parentId !== undefined && currentFrame.parentId != state.importContainerId && currentFrame.parentId != state.defsContainerId);        
             }
         },
 

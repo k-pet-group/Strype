@@ -4,7 +4,7 @@ import {getCaretContainerComponent, getFrameComponent, operators, trimmedKeyword
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
 import {AppName, AppSPYPrefix} from "@/main";
-import {toUnicodeEscapes} from "@/parser/parser";
+import {toUnicodeEscapes, stringToCollapsed} from "@/parser/parser";
 import FrameContainer from "@/components/FrameContainer.vue";
 
 const TOP_LEVEL_TEMP_ID = -999;
@@ -40,6 +40,7 @@ interface CopyState {
     parent: FrameObject | null; // The parent, if any, for borrowing the parent ID
     jointParent: FrameObject | null; // The joint parent, if any, for borrowing the parent ID
     disabledLines: number[]; // The line numbers which had a Disabled: prefix
+    collapsedLines: Map<number, CollapsedState>; // The line numbers which had a Collapsed: prefix
     lineNumberToIndentation: Map<number, string>; // Maps a line number to a string of indentation
     transformTopComment: ((content: SlotsStructure) => void) | undefined; // If defined, consumes the top docstring-style comment rather than adding it as a frame.
     isSPY: boolean;
@@ -90,6 +91,8 @@ function addFrame(frame: FrameObject, lineno: number | undefined, s: CopyState) 
     frame.id = id;
     s.loadedFrames[id] = frame;
     frame.isDisabled = lineno != undefined && s.disabledLines.includes(lineno);
+    frame.collapsedState = lineno != undefined ? s.collapsedLines.get(lineno) : undefined;
+    console.log("Collapsed state set to " + frame.collapsedState + " for " + frame.frameType.type + " from " + JSON.stringify([...s.collapsedLines.entries()]) + " and #" + lineno);
     if (!frame.frameType.isJointFrame) {
         s.addToNonJoint?.push(id);
         if (s.parent != null) {
@@ -223,9 +226,10 @@ export const STRYPE_INVALID_SLOT = "___strype_invalid_";
 export const STRYPE_INVALID_OPS_WRAPPER = "___strype_opsinvalid";
 export const STRYPE_INVALID_OP = "___strype_operator_";
 
-function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") : {disabledLines : number[], transformedLines : string[], strypeDirectives: Map<string, string>} { 
+function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") : {disabledLines : number[], collapsedLines : Map<number, CollapsedState>, transformedLines : string[], strypeDirectives: Map<string, string>} { 
     codeLines = [...codeLines];
     const disabledLines : number[] = [];
+    const collapsedLines : Map<number, CollapsedState> = new Map<number, CollapsedState>();
     const transformedLines : string[] = [];
     const strypeDirectives: Map<string, string> = new Map<string, string>();
 
@@ -303,6 +307,16 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                     if (key == "LibraryDisabled") {
                         disabledLines.push(i+1);
                     }
+                }
+                else if (key == "Collapsed") {
+                    const col = stringToCollapsed[value.trim()];
+                    if (col != undefined) {
+                        // +1 to move to a 1-based rather than 0-based line number, and +1 more to mean the line after us:
+                        collapsedLines.set(i + 2, col);
+                        console.log("Set to: " + JSON.stringify(collapsedLines));
+                    }
+                    // Push a blank to make line numbers match:
+                    transformedLines.push("");
                 }
                 else {
                     strypeDirectives.set(key, value);
@@ -474,7 +488,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
     // We might have comments at the end of the code, so we need to check their indentation:
     checkRearrangeCommentsIdent();
 
-    return { disabledLines, transformedLines, strypeDirectives };
+    return { disabledLines, collapsedLines, transformedLines, strypeDirectives };
 }
 
 // The main entry point to this module.  Given a string of Python code that the user
@@ -526,7 +540,7 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
     useStore().copiedSelectionFrameIds = [];
     try {
         // Use the next available ID to avoid clashing with any existing IDs:
-        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
+        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, collapsedLines: transformed.collapsedLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
             if (!dryrun) {
                 const docFrame = useStore().frameObjects[-10] as FrameObject;
                 docFrame.labelSlotsDict[0].slotStructures = c;

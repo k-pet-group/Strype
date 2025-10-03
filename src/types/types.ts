@@ -210,6 +210,9 @@ export enum FrameContextMenuActionName {
     deleteOuter,
     enable,
     disable,
+    collapseToHeader,
+    collapseToDocumentation,
+    collapseToFull,
 }
 
 export enum ModifierKeyCode {

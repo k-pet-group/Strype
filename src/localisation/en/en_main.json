@@ -174,7 +174,10 @@
     "delete": "Delete",
     "deleteOuter": "Delete Outer",
     "insert": "Insert",
-    "screenshotGraphics": "Download screenshot"
+    "screenshotGraphics": "Download screenshot",
+    "collapseHeader": "Collapsed View",
+    "collapseDocumentation": "Interface View",
+    "collapseFull": "Expanded View"
   },
   "appMenu": {
     "downloadHex": "Convert to Hex file",
@@ -254,6 +257,7 @@
   },
   "shortcut": {
     "delete": "Delete",
-    "ctrlPlus": "Ctrl+"
+    "ctrlPlus": "Ctrl+",
+    "period": "Dot"
   }
 }

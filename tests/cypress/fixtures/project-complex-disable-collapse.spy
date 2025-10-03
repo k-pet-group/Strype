@@ -1,0 +1,87 @@
+#(=> Strype:1:std
+#(=> Section:Imports
+import foo 
+#(=> Disabled:import bar 
+#(=> Disabled:from time import * 
+from imaginary import imagined 
+#(=> Disabled:from a.b.c import * 
+#(=> Section:Definitions
+#(=> Collapsed:Documentation
+def foo ( ) :
+    return 3 
+    print() 
+    #(=> Disabled:print("a") 
+    #(=> Disabled:if True  :
+    #(=> Disabled:    func(1,2,3) 
+    #(=> Disabled:    return 6 
+    #(=> Disabled:raise 5 
+    if False  :
+        #(=> Disabled:print("Bye") 
+        func(1,2,3) 
+    #(=> Disabled:print("Byeee") 
+def bar ( ) :
+    if True  :
+        print(msg) 
+    #(=> Disabled:elif False  :
+    #(=> Disabled:    print(msg2) 
+    else :
+        print(msg3) 
+    if True  :
+        print(msg) 
+    #(=> Disabled:elif False  :
+    #(=> Disabled:    print(msg4) 
+    #(=> Disabled:else :
+    #(=> Disabled:    print(msg5) 
+    #(=> Disabled:print(msg6) 
+#(=> Disabled:#(=> Collapsed:Header
+#(=> Disabled:def baz ( ) :
+#(=> Disabled:    print(msg) 
+#(=> Disabled:#(=> Collapsed:Header
+#(=> Disabled:class Apple  :
+#(=> Disabled:    #(=> Collapsed:Documentation
+#(=> Disabled:    def baz (self, ) :
+#(=> Disabled:        '''Some method named baz'''
+#(=> Disabled:        print(msg) 
+def whatever ( ) :
+    if True  :
+        pass
+        #(=> Disabled:abs(-76) 
+    while False  :
+        pass
+        #(=> Disabled:abs(34) 
+    try :
+        print(2) 
+    #(=> Disabled:except e  :
+    #(=> Disabled:    print(5) 
+    except f  :
+        pass
+        #(=> Disabled:print(7) 
+    #(=> Disabled:else :
+    #(=> Disabled:    print(9) 
+#(=> Collapsed:Header
+class Foo(Bar)  :
+    def __init__ (self,param ) :
+        self.x  = param 
+#(=> Collapsed:Header
+class Foo2  :
+    #(=> Collapsed:Documentation
+    def __init__ (self,param ) :
+        '''Initialises some parameter.'''
+        self.x  = param 
+    def unfolded (self, ) :
+        if True  :
+            pass
+    #(=> Collapsed:Header
+    def collapsed (self,x ) :
+        return x 
+#(=> Section:Main
+#(=> Disabled:print(hello) 
+msg  = "Hello" 
+try :
+    print(msg10) 
+except ___strype_dummy:
+    pass
+#(=> Disabled:finally :
+#(=> Disabled:    print(msg11) 
+#(=> Disabled:print(msg) 
+#(=> Section:End

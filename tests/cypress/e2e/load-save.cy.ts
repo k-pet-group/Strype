@@ -188,6 +188,15 @@ describe("Tests disabling frames", () => {
     });
 });
 
+describe("Tests collapsing frames", () => {
+    it("Loads and saves a simple collapsed project", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-trisection-collapse.spy");
+    });
+    it("Loads and saves a complex disable project", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-complex-disable-collapse.spy");
+    });
+});
+
 describe("Tests blanks", () => {
     it("Outputs a file with lots of blanks", () => {
         // import x as ___strype_blank

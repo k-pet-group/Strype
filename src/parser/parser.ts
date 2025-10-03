@@ -3,7 +3,7 @@ import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
 import {generateFlatSlotBases, retrieveSlotByPredicate} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import {useStore} from "@/store/store";
-import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
+import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
 import {ErrorInfo, TPyParser} from "tigerpython-parser";
 import {AppSPYPrefix} from "@/main";
 /*IFTRUE_isPython */
@@ -194,6 +194,22 @@ function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string
     }
 }
 
+// No FULLY_VISIBLE because that's the default so we never explicitly save it:
+const collapsedToString: Record<CollapsedState, string> = {
+    [CollapsedState.FULLY_VISIBLE]: "Visible", //Note: we never save this one, but Typescript wants the full set of enum values here
+    [CollapsedState.ONLY_HEADER_VISIBLE]: "Header",
+    [CollapsedState.HEADER_AND_DOC_VISIBLE]: "Documentation",
+};
+
+// Reverse mapping:
+export const stringToCollapsed: Record<string, CollapsedState> = Object.entries(collapsedToString).reduce(
+    (acc, [key, value]) => {
+        acc[value] = Number(key) as CollapsedState;
+        return acc;
+    },
+    {} as Record<string, CollapsedState>
+);
+
 export default class Parser {
     private startAtFrameId = -100; // default value to indicate there is no start
     private stopAtFrameId = -100; // default value to indicate there is no stop
@@ -235,7 +251,8 @@ export default class Parser {
         // on `excludeLoops` the loop frames must not be added to the code and nor should their contents be indented
         const conditionalIndent = (passBlock) ? "" : INDENT;
 
-        output += 
+        output +=
+            ((block.collapsedState != undefined && block.collapsedState != CollapsedState.FULLY_VISIBLE) ? indentation + "#" + AppSPYPrefix + " Collapsed:" + collapsedToString[block.collapsedState] + "\n" : "") +
             ((!passBlock)? this.parseStatement(block, insideAClass, indentation) : "") +
             ((this.saveAsSPY && children.length > 0 &&
                 ((!block.isDisabled && children.filter((c) => !c.isDisabled && c.frameType.type != AllFrameTypesIdentifier.blank && c.frameType.type != AllFrameTypesIdentifier.comment).length == 0)

@@ -14,6 +14,8 @@ import Vue from "vue";
 import {CollapsedState, FrameObject} from "@/types/types";
 import {mapStores} from "pinia";
 import {useStore} from "@/store/store";
+import {calculateNextCollapseState} from "@/helpers/editor";
+
 
 export default Vue.extend({
     name: "ChildrenFrameStateToggle",
@@ -55,47 +57,7 @@ export default Vue.extend({
     
     methods: {
         cycleFoldChildren() {
-            let nextState : CollapsedState;
-            // If they are in a mixed state we want next state to be fully collapsed, which is always available for defs:
-            if (this.childrenCollapsedState === undefined) {
-                nextState = CollapsedState.ONLY_HEADER_VISIBLE;
-            }
-            else {
-                // Otherwise, we need to work out the next state.  It should be a state they can all reach, which
-                // depends on the frames present (e.g. the doc state can't be reached if we have a mix of class and
-                // function frames)
-
-                // Step 1: compute remaining states per object
-                const possibleNextStates = (this.frames as FrameObject[]).map((f) => {
-                    const idx = f.frameType.allowedCollapsedStates.indexOf(f.collapsedState ?? CollapsedState.FULLY_VISIBLE);
-                    if (idx < 0) {
-                        return []; // safeguard if current not found
-                    }
-
-                    // everything after current + everything before current
-                    return f.frameType.allowedCollapsedStates.slice(idx + 1).concat(f.frameType.allowedCollapsedStates.slice(0, idx));
-                });
-
-                // Step 2: intersect them all
-                let intersection = new Set(possibleNextStates[0]);
-                for (let i = 1; i < possibleNextStates.length; i++) {
-                    intersection = new Set(possibleNextStates[i].filter((s) => intersection.has(s)));
-                }
-
-                if (intersection.size === 0) {
-                    // Shouldn't happen:
-                    nextState = CollapsedState.FULLY_VISIBLE;
-                }
-                else {
-                    // Step 3: pick earliest in canonical order (say, the first object’s list)
-                    for (const state of possibleNextStates[0]) {
-                        if (intersection.has(state)) {
-                            nextState = state;
-                            break;
-                        }
-                    }
-                }
-            }
+            let nextState = calculateNextCollapseState(this.childrenCollapsedState, this.frames as FrameObject[]);
 
             (this.frames as FrameObject[]).forEach((f) => this.appStore.setCollapseStatusContainer({frameId: f.id, collapsed: nextState}));
         },

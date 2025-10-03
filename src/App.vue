@@ -114,9 +114,8 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition } from "@/types/types";
-import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
-import { AllFrameTypesIdentifier} from "@/types/types";
+import { AllFrameTypesIdentifier, CollapsedState, AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, GAPIState, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition } from "@/types/types";
+import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, getGoogleDriveComponentRefId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, calculateNextCollapseState } from "./helpers/editor";
 /* IFTRUE_isPython */
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
 /* FITRUE_isPython */
@@ -125,7 +124,7 @@ import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
 /* FITRUE_isMicrobit */
 import { mapStores } from "pinia";
-import { getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos } from "./helpers/storeMethods";
+import { getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos, getFrameBelowCaretPosition } from "./helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import { VueContextConstructor } from "vue-context";
 import { BACKEND_SKULPT_DIV_ID } from "@/autocompletion/ac-skulpt";
@@ -467,6 +466,45 @@ export default Vue.extend({
             // the action requires frame duplication.
             if(this.appStore.isDraggingFrame && (event.ctrlKey || event.altKey)){
                 addDuplicateActionOnFramesDnD();
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                return;
+            }
+            
+            // If we are at a frame cursor and they hit ctrl-x/ctrl-c then we do cut/copy:
+            if(!this.appStore.isEditing && !this.isPythonExecuting && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x")) {
+                // We emit an event to be picked up by the first frame in the current selection:
+                // The frames themselves decide whether to act based on whether they are the first frame in the selection:
+                this.$root.$emit(event.key.toLowerCase() === "c" ? CustomEventTypes.copyFrameSelection : CustomEventTypes.cutFrameSelection);
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                return;
+            }
+            
+            if (!this.appStore.isEditing && !this.isPythonExecuting && !event.ctrlKey && !event.metaKey && event.key === ".") {
+                // The relevant frames are the selection, or otherwise the frame *after* the caret:
+                let frameIds: number[] = [];
+                if (this.appStore.selectedFrames.length > 0) {
+                    frameIds = this.appStore.selectedFrames;
+                }
+                else {
+                    let nextSibling = getFrameBelowCaretPosition({frameId: this.appStore.currentFrame.id, isSlotNavigationPosition: false, caretPosition: this.appStore.currentFrame.caretPosition});
+                    if (nextSibling != null && nextSibling >= 0) {
+                        frameIds = [nextSibling];
+                    }
+                }
+                if (frameIds.length > 0) {
+                    const frames = frameIds.map((f) => this.appStore.frameObjects[f]);
+                    let collapsedStates = frames.map((f) => f.collapsedState ?? CollapsedState.FULLY_VISIBLE);
+                    const curState = collapsedStates.reduce<CollapsedState | undefined>(
+                        (acc, item) => acc === item ? acc : undefined,
+                        collapsedStates[0]
+                    );
+                    const nextState = calculateNextCollapseState(curState, frames);
+                    frameIds.forEach((f) => this.appStore.setCollapseStatusContainer({frameId: f, collapsed: nextState}));
+                }
                 event.preventDefault();
                 event.stopImmediatePropagation();
                 event.stopPropagation();
@@ -1542,6 +1580,11 @@ $divider-grey: darken($background-grey, 15%);
     white-space:nowrap;
     background-color:transparent;
     border:0
+}
+
+.v-context > li.v-context-disabled > a,
+.v-context ul > li.v-context-disabled > a {
+    color: grey !important;
 }
 
 .v-context > li > a:focus,

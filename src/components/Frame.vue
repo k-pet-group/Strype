@@ -19,9 +19,9 @@
             <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
                 Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
             <vue-context :id="getFrameContextMenuUID" ref="menu" v-show="allowContextMenu" @open="handleContextMenuOpened" @close="handleContextMenuClosed">
-                <li v-for="menuItem, index in frameContextMenuItems" :key="`frameContextMenuItem_${frameId}_${index}`" :action-name="menuItem.actionName" class="context-menu-item">
+                <li v-for="menuItem, index in frameContextMenuItems" :key="`frameContextMenuItem_${frameId}_${index}`" :action-name="menuItem.actionName" :class="{'context-menu-item': true, 'v-context-disabled': menuItem.disabled}">
                     <hr v-if="menuItem.type === 'divider'" />
-                    <a v-else @click.stop="menuItem.method();closeContextMenu();" @mouseover="handleContextMenuHover">
+                    <a v-else @click.stop="!menuItem.disabled && (menuItem.method(), closeContextMenu())" @mouseover="handleContextMenuHover">
                         <span>{{menuItem.name}}</span>
                         <span class="context-menu-item-shortcut" v-if="menuItem.shortcut">{{typeof menuItem.shortcut === "string" ? menuItem.shortcut : menuItem.shortcut[isMacOSPlatform() ? 1 : 0]}}</span>
                     </a>
@@ -98,7 +98,7 @@ import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
-import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID } from "@/helpers/editor";
+import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, calculateNextCollapseState } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
 import html2canvas from "html2canvas";
@@ -147,7 +147,7 @@ export default Vue.extend({
         return {
             scssVars, // just to be able to use in template
             // Prepare an empty version of the menu: it will be updated as required in handleClick()
-            frameContextMenuItems: [] as {name: string; method: VoidFunction; type?: "divider", actionName?: FrameContextMenuActionName, shortcut?: string | string[]}[],
+            frameContextMenuItems: [] as {name: string; method: VoidFunction; type?: "divider", actionName?: FrameContextMenuActionName, shortcut?: string | string[], disabled?: boolean}[],
             // Flag to indicate a frame is selected via the context menu (differs from a user selection)
             contextMenuEnforcedSelect: false,
             // And an associated observer used to check when the menu made hidden to change the flag above
@@ -345,7 +345,8 @@ export default Vue.extend({
     },
 
     mounted() {
-        window.addEventListener("keydown", this.onKeyDown);
+        this.$root.$on(CustomEventTypes.cutFrameSelection, this.cutIfFirstInSelection);
+        this.$root.$on(CustomEventTypes.copyFrameSelection, this.copyIfFirstInSelection);
 
         // Observe when the context menu when the context menu is closed
         // in order to reset the enforced selection flag
@@ -370,8 +371,6 @@ export default Vue.extend({
     },
 
     destroyed() {
-        window.removeEventListener("keydown", this.onKeyDown);
-
         // Probably not required but for safety, remove the observer set up in mounted()
         this.contextMenuObserver.disconnect();
 
@@ -389,19 +388,20 @@ export default Vue.extend({
 
     methods: {
         isMacOSPlatform,
-        onKeyDown(event: KeyboardEvent) {
+        cutIfFirstInSelection() {
             // Cutting/copying by shortcut is only available for a frame selection*, and if the user's code isn't being executed.
             // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
             // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
-            if(!this.isPythonExecuting && this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first") && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x")) {
-                if(event.key.toLowerCase() === "c"){
-                    this.copy();
-                }
-                else{
-                    this.cut();
-                }
-                event.preventDefault();
-                return;
+            if(!this.isPythonExecuting && this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first")) {
+                this.cut();
+            }
+        },
+        copyIfFirstInSelection() {
+            // Cutting/copying by shortcut is only available for a frame selection*, and if the user's code isn't being executed.
+            // To prevent the command to be called on all frames, but only once (first of a selection), we check that the current frame is a first of a selection.
+            // * "this.isPartOfSelection" is necessary because it is only set at the right value in a subsequent call. 
+            if(!this.isPythonExecuting && this.isPartOfSelection && (this.appStore.getFrameSelectionPosition(this.frameId) as string).startsWith("first")) {
+                this.copy();
             }
         },
 
@@ -479,6 +479,11 @@ export default Vue.extend({
 
             // If there's a windows and Mac shortcut they are put in an array:
             this.frameContextMenuItems = [
+                // Important these first three are in the same order as the enum CollapsedState:
+                {name: this.$i18n.t("contextMenu.collapseHeader") as string, method: this.collapseToHeader, actionName: FrameContextMenuActionName.collapseToHeader},
+                {name: this.$i18n.t("contextMenu.collapseDocumentation") as string, method: this.collapseToDocumentation, actionName: FrameContextMenuActionName.collapseToDocumentation},
+                {name: this.$i18n.t("contextMenu.collapseFull") as string, method: this.collapseToFull, actionName: FrameContextMenuActionName.collapseToFull},
+                {name: "", method: () => {}, type: "divider"},
                 {name: this.$i18n.t("contextMenu.cut") as string, method: this.cut, actionName: FrameContextMenuActionName.cut, shortcut: [(this.$i18n.t("shortcut.ctrlPlus") as string) + "X", "⌘X"]},
                 {name: this.$i18n.t("contextMenu.copy") as string, method: this.copy, actionName: FrameContextMenuActionName.copy, shortcut: [(this.$i18n.t("shortcut.ctrlPlus") as string) + "C", "⌘C"]},
                 {name: this.$i18n.t("contextMenu.downloadAsImg") as string, method: this.downloadAsImg},
@@ -492,6 +497,47 @@ export default Vue.extend({
                 {name: this.$i18n.t("contextMenu.delete") as string, method: this.delete, actionName: FrameContextMenuActionName.delete, shortcut: this.$i18n.t("shortcut.delete") as string},
                 {name: this.$i18n.t("contextMenu.deleteOuter") as string, method: this.deleteOuter}];
 
+            // Not all frames can be collapsed; only show menu items that are possible for at least one of the frames,
+            // disable the item if all frames are already in that state, and show the dot shortcut next to whatever it would do:
+            const collapseFrames = (this.isPartOfSelection ? this.appStore.selectedFrames : [this.frameId]).map((id) => this.appStore.frameObjects[id]);
+            const combinedCollapse = collapseFrames.reduce(
+                (acc, item) => {
+                    acc.states.add(item.collapsedState ?? CollapsedState.FULLY_VISIBLE);
+                    item.frameType.allowedCollapsedStates.forEach((s) => acc.allowedStates.add(s));
+                    return acc;
+                },
+                { states: new Set<CollapsedState>(), allowedStates: new Set<CollapsedState>() }
+            );
+            let nextWouldBe;
+            // Important to do this before next step as we might then remove some:
+            if (combinedCollapse.states.size === 1) {
+                const commonState : CollapsedState = combinedCollapse.states.keys().next().value;
+                this.frameContextMenuItems[commonState as number].disabled = true;
+                nextWouldBe = calculateNextCollapseState(commonState, collapseFrames);
+            }
+            else {
+                nextWouldBe = calculateNextCollapseState(undefined, collapseFrames);
+            }
+            let someCollapseShowing = false;
+            // Loops through all possible enum values, backwards so we can remove without upsetting the later-processed indexes:
+            for (const c of Object.values(CollapsedState).filter((v) => typeof v === "number").map((v) => v as number).sort((a, b) => b - a)) {
+                // If state is impossible for all frames, don't show it in the menu:
+                // Also, if there's only one allowed state for all frames (which would be fully visible), remove all items:
+                if (!combinedCollapse.allowedStates.has(c as CollapsedState) || combinedCollapse.allowedStates.size === 1) {
+                    this.frameContextMenuItems.splice(c,1);
+                }
+                else {
+                    someCollapseShowing = true;
+                    if (nextWouldBe as number === c) {
+                        this.frameContextMenuItems[c].shortcut = this.$i18n.t("shortcut.period") as string;
+                    }
+                }
+            }
+            if (!someCollapseShowing) {
+                // Remove the divider, which will now be position 0:
+                this.frameContextMenuItems.splice(0,1);
+            }
+            
             // Not all frames should be duplicated (e.g. Else)
             // The target id, for a duplication, should be the same as the copied frame 
             // except if that frame has joint frames: the target is the last joint frame.
@@ -1206,6 +1252,27 @@ export default Vue.extend({
             this.appStore.deleteOuterFrames(this.frameId);
         },
 
+        setCollapse(collapsedState: CollapsedState) {
+            const frames = this.isPartOfSelection ? this.appStore.selectedFrames : [this.frameId];
+            for (let frame of frames) {
+                if (this.appStore.frameObjects[frame].frameType.allowedCollapsedStates.includes(collapsedState)) {
+                    this.appStore.setCollapseStatusContainer({frameId: frame, collapsed: collapsedState});
+                }
+            }
+        },
+        
+        collapseToHeader() : void {
+            this.setCollapse(CollapsedState.ONLY_HEADER_VISIBLE); 
+        },
+
+        collapseToDocumentation() : void {
+            this.setCollapse(CollapsedState.HEADER_AND_DOC_VISIBLE);
+        },
+
+        collapseToFull() : void {
+            this.setCollapse(CollapsedState.FULLY_VISIBLE);
+        },
+
         showFrameParseErrorPopupOnHeaderFocus(isFocusing: boolean): void{
             // We need to be able to show the frame error popup programmatically
             // (if applies) when we navigate to the error - we make sure the frame still exists.
@@ -1274,6 +1341,7 @@ export default Vue.extend({
 
 .context-menu-item-shortcut {
     margin-left: auto;
+    padding-left: 1em;
     font-size: 70%;
     color: grey;
 }

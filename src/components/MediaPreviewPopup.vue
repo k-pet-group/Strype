@@ -29,6 +29,10 @@ import {EditImageInDialogFunction, EditSoundInDialogFunction, LoadedMedia} from 
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import {PersistentImageManager} from "@/stryperuntime/image_and_collisions";
 
+// These bits of text are not translated because they are class names:
+const HTMLImageClass = "<a href='https://strype.org/doc/library/#strype.graphics.Image' target='_blank'>Image</a>";
+const HTMLSoundClass = "<a href='https://strype.org/doc/library/#strype.sound.Sound' target='_blank'>Sound</a>";
+
 export default Vue.extend({
     name: "MediaPreviewPopup",
     data() {
@@ -61,21 +65,20 @@ export default Vue.extend({
             this.audioBuffer = media.audioBuffer;
             if (media.audioBuffer) {
                 // This is not translated because it's a class name:
-                this.mediaInfo = `Sound<br>${media.audioBuffer.duration.toFixed(2)} ${this.$t("media.soundSeconds")}`;
+                this.mediaInfo = `${HTMLSoundClass}<br>${media.audioBuffer.duration.toFixed(2)} ${this.$t("media.soundSeconds")}`;
                 this.imgDataURL = media.imageDataURL;
             }
             else {
                 if (this.imgDataURL != media.imageDataURL) {
                     this.imgDataURL = media.imageDataURL;
-                    // This is not translated because it's a class name:
-                    this.mediaInfo = "Image";
+                    this.mediaInfo = HTMLImageClass;
                 }
             }
         },
         imgLoaded(event: Event) {
             const previewImgElement = event.target as HTMLImageElement;
             if (this.mediaType.startsWith("image/")) {
-                this.mediaInfo = `Image (${this.mediaType.replace("image/", "")})<br>${previewImgElement?.naturalWidth} × ${previewImgElement?.naturalHeight} ${this.$t("media.pixels")}`;
+                this.mediaInfo = `${HTMLImageClass}<br>${previewImgElement?.naturalWidth} × ${previewImgElement?.naturalHeight} ${this.$t("media.pixels")}`;
             }
         },
         startHidePopup() {

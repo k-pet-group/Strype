@@ -2,7 +2,7 @@
     <div/>
 </template>
 <script lang="ts">
-import Vue from "vue";
+import Vue, { PropType } from "vue";
 import {useStore, settingsStore} from "@/store/store";
 import { mapStores } from "pinia";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
@@ -19,6 +19,7 @@ export default Vue.extend({
             type: [String],
             required: false,
         },
+        pickFolderCancelled: {type: Function as PropType<() => void>, required: true},
     },
 
     computed:{
@@ -28,14 +29,16 @@ export default Vue.extend({
     data: function() {
         return {
             isSaveAction: false,
+            startingFromFolderId: undefined as string | undefined,
         };
     },
         
     // We don't import the Google scripts in this component because we rely on the parent GoogleDrive component having done it.
 
     methods: {
-        startPicking(isSaveAction: boolean) {
+        startPicking(isSaveAction: boolean, initialStrypeFolderId?: string) {
             this.isSaveAction = isSaveAction;
+            this.startingFromFolderId = initialStrypeFolderId;
             gapi.load("picker", () => {
                 this.createPicker();
             });
@@ -46,9 +49,9 @@ export default Vue.extend({
             const docsViews: google.picker.DocsView[] = [];
             
             // View 1: Strype/current folder view (load only)
-            if(!this.isSaveAction && this.appStore.strypeProjectLocation != undefined){
+            if(!this.isSaveAction && this.startingFromFolderId){
                 const inFolderDocsView = new google.picker.DocsView();
-                inFolderDocsView.setParent(this.appStore.strypeProjectLocation.toString());
+                inFolderDocsView.setParent(this.startingFromFolderId);
                 inFolderDocsView.setIncludeFolders(true);
                 inFolderDocsView.setMode(google.picker.DocsViewMode.LIST);
                 // The setLabel function is (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
@@ -150,6 +153,10 @@ export default Vue.extend({
                 }
                 const emitEvent = (this.isSaveAction) ? "picked-folder" : "picked-file";
                 this.$emit(emitEvent, fileId, fileName);
+            }
+            else if(data.action === google.picker.Action.CANCEL && this.isSaveAction){
+                // When the picker is closed for selecting a folder, we do need to bubble up that event
+                this.pickFolderCancelled();
             }
         },
     },

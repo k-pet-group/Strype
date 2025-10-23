@@ -41,7 +41,7 @@
             </ModalDlg>
             <!-- save project -->
             <a :id="saveProjectLinkId" v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="handleSaveMenuClick">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
-            <a v-if="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !isSynced }" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'"/>
+            <a v-if="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !isSynced }" @click="handleSaveAsMenuClick" v-b-modal.save-strype-project-modal-dlg v-t="'appMenu.saveAsProject'"/>
             <ModalDlg :dlgId="saveProjectModalDlgId" size="lg" :autoFocusButton="'ok'">
                 <div class="save-project-modal-dlg-container">
                     <div class="row">
@@ -254,6 +254,8 @@ export default Vue.extend({
             showCloudSaveLocation: false,
             // Flag to know if a request to change with a different folder location for Googe Drive has been requested
             saveAtOtherLocation: false,
+            // Flag to know if a "save as" request has been made
+            requestSaveAs: false,
             // Indicator of the error index that is currently being looked at (0-based index, and reset when errors are regenerated)
             currentErrorNavIndex: -1,
             // Flag indicating if navigating to an error has been triggered by the user: used to inhibit reactive changes
@@ -665,6 +667,11 @@ export default Vue.extend({
             }
         },
 
+        handleSaveAsMenuClick(){
+            // This is only used to set the "save as" flag, saving mechanism is handled via the modal.
+            this.requestSaveAs = true;
+        },
+
         openLoadProjectDlgAfterSaved(): void {
             // Reset the flag to request opening the project later (see flag definition)
             this.requestOpenProjectLater = false;
@@ -943,10 +950,10 @@ export default Vue.extend({
                     return;
                 }
 
-                // Other cases: reset the temporary sync file flag
+                // Other cases: reset the temporary sync file flag and the save as flag
                 this.tempSyncTarget = this.appStore.syncTarget;
                 this.currentModalButtonGroupIDInAction = "";
-
+                this.requestSaveAs = false;
             }
             else if(event.trigger == "ok" || event.trigger == "event"){
                 // Case of "load file"
@@ -1012,10 +1019,11 @@ export default Vue.extend({
                         }
                     }
                     else {          
-                        // If we were already syncing to a Drive, we save the current file now.
-                        if(isSyncTargetCloudDrive(this.appStore.syncTarget)){
+                        // If we were already syncing to a Drive, we save the current file now, except if "saving as"
+                        if(!this.requestSaveAs && isSyncTargetCloudDrive(this.appStore.syncTarget)){
                             this.$root.$emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.autosave);
                         }
+                        
                         // We postpone saving slight to make sure all autosaving have completed
                         setTimeout(() => {
                             // When the project name is enforced, user as clicked on "save", so we don't need to trigger the usual saving mechanism to select the location/filename

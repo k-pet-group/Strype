@@ -53,6 +53,7 @@ export default Vue.extend({
     props: {
         onFileToLoadPicked: {type: Function as PropType<(cloudTarget: StrypeSyncTarget, fileId: string, fileName?: string) => Promise<void>>, required: true},
         onFolderToSaveFilePicked: {type: Function as PropType<(cloudTarget: StrypeSyncTarget) => void>, required: true},
+        onFolderToSavePickCancelled: {type: Function as PropType<() => void>, required: true},
         onUnsupportedByStrypeFilePicked: {type: Function as PropType<() => void>, required: true},
     },
 
@@ -489,9 +490,14 @@ export default Vue.extend({
         },
 
         onFolderPickerForWSAccountHideModalDlg(event: BvModalEvent, dlgId: string ){
-            if(event.trigger == "ok" && dlgId == this.folderPickerForWSAccountDlgId){
-                // Trigger the selection's validation
-                document.dispatchEvent(new CustomEvent(CustomEventTypes.requestedCloudDrivePickerPickedItem));
+            if(dlgId == this.folderPickerForWSAccountDlgId){
+                if(event.trigger == "ok"){
+                    // Trigger the selection's validation
+                    document.dispatchEvent(new CustomEvent(CustomEventTypes.requestedCloudDrivePickerPickedItem));
+                }
+                else{
+                    this.onFolderToSavePickCancelled();
+                }
             }
         },
 

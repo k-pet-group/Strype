@@ -12,8 +12,8 @@
             </template>
         </ModalDlg>
         <!-- Each specific drive is created here, but typing inference is done in getSpecificCloudDriveComponent() -->
-        <GoogleDriveComponent ref="googleDriveComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
-        <OneDriveComponent ref="oneDriveComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
+        <GoogleDriveComponent ref="googleDriveComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
+        <OneDriveComponent ref="oneDriveComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
     </div>
 </template>
 
@@ -214,7 +214,7 @@ export default Vue.extend({
                                 return cloudDriveComponent.getFolderNameFromId(strypeFolderId).then((folderNameAndPath) => {
                                     this.appStore.strypeProjectLocationAlias = folderNameAndPath.name;
                                     this.appStore.strypeProjectLocationPath = folderNameAndPath.path??"";
-                                    return cloudDriveComponent.openFilePicker();
+                                    return cloudDriveComponent.openFilePicker(strypeFolderId);
                                 });
                             }
                             else{
@@ -222,7 +222,7 @@ export default Vue.extend({
                                 this.appStore.strypeProjectLocation = (strypeFolderId) ? strypeFolderId : undefined;
                                 this.appStore.strypeProjectLocationAlias = (strypeFolderId) ? "Strype" : "";
                                 this.appStore.strypeProjectLocationPath = (strypeFolderId) ? "Strype" : "";
-                                return cloudDriveComponent.openFilePicker();
+                                return cloudDriveComponent.openFilePicker(strypeFolderId??undefined);
                             }                                    
                         });
                     }
@@ -457,6 +457,8 @@ export default Vue.extend({
                 // Set the sync target 
                 this.appStore.syncTarget = cloudTarget;
                 this.appStore.isEditorContentModified = false;
+                // Reset the "Save As" flag of the Men
+                (this.$parent as InstanceType<typeof Menu>).requestSaveAs = false;
                 // Set the project name when we have made an explicit saving
                 if(isExplictSave || this.saveReason == SaveRequestReason.overwriteExistingProject){
                     this.appStore.projectName = this.saveFileName;
@@ -483,6 +485,8 @@ export default Vue.extend({
                     this.appStore.simpleModalDlgMsg = this.$i18n.t((this.saveReason == SaveRequestReason.reloadBrowser) ? "errorMessage.driveNoFile" :"errorMessage.driveSaveFailed", {drivename: cloudDriveComponent.driveName}) as string;
                     this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
                     this.updateSignInStatus(cloudTarget,false);
+                    // Reset the "Save As" flag of the Men
+                    (this.$parent as InstanceType<typeof Menu>).requestSaveAs = false;
                     // When we tried to save a project upon request by the user when the a project was reloaded in the brower, failure to connect clears off the Drive information
                     if(this.saveReason == SaveRequestReason.reloadBrowser){
                         this.appStore.currentCloudSaveFileId = undefined;
@@ -632,6 +636,11 @@ export default Vue.extend({
             this.lookForAvailableProjectFileName(cloudTarget, this.appStore.strypeProjectLocation as string);
         },
 
+        onFolderToSavePickCancelled(){
+            // Reset the "Save As" flag of the Men
+            (this.$parent as InstanceType<typeof Menu>).requestSaveAs = false;
+        },
+
         onUnsupportedByStrypeFilePicked(){
             // When a non-Strype file was picked to load, we notify the user on a modal dialog, and trigger the Drive picker again
             this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveWrongFile") as string;
@@ -675,8 +684,10 @@ export default Vue.extend({
                     this.$root.$emit("bv::show::modal", getSaveAsProjectModalDlg());
                 }); 
             }
-
-            // If user chose "cancel": we do nothing  
+            else{
+                // If user chose "cancel": we only reset the "Save As" flag of the Men
+                (this.$parent as InstanceType<typeof Menu>).requestSaveAs = false;
+            }
         },
 
         cleanCloudDriveRelatedInfosInState(){

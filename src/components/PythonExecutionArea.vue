@@ -975,11 +975,41 @@ export default Vue.extend({
         },
 
         async screenshotGraphicsArea() {
-            if (!targetCanvas) {
+            // The screenshot Graphics area can take two paths depending on the context:
+            // if we are using Strype Graphics (Media API), then we convert the offscreen canvas "directly",
+            // if we are using Turtle, it's a bit less straight forward because Turtle is handled by Skulpt 
+            // which makes the canvases for us.            
+            // We detect the Turtle case if canvases exist in #peaGraphicsDiv
+            const peaGraphicsDiv = document.getElementById(getPEAGraphicsDivId());
+            const turtleCanvases =  Array.from(peaGraphicsDiv?.children??[]);
+            const forTurtle = turtleCanvases.some((el)=>el.tagName.toLowerCase() == "canvas");
+
+            if (!targetCanvas && !forTurtle) {
                 return;
             }
 
-            const blob : Blob = await (targetCanvas as any).convertToBlob({ type: "image/png" });
+            let canvasW = 0, canvasH = 0;
+            if(forTurtle && peaGraphicsDiv){
+                const peaGraphicsDivRect = peaGraphicsDiv.getClientRects();
+                const peaGraphicsDivScale = peaGraphicsDiv.style.scale ? peaGraphicsDiv.style.scale : "1";
+                canvasW = peaGraphicsDivRect[0].width / parseFloat(peaGraphicsDivScale);
+                canvasH = peaGraphicsDivRect[0].height / parseFloat(peaGraphicsDivScale);                
+            }
+
+            let offScreenCanvasToUse = (forTurtle) ? new OffscreenCanvas(canvasW, canvasH) : targetCanvas;
+            // Prepare the canvas content for Turtle if required
+            if(forTurtle && peaGraphicsDiv && offScreenCanvasToUse){
+                const ctx = offScreenCanvasToUse.getContext("2d") as OffscreenCanvasRenderingContext2D;
+                // Turtle's background is white by default
+                const turtleBackgroundColor = getComputedStyle(peaGraphicsDiv).backgroundColor;
+                ctx.fillStyle =turtleBackgroundColor;            
+                ctx.fillRect(0, 0, canvasW, canvasH),
+                turtleCanvases.forEach((el) => {
+                    ctx?.drawImage(el as HTMLCanvasElement, 0, 0);
+                });                
+            }
+
+            const blob : Blob = await (offScreenCanvasToUse as any).convertToBlob({ type: "image/png" });
 
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a");
@@ -989,7 +1019,11 @@ export default Vue.extend({
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
-            URL.revokeObjectURL(url); // Clean up
+            // Clean up
+            URL.revokeObjectURL(url); 
+            if(forTurtle){
+                offScreenCanvasToUse = null;
+            }
         },
     },
     

@@ -193,8 +193,7 @@ export default Vue.extend({
             // so we can, in turn, set a resize observer on these canvases to compute how to scale them.
             // (Note: that is very important because every time the user code is run, Skulpt regenerates the canvases)
             const turtleDivPlaceholderObserver = new MutationObserver(() => {
-                // We don't need to change the canvas size for EVERY canvases added by Skulpt, we only do it on the first one added.
-                if(document.querySelectorAll("#" + getPEAGraphicsDivId() + " canvas").length == 1){
+                if(document.querySelectorAll("#" + getPEAGraphicsDivId() + " canvas").length >= 1){
                     // Adding graphics in the split view may mess up with our styling (scroll bars are added) so before running 
                     // we hide the graphics container, it will be shown again later when scalling is called
                     this.graphicsTemporaryHidden = true;

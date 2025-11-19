@@ -46,6 +46,7 @@ export enum CustomEventTypes {
     requestAppNotOnTop="requestAppNotOnTop",
     editorAddFrameCommandsUpdated = "frameCommandsUpdated",
     frameContentEdited = "frameContentEdited",
+    notifyLabelSlotInError = "notifyLabelSlotInError",
     requestSlotsRefactoring ="requestSlotsRefactoring",
     editableSlotGotCaret= "slotGotCaret",
     editableSlotLostCaret = "slotLostCaret",

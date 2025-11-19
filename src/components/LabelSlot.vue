@@ -426,7 +426,12 @@ export default Vue.extend({
 
         erroneous(): boolean {
             // Only show the popup when there is an error and the code hasn't changed
-            return this.isFirstChange && this.appStore.isErroneousSlot(this.coreSlotInfo);
+            const isErroneous = this.isFirstChange && this.appStore.isErroneousSlot(this.coreSlotInfo);
+            // The parent (label slot structure) notifies the grand-parent (the frame header) that a slot is erroneous
+            if(isErroneous){
+                this.$parent.$emit(CustomEventTypes.notifyLabelSlotInError);
+            }
+            return isErroneous;
         },
 
         // Event callback equivalent to what would happen for a focus event callback 

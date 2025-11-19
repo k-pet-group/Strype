@@ -21,9 +21,10 @@
                     :default-text="item.defaultText"
                     :frameId="frameId"
                     :labelIndex="originalIndex"
+                    @[CustomEventTypes.notifyLabelSlotInError]="onLabelSlotContainsError"
                 />
             </div>
-            <i v-if="wasLastRuntimeError && groupIndex == splitLabels.length - 1" :class="{'fas fa-exclamation-triangle fa-xs runtime-err-icon': true, 'runtime-past-err-icon': !erroneous}"></i>
+            <i v-if="(wasLastRuntimeError || hasErroneousSlot) && groupIndex == splitLabels.length - 1" :class="{'fas fa-exclamation-triangle fa-xs err-icon': true, 'runtime-past-err-icon': (!erroneous && !hasErroneousSlot)}"></i>
         </div>
     </div>
 </template>
@@ -32,12 +33,13 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue from "vue";
+import Vue, { PropType } from "vue";
 import LabelSlotsStructure from "@/components/LabelSlotsStructure.vue";
 import { useStore } from "@/store/store";
 import {AllFrameTypesIdentifier, FrameLabel} from "@/types/types";
 import { mapStores } from "pinia";
 import scssVars from "@/assets/style/_export.module.scss";
+import { CustomEventTypes } from "@/helpers/editor";
 
 // Splits into a list of lists (each outer list is a line, with 1 or more items on it)
 // by looking at the newLine flag in the FrameLabel.
@@ -70,7 +72,10 @@ export default Vue.extend({
     props: {
         // We need an array of labels in the case there are more
         // than a label in the frame (e.g. `with` ... `as ... ) 
-        labels: Array,
+        labels: {
+            type: Array as PropType<FrameLabel[]>,
+            required: true,
+        },
         frameId: Number,
         frameType: String,
         isDisabled: Boolean,
@@ -96,9 +101,16 @@ export default Vue.extend({
             return AllFrameTypesIdentifier.projectDocumentation;
         },
         
-        splitLabels() {
-            return splitAtNewLines(this.labels as FrameLabel[]);
+        splitLabels(): { item: FrameLabel, originalIndex: number }[][] {
+            return splitAtNewLines(this.labels);
         },
+    },
+
+    data(){
+        return {
+            CustomEventTypes, // just to be able to use in template
+            hasErroneousSlot: false,
+        };
     },
 
     methods:{
@@ -108,6 +120,10 @@ export default Vue.extend({
 
         areSlotsShown(labelDetails: FrameLabel): boolean {
             return labelDetails.showSlots??true;
+        },
+
+        onLabelSlotContainsError(): void {            
+            this.hasErroneousSlot = true;
         },
     },
 });
@@ -154,7 +170,7 @@ export default Vue.extend({
     color: rgb(2, 33, 168);
 }
 
-.runtime-err-icon {
+.err-icon {
     margin: 7px 2px 0px 2px;
     margin-left: auto;
     color:#d66;

@@ -917,6 +917,10 @@ export default Vue.extend({
                         this.$root.$on("bv::modal::hide", execGetCloudDriveFileFunction);   
                         this.$root.$emit("bv::show::modal", this.resyncToCloudDriveAtStartupModalDlgId);
                     }
+                    // When a file has been reloaded and it was previously saved the File System, we want to clear off any references to that file
+                    else if(this.appStore.syncTarget == StrypeSyncTarget.fs){
+                        (this.$refs[this.menuUID] as InstanceType<typeof Menu>).saveTargetChoice(StrypeSyncTarget.none);
+                    }
                 }, () => {});
             }, () => {});
         },

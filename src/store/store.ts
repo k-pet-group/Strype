@@ -2145,10 +2145,10 @@ export const useStore = defineStore("app", {
                     }
                     
                     // The only times to prevent deletion with 'delete' is when we are inside a body that has no children (except in Joint frames)
-                    // or when the next position is a joint root's below OR a method declaration below
+                    // or when the next position is a joint root's below OR a strict* block frame below (* = that cannot take joint frame, like a function definition, a class definition or "with")
                     if((framesIdToDelete.length==1 && this.frameObjects[frameToDelete.frameId]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.isJointFrame 
                             && this.currentFrame.caretPosition == CaretPosition.body && this.frameObjects[frameToDelete.frameId]?.childrenIds.length == 0)
-                        || ((this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren  || this.frameObjects[frameToDelete.frameId]?.frameType.type === AllFrameTypesIdentifier.funcdef)
+                        || ((this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren  || (this.frameObjects[frameToDelete.frameId]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren))
                             && (frameToDelete.caretPosition??"") === CaretPosition.below)){
                         frameToDelete.frameId = -100;
                     }

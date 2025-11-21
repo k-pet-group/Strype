@@ -2281,3 +2281,26 @@ export function slotStructureToString(ss: SlotsStructure) : string {
     }
     return r.join("");
 }
+
+// Method to get the length of a grapheme (a grapheme is a visual "character" of a string, for example an emoji)
+// The callers should handle the case of boudaries, we only return -1 for those.
+export function getGraphemeLength(content: string, currentCursorPos:number, lookAt: "current" | "before"): number {
+    const graphemeIterator = new Intl.Segmenter("en", { granularity: "grapheme" }).segment(content);
+    const graphemeIteratorArray = Array.from(graphemeIterator);
+    const graphemePosAndLength = graphemeIteratorArray.map((grapheme, index) => {
+        // We don't get the length directly from the iterator content (nor the grapheme itself)
+        // so we need to find it out: we compute it by looking at the next grapheme and making the indexes diff.
+        // If we're on the last grapheme, then the difference is between the all string length and the current index.
+        const isLastGrapheme = index == (Array.from(graphemeIterator).length - 1);
+        const nextGraphemePos = (isLastGrapheme) ? content.length : graphemeIteratorArray[index + 1].index; 
+        return {pos: grapheme.index, length: nextGraphemePos - grapheme.index};
+    });
+
+    if(currentCursorPos == content.length){
+        return (lookAt == "current") ? -1 : graphemePosAndLength[graphemePosAndLength.length - 1].length;
+    }
+    else{
+        const currentPosGraphemeIndex = graphemePosAndLength.findIndex((g)=> g.pos==currentCursorPos);
+        return (lookAt == "before" && currentCursorPos == 0) ? -1: graphemePosAndLength[currentPosGraphemeIndex + ((lookAt == "current") ? 0 : -1)].length;                    
+    }
+}

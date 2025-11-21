@@ -796,8 +796,8 @@ function replaceMediaLiteralsAndInvalidOps(s : SlotsStructure) : SlotsStructure 
 }
 
 export function fromUnicodeEscapes(input: string): string {
-    const regex = /u([0-9a-fA-F]{4})/g;
-    return input.replace(regex, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
+    const regex = /u([0-9a-fA-F]{4,})/g; // We may not have always only 4 digits after "u", it's only the case for BMP characters
+    return input.replace(regex, (_, hex) => String.fromCodePoint(parseInt(hex, 16)));
 }
 
 function toSlots(p: ParsedConcreteTree) : SlotsStructure {

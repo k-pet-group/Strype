@@ -291,3 +291,9 @@ describe("Tests loading/saving format strings", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/format-strings.spy");
     });
 });
+
+describe("Tests loading/saving grapheme clusters (like emojis) in strings", () => {
+    it("Loads/saves grapheme clusters in strings", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/grapheme-strings.spy");
+    });
+});

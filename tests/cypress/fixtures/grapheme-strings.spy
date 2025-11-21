@@ -1,0 +1,10 @@
+#(=> Strype:1:std
+'''Test some graphemes like a ✈️ with 👻 with 𡨴 plus 👨‍👩‍👧‍👦 and plus 🛠️, it\'s great!'''
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+myString  = "a ✈️ with 👻 with 𡨴 plus 👨‍👩‍👧‍👦 and plus 🛠️, it's great!" 
+print(myString) 
+#Some errorenous code (using grapheme clusters like a ✈️ with 👻 with 𡨴 plus 👨‍👩‍👧‍👦 and plus 🛠️ outside strings) because we can't save them afterwards..
+___strype_opsinvalid(___strype_invalid_u0061u0020u2708ufe0fu0020u0077u0069u0074u0068u0020u1f47bu0020u0077u0069u0074u0068u0020u21a34u0020u0070u006cu0075u0073u0020u1f468u200du1f469u200du1f467u200du1f466,___strype_operator_u0061u006eu0064,___strype_invalid_u0070u006cu0075u0073u0020u1f6e0ufe0f,___strype_operator_u002c,___strype_invalid_u0069u0074u0073u0020u0067u0072u0065u0061u0074u0021) 
+#(=> Section:End

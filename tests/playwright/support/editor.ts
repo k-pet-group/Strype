@@ -23,6 +23,54 @@ export async function checkFrameXorTextCursor(page: Page, specificFrameCursor?: 
     }
 }
 
+export async function checkTextSlotCursorPos(page: Page, expectedPos: number): Promise<void> {
+    const docSelectionFocusOffset = await page.evaluate(() =>{
+        return document?.getSelection()?.focusOffset;
+    });
+    expect(docSelectionFocusOffset).toEqual(expectedPos);
+}
+
+async function getSelection(page: Page) : Promise<{ id: string, cursorPos : number }> {
+    // We need a delay to make sure last DOM update has occurred:
+    await page.waitForSelector("#editor");
+    return page.locator("#editor").evaluate((ed) => {
+        return {id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")};
+    });
+}
+
+export async function assertState(page: Page, expectedState : string) : Promise<void> {
+    const info = await getSelection(page);
+    const scssVars = await page.evaluate(() => {
+        return (window as any)["StrypeSCSSVarsGlobals"];
+    });
+    const s = await page.locator("#frameContainer_-3" + " ." + scssVars.frameHeaderClassName).first().locator("." + scssVars.labelSlotInputClassName + ", ." + scssVars.frameColouredLabelClassName).evaluateAll((parts, info: { id: string, cursorPos : number }) => {
+        let s = "";
+        if (!parts) {
+            // Try to debug an occasional seemingly impossible failure:
+            console.log("Parts is null which I'm sure shouldn't happen");
+        }
+        // Since we're in an if frame, we ignore the first and last part:
+        for (let i = 1; i < parts.length - 1; i++) {
+            const p: any = parts[i];
+
+            let text = (p.value || p.textContent || "").replace("\u200B", "");
+
+            // If we're the focused slot, put a dollar sign in to indicate the current cursor position:
+            if (info.id === p.getAttribute("id") && info.cursorPos >= 0) {
+                text = text.substring(0, info.cursorPos) + "$" + text.substring(info.cursorPos);
+            }
+            // Don't put curly brackets around strings, operators or brackets:
+            if (!p.classList.contains((window as any)["StrypeSCSSVarsGlobals"].frameStringSlotClassName) && !p.classList.contains((window as any)["StrypeSCSSVarsGlobals"].frameOperatorSlotClassName) && !/[([)\]$]/.exec(p.textContent)) {
+                text = "{" + text + "}";
+            }
+            s += text;
+        }
+        return s;
+    }, info);
+    // There is no correspondence for _ (indicating a null operator) in the Strype interface so just ignore that:
+    expect(s).toEqual(expectedState.replaceAll("_", ""));
+}
+
 export async function typeIndividually(page: Page, content: string, timeout = 75) : Promise<void> {
     for (let i = 0; i < content.length; i++) {
         await page.keyboard.type(content[i]);
@@ -68,3 +116,16 @@ export async function doTextHomeEndKeyPress(page: Page, isGoingForward: boolean,
         await page.keyboard.press(`${isShiftEnabled ? "Shift+" : ""}${isGoingForward ? "End" : "Home"}`);
     }
 } 
+
+export function pressN(key: string, n : number) : ((page: Page) => Promise<void>) {
+    return async (page) => {
+        for (let i = 0; i < n; i++) {
+            // Handle the issue with macOS for home/end, see the method details
+            if(process.platform == "darwin" && (key == "Home" || key == "End")){
+                await doTextHomeEndKeyPress(page, (key == "End"), false);
+                return;
+            }            
+            await page.keyboard.press(key); 
+        }
+    };
+}

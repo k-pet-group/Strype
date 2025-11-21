@@ -186,6 +186,7 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         await page.keyboard.press("ArrowRight");
         // Move right until the end of the literal (not past the closing quote, and we need +1 for passing the opening quote)
         await pressN("ArrowRight", 1 + strWithGraphemesSize)(page);
+        await page.waitForTimeout(75);
         // Check the cursor position is as expected
         await checkTextSlotCursorPos(page, strWithGraphemes.length);
     });
@@ -202,6 +203,7 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         await page.keyboard.press("ArrowLeft");
         // Move left until the start of the literal (not past the opening quote, and we need +3 for passing the brackets and closing quote)
         await pressN("ArrowLeft", 3 + strWithGraphemesSize)(page);
+        await page.waitForTimeout(75);
         // Check the cursor position is as expected
         await checkTextSlotCursorPos(page, 0);
     });
@@ -222,11 +224,12 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         await page.keyboard.press("ArrowUp");
         await pressN("ArrowRight", 2)(page);
         // Delete to keep "it's great"
-        await pressN("ArrowRight", strWithGraphemesSize - "it's great!".length)(page);
+        await pressN("Delete", strWithGraphemesSize - "it's great!".length)(page);
+        await page.waitForTimeout(75);
         // Check the cursor position is as expected
-        await checkTextSlotCursorPos(page, "it's great!".length);
+        await checkTextSlotCursorPos(page, 0);
         // Check the content is as expected
-        await assertState(page, "{}_“$it's great”_{}");
+        await assertState(page, "{}_“$it's great!”");
     });
 
     test("Delete (backspace) parts of the string literal", async ({page}) => {
@@ -245,10 +248,11 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         await page.keyboard.press("ArrowDown");
         await pressN("ArrowLeft", 2)(page);
         // Delete to keep "a"
-        await pressN("ArrowLeft", strWithGraphemesSize - 1)(page);
+        await pressN("Backspace", strWithGraphemesSize - 1)(page);
+        await page.waitForTimeout(75);
         // Check the cursor position is as expected
         await checkTextSlotCursorPos(page, 1);
         // Check the content is as expected
-        await assertState(page, "{}_“a$”_{}");
+        await assertState(page, "{}_“a$”");
     });
 });

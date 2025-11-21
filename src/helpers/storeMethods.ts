@@ -454,7 +454,7 @@ export const getAllChildrenAndJointFramesIds = function(frameId: number): number
     return childrenJointsIdsList;
 };
 
-export const checkStateDataIntegrity = function(obj: {[id: string]: any}): boolean {
+export const checkStateDataIntegrity = async function(obj: {[id: string]: any}): Promise<boolean> {
     //check the checksum and version properties are present and checksum is as expected, if not, the document doesn't have integrity
     if(obj["checksum"] === undefined || obj["version"] === undefined){
         return false;
@@ -471,7 +471,7 @@ export const checkStateDataIntegrity = function(obj: {[id: string]: any}): boole
             delete obj["platform"];
         }
         //get the checksum from the object
-        const expectedChecksum = getSHA1HashForObject(obj);
+        const expectedChecksum = await getSHA1HashForObject(obj);
         //add the read version and platform as they are needed later
         obj["version"] = foundVersion;
         obj["platform"] = foundPlatform ?? StrypePlatform.standard;

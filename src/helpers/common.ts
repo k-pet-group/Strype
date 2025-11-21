@@ -1,5 +1,4 @@
 import {ObjectPropertyDiff} from "@/types/types";
-import hash from "object-hash";
 
 //Function to get the difference between two states (properties) of an object.
 //It takes the two objects as arguments and returns a list of differences. 
@@ -177,9 +176,13 @@ export const readFileContent = async (file: File): Promise<string>  => {
     return result;    
 };
 
-export const getSHA1HashForObject = (obj: {[id: string]: any}): string => {
-    const res = hash(obj);
-    return res;
+export const getSHA1HashForObject = async (obj: {[id: string]: any}): Promise<string> => {
+    const encoder = new TextEncoder();
+    const data = encoder.encode(JSON.stringify(obj)); // UTF-8 encoding
+    const hashBuffer = await crypto.subtle.digest("SHA-1",data);
+    return Array.from(new Uint8Array(hashBuffer))
+        .map((b) => b.toString(16).padStart(2, "0"))
+        .join("");
 };
 
 export function isMacOSPlatform(): boolean {

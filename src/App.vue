@@ -797,11 +797,13 @@ export default Vue.extend({
                     localStorage.setItem(AutoSaveKeyNames.settingsState, JSON.stringify(this.settingsStore.$state));
                 }
                 else{
-                    localStorage.setItem(this.localStorageAutosaveEditorKey, this.appStore.generateStateJSONStrWithCheckpoint(true));
-                    // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
-                    if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
-                        this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
-                    }
+                    this.appStore.generateStateJSONStrWithCheckpoint(true).then((stateJSONStrWithCheckpoint) => {
+                        localStorage.setItem(this.localStorageAutosaveEditorKey, stateJSONStrWithCheckpoint);
+                        // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
+                        if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
+                            this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                        }
+                    });
                 }
             }
         },

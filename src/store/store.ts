@@ -2402,7 +2402,7 @@ export const useStore = defineStore("app", {
             this.currentFrame.id = nextPosition.frameId;
         },
 
-        generateStateJSONStrWithCheckpoint(compress?: boolean) {
+        async generateStateJSONStrWithCheckpoint(compress?: boolean) {
             /** This function was defined as a getter before, check details as to why it needs to be an action:
              *  the goal of this function is to make a "copy" of the state in a JSON format, with a few extra bits like the checkpoint.
                 However, if defined as a getter, the state object we get in a getter is not exactly "just" the state object as we write it: 
@@ -2426,7 +2426,7 @@ export const useStore = defineStore("app", {
                 stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;
             });
 
-            const checksum =  getSHA1HashForObject(stateCopy);
+            const checksum = await getSHA1HashForObject(stateCopy);
             //add the checksum and other backup flags in the state object to be saved
             stateCopy["checksum"] = checksum;
             stateCopy["version"] = AppVersion;
@@ -2440,7 +2440,6 @@ export const useStore = defineStore("app", {
                 return LZString.compress(JSON.stringify(stateCopy));
             }  
         },
-       
         
         setStateFromJSONStr(payload: {stateJSONStr: string; errorReason?: string, showMessage?: boolean, readCompressed?: boolean}): Promise<void>{
             return new Promise((resolve, reject) => {
@@ -2452,12 +2451,51 @@ export const useStore = defineStore("app", {
                 // If there is an error set because the file couldn't be retrieved
                 // we don't check anything, just get to the error display.
                 if(isStateJSONStrValid){
-                // If the string we read was compressed, we need to uncompress it first
+                    // If the string we read was compressed, we need to uncompress it first
                     if(payload.readCompressed){
                         this.setStateFromJSONStr({stateJSONStr: LZString.decompress(payload.stateJSONStr) as string, showMessage: payload.showMessage})
                             .then(resolve).catch(reject);
                         return;
                     }
+
+                    const doFinaliseCheckup = () => {                        
+                        // Apply the change and indicate it to the user if we detected a valid JSON string
+                        // or alert the user we couldn't if we detected a faulty JSON string to represent the state
+                        if(isStateJSONStrValid){  
+                            const newStateStr = JSON.stringify(newStateObj);     
+                            if(!isVersionCorrect) {
+                                // If the version isn't correct, we ask confirmation to the user before continuing 
+                                // for ease of coding, we register a "one time" event listener on the modal
+                                const execSetStateFunction = (event: BvModalEvent, dlgId: string) => {
+                                    if((event.trigger == "ok" || event.trigger=="event") && dlgId == getImportDiffVersionModalDlgId()){
+                                        this.doSetStateFromJSONStr(newStateStr).then(() => {
+                                            vm.$root.$off("bv::modal::hide", execSetStateFunction); 
+                                            resolve();          
+                                        });                          
+                                    }
+                                    else{
+                                        isStateJSONStrValid = false;
+                                        reject(errorDetailMessage);
+                                    }
+                                };
+                                vm.$root.$on("bv::modal::hide", execSetStateFunction); 
+                                vm.$root.$emit("bv::show::modal", getImportDiffVersionModalDlgId());
+                            //
+                            }
+                            else{
+                                this.doSetStateFromJSONStr(newStateStr).then(() => resolve());
+                            }                
+                        }
+                        else{
+                            if(payload.showMessage??true){
+                                const message = cloneDeep(MessageDefinitions.UploadEditorFileError);
+                                const msgObj: FormattedMessage = (message.message as FormattedMessage);
+                                msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorDetailMessage);
+                                this.showMessage(message, null);
+                            }
+                            reject(errorDetailMessage);
+                        }
+                    };
 
                     // We need to check the JSON string is:
                     // 1) a valid JSON description of an object --> easy, we can just try to convert
@@ -2472,82 +2510,51 @@ export const useStore = defineStore("app", {
                             //no need to go further
                             isStateJSONStrValid=false;
                             errorDetailMessage = i18n.t("errorMessage.dataNotObject") as string;
+                            doFinaliseCheckup();
                         }
                         else{
                             // Check 2) as 1) is validated
-                            if(!checkStateDataIntegrity(newStateObj)) {
-                                isStateJSONStrValid = false;
-                                errorDetailMessage = i18n.t("errorMessage.stateDataIntegrity") as string;
-                            } 
-                            else {
-                                // Check 3) as 2) is validated
-                                isVersionCorrect = (newStateObj["version"] == AppVersion);
-                                if(Number.parseInt(newStateObj["version"]) > 1 && newStateObj["platform"] != AppPlatform) {
-                                    isStateJSONStrValid = false;
-                                    errorDetailMessage = i18n.t("errorMessage.stateWrongPlatform") as string;
-                                }
-                                else{
-                                    // Check 4) and 5) as 3) is validated
-                                    // If missing project doc frame, copy it in from the empty state and add it as first root child:
-                                    if (!newStateObj["frameObjects"][projectDocumentationFrameId]) {
-                                        newStateObj["frameObjects"][projectDocumentationFrameId] = cloneDeep(emptyState[projectDocumentationFrameId]);
-                                        newStateObj["frameObjects"]["0"]["childrenIds"].unshift(projectDocumentationFrameId);
-                                    }
-                                    
-                                    if(!restoreSavedStateFrameTypes(newStateObj)){
-                                        // There was something wrong with the type name (it should not happen, but better check anyway)
+                            return checkStateDataIntegrity(newStateObj)
+                                .then((isIntegral) => {
+                                    if(!isIntegral) {
                                         isStateJSONStrValid = false;
-                                        errorDetailMessage = i18n.t("errorMessage.stateWrongFrameTypeName") as string;
-                                    }
-                                }
-                                delete newStateObj["version"];
-                                delete newStateObj["platform"];
-                            }          
+                                        errorDetailMessage = i18n.t("errorMessage.stateDataIntegrity") as string;
+                                    } 
+                                    else {
+                                        // Check 3) as 2) is validated
+                                        isVersionCorrect = (newStateObj["version"] == AppVersion);
+                                        if(Number.parseInt(newStateObj["version"]) > 1 && newStateObj["platform"] != AppPlatform) {
+                                            isStateJSONStrValid = false;
+                                            errorDetailMessage = i18n.t("errorMessage.stateWrongPlatform") as string;
+                                        }
+                                        else{
+                                            // Check 4) and 5) as 3) is validated
+                                            // If missing project doc frame, copy it in from the empty state and add it as first root child:
+                                            if (!newStateObj["frameObjects"][projectDocumentationFrameId]) {
+                                                newStateObj["frameObjects"][projectDocumentationFrameId] = cloneDeep(emptyState[projectDocumentationFrameId]);
+                                                newStateObj["frameObjects"]["0"]["childrenIds"].unshift(projectDocumentationFrameId);
+                                            }
+                                            
+                                            if(!restoreSavedStateFrameTypes(newStateObj)){
+                                                // There was something wrong with the type name (it should not happen, but better check anyway)
+                                                isStateJSONStrValid = false;
+                                                errorDetailMessage = i18n.t("errorMessage.stateWrongFrameTypeName") as string;
+                                            }
+                                        }
+                                        delete newStateObj["version"];
+                                        delete newStateObj["platform"];
+                                    }  
+                                })
+                                .finally(doFinaliseCheckup);                                   
                         }
                     }
                     catch(err){
                         // We cannot use the string arguemnt to retrieve a valid state --> inform the users
                         isStateJSONStrValid = false;
                         errorDetailMessage = i18n.t("errorMessage.wrongDataFormat") as string;
+                        doFinaliseCheckup();
                     }
-                }
-            
-                // Apply the change and indicate it to the user if we detected a valid JSON string
-                // or alert the user we couldn't if we detected a faulty JSON string to represent the state
-                if(isStateJSONStrValid){  
-                    const newStateStr = JSON.stringify(newStateObj);     
-                    if(!isVersionCorrect) {
-                        // If the version isn't correct, we ask confirmation to the user before continuing 
-                        // for ease of coding, we register a "one time" event listener on the modal
-                        const execSetStateFunction = (event: BvModalEvent, dlgId: string) => {
-                            if((event.trigger == "ok" || event.trigger=="event") && dlgId == getImportDiffVersionModalDlgId()){
-                                this.doSetStateFromJSONStr(newStateStr).then(() => {
-                                    vm.$root.$off("bv::modal::hide", execSetStateFunction); 
-                                    resolve();          
-                                });                          
-                            }
-                            else{
-                                isStateJSONStrValid = false;
-                                reject(errorDetailMessage);
-                            }
-                        };
-                        vm.$root.$on("bv::modal::hide", execSetStateFunction); 
-                        vm.$root.$emit("bv::show::modal", getImportDiffVersionModalDlgId());
-                    //
-                    }
-                    else{
-                        this.doSetStateFromJSONStr(newStateStr).then(() => resolve());
-                    }                
-                }
-                else{
-                    if(payload.showMessage??true){
-                        const message = cloneDeep(MessageDefinitions.UploadEditorFileError);
-                        const msgObj: FormattedMessage = (message.message as FormattedMessage);
-                        msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, errorDetailMessage);
-                        this.showMessage(message, null);
-                    }
-                    reject(errorDetailMessage);
-                }
+                }            
             });
         },
         setDividerStates(newEditorCommandsSplitterPane2Size: StrypeLayoutDividerSettings | undefined, newPEALayout: StrypePEALayoutMode | undefined, newPEACommandsSplitterPane2Size: StrypeLayoutDividerSettings | undefined, newPEASplitViewSplitterPane1Size: StrypeLayoutDividerSettings | undefined, newPEAExpandedSplitterPane2Size: StrypeLayoutDividerSettings | undefined, resolve: (value: (PromiseLike<void> | void)) => void) {

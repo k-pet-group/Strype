@@ -1492,7 +1492,7 @@ body.#{$strype-classname-dragging-frame} {
     height: 100vh;
     position: absolute;
     left: 0px;
-    z-index: 5000;
+    z-index: 500;
 }
 
 .app-progress-pane {
@@ -1567,7 +1567,7 @@ $divider-grey: darken($background-grey, 15%);
     margin:0;
     padding: 0;
     min-width:10rem;
-    z-index:6000;
+    z-index:600;
     position:fixed;
     list-style:none;
     max-height:calc(100% - 50px);
@@ -1656,7 +1656,7 @@ $divider-grey: darken($background-grey, 15%);
 }
 
 .expanded-PEA-splitter-overlay .splitpanes__splitter {
-    z-index: 10;
+    z-index: 502; // It needs to be higher than the PEA
 }
 
 .companion-canvas-dnd {

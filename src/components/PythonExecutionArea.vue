@@ -1037,7 +1037,7 @@ export default Vue.extend({
         left: 0px;
         position: fixed;
         margin: 0px !important;
-        z-index: 5500;
+        z-index: 501;
     }
 
     .no-43-ratio-collapsed-PEA {

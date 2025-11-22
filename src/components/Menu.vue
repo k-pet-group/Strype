@@ -1631,7 +1631,8 @@ export default Vue.extend({
     background-color: #e2e7e0 !important;
     padding-top: 25px !important;
     // The border is partly designed by CSS, the width is dynamically assigned according to the menu state, see toggleMenuOnOff()
-    border-right: black 0px solid;   
+    border-right: black 0px solid;
+    z-index: 503; // higher index than the overlay and PEA, but less than context menus and dialog modals
 }
 
 .bm-item-list {

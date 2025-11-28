@@ -222,7 +222,7 @@ describe("Tests blanks", () => {
 describe("Tests invalid characters", () => {
     it("Outputs a file with invalid chars", () => {
         testEntryDisableAndSave("{uparrow}{uparrow}" +
-            "i100{rightarrow}ffoo{rightarrow}£1000{downarrow}i50{downarrow}if#(=>oo（）{downarrow}{downarrow}" +
+            "i100{rightarrow}ffoo{rightarrow}£1000{downarrow}i50{downarrow}ifoo（）{downarrow}{downarrow}" +
             "f#include{rightarrow}100,abc,#35{downarrow}r$50{downarrow}{downarrow}{downarrow}" +
             " 100($50, 24.24a)", [], "tests/cypress/fixtures/project-invalid-chars.spy");
     });

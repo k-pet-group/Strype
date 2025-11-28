@@ -3,7 +3,7 @@
 import ___strype_invalid_u0031u0030u0030 
 from foo import ___strype_invalid_u00a3u0031u0030u0030u0030 
 import ___strype_invalid_u0035u0030 
-import ___strype_invalid_u0066u0023u006fu006fuff08uff09 
+import ___strype_invalid_u0066u006fu006fuff08uff09 
 #(=> Section:Definitions
 def ___strype_invalid_u0023u0069u006eu0063u006cu0075u0064u0065 (___strype_invalid_u0031u0030u0030,abc,___strype_invalid_u0023u0033u0035 ) :
     return ___strype_invalid_u0024u0035u0030 

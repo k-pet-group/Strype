@@ -2,7 +2,7 @@
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
 import "../support/autocomplete-test-support";
-import {BUILTIN, MYFUNCS, MYVARS, checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, focusEditorAC, withAC, assertState, scssVars} from "../support/autocomplete-test-support";
+import {BUILTIN, MYFUNCS, MYVARS, checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, focusEditorAC, withAC, assertState, scssVars, MYCLASSES} from "../support/autocomplete-test-support";
 
 // Needed for the "be.sorted" assertion:
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -18,8 +18,8 @@ const UPPER_DOC = "Return a copy of the string with all the cased characters con
 describe("User-defined items", () => {
     it("Offers auto-complete for user-defined functions", () => {
         focusEditorAC();
-        // Go up to functions section, add a function named "foo" then come back down and make a function call frame:
-        cy.get("body").type("{uparrow}ffoo{downarrow}{downarrow}{downarrow} ");
+        // Go up to functions section, add a function named "foo", a description "bar", then come back down and make a function call frame:
+        cy.get("body").type("{uparrow}ffoo{rightarrow}{rightarrow}bar{downarrow}{downarrow}{downarrow} ");
         cy.wait(500);
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
@@ -28,6 +28,8 @@ describe("User-defined items", () => {
             checkExactlyOneItem(acIDSel, MYFUNCS, "foo()");
             cy.get("body").type("foo");
             cy.wait(600);
+            // Check docs show:
+            cy.get(acIDSel).contains("bar");
             cy.get("body").type("{enter}");
             assertState(frameId, "foo($)");
         }, true);
@@ -189,6 +191,25 @@ describe("User-defined items", () => {
             cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
             checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             checkNoItems(acIDSel, "myVar");
+        }, true);
+    });
+
+    it("Offers auto-complete for user-defined classes", () => {
+        focusEditorAC();
+        // Go up to definitions section, add a class named "foo", a documentation "bar", then come back down and make a class call frame:
+        cy.get("body").type("{uparrow}cfoo{rightarrow}bar{downarrow}{downarrow}{downarrow}{downarrow}{downarrow} ");
+        cy.wait(500);
+        // Trigger auto-complete:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, MYCLASSES, "foo()");
+            cy.get("body").type("foo");
+            cy.wait(600);
+            // Check docs show:
+            cy.get(acIDSel).contains("bar");
+            cy.get("body").type("{enter}");
+            assertState(frameId, "foo($)");
         }, true);
     });
 });

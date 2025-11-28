@@ -131,6 +131,7 @@ export function checkNoneAvailable(acIDSel : string) : void {
 
 export const MYVARS = "My variables";
 export const MYFUNCS = "My functions";
+export const MYCLASSES = "My classes";
 export const BUILTIN = "Python";
 
 
@@ -143,9 +144,9 @@ export function checkAutocompleteSorted(acIDSel: string, isInFuncCallFrame: bool
     // Other items (like the names of variables when you do var.) will come out as -1,
     // which works nicely because they should be first 
     // (if we are in a function call definition (isInFuncCallFrame true) "My Functions"
-    // comes before "My Variables", and the other way around if not):
+    // and "My Classes" come before "My Variables", and the other way around if not):
     const intendedOrder = [
-        ...(isInFuncCallFrame ? [MYFUNCS, MYVARS] : [MYVARS, MYFUNCS]),
+        ...(isInFuncCallFrame ? [MYFUNCS, MYCLASSES, MYVARS] : [MYVARS, MYFUNCS, MYCLASSES]),
         "microbit",
         "microbit.accelerometer",
         "time",

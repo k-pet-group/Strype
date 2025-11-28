@@ -383,7 +383,8 @@ export default Vue.extend({
                 // Add user-defined functions except class functions (even if the user is inside the class):
                 this.acResults[this.$i18n.t("autoCompletion.myFunctions") as string] = getAllEnabledUserDefinedFunctions().map((f) => ({
                     acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
-                    documentation: "",
+                    // If the function's documentation slot isn't empty, we used it as documentation
+                    documentation: (f.labelSlotsDict[3].slotStructures.fields[0] as BaseSlot)?.code.trim()??"",
                     type: ["function"],
                     signature: getUserDefinedSignature(f),
                     version: 0,
@@ -392,7 +393,8 @@ export default Vue.extend({
                 // Add user-defined classes:
                 this.acResults[this.$i18n.t("autoCompletion.myClasses") as string] = getAllEnabledUserDefinedClasses().map((f) => ({
                     acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
-                    documentation: "",
+                    // If the class's documentation slot isn't empty, we used it as documentation
+                    documentation: (f.labelSlotsDict[2].slotStructures.fields[0] as BaseSlot)?.code.trim()??"",
                     type: ["function"], // Class names are used as constructor functions in Python
                     version: 0,
                 }));

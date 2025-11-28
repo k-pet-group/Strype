@@ -3,7 +3,7 @@ require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
 // Get all the beforeEach parts:
 import "../support/autocomplete-test-support";
-import { BUILTIN, checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, checkNoneAvailable, focusEditorAC, MYFUNCS, MYVARS, scssVars, withAC } from "../support/autocomplete-test-support";
+import { BUILTIN, checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, checkNoneAvailable, focusEditorAC, MYCLASSES, MYFUNCS, MYVARS, scssVars, withAC } from "../support/autocomplete-test-support";
 
 // Needed for the "be.sorted" assertion:
 // eslint-disable-next-line @typescript-eslint/no-var-requires
@@ -545,8 +545,10 @@ describe("Underscore handling", () => {
      */
     it("Offers user's own definitions, even if they start with underscores", () => {
         focusEditorAC();
-        // Go up to functions section, add a function named "__myFunction" then come back down:
-        cy.get("body").type("{uparrow}f__myFunction{rightarrow}myParam{downarrow}{downarrow}{downarrow}");
+        // Go up to functions section, add a function named "__myFunction" then come down the function definition:
+        cy.get("body").type("{uparrow}f__myFunction{rightarrow}myParam{downarrow}{downarrow}");
+        // Make a class called _myClass then come back down the "my code" section
+        cy.get("body").type("c__myClass{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}");
         // Make a variable called __myVar:
         cy.get("body").type("=__myVar=42{enter}");
         // Add a function frame and trigger auto-complete:
@@ -558,6 +560,7 @@ describe("Underscore handling", () => {
             checkNoItems(acIDSel, "__import__");
             checkNoItems(acIDSel, "__name__");
             checkExactlyOneItem(acIDSel, MYFUNCS,"__myFunction(myParam)");
+            checkExactlyOneItem(acIDSel, MYCLASSES,"__myClass()");
             checkExactlyOneItem(acIDSel, MYVARS, "__myVar");
             checkNoItems(acIDSel, "__myVar()");
             // Once we type "_", should show things beginning with _ but not the others:
@@ -566,6 +569,7 @@ describe("Underscore handling", () => {
             checkNoItems(acIDSel, "abs(x)");
             checkExactlyOneItem(acIDSel, BUILTIN, importFunc);
             checkExactlyOneItem(acIDSel, MYFUNCS, "__myFunction(myParam)");
+            checkExactlyOneItem(acIDSel, MYCLASSES,"__myClass()");
             checkExactlyOneItem(acIDSel, MYVARS, "__myVar");
             checkAutocompleteSorted(acIDSel, true);
         }, true);

@@ -39,7 +39,7 @@ export function generateSPYFileContent(): string {
     headers.set("editorCommandsSplitterPane2Size", saveDivider(useStore().editorCommandsSplitterPane2Size));
     /* IFTRUE_isPython */
     const peaLayoutMode = useStore().peaLayoutMode;
-    headers.set("peaLayoutMode", peaLayoutMode === undefined ? undefined : StrypePEALayoutMode[peaLayoutMode]);
+    headers.set("peaLayoutMode", (peaLayoutMode === undefined || peaLayoutMode == StrypePEALayoutMode.tabsCollapsed) ? undefined : StrypePEALayoutMode[peaLayoutMode]);
     headers.set("peaCommandsSplitterPane2Size", saveDivider(useStore().peaCommandsSplitterPane2Size));
     headers.set("peaSplitViewSplitterPane1Size", saveDivider(useStore().peaSplitViewSplitterPane1Size));
     headers.set("peaExpandedSplitterPane2Size", saveDivider(useStore().peaExpandedSplitterPane2Size));

@@ -45,7 +45,7 @@
             <div :class="{[scssVars.peaToggleLayoutButtonsContainerClassName]: true, hidden: (!isTabContentHovered || isPythonExecuting)}">
                 <div v-for="(layoutData, index) in PEALayoutsData" :key="'strype-PEA-Layout-'+index" 
                     @click="togglePEALayout(layoutData.mode)" :title="$t('PEA.'+layoutData.iconName)">
-                    <SVGIcon :name="layoutData.iconName" customClass="pea-toggle-layout-button" />
+                    <SVGIcon :name="layoutData.iconName" :customClass="{'pea-toggle-layout-button': true, 'pea-toggle-layout-button-selected': layoutData.mode === currentPEALayoutMode}"/>
                 </div>
             </div>
         </div>
@@ -379,6 +379,10 @@ export default Vue.extend({
 
         isTurtleListeningEvents(): boolean {
             return this.isTurtleListeningKeyEvents || this.isTurtleListeningMouseEvents || this.isTurtleListeningTimerEvents;
+        },
+
+        currentPEALayoutMode() : StrypePEALayoutMode | undefined {
+            return this.appStore.peaLayoutMode ?? StrypePEALayoutMode.tabsCollapsed;
         },
     },
 
@@ -1118,7 +1122,14 @@ export default Vue.extend({
         width: 20px;
         height: 20px;
     }
+    .pea-toggle-layout-button:hover {
+        color: #ddd;
+    }
 
+    .pea-toggle-layout-button.pea-toggle-layout-button-selected {
+        color: yellow;
+    }
+    
     .show-error-icon {
         padding: 0px 2px; 
         border: 2px solid #d66;

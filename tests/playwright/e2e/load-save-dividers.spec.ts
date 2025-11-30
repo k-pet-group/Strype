@@ -3,12 +3,17 @@ import {load, save} from "../support/loading-saving";
 import fs from "fs";
 import { randomUUID } from "node:crypto";
 import { getDefaultStrypeProjectDocumentationFullLine } from "../support/editor";
+import en from "@/localisation/en/en_main.json";
+import {StrypePEALayoutMode} from "../../cypress/support/frame-types";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
         // On Windows+Webkit it just can't seem to load the page for some reason:
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
     }
+
+    // These tests can take longer than the default 30 seconds:
+    testInfo.setTimeout(60000); // 60 seconds
     
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
@@ -76,6 +81,27 @@ myString  = "Hello from Strype"
 print(myString) 
 #(=> Section:End
 `.trimStart().split(/\r?\n/));
+}
+
+async function getSelectedMode(page: Page) : Promise<StrypePEALayoutMode | undefined> {
+    const available = [
+        {iconName: "PEA-layout-tabs-collapsed", mode: StrypePEALayoutMode.tabsCollapsed},
+        {iconName: "PEA-layout-tabs-expanded", mode: StrypePEALayoutMode.tabsExpanded},
+        {iconName: "PEA-layout-split-collapsed", mode: StrypePEALayoutMode.splitCollapsed},
+        {iconName: "PEA-layout-split-expanded", mode: StrypePEALayoutMode.splitExpanded},
+    ];
+    
+    // Find the title of the parent div of the selected item:
+    const title = await page
+        .locator(".pea-toggle-layout-button-selected")
+        .locator("xpath=..")
+        .getAttribute("title");
+
+    // match against available[]
+    return available.find((item) => {
+        const translated = (en.PEA as Record<string, string>)[item.iconName];
+        return translated === title;
+    })?.mode;
 }
 
 const CODE_VS_SIDEBAR = ".strype-split-theme.splitpanes.splitpanes--vertical > .splitpanes__splitter";
@@ -172,6 +198,36 @@ test.describe("Loads divider states", () => {
         const viewport = page.viewportSize();
         expect(Math.abs((viewport?.width ?? 9999) / 2 - posA.x)).toBeLessThanOrEqual(5);
         expect(Math.abs((viewport?.height ?? 9999) / 2 - posB.y)).toBeLessThanOrEqual(5);
+    });
+    
+    test("Resets view mode and divider before loading", async ({page, browserName}) => {
+        // For reasons I cannot fathom, the mouse hovering doesn't work in Chrome to allow mode switching:
+        test.skip(browserName === "chromium", "Hover doesn't work correctly on Chrome in Playwright");
+        
+        await page.waitForTimeout(2 * 1000);
+        // Assert default mode:
+        expect(await getSelectedMode(page)).toEqual(StrypePEALayoutMode.tabsCollapsed);
+        // Move divider:
+        const hx = (page.viewportSize()?.width ?? 9999) / 2;
+        await dragDividerTo(page, CODE_VS_SIDEBAR, hx, 300);
+        // Check it moved:
+        const posA = await getSplitterPos(page, CODE_VS_SIDEBAR);
+        expect(Math.abs(hx - posA.x)).toBeLessThanOrEqual(5);
+        
+        // Set another mode -- hover over something else, then over PEA then controls then click them:
+        await page.hover("#showHideMenu");
+        await page.hover("#peaTabContentContainerDiv", {strict: true});
+        await page.hover(`div[title="${en.PEA["PEA-layout-tabs-expanded"]}"]`, {strict: true});
+        await page.click(`div[title="${en.PEA["PEA-layout-tabs-expanded"]}"]`, {strict: true});
+        // Load without a mode specified:
+        loadHeader(page, "#(=> Strype:1:std");
+        await page.waitForTimeout(10 * 1000);
+        // Check mode has reset to default:
+        expect(await getSelectedMode(page)).toEqual(StrypePEALayoutMode.tabsCollapsed);
+        // And divider:
+        const posB = await getSplitterPos(page, CODE_VS_SIDEBAR);
+        const viewport = page.viewportSize();
+        expect(Math.abs((viewport?.width ?? 9999) * 0.67 - posB.x)).toBeLessThanOrEqual(25);
     });
 });
 

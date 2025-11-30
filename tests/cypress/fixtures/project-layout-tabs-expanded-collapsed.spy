@@ -1,5 +1,4 @@
 #(=> Strype:1:std
-#(=> peaLayoutMode:tabsCollapsed
 #(=> peaExpandedSplitterPane2Size:{"tabsExpanded":50}
 #(=> Section:Imports
 #(=> Section:Definitions

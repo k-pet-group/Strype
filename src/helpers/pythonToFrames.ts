@@ -81,7 +81,6 @@ function debugToString(p : ParsedConcreteTree, curIndent: string) : string {
 // Given a frame, assigns it a new ID and adds it to the list specified in the CopyState
 // If it is not a joint frame, set its parent.
 function addFrame(frame: FrameObject, lineno: number | undefined, s: CopyState) : CopyState {
-    console.log("Adding frame " + frame.frameType.type + " " + JSON.stringify(frame.labelSlotsDict) + " #" + lineno);
     const id = s.nextId;
     frame.id = id;
     s.loadedFrames[id] = frame;

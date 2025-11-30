@@ -9,6 +9,13 @@ export enum CollapsedState {
     FULLY_VISIBLE,
 }
 
+export enum StrypePEALayoutMode {
+    tabsCollapsed = "tabsCollapsed", // the default layout mode where PEA is collapsed and using tabs for console/graphics (and selected mode for the micro:bit version)
+    tabsExpanded = "tabsExpanded", // the layout mode where PEA is expanded and using tabs for console/graphics
+    splitCollapsed = "splitCollapsed", // the layout mode where PEA is collapsed and console/graphics windows are (horizontally) split
+    splitExpanded = "splitExpanded", // the layout mode where PEA is expanded and console/graphics windows are (vertically) split
+}
+
 export enum AllowedSlotContent {
     ONLY_NAMES,
     ONLY_NAMES_OR_STAR,

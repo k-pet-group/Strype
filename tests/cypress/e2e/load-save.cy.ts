@@ -61,7 +61,8 @@ function checkDownloadedFileEquals(fullContent: string, filename: string, firstS
     // Save is located in the menu, so we need to open it first, then find the link and click on it
     // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
     cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true});
-    cy.contains(i18n.t("appMenu.saveProject") as string).click({force: true});
+    // Note we use the ID because cy.contains is awkward when "Save" and "Save as" begin the same.
+    cy.get("#saveStrypeProjLink").click({force: true});
     if (firstSave) {
         // For testing, we always want to save to this device:
         cy.contains(i18n.t("appMessage.targetFS") as string).click({force: true});
@@ -108,7 +109,7 @@ function testRoundTripImportAndDownload(filepath: string) {
         cy.get("#" + strypeElIds.getLoadFromFSStrypeButtonId()).click();
         // Must force because the <input> is hidden:
         cy.get("#" + strypeElIds.getImportFileInputId()).selectFile(filepath, {force : true});
-        cy.wait(2000);
+        cy.wait(4000);
         
         // We must make sure there are no comment frames starting "(=>" because that would indicate
         // our special comments have become comment frames, rather than being processed:

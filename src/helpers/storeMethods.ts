@@ -565,13 +565,6 @@ export const getNextSibling= function (frameId: number): number {
     return list[list.indexOf(frameId)+1]??-100;
 };
 
-export const getAllSiblingsAndJointParent= function (frameId: number): number[] {
-    const isJointFrame = useStore().frameObjects[frameId].frameType.isJointFrame;
-    const parentId = (isJointFrame) ? useStore().frameObjects[frameId].jointParentId : useStore().frameObjects[frameId].parentId;
-
-    return (isJointFrame)? [useStore().frameObjects[frameId].jointParentId, ...useStore().frameObjects[parentId].jointFrameIds] : useStore().frameObjects[parentId].childrenIds;    
-};
-
 export const frameForSelection = (currentFrame: CurrentFrame, direction: "up"|"down", selectedFrames: number[]): {frameForSelection: number, newCurrentFrame: CurrentFrame}|null => {
     
     // we first check the cases that are 100% sure there is nothing to do about them

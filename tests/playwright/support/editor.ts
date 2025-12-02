@@ -38,19 +38,20 @@ async function getSelection(page: Page) : Promise<{ id: string, cursorPos : numb
     });
 }
 
-export async function assertStateOfIfFrame(page: Page, expectedState : string) : Promise<void> {
+async function assertLabelSlotsContent(page: Page, expectedState: string, isInStatementFrame?: boolean) {
     const info = await getSelection(page);
     const scssVars = await page.evaluate(() => {
         return (window as any)["StrypeSCSSVarsGlobals"];
     });
-    const s = await page.locator("#frameContainer_-3" + " ." + scssVars.frameHeaderClassName).first().locator("." + scssVars.labelSlotInputClassName + ", ." + scssVars.frameColouredLabelClassName).evaluateAll((parts, info: { id: string, cursorPos : number }) => {
+    const s = await page.locator("#frameContainer_-3" + " ." + scssVars.frameHeaderClassName).first().locator("." + scssVars.labelSlotInputClassName + ", ." + scssVars.frameColouredLabelClassName).evaluateAll((parts, info: { id: string, cursorPos : number, isInStatementFrame?: boolean }) => {
         let s = "";
         if (!parts) {
             // Try to debug an occasional seemingly impossible failure:
             console.log("Parts is null which I'm sure shouldn't happen");
         }
-        // Since we're in an if frame, we ignore the first and last part:
-        for (let i = 1; i < parts.length - 1; i++) {
+        // If we're in a block frame like "if", we ignore the first and last part:
+        const parseOffset = (info.isInStatementFrame) ? 0 : 1;
+        for (let i = 1; i < parts.length - parseOffset; i++) {
             const p: any = parts[i];
 
             let text = (p.value || p.textContent || "").replace("\u200B", "");
@@ -66,9 +67,31 @@ export async function assertStateOfIfFrame(page: Page, expectedState : string) :
             s += text;
         }
         return s;
-    }, info);
+    }, {...info, isInStatementFrame: isInStatementFrame});
     // There is no correspondence for _ (indicating a null operator) in the Strype interface so just ignore that:
     expect(s).toEqual(expectedState.replaceAll("_", ""));
+}
+
+export async function assertStateOfIfFrame(page: Page, expectedState : string) : Promise<void> {
+    await assertLabelSlotsContent(page, expectedState);
+}
+
+export async function assertStateOfVarAssignFrame(page: Page, expectedLHSState : string, expectedRHSState: string) : Promise<void> {
+    // 1 - Check the equal operator exists:
+    const scssVars = await page.evaluate(() => {
+        return (window as any)["StrypeSCSSVarsGlobals"];
+    });
+    const firstHeader = await page.locator("#frameContainer_-3" + " ." + scssVars.frameHeaderClassName).first();
+    const varassignLabelSlot = await firstHeader.locator(".frame-header-label-varassign" + "." + scssVars.frameColouredLabelClassName);    
+    const varassignLabelSlotCount = await varassignLabelSlot.count();
+    // Make an existence test, doing that will avoid having another test triggering timeouts if the varassign slot doesn't exist (we have 2 as the first label slots struct as en empty label).
+    expect(varassignLabelSlotCount, "No varassign label slot label (with \"⇐\") is on the frame.").toEqual(2);
+    // Now check its content just in case...
+    const varassignLabelSlotContent = await varassignLabelSlot.last().textContent();
+    expect(varassignLabelSlotContent).toEqual(" ⇐ ");
+    
+    // 2 - Check the expected text part:
+    await assertLabelSlotsContent(page, `${expectedLHSState}{ ⇐ }${expectedRHSState}`, true);
 }
 
 export async function typeIndividually(page: Page, content: string, timeout = 75) : Promise<void> {

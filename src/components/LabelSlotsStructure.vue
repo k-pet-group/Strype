@@ -406,7 +406,7 @@ export default Vue.extend({
                                         const breakAtSlotIndex = parsedCodeRes.slots.operators.findIndex((opSlot) => opSlot.code == "=");
                                         this.appStore.setSlotTextCursors(undefined, undefined);
 
-                                        this.$nextTick(() => {
+                                        setTimeout(() => {
                                             // Remove the focus
                                             const focusedSlot = retrieveSlotByPredicate([this.appStore.frameObjects[this.frameId].labelSlotsDict[0].slotStructures], (slot: FieldSlot) => ((slot as BaseSlot).focused??false));
                                             if(focusedSlot){
@@ -449,7 +449,7 @@ export default Vue.extend({
                                                 // Save changes only when arrived here (for undo/redo)
                                                 this.appStore.saveStateChanges(stateBeforeChanges);
                                             }));
-                                        });                                        
+                                        }, 300);                                         
                                     }
                                     else{
                                         setDocumentSelection(cursorInfos, cursorInfos);

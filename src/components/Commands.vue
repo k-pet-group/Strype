@@ -573,7 +573,7 @@ export default Vue.extend({
                             }
                         }
                         else if(event.key == " " && this.appStore.selectedFrames.length == 0){
-                            const currentStrypeLocation = findCurrentStrypeLocation();
+                            const currentStrypeLocation = findCurrentStrypeLocation().strypeLocation;
                             if(currentStrypeLocation == STRYPE_LOCATION.MAIN_CODE_SECTION || currentStrypeLocation == STRYPE_LOCATION.IN_FUNCDEF){
                                 // If ctrl/meta + space is activated on caret (in a function/class definition or in the main section), we add a new functional call frame and trigger the a/c
                                 this.appStore.addFrameWithCommand(this.addFrameCommands[eventKeyLowCase][0].type);

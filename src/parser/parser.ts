@@ -1,6 +1,6 @@
 import Compiler from "@/compiler/compiler";
 import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
-import {generateFlatSlotBases, retrieveSlotByPredicate} from "@/helpers/storeMethods";
+import {generateFlatSlotBases, getNextSibling, retrieveSlotByPredicate} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, FrozenState, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
@@ -238,6 +238,7 @@ export default class Parser {
     private isDisabledFramesTriggered = false; //this flag is used to notify when we enter and leave the disabled frames.
     private disabledBlockIndent = "";
     private excludeLoopsAndCommentsAndCloseTry = false;
+    private ignoreSpecifiFrameId = -100;
     private ignoreCheckErrors = false;
     private saveAsSPY = false;
     private outputProjectDoc = false;
@@ -248,6 +249,10 @@ export default class Parser {
         this.ignoreCheckErrors = ignoreCheckErrors;
         this.saveAsSPY = destination == "spy";
         this.outputProjectDoc = destination == "spy" || destination == "py-export";
+    }
+
+    public getIndent(): string {
+        return INDENT;
     }
     
     public getStoppedIndentation() : string {
@@ -472,6 +477,13 @@ export default class Parser {
                     break;
                 }
             }
+
+            if(frame.id == this.ignoreSpecifiFrameId){
+                // We still need to put something here, in case we are in an empty block, we add a f() dummy function to have something.
+                output += `${indentation}f()\n`;
+                this.line += 1;
+                continue;
+            }
             
             if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
                 output += AppSPYFullPrefix + " Section:Main\n";
@@ -547,7 +559,7 @@ export default class Parser {
         return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAt: {frameId: useStore().getDefsFrameContainerId, includeThisFrame: false}});
     }
 
-    public parse({startAtFrameId, stopAt, excludeLoopsAndCommentsAndCloseTry, defsLast}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean}): string {
+    public parse({startAtFrameId, stopAt, excludeLoopsAndCommentsAndCloseTry, defsLast, ignoreSpecifiFrameId}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean; ignoreSpecifiFrameId?: number}): string {
         let output = "";
         if(startAtFrameId){
             this.startAtFrameId = startAtFrameId;
@@ -559,6 +571,10 @@ export default class Parser {
 
         if(excludeLoopsAndCommentsAndCloseTry){
             this.excludeLoopsAndCommentsAndCloseTry = excludeLoopsAndCommentsAndCloseTry;
+        }
+
+        if(ignoreSpecifiFrameId){
+            this.ignoreSpecifiFrameId = ignoreSpecifiFrameId;
         }
 
         /* IFTRUE_isPython */
@@ -680,9 +696,7 @@ export default class Parser {
         return errorString;
     }
 
-    public getCodeWithoutErrors(endFrameId: number, defsLast: boolean): string {
-        const code = this.parse({stopAt: {frameId: endFrameId, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true, defsLast});
-
+    public removeErrorsFromParsedCode(code: string): string {
         const errors = this.getErrors(code);
 
         const lines = code.split(/\r?\n/g);
@@ -732,6 +746,30 @@ export default class Parser {
         });
         
         return filteredCode;
+    }
+
+    public getAllImportsAndClassesCodeWithoutError(): string {
+        // This is called to parse the imports and user defined classes of the project.
+        // Note that to make it easier, we just get the whole "definitions" section rather than really just keeping the classes.
+        const importCode = this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAt:{frameId: useStore().getDefsFrameContainerId, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true});        
+        const classesCode = this.parse({startAtFrameId: useStore().getDefsFrameContainerId, stopAt:{frameId: useStore().getMainCodeFrameContainerId, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true});
+        return this.removeErrorsFromParsedCode(`${importCode}\n${classesCode}`);
+    }
+
+    public getWholeClassCodeWithoutError(classFrameId: number, currentFrameId: number): string{
+        // This is called to parse the whole code of a user defined class bar the current frame we're in,
+        // (similar to getCodeWithoutError but with only parsing a specifc frame).
+        const classFrameSiblingId = getNextSibling(classFrameId);
+        const frameIdAfterClass = (classFrameSiblingId > 0) ? classFrameSiblingId : useStore().getMainCodeFrameContainerId; // If that class is last in definitions, next frame is in "my code";
+        const code = this.parse({startAtFrameId: classFrameId, stopAt:{frameId: frameIdAfterClass, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true, ignoreSpecifiFrameId: currentFrameId});
+        return this.removeErrorsFromParsedCode(code);
+    }
+
+    public getCodeWithoutErrors(endFrameId: number, defsLast: boolean): string {
+        // defsLast is set to true when we are inside the def section: the variables in "my code"
+        // may be required from within and therefore we need to place them before to interpreted properly.
+        const code = this.parse({stopAt: {frameId: endFrameId, includeThisFrame: false}, excludeLoopsAndCommentsAndCloseTry: true, defsLast});
+        return this.removeErrorsFromParsedCode(code);
     }
 
     public getFullCode(): string {

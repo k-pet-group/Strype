@@ -49,6 +49,7 @@ export enum STRYPE_LOCATION {
     PROJECT_DOC_SECTION,
     MAIN_CODE_SECTION,
     IN_FUNCDEF,
+    IN_CLASSDEF,
     DEFS_SECTION,
     IMPORTS_SECTION
 }
@@ -1233,25 +1234,35 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
     return s;
 }
 
-// Function to check the current position in Strype 
-export function findCurrentStrypeLocation(): STRYPE_LOCATION {
+// Function to check the current position in Strype.
+// If a specific frame is given, we look for the position of this frame instead of the current frame.
+export function findCurrentStrypeLocation(options?: {lookForGivenFramePosition?: {id: number, caretPosition: CaretPosition}, checkForClassDeep?: boolean}): {strypeLocation: STRYPE_LOCATION, locationFrameId: number} {
     // We detect the location by nativagating to the parents of the current Strype location (blue cursor) until we reach a significant parent type (see enum STRYPE_LOCATION)
     // If are below a frame, we look for its parent right away, otheriwse we can use that frame.
-    let {id: navigFrameId, caretPosition: navigFrameCaretPos} = useStore().currentFrame;
+    // Note that for classes we have a small conflict to resolve, hence the optional argument "checkForClassDeep": since classes can contain functions, we need to know whether
+    // we want to check if we are inside a class "at large" (which therefore includes being inside a class's function) or not.
+    let {id: navigFrameId, caretPosition: navigFrameCaretPos} = (options?.lookForGivenFramePosition)??useStore().currentFrame;
     do{
         const frameType = useStore().frameObjects[navigFrameId].frameType;
         switch(frameType.type){
         case ContainerTypesIdentifiers.framesMainContainer:
-            return STRYPE_LOCATION.MAIN_CODE_SECTION;
+            return {strypeLocation: STRYPE_LOCATION.MAIN_CODE_SECTION, locationFrameId: navigFrameId};
+        case AllFrameTypesIdentifier.classdef:
+            return {strypeLocation: STRYPE_LOCATION.IN_CLASSDEF, locationFrameId: navigFrameId};
         case AllFrameTypesIdentifier.funcdef:
-            // Two possible cases: we are at the body of a function definition or at the bottom:
+            // Three possible cases: A) we are not checking for classes -- we are at the body of a function definition or at the bottom:
             // in the first case, we are inside a function definition,
             // in the second case, we are inside the definitions section.
-            return (navigFrameCaretPos == CaretPosition.body) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.DEFS_SECTION;
+            // B) we are checkign for classes: then we ignore the case, we care about the class
+            if(options?.checkForClassDeep){
+                navigFrameId = useStore().frameObjects[navigFrameId].parentId;
+                break;
+            }
+            return {strypeLocation: (navigFrameCaretPos == CaretPosition.body) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.DEFS_SECTION, locationFrameId: navigFrameId};
         case ContainerTypesIdentifiers.defsContainer:
-            return STRYPE_LOCATION.DEFS_SECTION;
+            return {strypeLocation: STRYPE_LOCATION.DEFS_SECTION, locationFrameId: navigFrameId};
         case ContainerTypesIdentifiers.importsContainer:
-            return STRYPE_LOCATION.IMPORTS_SECTION;
+            return {strypeLocation: STRYPE_LOCATION.IMPORTS_SECTION, locationFrameId: navigFrameId};
         default:
             if (useStore().frameObjects[navigFrameId].jointParentId > 0) {
                 navigFrameId = useStore().frameObjects[navigFrameId].jointParentId;
@@ -1263,7 +1274,7 @@ export function findCurrentStrypeLocation(): STRYPE_LOCATION {
             break;
         }
     }while(navigFrameId != 0);
-    return STRYPE_LOCATION.UNKNOWN;
+    return {strypeLocation: STRYPE_LOCATION.UNKNOWN, locationFrameId: -100};
 }
 
 // This function makes a simple sanity check on the copied Python code (as frames then): we make sure that it "fits" the current Strype location
@@ -1502,7 +1513,7 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
         
         // The logic for pasting is: every frame that are allowed at the current cursor's position are added.
         // Frames that are related to another section where the caret is not present are added in that section.
-        const curLocation = findCurrentStrypeLocation();
+        const curLocation = findCurrentStrypeLocation().strypeLocation;
         const isCurLocationInImportsSection = curLocation == STRYPE_LOCATION.IMPORTS_SECTION, isCurLocationInDefsSection = curLocation == STRYPE_LOCATION.DEFS_SECTION, 
             isCurLocationInMainCodeSection = curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION, isCurLocationInAFuncDefFrame = curLocation == STRYPE_LOCATION.IN_FUNCDEF;
 

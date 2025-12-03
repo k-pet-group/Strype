@@ -123,7 +123,7 @@ function calcSignature(rawParams: string[]) : Signature {
 }
 
 //  - Third item is param list, including * and similar if appropriate.
-export function testRawFuncs(rawFuncs: [string | [string, string] | {udf: string} | null, string, string[]][], skipFullyQualifiedVersion?: boolean) : void {
+export function testRawFuncs(rawFuncs: [string | [string, string] | {class?: string, udf: string} | null, string, string[]][], skipFullyQualifiedVersion?: boolean) : void {
     const funcs: {
         keyboardTypingToImport?: string,
         funcName: string, 
@@ -138,11 +138,15 @@ export function testRawFuncs(rawFuncs: [string | [string, string] | {udf: string
             let module: any;
             let libraryTyping;
             if ((rawFunc[0] as any)?.udf) {
+                const isTestingFunctionInClass = ((rawFunc[0] as any)?.class);
+                const classTypePreamble = (isTestingFunctionInClass)
+                    ? `c${(rawFunc[0] as any)?.class}{rightarrow}{rightarrow}`
+                    : "";            
                 funcs.push({
-                    keyboardTypingToImport: "{uparrow}f" + (rawFunc[0] as any)?.udf + "{downarrow}",
+                    keyboardTypingToImport: "{uparrow}" + classTypePreamble + "f" + (rawFunc[0] as any)?.udf + "{downarrow}",
                     funcName: rawFunc[1],
                     params: params,
-                    acSection: "My functions",
+                    acSection: (isTestingFunctionInClass) ? "self" : "My functions",
                     acName: rawFunc[1],
                     displayName: rawFunc[1] + " udf: " + (rawFunc[0] as any)?.udf,
                 });

@@ -1,14 +1,15 @@
-import {AcResultsWithCategory, AllFrameTypesIdentifier, BaseSlot, FrameObject, AcResultType, SlotsStructure, FieldSlot, StringSlot, isFieldBaseSlot} from "@/types/types";
+import {AcResultsWithCategory, AllFrameTypesIdentifier, BaseSlot, FrameObject, AcResultType, SlotsStructure, FieldSlot, StringSlot, isFieldBaseSlot, CaretPosition} from "@/types/types";
 
 import {useStore} from "@/store/store";
 import {extractFormalParamsFromSlot, getMatchingBracket, transformFieldPlaceholders} from "@/helpers/editor";
-import {getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
+import {getAllEnabledUserDefinedClasses, getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import {Signature, TPyParser} from "tigerpython-parser";
 import {getAvailablePyPyiFromLibrary, getPossibleImports, getTextFileFromLibraries} from "@/helpers/libraryManager";
 import Parser from "@/parser/parser";
 import { z } from "zod";
 import {extractPYI} from "@/helpers/python-pyi";
+import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 /* IFTRUE_isPython */
 import { pythonBuiltins } from "@/autocompletion/pythonBuiltins";
 import skulptPythonAPI from "@/autocompletion/skulpt-api.json";
@@ -190,7 +191,8 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
     for (;;) {
         const frame = useStore().frameObjects[curFrameId];
         const parentId = frame.parentId;
-        if (parentId == useStore().getDefsFrameContainerId) {
+        const isParentUserDefinedClass = useStore().frameObjects[parentId].frameType.type == AllFrameTypesIdentifier.classdef;
+        if ((parentId == useStore().getDefsFrameContainerId || isParentUserDefinedClass) && frame.frameType.type == AllFrameTypesIdentifier.funcdef) {
             // It's a user-defined function, process accordingly
             const available = getAllUserDefinedVariablesWithinUpTo(useStore().getFramesForParentId(curFrameId), frameId).found;
             // Also add all variables from the body:
@@ -200,6 +202,12 @@ export function getAllUserDefinedVariablesUpTo(frameId: number) : Set<string> {
             // Sanity check the frame type:
             if (frame.frameType.type === AllFrameTypesIdentifier.funcdef) {
                 extractCommaSeparatedNames(frame.labelSlotsDict[1].slotStructures).forEach((x) => available.add(x));
+                // If we are inside the function definition of a user defined class, we need to add "self" manually,
+                // because "self" is not part of the label slots structure, and inside the class we do need to be able to use it.
+                // We don't add it if it was (mistakenly) redefined by the user...
+                if(isParentUserDefinedClass && !available.has("self")){
+                    available.add("self");
+                }
             }
             return available;
         }
@@ -601,8 +609,22 @@ export async function tpyDefineLibraries(parser: Parser) : Promise<void> {
     }
 }
 
-export function getUserDefinedSignature(userFunc: FrameObject) : Signature {
-    const {params, keyValues} = extractFormalParamsFromSlot(userFunc.labelSlotsDict[1].slotStructures);
+export async function getUserDefinedSignature(userFuncOrClass: FrameObject) : Promise<Signature> {
+    const inUserDefinedClass = (userFuncOrClass.frameType.type == AllFrameTypesIdentifier.classdef);
+    // Retrieve the formal params slot structures: in a function, this is part of the frame header, 
+    // in a class, this is part of the "__init__" function'header... if declared and the class isn't a subclass.
+    // If it's not, we return a structure that is empty (by default Python use no args, bar self we ignore)  ///////////////////////bear "self" only (Python will use that by default).
+    const formalParamsSlotStructureOrSignature = (inUserDefinedClass)
+        ? await getFormalParamsSlotStructureOrSignatureForUserDefinedClass(userFuncOrClass)
+        : userFuncOrClass.labelSlotsDict[1].slotStructures;
+   
+    // If we have received a signature already from getFormalParamsSlotStructureOrSignatureForUserDefinedClass, we can return it.
+    if((formalParamsSlotStructureOrSignature as Signature).firstParamIsSelfOrCls !== undefined){
+        return formalParamsSlotStructureOrSignature as Signature;
+    }
+
+    const formalParamsSlotStructure: SlotsStructure = (formalParamsSlotStructureOrSignature as SlotsStructure);
+    const {params, keyValues} = extractFormalParamsFromSlot(formalParamsSlotStructure);
     const singleStar = params
         .map((value, index) =>
             (value.operands.length == 2
@@ -630,13 +652,46 @@ export function getUserDefinedSignature(userFunc: FrameObject) : Signature {
     
     const keywordOnlyStart = 1 + (singleStar?.[1] ?? (params.length - 1));
     return {
-        positionalOnlyArgs: [], //TODO self if class
+        positionalOnlyArgs: [],
         positionalOrKeywordArgs: params.slice(0, singleStar?.[1] ?? doubleStar?.[1] ?? params.length).map(toParam),
         keywordOnlyArgs: params.slice(keywordOnlyStart, doubleStar?.[1] ?? params.length).map((p, i) => toParam(p, i + keywordOnlyStart)),
         varArgs: singleStar !== undefined && singleStar[0].trim().length > 0 ? {name: singleStar[0].trim(), argType: null} : null,
         varKwargs: doubleStar !== undefined && doubleStar[0].trim().length > 0 ? {name: doubleStar[0].trim(), argType: null} : null,
-        firstParamIsSelfOrCls: false, // TODO support this once OOP is in place
+        firstParamIsSelfOrCls: false,
     };
+}
+
+async function getFormalParamsSlotStructureOrSignatureForUserDefinedClass(userClassFrame: FrameObject): Promise<SlotsStructure | Signature> {
+    // The parameters of a user-defined Class initialisator are retrieved at different places, depending on the situation.
+    // If __init__() is defined for this class, we use its parameters.
+    // If __init__() isn't defined for this class:
+    //  - if the user defined class is a sub-class (that is it inherits from at least another), we use the first available __init__ (in the MRO)
+    //  - if the user defined class is not a sub-class, then the default __init__ is just a method doing nothing and using "self" as argument
+    const userClassInitFrameId = userClassFrame.childrenIds.find((classChildFrameId) => useStore().frameObjects[classChildFrameId].frameType.type == AllFrameTypesIdentifier.funcdef 
+        && (useStore().frameObjects[classChildFrameId].labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code  == "__init__");
+    if(userClassInitFrameId){ 
+        return useStore().frameObjects[userClassInitFrameId].labelSlotsDict[1].slotStructures;
+    }
+    else {
+        // If __init__ isn't defined, we use Python to infer what is the __init__ to use via TigerPython.
+        // Therefore we need to give TigerPython ALL the classes we have defined, and libraries.        
+        // We will return the signature already.
+        const parser = new Parser();
+        const userCode = parser.getAllImportsAndClassesCodeWithoutError();
+        await tpyDefineLibraries(parser);   
+        const className = (userClassFrame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;     
+        // Add the part ot get the actual __init__ (called by Python using MRO), and use a valid code that
+        // allows us to call autocomplete after the dot (one character before the end)
+        const totalCode = `${userCode}${className}().x`;
+        const tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length - 1);
+        const match = tppCompletions?.filter((c) => c.acResult === "__init__");
+        if (match && match.length > 0 && match[0].signature) {
+            return match[0].signature;
+        } 
+        // We shouldn't end up here, but just in case something went wrong... 
+        // we don't reject but return an empty label slots structure to keep the workflow.
+        return {fields: [{code: ""}], operators: []};
+    }
 }
 
 // Gets the parameter name prompt for the given autocomplete details (context+token)
@@ -644,13 +699,20 @@ export function getUserDefinedSignature(userFunc: FrameObject) : Signature {
 export async function calculateParamPrompt(frameId: number, {context, token, paramIndex, lastParam, prevKeywordNames} : {context: string, token: string, paramIndex: number, lastParam: boolean, prevKeywordNames: string[]}, isFocused: boolean) : Promise<string> {
     if (!context) {
         // If context is blank, we know that the function must be one of:
-        // - A user-defined function
+        // - A user-defined function (of the section definitions only )
+        // - A user-defined Class
         // - A built-in function
         // - An explicitly imported function with from...import...
         // We check the items in that order.  We can do this without using Skulpt, which will speed things up
         const userFunc = getAllEnabledUserDefinedFunctions().find((f) => (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot)?.code === token);
         if (userFunc !== undefined) {
-            const sig = getUserDefinedSignature(userFunc);
+            const sig = await getUserDefinedSignature(userFunc);
+            return getParamPrompt(sig, paramIndex, prevKeywordNames, lastParam, isFocused);
+        }
+
+        const userClass = getAllEnabledUserDefinedClasses().find((f) => (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot)?.code === token);
+        if(userClass !== undefined) {
+            const sig = await getUserDefinedSignature(userClass);
             return getParamPrompt(sig, paramIndex, prevKeywordNames, lastParam, isFocused);
         }
         const builtinFunc = getBuiltins().find((f) => f.acResult === token);
@@ -694,13 +756,23 @@ export async function calculateParamPrompt(frameId: number, {context, token, par
 
     if (context) {
         // See if TigerPython can infer the type of the content before the .
+        // A special case is handled for using "self" inside a class: we need the full class to be parsed.
+        // If we are inside the "my code" section, we don't need to put the section "definitions"'s content
+        // at the end of the user code.
+        const currentStrypeLocationForClassInfos = findCurrentStrypeLocation({lookForGivenFramePosition: {id: frameId, caretPosition: CaretPosition.below}, checkForClassDeep: true});
+        const isGettingWholeClassContext = (context == "self" && currentStrypeLocationForClassInfos.strypeLocation == STRYPE_LOCATION.IN_CLASSDEF) && findCurrentStrypeLocation().strypeLocation == STRYPE_LOCATION.IN_FUNCDEF;
         const parser = new Parser();
-        const userCode = parser.getCodeWithoutErrors(frameId, true);
+        const userCode = (isGettingWholeClassContext) ? parser.getWholeClassCodeWithoutError(currentStrypeLocationForClassInfos.locationFrameId, frameId) : parser.getCodeWithoutErrors(frameId, findCurrentStrypeLocation().strypeLocation != STRYPE_LOCATION.MAIN_CODE_SECTION);
         await tpyDefineLibraries(parser);
-        // So we get context code out which is a partial expression and may not be valid at top-level.  Thus we wrap it in:
+        // If we are in the generic case: so we get context code out which is a partial expression and may not be valid at top-level.  Thus we wrap it in:
         // f(<code>.x)
+        // If we are in the specific case of a whole class parsing (see above) then we do a similar approach but only add this (we are inside a function so we know there is one at least):
+        //         f(self.x) //--> WITH this indentation (double indent).
         // To make it a valid statement, then autocomplete after the dot (two characters before the end)
-        const totalCode = userCode + "\n" + parser.getStoppedIndentation() + "f(" + transformFieldPlaceholders(context) + "." + "x)";
+        const totalCode = userCode + ((isGettingWholeClassContext)
+            ? (parser.getIndent() + parser.getIndent() + "f(self.x)")
+            : ("\n" + parser.getStoppedIndentation() + "f(" + transformFieldPlaceholders(context) + "." + "x)")
+        );
         const tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length - 2);
         const match = tppCompletions?.filter((c) => c.acResult === token);
         if (match && match.length > 0 && match[0].signature) {

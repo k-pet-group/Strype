@@ -85,6 +85,7 @@ import Parser from "@/parser/parser";
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
 import {Completion, Signature, SignatureArg, TPyParser} from "tigerpython-parser";
 import scssVars from "@/assets/style/_export.module.scss";
+import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 /* IFTRUE_isMicrobit */
 import microbitDescriptions from "@/autocompletion/microbit.json";
 import microbitAPI from "@/autocompletion/microbit-api.json";
@@ -196,17 +197,17 @@ export default Vue.extend({
         sortCategories(categories : string[]) : string[] {
             // Other items (like the names of variables when you do var.) will come out as -1,
             // which works nicely because they should be first:
-            const isInsideFuncCallFrame = this.appStore.frameObjects[(parseLabelSlotUID(this.slotId).frameId)].frameType.type === AllFrameTypesIdentifier.funccall;
+            const isInsideFuncCallFrameForMyCodeSection = this.appStore.frameObjects[(parseLabelSlotUID(this.slotId).frameId)].frameType.type === AllFrameTypesIdentifier.funccall && findCurrentStrypeLocation().strypeLocation == STRYPE_LOCATION.MAIN_CODE_SECTION;
             const getOrder = (cat : string) => {
-                // First is my variables, my functions and my classes (in that order, except when we are inside a function call frame, my variables comes last.)
+                // First is my variables, my functions and my classes (in that order, except when we are inside a function call frame AND in "my code", my variables comes last).
                 if (cat === this.$i18n.t("autoCompletion.myVariables")) {
-                    return (isInsideFuncCallFrame) ? 2 : 0;
+                    return (isInsideFuncCallFrameForMyCodeSection) ? 2 : 0;
                 }
                 else if (cat === this.$i18n.t("autoCompletion.myFunctions")) {
-                    return (isInsideFuncCallFrame) ? 0 : 1;
+                    return (isInsideFuncCallFrameForMyCodeSection) ? 0 : 1;
                 }
                 else if (cat === this.$i18n.t("autoCompletion.myClasses")) {
-                    return (isInsideFuncCallFrame) ? 1 : 2;
+                    return (isInsideFuncCallFrameForMyCodeSection) ? 1 : 2;
                 }
                 else if (cat === this.$i18n.t("autoCompletion.importedModules")) {
                     return 3;
@@ -260,7 +261,9 @@ export default Vue.extend({
             const tokenStartsWithUnderscore = (token ?? "").startsWith("_");
             const parser = new Parser();
             const inFuncDef = getFrameContainer(frameId) == useStore().getDefsFrameContainerId;
-            const userCode = parser.getCodeWithoutErrors(frameId, inFuncDef);
+            const currentStrypeLocationForClassInfos = findCurrentStrypeLocation({checkForClassDeep: true});
+            const isGettingWholeClassContext = (context == "self" && currentStrypeLocationForClassInfos.strypeLocation == STRYPE_LOCATION.IN_CLASSDEF && findCurrentStrypeLocation().strypeLocation == STRYPE_LOCATION.IN_FUNCDEF);
+            const userCode = (isGettingWholeClassContext) ? parser.getWholeClassCodeWithoutError(currentStrypeLocationForClassInfos.locationFrameId, frameId) : parser.getCodeWithoutErrors(frameId, inFuncDef);
             
             await tpyDefineLibraries(parser);
             
@@ -297,11 +300,17 @@ export default Vue.extend({
                 // position we're completing at once the slots are turned into plain Python).
                 //
                 // To give TigerPython's autocomplete a place to examine to do the autocompletion
-                // we actually generate a dummy extra line of code with the context that we want
-                // plus a dot, then ask TigerPython to complete at the very end (and for microbit,
-                // we add a dummy "from builtins import *" to allow builtins a/c): 
+                // we actually generate (for generic cases) a dummy extra line of code with the
+                // context that we want plus a dot, then ask TigerPython to complete at the very
+                // end (and for microbit, we add a dummy "from builtins import *" to allow builtins a/c): 
+                // For the specific case of a call after "self." within a function defintion of 
+                // a user defined class, we pass the full class code (see above) to TigerPython
+                // and add an extra line after that class that call as "<class name>()." to replace self.
                 const preamble = "" /* IFTRUE_isMicrobit + "from builtins import *\n" FITRUE_isMicrobit */;
-                let totalCode = preamble + userCode + "\n" + parser.getStoppedIndentation() + context + ".";
+                const extraLineContent = (isGettingWholeClassContext) 
+                    ? `${(this.appStore.frameObjects[currentStrypeLocationForClassInfos.locationFrameId].labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code}().` 
+                    : parser.getStoppedIndentation() + context + ".";
+                let totalCode = preamble + userCode + "\n" + extraLineContent;                
                 let tppCompletions = TPyParser.autoCompleteExt(totalCode, totalCode.length);
                 if (tppCompletions == null) {
                     tppCompletions = [];                    
@@ -381,23 +390,24 @@ export default Vue.extend({
                 this.acResults["Python"] = getBuiltins().filter((ac) => !ac.acResult.startsWith("_") || token.startsWith("_"));
               
                 // Add user-defined functions except class functions (even if the user is inside the class):
-                this.acResults[this.$i18n.t("autoCompletion.myFunctions") as string] = getAllEnabledUserDefinedFunctions().map((f) => ({
+                this.acResults[this.$i18n.t("autoCompletion.myFunctions") as string] = await Promise.all(getAllEnabledUserDefinedFunctions().map(async (f) => ({
                     acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
                     // If the function's documentation slot isn't empty, we used it as documentation
                     documentation: (f.labelSlotsDict[3].slotStructures.fields[0] as BaseSlot)?.code.trim()??"",
                     type: ["function"],
-                    signature: getUserDefinedSignature(f),
+                    signature: await getUserDefinedSignature(f),
                     version: 0,
-                }));
+                })));
 
                 // Add user-defined classes:
-                this.acResults[this.$i18n.t("autoCompletion.myClasses") as string] = getAllEnabledUserDefinedClasses().map((f) => ({
+                this.acResults[this.$i18n.t("autoCompletion.myClasses") as string] = await Promise.all(getAllEnabledUserDefinedClasses().map(async (f) => ({
                     acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
                     // If the class's documentation slot isn't empty, we used it as documentation
                     documentation: (f.labelSlotsDict[2].slotStructures.fields[0] as BaseSlot)?.code.trim()??"",
                     type: ["function"], // Class names are used as constructor functions in Python
+                    signature: await getUserDefinedSignature(f),
                     version: 0,
-                }));
+                })));
                 
                 // Add user-defined variables:
                 this.acResults[this.$i18n.t("autoCompletion.myVariables") as string] = Array.from(getAllUserDefinedVariablesUpTo(frameId)).map((f) => ({

@@ -212,5 +212,111 @@ describe("User-defined items", () => {
             assertState(frameId, "foo($)");
         }, true);
     });
+
+    it("Offers auto-complete for user-defined class's parameters", () => {
+        focusEditorAC();
+        // Make a class frame with "foo" and the params for the init function "bar, vaz",
+        // then make a function call frame inside:
+        cy.get("body").type("{uparrow}cfoo{downarrow}{downarrow}{leftarrow}{leftarrow}bar,vaz{rightarrow}{rightarrow}");
+        // Trigger auto-completion:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, MYVARS, "self");
+            checkExactlyOneItem(acIDSel, MYVARS, "bar");
+            checkExactlyOneItem(acIDSel, MYVARS, "vaz");
+            checkExactlyOneItem(acIDSel, MYCLASSES, "foo(bar, vaz)");
+            // Go out of this call and into the main body:
+            cy.get("body").type("{backspace}");
+            cy.wait(500);
+            cy.get("body").type("{downarrow}{downarrow}{downarrow}");
+        }, false);
+        // Make a function call and check "self, bar, vaz" don't show there:
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkNoItems(acIDSel, "self", true);
+            checkNoItems(acIDSel, "bar", true);
+            checkNoItems(acIDSel, "vaz", true);
+            checkExactlyOneItem(acIDSel, MYCLASSES, "foo(bar, vaz)");
+        }, true);
+    });
+
+    it("Offers auto-complete for user-defined class's function parameters", () => {
+        focusEditorAC();
+        // Make a class frame with "foo" and the params for the init function "bar",
+        // then add function definition "myF" frame with parameters "vaz, param2" and go inside:
+        cy.get("body").type("{uparrow}cfoo{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}fmyF{rightarrow}vaz,param2{rightarrow}{rightarrow}");
+        // Trigger auto-completion:
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, MYVARS, "self");
+            checkExactlyOneItem(acIDSel, MYVARS, "vaz");
+            checkExactlyOneItem(acIDSel, MYVARS, "param2");
+            checkNoItems(acIDSel, "bar", true);
+            // Go out of this call and into the main body:
+            cy.get("body").type("{backspace}");
+            cy.wait(500);
+            cy.get("body").type("{downarrow}{downarrow}{downarrow}");
+        }, false);
+        // Make a function call and check "self, bar, vaz, param2", and the classes function, don't show there:
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkNoItems(acIDSel, "self", true);
+            checkNoItems(acIDSel, "bar", true);
+            checkNoItems(acIDSel, "vaz", true);
+            checkNoItems(acIDSel, "param2", true);
+            checkNoItems(acIDSel, "__init__", true);
+            checkNoItems(acIDSel, "myF", true);
+            // Validated the class suggestion then move past the brackets and add point
+            cy.get("body").type("{enter}");
+            cy.wait(500);
+            cy.get("body").type("{rightarrow}.");
+        }, true);
+        // Triggers the autocompletion and see that the class's function is listed
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, "foo()", "myF(vaz, param2)");
+        }, true);
+    });
+
+    it("Offers auto-complete for user-defined class overwriting Actor", () => {
+        focusEditorAC();
+        // Add the Graphics API import to get Actor
+        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}Actor{downarrow}{downarrow}");
+        // Make a class frame with "foo(Actor)" and delete the init function then go to my code
+        cy.get("body").type("cfoo(Actor{downarrow}{del}{downarrow}{downarrow}");
+        // Trigger auto-completion on a function call frame:
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, MYCLASSES, "foo(image, x, y, tag)");
+            checkNoItems(acIDSel, "foo()", true);
+            // Go out of this call and into the main body:
+            cy.get("body").type("{backspace}");
+            cy.wait(500);
+            cy.get("body").type("{downarrow}{downarrow}{downarrow}");
+        }, true);
+        // Make a function call and check "self, bar, vaz" don't show there:
+        cy.get("body").type(" {ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkNoItems(acIDSel, "self", true);           
+            // Validated the class suggestion then move past the brackets and add point
+            cy.get("body").type("{enter}");
+            cy.wait(500);
+            cy.get("body").type("{rightarrow}.");
+        }, true);
+        // Triggers the autocompletion and see that some Actor methods are listed
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, "foo()", "get_in_range(distance)");
+            checkExactlyOneItem(acIDSel, "foo()", "remove()");
+        }, true);
+    });
 });
 

@@ -150,6 +150,7 @@ export function checkAutocompleteSorted(acIDSel: string, isInFuncCallFrame: bool
         "microbit",
         "microbit.accelerometer",
         "time",
+        "strype.graphics",
         BUILTIN,
     ];
     cy.get(acIDSel + " div.ac-module-header:not(." + scssVars.acEmptyResultsContainerClassName + ")")

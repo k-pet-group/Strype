@@ -13,9 +13,19 @@ describe("Parameter prompts for user-defined functions", () => {
         [{udf: "draw_circle(x,y,radius,thickness=5,fill=None)"}, "draw_circle", ["x", "y", "radius", "thickness=5","fill=None"]],
         [{udf: "sum(*numbers)"}, "sum", ["*numbers"]],
         [{udf: "sum(initial, *numbers, **attrs)"}, "sum", ["initial", "*numbers", "**attrs"]],
-        [{udf: "draw_text(x,y,text,*,font_family=None)"}, "draw_text", ["x", "y", "text", "font_family=None"]],
-        // TODO test a class function once OOP merged:
-        //[{class: "Foo", udf: "set_location(x,y)"}, "Foo().set_location", ["x", "y"]],
+        [{udf: "draw_text(x,y,text,*,font_family=None)"}, "draw_text", ["x", "y", "text", "font_family=None"]],       
+        
+    ];
+    testRawFuncs(rawFuncs);
+});
+
+describe("Parameter prompts for user-defined classes", () => { 
+    // Each item is a triple: the module, the function name within the module, the list of param names
+    const rawFuncs : [string | null | [string, string] | {class: string, udf: string}, string, string[]][] = [
+        [{class: "Foo", udf: "set_location(x,y)"}, "self.set_location", ["x", "y"]],
+        [{class: "Foo", udf: "sum(*numbers)"}, "self.sum", ["*numbers"]],
+        [{class: "Foo", udf: "sum(initial, *numbers, **attrs)"}, "self.sum", ["initial", "*numbers", "**attrs"]],
+        [{class: "Foo", udf: "draw_text(x,y,text,*,font_family=None)"}, "self.draw_text", ["x", "y", "text", "font_family=None"]],       
         
     ];
     testRawFuncs(rawFuncs);

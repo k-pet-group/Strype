@@ -144,6 +144,7 @@ export async function doTextHomeEndKeyPress(page: Page, isGoingForward: boolean,
     else{
         await page.keyboard.press(`${isShiftEnabled ? "Shift+" : ""}${isGoingForward ? "End" : "Home"}`);
     }
+    await page.waitForTimeout(200);
 } 
 
 export function pressN(key: string, n : number, enforceWaitBetween?: boolean) : ((page: Page) => Promise<void>) {

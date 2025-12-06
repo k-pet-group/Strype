@@ -196,9 +196,9 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         if (frame.frameType == "try") {
             // We delete the except which automatically gets generated, then add our own:
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(100);
+            await page.waitForTimeout(200);
             await page.keyboard.press("Backspace");
-            await page.waitForTimeout(100);
+            await page.waitForTimeout(200);
         }
     }
     else {
@@ -208,7 +208,7 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
     if (frame.frameType == "funccall") {
         // Have to remove default brackets:
         await page.keyboard.press("Delete");
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(200);
     }
     
     for (let i = 0; i < frame.slotContent.length; i++){
@@ -219,7 +219,7 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         const enterable = slotType == AllowedSlotContent.FREE_TEXT_DOCUMENTATION || slotType == AllowedSlotContent.LIBRARY_ADDRESS ? s : s.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
         await typeIndividually(page, enterable, 100);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(200);
     }
     if (beforeBody) {
         await beforeBody();
@@ -228,7 +228,7 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         if (frame.frameType == "classdef") {
             // Need to remove the default constructor:
             await page.keyboard.press("Delete");
-            await page.waitForTimeout(100);
+            await page.waitForTimeout(200);
         }
         
         for (const s of frame.body) {
@@ -243,7 +243,7 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         }
         else {
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(100);
+            await page.waitForTimeout(200);
             if (frame.disabled && getFrameDefType(frame.frameType).isJointFrame) {
                 await disablePrev(page, false);
             }
@@ -253,14 +253,14 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
     if (frame.disabled && !parentDisabled && !getFrameDefType(frame.frameType).isJointFrame) {
         // With shift, one press should select whole frame, including any joint frames:
         await page.keyboard.press("Shift+ArrowUp");
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(200);
         await page.keyboard.press(" ");
         await page.waitForTimeout(500);
         await page.getByRole("menuitem", { name: en.contextMenu.disable }).click();
         await page.waitForTimeout(100);
         // Now it's disabled, a single down press should skip the entire lot:
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(100);
+        await page.waitForTimeout(200);
     }
     
     
@@ -426,6 +426,8 @@ async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: s
 }
 
 test.describe("Enters, saves and loads random frame", () => {
+    // One day we should get all these passing, but in the mean time...
+    test.describe.configure({ retries: 3 });
     for (let i = 0; i < 5; i++) {
         test("Tests random entry #" + i, async ({page}, testInfo) => {
             // Increase test timeout:

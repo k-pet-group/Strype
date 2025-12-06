@@ -60,6 +60,7 @@ function testSelectionThenDelete(code : string, doSelectKeys: (page: Page) => Pr
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, code);
         await doSelectKeys(page);
+        await page.waitForTimeout(200);
         await page.keyboard.press("Delete");
         await assertStateOfIfFrame(page, expectedAfterDeletion);
     });
@@ -141,33 +142,39 @@ test.describe("Shift-End selects to the end of current level", () => {
     testSelectionThenDelete("a+c",async (page) => {
         await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
         await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(200);
         await doTextHomeEndKeyPress(page, true, true); // equivalent to Shift+End
     }, "{a$}");
 
     testSelectionThenDelete("abcdef",async (page) => {
         await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
         await page.keyboard.press("Shift+ArrowRight");
+        await page.waitForTimeout(200);
         await page.keyboard.press("Shift+ArrowRight");
+        await page.waitForTimeout(200);
     }, "{$cdef}");
 
     testSelectionThenDelete("a+abs(b)",async (page) => {
         await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
         await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(200);
         await doTextHomeEndKeyPress(page, true, true); // equivalent to Shift+End
     }, "{a$}");
     testSelectionThenDelete("a+math.sin(b)",async (page) => {
         await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
         await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(200);
         await doTextHomeEndKeyPress(page, true, true); // equivalent to Shift+End
     }, "{a$}");
     testSelectionThenDelete("a+max(b,c)",async (page) => {
         await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
         await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(200);
         await doTextHomeEndKeyPress(page, true, true); // equivalent to Shift+End
     }, "{a$}");
     testSelectionThenDelete("a+min(b,c)",async (page) => {
         await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
-        await pressN("ArrowRight", 6)(page);
+        await pressN("ArrowRight", 6, true)(page);
         await doTextHomeEndKeyPress(page, true, true); // equivalent to Shift+End
     }, "{a}+{min}_({$})_{}");
 });

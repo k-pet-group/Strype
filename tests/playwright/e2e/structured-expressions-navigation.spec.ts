@@ -48,7 +48,7 @@ async function loadPY(page: Page, filepath: string) {
     for (let i = 0; i < 200; i++) {
         await checkFrameXorTextCursor(page);
         await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(75);
+        await page.waitForTimeout(150);
     }
 }
 
@@ -70,6 +70,7 @@ test.describe("Check navigation", () => {
         for (let i = 0; i < 500; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowRight");
+            await page.waitForTimeout(200);
         }
     });
     // Down by itself won't go into slots, so we do down-down-left which should get to the end.
@@ -88,6 +89,7 @@ test.describe("Check navigation", () => {
             await page.waitForTimeout(200);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowLeft");
+            await page.waitForTimeout(200);
         }
     });
     test("Tab through a file", async ({page}, testInfo) => {
@@ -99,6 +101,7 @@ test.describe("Check navigation", () => {
         for (let i = 0; i < 500; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("Tab");
+            await page.waitForTimeout(150);
         }
     });
     test("Down-down-shift-tab through a file", async ({page}, testInfo) => {
@@ -110,12 +113,13 @@ test.describe("Check navigation", () => {
         for (let i = 0; i < 100; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(150);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(500);
+            await page.waitForTimeout(150);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("Shift+Tab");
+            await page.waitForTimeout(150);
         }
     });
     test("Tab through two empty assignments", async ({page}, testInfo) => {
@@ -126,9 +130,12 @@ test.describe("Check navigation", () => {
         await page.keyboard.press("Delete");
         await page.keyboard.press("=");
         await page.keyboard.press("ArrowDown");
+        await page.waitForTimeout(200);
         await page.keyboard.press("=");
         await page.keyboard.press("ArrowUp");
+        await page.waitForTimeout(200);
         await page.keyboard.press("ArrowUp");
+        await page.waitForTimeout(200);
         // We had a bug where tab needed to be pressed twice after coming out of the frame, so
         // we check explicitly here the ordering of text and frame.  Essentially, we start on frame cursor,
         // tab through both empty text slots then back to frame cursor.  Tab again at the end shouldn't change things:
@@ -136,7 +143,7 @@ test.describe("Check navigation", () => {
         for (let i = 0; i < expectedFrameCursor.length; i++) {
             await checkFrameXorTextCursor(page, expectedFrameCursor[i]);
             await page.keyboard.press("Tab");
-            await page.waitForTimeout(75);
+            await page.waitForTimeout(150);
         }
     });
 });
@@ -183,11 +190,14 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         const strWithGraphemesSize = Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(strWithGraphemes)).length;
         // Adds a function call frame with empty literal
         await page.keyboard.type(" \"");
+        await page.waitForTimeout(200);
         // Types the content of the literal, with some grapheme clusters
         await page.keyboard.type(strWithGraphemes);
         // Gets back above that frame and in the frame
         await page.keyboard.press("ArrowUp");
+        await page.waitForTimeout(200);
         await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(200);
         // Move right until the end of the literal (not past the closing quote, and we need +1 for passing the opening quote)
         await pressN("ArrowRight", 1 + strWithGraphemesSize, true)(page);
         await page.waitForTimeout(100);
@@ -200,11 +210,14 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         const strWithGraphemesSize = Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(strWithGraphemes)).length;
         // Adds a function call frame with empty literal
         await page.keyboard.type(" \"");
+        await page.waitForTimeout(200);
         // Types the content of the literal, with some grapheme clusters
         await page.keyboard.type(strWithGraphemes);
         // Gets back below that frame and in the frame
         await page.keyboard.press("ArrowDown");
+        await page.waitForTimeout(200);
         await page.keyboard.press("ArrowLeft");
+        await page.waitForTimeout(200);
         // Move left until the start of the literal (not past the opening quote, and we need +3 for passing the brackets and closing quote)
         await pressN("ArrowLeft", 3 + strWithGraphemesSize, true)(page);
         await page.waitForTimeout(100);

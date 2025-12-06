@@ -21,14 +21,14 @@ test.describe("Function definition to variable assigment transformation", () => 
     test("Just have \"=\"", async ({page}) => {
         // Make a function call and "=" right away
         await page.keyboard.type(" =");
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(1000);
         await assertStateOfVarAssignFrame(page,"{}", "{$}({}){}");
     });
 
     test("Have \"a=\"", async ({page}) => {
         // Make a function call and "a=" right away
         await page.keyboard.type(" a=");
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(1000);
         await assertStateOfVarAssignFrame(page,"{a}", "{$}({}){}");
     });
 
@@ -40,7 +40,7 @@ test.describe("Function definition to variable assigment transformation", () => 
         // Get before "123" and transform to varassign
         await pressN("ArrowLeft", 3, true)(page);
         await page.keyboard.press("=");
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(1000);
         await assertStateOfVarAssignFrame(page,"{abc}", "{$123}({}){}");
     });
 
@@ -51,15 +51,15 @@ test.describe("Function definition to variable assigment transformation", () => 
         await page.waitForTimeout(50);
         // Get before "456" and copy double equals
         await pressN("ArrowLeft", 3, true)(page);
-        await page.waitForTimeout(50);
+        await page.waitForTimeout(150);
         await doPagePaste(page, "==");
         await page.waitForTimeout(50);
         // Get after "a" then transform
         await doTextHomeEndKeyPress(page, false, false),
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(50);
+        await page.waitForTimeout(150);
         await page.keyboard.press("=");
-        await page.waitForTimeout(300);
+        await page.waitForTimeout(1000);
         await assertStateOfVarAssignFrame(page,"{a}", "{$b}=={456}({}){}");
     });    
 });

@@ -95,12 +95,13 @@
 //////////////////////
 import Vue from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
+import LabelSlotsStructureComponent from "@/components/LabelSlotsStructure.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, FrozenState, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName, ContainerTypesIdentifiers } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent, frameOrChildHasErrors, calculateNextCollapseState } from "@/helpers/storeMethods";
-import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID } from "@/helpers/editor";
+import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, getFrameLabelSlotsStructureUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
 import html2canvas from "html2canvas";
@@ -897,6 +898,19 @@ export default Vue.extend({
             }
 
             const clickedDiv: HTMLDivElement = event.target as HTMLDivElement;
+            if(clickedDiv.classList.contains("prepend-self-only") || clickedDiv.classList.contains("prepend-self-comma")){
+                // This call should not get throught when the "self" part of class functions is clicked upon.
+                // The focus is already set in App.vue properly, and with the right frame caret position.
+                // We don't want this method to mess up the state.
+                // However, since no actual slot is clicked, the change from "self" to "self," isn't triggered.
+                // We can retrieve the LabelSlotsStructure component because its ref is in the root object, and 
+                // call updatePrependText() which will now notice the right context and do its work.
+                const labelSlotsStructComponent = this.$root.$refs[getFrameLabelSlotsStructureUID(this.frameId, 1)];
+                if(labelSlotsStructComponent){
+                    (labelSlotsStructComponent as InstanceType<typeof LabelSlotsStructureComponent>).updatePrependText();
+                }
+                return;
+            }
 
             // This checks the propagated click events, and prevents the parent frame to handle the event as well, EXCEPT in the case of disabled frames:
             // if the clicked frame is disabled AND it is inside a disabled ancestor, we want to consider that ancestor instead, as the disabled block works as an unit.

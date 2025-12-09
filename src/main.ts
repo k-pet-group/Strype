@@ -20,7 +20,7 @@ Vue.config.productionTip = false;
 // Version of the application to check code's import compatibility in the editor
 // note: that is not an offical software version of Strype, just a way to help us dealing with compatibility issues.
 // it MUST be kept as an integer matching value
-export const AppVersion = "5";
+export const AppVersion = "6";
 // The version used in the new .spy file format.  We may increment this in future
 // if we introduce a breaking change to that file format.
 export const AppSPYSaveVersion = "1";

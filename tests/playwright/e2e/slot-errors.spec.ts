@@ -47,7 +47,8 @@ async function getFocusedId(page: Page) : Promise<string | null> {
             return null;
         }
 
-        return node.id || null;
+        // Escape commas ready for use in selector:
+        return node.id ? node.id.replaceAll(",", "\\,") : null;
     });
 }
 
@@ -71,6 +72,19 @@ test.describe("Check slots have errors", () => {
         const slotId = await getFocusedId(page);
         // Shouldn't have error until we leave:
         await expect(page.locator(`#${slotId}`)).not.toContainClass("error-slot");
+        await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(500);
+        // Now should show an error:
+        await expect(page.locator(`#${slotId}`)).toContainClass("error-slot");
+    });
+    test("Empty subscript", async ({page}) => {
+        // Assignment, x = 1 * <err>
+        await page.keyboard.type("=x=a[");
+        const slotId = await getFocusedId(page);
+        // Shouldn't have error until we leave:
+        await expect(page.locator(`#${slotId}`)).not.toContainClass("error-slot");
+        await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(200);
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(500);
         // Now should show an error:

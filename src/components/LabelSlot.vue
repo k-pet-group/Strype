@@ -633,7 +633,7 @@ export default Vue.extend({
         // (the spans don't get focus anymore because the containg editable div grab it)
         onLoseCaret(keepIgnoreKeyEventFlagOn?: boolean): void {
             let parent = this.$parent as InstanceType<typeof LabelSlotsStructure>;
-            Vue.nextTick(() => parent.updatePrependText());
+            Vue.nextTick(() => parent.updatePrependTextAndCheckErrors());
             
             // Before anything, we make sure that the current frame still exists,
             // and that our slot still exists.  If we shouldn't exist any more, we should

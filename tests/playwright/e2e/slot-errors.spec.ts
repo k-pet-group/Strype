@@ -1,4 +1,7 @@
 import {Page, test, expect} from "@playwright/test";
+import {addFakeClipboard} from "../support/clipboard";
+import fs from "fs";
+import {doPagePaste} from "../support/editor";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
@@ -11,6 +14,8 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     // (pressing right out of a comment frame puts the cursor at the beginning and makes a frame cursor).
     // Since it works in the real browsers, and on Webkit and Firefox, we just skip the tests in Chromium
     test.skip(testInfo.project.name == "chromium", "Cannot run in Chromium");
+
+    addFakeClipboard(page);
 
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
@@ -89,5 +94,32 @@ test.describe("Check slots have errors", () => {
         await page.waitForTimeout(500);
         // Now should show an error:
         await expect(page.locator(`#${slotId}`)).toContainClass("error-slot");
+    });
+    test("Invalid number", async ({page}) => {
+        // Assignment, x = 1 * <err>
+        await page.keyboard.type("=x=1a");
+        const slotId = await getFocusedId(page);
+        // Shouldn't have error until we leave:
+        await expect(page.locator(`#${slotId}`)).not.toContainClass("error-slot");
+        await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(500);
+        // Now should show an error:
+        await expect(page.locator(`#${slotId}`)).toContainClass("error-slot");
+    });
+    test("List of image and invalid number", async ({page}) => {
+        await page.keyboard.type("=x=[");
+        const image = fs.readFileSync("public/graphics_images/cat-test.jpg").toString("base64");
+        await doPagePaste(page, image, "image/jpeg");
+        await page.keyboard.type(",1a");
+        const slotId = await getFocusedId(page);
+        // Shouldn't have error until we leave:
+        await expect(page.locator(`#${slotId}`)).not.toContainClass("error-slot");
+        await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(200);
+        await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(500);
+        // Now should show an error:
+        await expect(page.locator(`#${slotId}`)).toContainClass("error-slot");
+
     });
 });

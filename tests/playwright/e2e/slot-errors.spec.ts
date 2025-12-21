@@ -53,7 +53,19 @@ async function getFocusedId(page: Page) : Promise<string | null> {
 
 
 test.describe("Check slots have errors", () => {
-    test("Missing operand", async ({page}) => {
+    test("Missing first operand", async ({page}) => {
+        // Assignment, x = <err> / 1
+        // The error is reported in the final slot
+        await page.keyboard.type("=x=/1");
+        const slotId = await getFocusedId(page);
+        // Shouldn't have error until we leave:
+        await expect(page.locator(`#${slotId}`)).not.toContainClass("error-slot");
+        await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(500);
+        // Now should show an error:
+        await expect(page.locator(`#${slotId}`)).toContainClass("error-slot");
+    });
+    test("Missing second operand", async ({page}) => {
         // Assignment, x = 1 * <err>
         await page.keyboard.type("=x=1*");
         const slotId = await getFocusedId(page);

@@ -1,4 +1,4 @@
-import {Page, test, expect} from "@playwright/test";
+import {expect, Page, test} from "@playwright/test";
 import {addFakeClipboard} from "../support/clipboard";
 import fs from "fs";
 import {doPagePaste} from "../support/editor";
@@ -105,5 +105,34 @@ test.describe("Check slots have errors", () => {
         await page.keyboard.type(",1a");
         await checkErrorAfterExitingSlot(page, ["ArrowRight", "ArrowRight"]);
     });
-    
+    test("No error on function descriptions", async ({page}) => {
+        // As per bug #713 on Github, there was an issue where errors in the function header
+        // could show errors on function description slots, so we check that doesn't happen:
+        // Class with method, with header content "a, *"
+        await page.keyboard.press("ArrowUp");
+        await page.waitForTimeout(200);
+        await page.keyboard.type("cFoo");
+        await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(200);
+        await page.keyboard.press("ArrowRight");
+        console.log("Going to class frame cursor");
+        await page.waitForTimeout(200);
+        console.log("Entering new function");
+        await page.keyboard.type("dfoo(a,*");
+        const paramId = await getFocusedId(page);
+        // Move into the function description slot
+        await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(200);
+        const descriptionId = await getFocusedId(page);
+        // Sanity check:
+        expect(descriptionId).not.toEqual(paramId);
+        // Shouldn't have error before leaving::
+        await expect(page.locator(`#${paramId}`)).not.toContainClass("error-slot");
+        await expect(page.locator(`#${descriptionId}`)).not.toContainClass("error-slot");
+        await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(500);
+        // Now should show an error in params but not description:
+        await expect(page.locator(`#${paramId}`)).toContainClass("error-slot");
+        await expect(page.locator(`#${descriptionId}`)).not.toContainClass("error-slot");
+    });
 });

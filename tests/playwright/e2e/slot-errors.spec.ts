@@ -57,69 +57,53 @@ async function getFocusedId(page: Page) : Promise<string | null> {
     });
 }
 
+async function checkErrorAfterExitingSlot(page: Page, keypresses : string[] = ["ArrowRight"]) : Promise<void> {
+    const slotId = await getFocusedId(page);
+    // Shouldn't have error until we leave:
+    await expect(page.locator(`#${slotId}`)).not.toContainClass("error-slot");
+    for (const key of keypresses) {
+        await page.keyboard.press(key);
+        await page.waitForTimeout(200);
+    }
+    await page.waitForTimeout(300);
+    // Now should show an error:
+    await expect(page.locator(`#${slotId}`)).toContainClass("error-slot");
+}
+
 
 test.describe("Check slots have errors", () => {
     test("Missing first operand", async ({page}) => {
         // Assignment, x = <err> / 1
         // The error is reported in the final slot
         await page.keyboard.type("=x=/1");
-        const slotId = await getFocusedId(page);
-        // Shouldn't have error until we leave:
-        await expect(page.locator(`#${slotId}`)).not.toContainClass("error-slot");
-        await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(500);
-        // Now should show an error:
-        await expect(page.locator(`#${slotId}`)).toContainClass("error-slot");
+        await checkErrorAfterExitingSlot(page);
     });
     test("Missing second operand", async ({page}) => {
         // Assignment, x = 1 * <err>
         await page.keyboard.type("=x=1*");
-        const slotId = await getFocusedId(page);
-        // Shouldn't have error until we leave:
-        await expect(page.locator(`#${slotId}`)).not.toContainClass("error-slot");
-        await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(500);
-        // Now should show an error:
-        await expect(page.locator(`#${slotId}`)).toContainClass("error-slot");
+        await checkErrorAfterExitingSlot(page);
     });
     test("Empty subscript", async ({page}) => {
         // Assignment, x = 1 * <err>
         await page.keyboard.type("=x=a[");
-        const slotId = await getFocusedId(page);
-        // Shouldn't have error until we leave:
-        await expect(page.locator(`#${slotId}`)).not.toContainClass("error-slot");
-        await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
-        await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(500);
-        // Now should show an error:
-        await expect(page.locator(`#${slotId}`)).toContainClass("error-slot");
+        await checkErrorAfterExitingSlot(page, ["ArrowRight", "ArrowRight"]);
+    });
+    test("Empty subscript (exit with arrow down)", async ({page}) => {
+        // Assignment, x = 1 * <err>
+        await page.keyboard.type("=x=a[");
+        await checkErrorAfterExitingSlot(page, ["ArrowDown"]);
     });
     test("Invalid number", async ({page}) => {
         // Assignment, x = 1 * <err>
         await page.keyboard.type("=x=1a");
-        const slotId = await getFocusedId(page);
-        // Shouldn't have error until we leave:
-        await expect(page.locator(`#${slotId}`)).not.toContainClass("error-slot");
-        await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(500);
-        // Now should show an error:
-        await expect(page.locator(`#${slotId}`)).toContainClass("error-slot");
+        await checkErrorAfterExitingSlot(page);
     });
     test("List of image and invalid number", async ({page}) => {
         await page.keyboard.type("=x=[");
         const image = fs.readFileSync("public/graphics_images/cat-test.jpg").toString("base64");
         await doPagePaste(page, image, "image/jpeg");
         await page.keyboard.type(",1a");
-        const slotId = await getFocusedId(page);
-        // Shouldn't have error until we leave:
-        await expect(page.locator(`#${slotId}`)).not.toContainClass("error-slot");
-        await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
-        await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(500);
-        // Now should show an error:
-        await expect(page.locator(`#${slotId}`)).toContainClass("error-slot");
-
+        await checkErrorAfterExitingSlot(page, ["ArrowRight", "ArrowRight"]);
     });
+    
 });

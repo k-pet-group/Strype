@@ -115,9 +115,7 @@ test.describe("Check slots have errors", () => {
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(200);
         await page.keyboard.press("ArrowRight");
-        console.log("Going to class frame cursor");
         await page.waitForTimeout(200);
-        console.log("Entering new function");
         await page.keyboard.type("dfoo(a,*");
         const paramId = await getFocusedId(page);
         // Move into the function description slot

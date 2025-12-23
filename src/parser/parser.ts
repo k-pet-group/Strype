@@ -666,8 +666,12 @@ export default class Parser {
                                     const isErrorOnOperator = (labelSlotStartLengthsEntry[1].slotTypes[slotStartIndex] == SlotType.operator);
                                     labelSlotsIndex = parseInt(labelSlotStartLengthsEntry[0]);
                                     const slotStartIndexToUse = (isErrorOnOperator) ? slotStartIndex + 1 : slotStartIndex;
-                                    slotId = labelSlotStartLengthsEntry[1].slotIds[slotStartIndexToUse];
-                                    slotType = labelSlotStartLengthsEntry[1].slotTypes[slotStartIndexToUse];
+                                    // Don't show errors on comments or description slots:
+                                    if (labelSlotStartLengthsEntry[1].slotTypes[slotStartIndexToUse] != SlotType.comment) {
+                                        slotId = labelSlotStartLengthsEntry[1].slotIds[slotStartIndexToUse];
+                                        slotType = labelSlotStartLengthsEntry[1].slotTypes[slotStartIndexToUse];
+                                    }
+                                    
                                 }
                             }));
 

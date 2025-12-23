@@ -244,11 +244,13 @@ export default class Parser {
     private outputProjectDoc = false;
     private stoppedIndentation = ""; // The indentation level when we encountered the stop frame.
     private libraries : string[] = [];
+    private omitMediaLiterals = false;
     
-    constructor(ignoreCheckErrors = false, destination: "spy" | "py-export" | "py" = "py") {
+    constructor(ignoreCheckErrors = false, destination: "spy" | "py-export" | "py" = "py", omitMediaLiterals = false) {
         this.ignoreCheckErrors = ignoreCheckErrors;
         this.saveAsSPY = destination == "spy";
         this.outputProjectDoc = destination == "spy" || destination == "py-export";
+        this.omitMediaLiterals = omitMediaLiterals;
     }
 
     public getIndent(): string {
@@ -815,7 +817,12 @@ export default class Parser {
             if(isSlotQuoteType(flatSlot.type) || isSlotBracketType(flatSlot.type) || flatSlot.type === SlotType.media){
                 // a quote or a bracket is a 1 character token, shown in the code
                 // but it's not editable so we don't include it in the slot positions
-                code += flatSlot.code;
+                if (this.omitMediaLiterals && flatSlot.type === SlotType.media) {
+                    code += flatSlot.code.replace(/"[^"]+"/, "\"\"");
+                }
+                else {
+                    code += flatSlot.code;
+                }
                 if (flatSlot.type == SlotType.openingQuote || flatSlot.type == SlotType.openingBracket) {
                     nestingLevel += 1;
                 }

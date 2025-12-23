@@ -891,7 +891,7 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
     // We don't want to crash the application if something isn't handled correctly in TP.
     // So in case of an error, we catch it to allow the rest of the code to execute...
     try{
-        const parser = new Parser(true);
+        const parser = new Parser(true, "py", true);
         parser.getErrorsFormatted(parser.parse({}));
     }
     catch(error){

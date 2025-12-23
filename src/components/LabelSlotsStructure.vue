@@ -1034,9 +1034,14 @@ export default Vue.extend({
                     document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
                         ?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));
                 }
+                
+                // We should only check for errors if we are actually blurring the focus.  Otherwise
+                // this can be called when we move from the next frame cursor (where the browser
+                // things this slot still has focus) to a new slot, which is much later than we intend:
+                this.updatePrependTextAndCheckErrors();
             }
 
-            this.updatePrependTextAndCheckErrors();
+            
         },
         
         isFocused() {

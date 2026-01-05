@@ -59,7 +59,7 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
-import { execPythonCode } from "@/helpers/execPythonCode";
+//import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
 import {adjustContextMenuPosition, checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getStrypeCommandComponentRefId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight} from "@/helpers/editor";
 import i18n from "@/i18n";
@@ -77,6 +77,8 @@ import {getDateTimeFormatted} from "@/helpers/common";
 import audioBufferToWav from "audiobuffer-to-wav";
 import { saveAs } from "file-saver";
 import {bufferToBase64} from "@/helpers/media";
+import type { PyodideInterface } from "pyodide";
+import { getPyodide } from "@/helpers/pyodide";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -149,7 +151,12 @@ export default Vue.extend({
                 {iconName: "PEA-layout-split-expanded", mode: StrypePEALayoutMode.splitExpanded},
             ] as StrypePEALayoutData[],
             highlightPythonRunningState: false, // a flag used to trigger a CSS highlight of the PEA running state
+            pyodide: null as Promise<PyodideInterface> | null,
         };
+    },
+    
+    created() {
+        this.pyodide = getPyodide();
     },
     
     mounted(){
@@ -515,8 +522,16 @@ export default Vue.extend({
                 requestAnimationFrame(redraw);
                 
                 this.libraries = parser.getLibraries();
-                
+
+                this.pyodide?.then((p) => {
+                    p.setStdout({batched: (str) => {
+                        pythonConsole.value = pythonConsole.value + str;
+                    }});
+                    p.runPythonAsync(userCode);
+                });
+
                 // Trigger the actual Python code execution launch
+                /*
                 execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),parser.getLibraries(), () => useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop, (finishedWithError: boolean, isTurtleListeningKeyEvents: boolean, isTurtleListeningMouseEvents: boolean, isTurtleListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => {
                     // After Skulpt has executed the user code, we need to check if a keyboard listener is still pending from that user code.
                     this.isTurtleListeningKeyEvents = !!isTurtleListeningKeyEvents; 
@@ -542,6 +557,7 @@ export default Vue.extend({
                     // when Skulpt indicates the code execution has finished.
                     this.checkNonePrecompiledErrors();
                 });
+                */
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
                 // Note that a run time error can still occur later.                
                 this.checkNonePrecompiledErrors();

@@ -824,6 +824,7 @@ export default Vue.extend({
                 else {
                     // Restore the caret visibility
                     Vue.set(this.appStore.frameObjects[this.appStore.currentFrame.id], "caretVisibility", this.appStore.currentFrame.caretPosition);
+                    Vue.nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
                 }
             }
         },

@@ -51,6 +51,7 @@ export enum CustomEventTypes {
     editableSlotGotCaret= "slotGotCaret",
     editableSlotLostCaret = "slotLostCaret",
     editorContentPastedInSlot = "contentPastedInSlot",
+    scrollCaretIntoView = "scrollCaretIntoView",
     addFunctionToEditorProjectSave = "addToProjectSaveFunction",
     removeFunctionToEditorProjectSave = "rmToProjectSaveFunction",
     requestEditorProjectSaveNow = "requestProjectSaveNow",

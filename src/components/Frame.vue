@@ -791,10 +791,10 @@ export default Vue.extend({
                     const newFramePos = (isJointFrameLast || nextEnabledJointSiblingFrameId == -1)
                         ? {id: jointRootFrame.id, caretPosition: CaretPosition.below}
                         : {id: jointRootFrame.jointFrameIds[nextEnabledJointSiblingFrameId], caretPosition: CaretPosition.body};
-                    this.appStore.setCurrentFrame(newFramePos);
+                    this.appStore.setCurrentFrame(newFramePos, false);
                 }
                 else{
-                    this.appStore.setCurrentFrame({id: this.frameId, caretPosition: CaretPosition.below});
+                    this.appStore.setCurrentFrame({id: this.frameId, caretPosition: CaretPosition.below}, false);
                 }
             }
             // We add a hover event on the delete menu entries to show cue in the UI on what the entry will act upon

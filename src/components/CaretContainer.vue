@@ -446,6 +446,8 @@ export default Vue.extend({
 .#{$strype-classname-caret-container} {
     padding-top: 0px;
     padding-bottom: 0px;
+    scroll-margin-top: 50px;
+    scroll-margin-bottom: 50px;
 }
 
 .static-caret-container{

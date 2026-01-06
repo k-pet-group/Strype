@@ -9,7 +9,7 @@
             <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the tabs -->
             <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
             <div class="flex-padding"/>            
-            <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}">
+            <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!pythonWorkerReady">
                 <img v-if="!isPythonExecuting" src="favicon.png" class="pea-play-img">
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
                 <span>{{runCodeButtonLabel}}</span>
@@ -77,8 +77,7 @@ import {getDateTimeFormatted} from "@/helpers/common";
 import audioBufferToWav from "audiobuffer-to-wav";
 import { saveAs } from "file-saver";
 import {bufferToBase64} from "@/helpers/media";
-import type { PyodideInterface } from "pyodide";
-import { getPyodide } from "@/helpers/pyodide";
+import { FromWorkerMessage, ToWorkerMessage } from "@/types/python-execution-worker-protocol";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -151,15 +150,15 @@ export default Vue.extend({
                 {iconName: "PEA-layout-split-expanded", mode: StrypePEALayoutMode.splitExpanded},
             ] as StrypePEALayoutData[],
             highlightPythonRunningState: false, // a flag used to trigger a CSS highlight of the PEA running state
-            pyodide: null as Promise<PyodideInterface> | null,
+            pythonWorker: null as Worker | null,
+            pythonWorkerReady: false,
         };
     },
     
-    created() {
-        this.pyodide = getPyodide();
-    },
-    
     mounted(){
+        this.pythonWorker = new Worker(new URL("../workers/python-execution.ts", import.meta.url), {type: "module"});
+        this.pythonWorker.onmessage = this.receiveFromWorker;
+        
         // Just to prevent any inconsistency with a uncompatible state, set a state value here and we'll know we won't get in some error
         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
         
@@ -401,6 +400,30 @@ export default Vue.extend({
     },
 
     methods: {
+        postToWorker(message: ToWorkerMessage) {
+            this.pythonWorker?.postMessage(message);
+        },
+        
+        receiveFromWorker(event: MessageEvent) {
+            const msg = FromWorkerMessage.parse(event.data);
+            const pythonConsole = this.$refs.pythonConsole as HTMLTextAreaElement;
+            
+            switch (msg.fromWorker) {
+            case "WorkerReady":
+                this.pythonWorkerReady = true;
+                break;
+            case "PrintStdout":
+                pythonConsole.value = pythonConsole.value + msg.outputText;
+                break;
+            case "ExecutionFinished":
+                useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
+                this.isRunningStrypeGraphics = false;
+                setPythonExecAreaLayoutButtonPos();
+                // TODO check if it finished with error
+                break;
+            }
+        },
+        
         handlePEAMouseDown() {
             // Force the Strype menu to close in case it was opened
             (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).toggleMenuOnOff(null);
@@ -523,12 +546,7 @@ export default Vue.extend({
                 
                 this.libraries = parser.getLibraries();
 
-                this.pyodide?.then((p) => {
-                    p.setStdout({batched: (str) => {
-                        pythonConsole.value = pythonConsole.value + str;
-                    }});
-                    p.runPythonAsync(userCode);
-                });
+                this.postToWorker({toWorker: "ExecutePython", pythonCode: userCode});
 
                 // Trigger the actual Python code execution launch
                 /*

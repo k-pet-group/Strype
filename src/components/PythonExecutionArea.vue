@@ -372,6 +372,9 @@ export default Vue.extend({
         },
         
         runCodeButtonLabel(): string {
+            if (!this.pythonWorkerReady) {
+                return " " + i18n.t("PEA.loading");
+            }
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
                 return " " + i18n.t("PEA.run");

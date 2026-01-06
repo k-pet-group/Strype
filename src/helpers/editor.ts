@@ -1875,7 +1875,7 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
                 });
                 const fieldContent = codeLiteral.substring(lookOffset, firstOperator.pos);
                 if (cursorPos && cursorPos >= lookOffset && cursorPos < firstOperator.pos) {
-                    resStructSlot.fields.push({code: fieldContent.substring(0, cursorPos - lookOffset) + fieldContent.substring(cursorPos - lookOffset).trimEnd()});
+                    resStructSlot.fields.push({code: fieldContent.substring(0, cursorPos - lookOffset) + fieldContent.substring(cursorPos - lookOffset).trimEnd(), focused: true});
                 }
                 else {
                     resStructSlot.fields.push({code: fieldContent.trim()});
@@ -1902,7 +1902,7 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
     closeBracketCharacters.forEach((closingBracket) => {
         code = code.replaceAll(closingBracket, "");
     });
-    resStructSlot.fields.push({code: code});
+    resStructSlot.fields.push({code: code, focused: cursorPos !== undefined && cursorPos >= lookOffset && cursorPos <= codeLiteral.length});
     return {slots: resStructSlot, cursorOffset: cursorOffset};
 };
 

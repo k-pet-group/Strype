@@ -738,7 +738,7 @@ class Actor:
         # type: (str, float, float, float, str | None) -> None
         """
         Show a speech bubble next to the actor with the given text.  The only required parameter is the
-        text, all others are optional.  \\n can be used to start a new line.
+        text, all others are optional.  \\\\n can be used to start a new line.
         
         If a maximum width is specified, the text will be wrapped to fit the given width.  
         If a maximum height is specified as well, the font size will be reduced if necessary to fit within 

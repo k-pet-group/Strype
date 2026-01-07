@@ -416,7 +416,7 @@ export default Vue.extend({
                 this.pythonWorkerReady = true;
                 break;
             case "PrintStdout":
-                pythonConsole.value = pythonConsole.value + msg.outputText;
+                pythonConsole.value = pythonConsole.value + msg.outputText + "\n";
                 break;
             case "ExecutionFinished":
                 useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;

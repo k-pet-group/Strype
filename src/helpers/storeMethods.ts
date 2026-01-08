@@ -471,8 +471,8 @@ export const checkStateDataIntegrity = async function(obj: {[id: string]: any}):
             foundPlatform = obj["platform"];
             delete obj["platform"];
         }
-        //get the checksum from the object
-        const expectedChecksum = await getSHA1HashForObject(obj);
+        //get the checksum from the object (we keep using the old library for decoding to ensure the same checksum is still found on pre-v2 projects...)
+        const expectedChecksum = await getSHA1HashForObject(obj, foundVersion < 6);
         //add the read version and platform as they are needed later
         obj["version"] = foundVersion;
         obj["platform"] = foundPlatform ?? StrypePlatform.standard;

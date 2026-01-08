@@ -2530,7 +2530,7 @@ export const useStore = defineStore("app", {
                 stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;
             });
 
-            const checksum = await getSHA1HashForObject(stateCopy);
+            const checksum = await getSHA1HashForObject(stateCopy, false);
             //add the checksum and other backup flags in the state object to be saved
             stateCopy["checksum"] = checksum;
             stateCopy["version"] = AppVersion;

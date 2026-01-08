@@ -2,7 +2,7 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import Vue from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
 import { nextTick } from "@vue/composition-api";
@@ -496,7 +496,9 @@ export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): 
         if(typeof frameTypeValue === "string") {
             // The frame type in the state was saved by the type name (string): we get the equivalent frame type object
             // in the unlikely event we can't find the object we stop the restoration and notify failure
-            const correspondingFrameObj = getFrameDefType(frameTypeValue);
+            // Note: projects older than v2 might contain a section called "funcDefsContainer" that we have renamed "defsContainer", 
+            // so we need to handle this case
+            const correspondingFrameObj = (frameTypeValue == "funcDefsContainer") ? getFrameDefType(ContainerTypesIdentifiers.defsContainer) : getFrameDefType(frameTypeValue);
             if(correspondingFrameObj  !== undefined) {
                 state["frameObjects"][frameId].frameType = correspondingFrameObj;
                 // Make sure all label slots are in the frame state.  They might not be if we have added one

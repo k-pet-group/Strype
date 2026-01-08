@@ -41,33 +41,35 @@ async function checkConsoleContent(page: Page, expectedContent : string) {
     expect(actual).toEqual(expectedContent);
 }
 
-async function runToFinish(page: Page) {
+async function startRunning(page: Page) {
     // It should not be running:
     const button = page.locator("#runButton");
     await expect(button).toHaveText("Run");
     // Click it:
     await page.click("#runButton");
+    return button;
+}
+
+async function runToFinish(page: Page) {
+    const button = await startRunning(page);
     // Then it should not be running again, because it has finished:
     await expect(button).toHaveText("Run");
 }
 
 test.describe("Check console after execution", () => {
     test("Check default code works", async ({page}) => {
-        await page.click("#runButton");
         await runToFinish(page);
         await checkConsoleContent(page, "Hello from Strype\n");
     });
 
     test("Check two prints work", async ({page}) => {
         await enterCode(page, ["", "", "print('Hello')\nprint('World')\n"]);
-        await page.click("#runButton");
         await runToFinish(page);
         await checkConsoleContent(page, "Hello\nWorld\n");
     });
 
     test("Check format string works", async ({page}) => {
         await enterCode(page, ["", "", "x=1\ny=2\nprint(f'X is {x}')\nprint(f'Y is {y}')\nprint(f\"Total is {x+y}\")"]);
-        await page.click("#runButton");
         await runToFinish(page);
         await checkConsoleContent(page, "X is 1\nY is 2\nTotal is 3\n");
     });
@@ -75,8 +77,48 @@ test.describe("Check console after execution", () => {
     test("Check raw string works", async ({page}) => {
         // In raw strings with r prefix, newlines should not be recognised as escapes:
         await enterCode(page, ["", "", "print('Line 1\\nLine 2')\nprint(r\"Line 3.0\\nLine 3.1\")"]);
-        await page.click("#runButton");
         await runToFinish(page);
         await checkConsoleContent(page, "Line 1\nLine 2\nLine 3.0\\nLine 3.1\n");
+    });
+});
+
+test.describe("Test stdin works", () => {
+    test("Check input/output works", async ({page}) => {
+        await enterCode(page, ["", "", "name = input('What is your name?\\n')\nprint('Hello ' + name)\n"]);
+        const button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        await page.locator("#peaConsole").pressSequentially("George\n", {delay: 75});
+        // Then it should not be running again, because it has finished:
+        await expect(button).toHaveText("Run");
+        await checkConsoleContent(page, "What is your name?\nGeorge\nHello George\n");
+    });
+
+    test("Check multiple input works", async ({page}) => {
+        await enterCode(page, ["", "", "name = input('What is your name?\\n')\nprint('Hello ' + name)\nspecies = input('What is your species?\\n')\nprint('Hello ' + name + ' the ' + species)\n"]);
+        const button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        await page.locator("#peaConsole").pressSequentially("George\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nGeorge\nHello George\nWhat is your species?\n");
+        // Should still be running:
+        await expect(button).toContainText("Stop");
+        await page.locator("#peaConsole").pressSequentially("cat\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nGeorge\nHello George\nWhat is your species?\ncat\nHello George the cat\n");
+        // Then it should not be running again, because it has finished:
+        await expect(button).toHaveText("Run");
+    });
+});
+
+test.describe("Check errors show", () => {
+    test("Check error shows #1", async ({page}) => {
+        await enterCode(page, ["", "", "print(len(None))"]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "< TypeError: object of type 'NoneType' has no len() >\n  From the highlighted call in your code");
+    });
+    test("Check error shows #2", async ({page}) => {
+        await enterCode(page, ["", "", "print('a'.foo())"]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "< AttributeError: 'str' object has no attribute 'foo' >\n  From the highlighted call in your code");
     });
 });

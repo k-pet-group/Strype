@@ -109,3 +109,16 @@ test.describe("Test stdin works", () => {
         await expect(button).toHaveText("Run");
     });
 });
+
+test.describe("Check errors show", () => {
+    test("Check error shows #1", async ({page}) => {
+        await enterCode(page, ["", "", "print(len(None))"]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "< TypeError: object of type 'NoneType' has no len() >\n  From the highlighted call in your code");
+    });
+    test("Check error shows #2", async ({page}) => {
+        await enterCode(page, ["", "", "print('a'.foo())"]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "< AttributeError: 'str' object has no attribute 'foo' >\n  From the highlighted call in your code");
+    });
+});

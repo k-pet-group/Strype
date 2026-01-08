@@ -1,4 +1,5 @@
 import {ObjectPropertyDiff} from "@/types/types";
+import hash from "object-hash";
 
 //Function to get the difference between two states (properties) of an object.
 //It takes the two objects as arguments and returns a list of differences. 
@@ -176,17 +177,23 @@ export const readFileContent = async (file: File): Promise<string>  => {
     return result;    
 };
 
-export const getSHA1HashForObject = async (obj: {[id: string]: any}): Promise<string> => {
-    // This method has been updated after v1.2.0 by using the browser's native library "crypto",
-    // rather than an external package as we did before, because object-hash wasn't handling the
-    // hashing of a code containing some emojis/characters outside the Basic Multilingual Plane.
-    // Note that the Web Crypto API is supported by browsers' versions now quite old, so use is reliable.
-    const encoder = new TextEncoder();
-    const data = encoder.encode(JSON.stringify(obj)); // UTF-8 encoding
-    const hashBuffer = await crypto.subtle.digest("SHA-1",data);
-    return Array.from(new Uint8Array(hashBuffer))
-        .map((b) => b.toString(16).padStart(2, "0"))
-        .join("");
+export const getSHA1HashForObject = async (obj: {[id: string]: any}, useOldLibrary: boolean): Promise<string> => {
+    if(useOldLibrary){
+        const res = hash(obj);
+        return res;
+    }
+    else{
+        // This method has been updated after v1.2.0 by using the browser's native library "crypto",
+        // rather than an external package as we did before, because object-hash wasn't handling the
+        // hashing of a code containing some emojis/characters outside the Basic Multilingual Plane.
+        // Note that the Web Crypto API is supported by browsers' versions now quite old, so use is reliable.
+        const encoder = new TextEncoder();
+        const data = encoder.encode(JSON.stringify(obj)); // UTF-8 encoding
+        const hashBuffer = await crypto.subtle.digest("SHA-1",data);
+        return Array.from(new Uint8Array(hashBuffer))
+            .map((b) => b.toString(16).padStart(2, "0"))
+            .join("");
+    }
 };
 
 export function isMacOSPlatform(): boolean {

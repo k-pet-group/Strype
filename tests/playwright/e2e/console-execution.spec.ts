@@ -58,21 +58,18 @@ async function runToFinish(page: Page) {
 
 test.describe("Check console after execution", () => {
     test("Check default code works", async ({page}) => {
-        await page.click("#runButton");
         await runToFinish(page);
         await checkConsoleContent(page, "Hello from Strype\n");
     });
 
     test("Check two prints work", async ({page}) => {
         await enterCode(page, ["", "", "print('Hello')\nprint('World')\n"]);
-        await page.click("#runButton");
         await runToFinish(page);
         await checkConsoleContent(page, "Hello\nWorld\n");
     });
 
     test("Check format string works", async ({page}) => {
         await enterCode(page, ["", "", "x=1\ny=2\nprint(f'X is {x}')\nprint(f'Y is {y}')\nprint(f\"Total is {x+y}\")"]);
-        await page.click("#runButton");
         await runToFinish(page);
         await checkConsoleContent(page, "X is 1\nY is 2\nTotal is 3\n");
     });
@@ -80,7 +77,6 @@ test.describe("Check console after execution", () => {
     test("Check raw string works", async ({page}) => {
         // In raw strings with r prefix, newlines should not be recognised as escapes:
         await enterCode(page, ["", "", "print('Line 1\\nLine 2')\nprint(r\"Line 3.0\\nLine 3.1\")"]);
-        await page.click("#runButton");
         await runToFinish(page);
         await checkConsoleContent(page, "Line 1\nLine 2\nLine 3.0\\nLine 3.1\n");
     });

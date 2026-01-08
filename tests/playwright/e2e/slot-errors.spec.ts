@@ -19,8 +19,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
-    //scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
-    //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
     await page.evaluate(() => {
         (window as any).Playwright = true;
     });
@@ -84,21 +82,22 @@ test.describe("Check slots have errors", () => {
         await checkErrorAfterExitingSlot(page);
     });
     test("Empty subscript", async ({page}) => {
-        // Assignment, x = 1 * <err>
+        // Assignment, x = a[<err>]
         await page.keyboard.type("=x=a[");
         await checkErrorAfterExitingSlot(page, ["ArrowRight", "ArrowRight"]);
     });
     test("Empty subscript (exit with arrow down)", async ({page}) => {
-        // Assignment, x = 1 * <err>
+        // Assignment, x = a[<err>]
         await page.keyboard.type("=x=a[");
         await checkErrorAfterExitingSlot(page, ["ArrowDown"]);
     });
     test("Invalid number", async ({page}) => {
-        // Assignment, x = 1 * <err>
+        // Assignment, x = 1a
         await page.keyboard.type("=x=1a");
         await checkErrorAfterExitingSlot(page);
     });
     test("List of image and invalid number", async ({page}) => {
+        // Assignment, x = [<img>,1a]
         await page.keyboard.type("=x=[");
         const image = fs.readFileSync("public/graphics_images/cat-test.jpg").toString("base64");
         await doPagePaste(page, image, "image/jpeg");
@@ -108,7 +107,7 @@ test.describe("Check slots have errors", () => {
     test("No error on function descriptions", async ({page}) => {
         // As per bug #713 on Github, there was an issue where errors in the function header
         // could show errors on function description slots, so we check that doesn't happen:
-        // Class with method, with header content "a, *"
+        // Class with method, where the method has header content "a, *"
         await page.keyboard.press("ArrowUp");
         await page.waitForTimeout(200);
         await page.keyboard.type("cFoo");

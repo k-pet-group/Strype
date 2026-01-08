@@ -259,7 +259,7 @@ export default Vue.extend({
         // context is the part before any preceding dot before us 
         async updateAC(frameId: number, token : string | null, context: string): Promise<void> {
             const tokenStartsWithUnderscore = (token ?? "").startsWith("_");
-            const parser = new Parser();
+            const parser = new Parser(false, "py", true);
             const inFuncDef = getFrameContainer(frameId) == useStore().getDefsFrameContainerId;
             const currentStrypeLocationForClassInfos = findCurrentStrypeLocation({checkForClassDeep: true});
             const isGettingWholeClassContext = (context == "self" && currentStrypeLocationForClassInfos.strypeLocation == STRYPE_LOCATION.IN_CLASSDEF && findCurrentStrypeLocation().strypeLocation == STRYPE_LOCATION.IN_FUNCDEF);

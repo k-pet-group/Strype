@@ -761,7 +761,7 @@ export async function calculateParamPrompt(frameId: number, {context, token, par
         // at the end of the user code.
         const currentStrypeLocationForClassInfos = findCurrentStrypeLocation({lookForGivenFramePosition: {id: frameId, caretPosition: CaretPosition.below}, checkForClassDeep: true});
         const isGettingWholeClassContext = (context == "self" && currentStrypeLocationForClassInfos.strypeLocation == STRYPE_LOCATION.IN_CLASSDEF) && findCurrentStrypeLocation().strypeLocation == STRYPE_LOCATION.IN_FUNCDEF;
-        const parser = new Parser();
+        const parser = new Parser(false, "py", true);
         const userCode = (isGettingWholeClassContext) ? parser.getWholeClassCodeWithoutError(currentStrypeLocationForClassInfos.locationFrameId, frameId) : parser.getCodeWithoutErrors(frameId, findCurrentStrypeLocation().strypeLocation != STRYPE_LOCATION.MAIN_CODE_SECTION);
         await tpyDefineLibraries(parser);
         // If we are in the generic case: so we get context code out which is a partial expression and may not be valid at top-level.  Thus we wrap it in:

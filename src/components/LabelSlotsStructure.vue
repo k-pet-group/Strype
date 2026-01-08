@@ -33,7 +33,6 @@
                 :isFrozen="isFrozen"
                 :isEmphasised="isSlotEmphasised(slotItem)"
                 @requestSlotsRefactoring="checkSlotRefactoring"
-                @slotLostCaret="updatePrependText"
             />
     </div>
 </template>
@@ -1035,20 +1034,14 @@ export default Vue.extend({
                     document.getElementById(getLabelSlotUID(this.appStore.focusSlotCursorInfos.slotInfos))
                         ?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));
                 }
+                
+                // We should only check for errors if we are actually blurring the focus.  Otherwise
+                // this can be called when we move from the next frame cursor (where the browser
+                // things this slot still has focus) to a new slot, which is much later than we intend:
+                this.updatePrependTextAndCheckErrors();
             }
 
-            // When the label slots structure loses focus, we may need to check the errors. 
-            // This happens when we move to anywhere BUT the same frame (so for example, in another label slots structure of that frame).
-            // However, we do not know where we move at this stage, so we will keep trace of in which frame we were, and wait a bit to check who has focus: a slot, or anything else.
-            // If it's a slot that has focus, then we check whether it belongs to the same frame or not than the frame we left.
-            this.appStore.lastBlurredFrameId = this.frameId;
-            setTimeout(() => {
-                // Need to check if frame still exists because it may have been deleted after blurring:
-                if(this.frameId != ((this.appStore.focusSlotCursorInfos?.slotInfos.frameId)??-1) && this.appStore.lastBlurredFrameId in this.appStore.frameObjects){
-                    checkCodeErrors(this.appStore.lastBlurredFrameId);
-                    this.appStore.lastAddedFrameIds = -1;
-                }
-            }, 200);
+            
         },
         
         isFocused() {
@@ -1077,6 +1070,22 @@ export default Vue.extend({
             else {
                 this.prependText = "";
             }
+        },
+
+        updatePrependTextAndCheckErrors() {
+            this.updatePrependText();
+            // When the label slots structure loses focus, we may need to check the errors. 
+            // This happens when we move to anywhere BUT the same frame (so for example, in another label slots structure of that frame).
+            // However, we do not know where we move at this stage, so we will keep trace of in which frame we were, and wait a bit to check who has focus: a slot, or anything else.
+            // If it's a slot that has focus, then we check whether it belongs to the same frame or not than the frame we left.
+            this.appStore.lastBlurredFrameId = this.frameId;
+            setTimeout(() => {
+                // Need to check if frame still exists because it may have been deleted after blurring:
+                if(this.frameId != ((this.appStore.focusSlotCursorInfos?.slotInfos.frameId)??-1) && this.appStore.lastBlurredFrameId in this.appStore.frameObjects){
+                    this.appStore.lastAddedFrameIds = -1;
+                    checkCodeErrors(this.appStore.lastBlurredFrameId);
+                }
+            }, 200);
         },
     },
 });

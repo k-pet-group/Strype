@@ -147,6 +147,7 @@ export default Vue.extend({
 
     data: function () {
         return {
+            CustomEventTypes, // just for using in template
             scssVars, // just to be able to use in template
             showPasteMenuItem: false,
             insertFrameMenuItems: [] as {name: string, method: VoidFunction, actionName ?: FrameContextMenuActionName}[],
@@ -159,6 +160,7 @@ export default Vue.extend({
     mounted() {
         window.addEventListener("paste", this.pasteIfFocused);
         window.addEventListener("keydown", this.keydownForSafariPaste);
+        document.addEventListener(CustomEventTypes.scrollCaretIntoView, this.putCaretContainerInView);
         // When a frame is added, we need to make sure it will be visible in the view port. This is particularly true
         // when a paste or duplicate action is performed.
         this.putCaretContainerInView();
@@ -167,12 +169,10 @@ export default Vue.extend({
     destroyed() {
         window.removeEventListener("paste", this.pasteIfFocused);
         window.removeEventListener("keydown", this.keydownForSafariPaste);
+        document.removeEventListener(CustomEventTypes.scrollCaretIntoView, this.putCaretContainerInView);
     },
 
     updated() {
-        // Ensure the caret (during navigation) is visible in the page viewport
-        this.putCaretContainerInView();
-        
         // Close the context menu if there is edition or loss of blue caret (for when a frame context menu is present, see Frame.vue)
         if(this.isEditing || this.caretAssignedPosition == CaretPosition.none){
             ((this.$refs.menu as unknown) as VueContextConstructor).close();
@@ -446,6 +446,8 @@ export default Vue.extend({
 .#{$strype-classname-caret-container} {
     padding-top: 0px;
     padding-bottom: 0px;
+    scroll-margin-top: 50px;
+    scroll-margin-bottom: 50px;
 }
 
 .static-caret-container{

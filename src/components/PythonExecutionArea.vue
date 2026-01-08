@@ -77,7 +77,9 @@ import {getDateTimeFormatted} from "@/helpers/common";
 import audioBufferToWav from "audiobuffer-to-wav";
 import { saveAs } from "file-saver";
 import {bufferToBase64} from "@/helpers/media";
-import { FromWorkerMessage, ToWorkerMessage } from "@/types/python-execution-worker-protocol";
+import { PyodideClient } from "pyodide-worker-runner";
+import { makeChannel } from "sync-message";
+import * as Comlink from "comlink";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -151,13 +153,20 @@ export default Vue.extend({
             ] as StrypePEALayoutData[],
             highlightPythonRunningState: false, // a flag used to trigger a CSS highlight of the PEA running state
             pythonWorker: null as Worker | null,
+            pythonClient: null as PyodideClient | null,
             pythonWorkerReady: false,
         };
     },
     
     mounted(){
         this.pythonWorker = new Worker(new URL("../workers/python-execution.ts", import.meta.url), {type: "module"});
-        this.pythonWorker.onmessage = this.receiveFromWorker;
+        this.pythonClient = new PyodideClient(() => this.pythonWorker as Worker, makeChannel());
+        this.pythonClient.call(
+            this.pythonClient.workerProxy.onReady,
+            Comlink.proxy(() => {
+                this.pythonWorkerReady = true;
+            })
+        );
         
         // Just to prevent any inconsistency with a uncompatible state, set a state value here and we'll know we won't get in some error
         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
@@ -403,29 +412,6 @@ export default Vue.extend({
     },
 
     methods: {
-        postToWorker(message: ToWorkerMessage) {
-            this.pythonWorker?.postMessage(message);
-        },
-        
-        receiveFromWorker(event: MessageEvent) {
-            const msg = FromWorkerMessage.parse(event.data);
-            const pythonConsole = this.$refs.pythonConsole as HTMLTextAreaElement;
-            
-            switch (msg.fromWorker) {
-            case "WorkerReady":
-                this.pythonWorkerReady = true;
-                break;
-            case "PrintStdout":
-                pythonConsole.value = pythonConsole.value + msg.outputText + "\n";
-                break;
-            case "ExecutionFinished":
-                useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
-                this.isRunningStrypeGraphics = false;
-                setPythonExecAreaLayoutButtonPos();
-                // TODO check if it finished with error
-                break;
-            }
-        },
         
         handlePEAMouseDown() {
             // Force the Strype menu to close in case it was opened
@@ -549,7 +535,21 @@ export default Vue.extend({
                 
                 this.libraries = parser.getLibraries();
 
-                this.postToWorker({toWorker: "ExecutePython", pythonCode: userCode});
+                //this.postToWorker({toWorker: "ExecutePython", pythonCode: userCode});
+                if (this.pythonClient != null) {
+                    (this.pythonClient.call(
+                        this.pythonClient.workerProxy.executePython,
+                        userCode,
+                        Comlink.proxy((output: string) => {
+                            pythonConsole.value = pythonConsole.value + output;
+                        })
+                    ) as Promise<string | null>).then((possibleError) => {
+                        // TODO deal with error if present
+                        useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
+                        this.isRunningStrypeGraphics = false;
+                        setPythonExecAreaLayoutButtonPos();
+                    });
+                }
 
                 // Trigger the actual Python code execution launch
                 /*

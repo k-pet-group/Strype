@@ -52,6 +52,11 @@ module.exports = {
         resolve: {
             extensions: [ ".ts", ".js", ".py", ".pyi" ],
         },
+        // Don't try to include pyodide, as we bundle and reference it ourselves at a custom path inside public. 
+        // pyodide-worker-runner doesn't actually need it as a dependency, because of this.
+        externals: {
+            "pyodide": "globalThis.pyodide",
+        },
         ...configureWebpackExtraProps,
         // allows pinia to compile fine (https://github.com/vuejs/pinia/issues/675)
         module: {

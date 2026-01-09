@@ -44,7 +44,7 @@
             </Splitpanes>
             <div :class="{[scssVars.peaToggleLayoutButtonsContainerClassName]: true, hidden: (!isTabContentHovered || isPythonExecuting)}">
                 <div v-for="(layoutData, index) in PEALayoutsData" :key="'strype-PEA-Layout-'+index" 
-                    @click="togglePEALayout(layoutData.mode)" :title="$t('PEA.'+layoutData.iconName)">
+                    @click="togglePEALayout(layoutData.mode, true)" :title="$t('PEA.'+layoutData.iconName)">
                     <SVGIcon :name="layoutData.iconName" :customClass="{'pea-toggle-layout-button': true, 'pea-toggle-layout-button-selected': layoutData.mode === currentPEALayoutMode}"/>
                 </div>
             </div>
@@ -612,9 +612,9 @@ export default Vue.extend({
             setPythonExecAreaLayoutButtonPos();
         },
 
-        togglePEALayout(layoutMode: StrypePEALayoutMode){
+        togglePEALayout(layoutMode: StrypePEALayoutMode, userTriggeredAction?: boolean){           
             // Save the layout mode with the project
-            this.appStore.peaLayoutMode  = layoutMode;
+            this.appStore.peaLayoutMode = layoutMode;
               
             const newTabsLayout = (layoutMode == StrypePEALayoutMode.tabsCollapsed || layoutMode == StrypePEALayoutMode.tabsExpanded);
             const newExpandLayout = (layoutMode == StrypePEALayoutMode.tabsExpanded || layoutMode == StrypePEALayoutMode.splitExpanded);
@@ -665,6 +665,11 @@ export default Vue.extend({
                 setTimeout(() => {
                     document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
                 }, refreshUITimeout + 100);
+
+                // A change of layout triggers a modification notification only when the user actively changed it (flagged by "userTriggeredAction")
+                if(userTriggeredAction){
+                    this.appStore.isEditorContentModified = true;
+                }
             }
         },
 

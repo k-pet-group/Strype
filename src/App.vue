@@ -1417,6 +1417,12 @@ export default Vue.extend({
                     this.appStore.peaExpandedSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: lowerPanelSize};
 
                 }
+
+                // A change of divider position triggers a modification notification only when the user actively moves the divider,
+                // we can distinguish between a sitation when the divider is position is loaded and user event by the content of the event
+                if((event?.length??0) > 1){
+                    this.appStore.isEditorContentModified = true;
+                }
             }
             if(lowerPanelSize >= this.peaOverlayPane2MinSize && lowerPanelSize <= this.peaOverlayPane2MaxSize){
                 // As the splitter works in percentage, and the full app height is which of the body, we can compute the height/position
@@ -1459,6 +1465,12 @@ export default Vue.extend({
             else {
                 // The tricky case of when the state property has never been set
                 this.appStore.editorCommandsSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed)]: event[1].size};
+            }
+
+            // A change of divider position triggers a modification notification only when the user actively moves the divider,
+            // we can distinguish between a sitation when the divider is position is loaded and user event by the content of the event
+            if(event.length > 1){
+                this.appStore.isEditorContentModified = true;
             }
 
             /* IFTRUE_isPython */

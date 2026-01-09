@@ -1739,6 +1739,8 @@ export const useStore = defineStore("app", {
                     "collapsedState",
                     collapsed
                 ));
+            // A change of collapse status triggers a modification notification
+            this.isEditorContentModified = true;
         },
 
         cycleFrameCollapsedState(frameId: number) {
@@ -1753,6 +1755,8 @@ export const useStore = defineStore("app", {
                 "frozenState",
                 payload.frozen
             );
+            // A change of freeze status triggers a modification notification
+            this.isEditorContentModified = true;
         },
         
 
@@ -2661,6 +2665,7 @@ export const useStore = defineStore("app", {
                 }            
             });
         },
+
         setDividerStates(newEditorCommandsSplitterPane2Size: StrypeLayoutDividerSettings | undefined, newPEALayout: StrypePEALayoutMode, newPEACommandsSplitterPane2Size: StrypeLayoutDividerSettings | undefined, newPEASplitViewSplitterPane1Size: StrypeLayoutDividerSettings | undefined, newPEAExpandedSplitterPane2Size: StrypeLayoutDividerSettings | undefined, resolve: (value: (PromiseLike<void> | void)) => void, forceSetUndefined?: boolean) {
             setTimeout(() => {
                 let chainedTimeOuts = 400;
@@ -2718,7 +2723,9 @@ export const useStore = defineStore("app", {
                     resolve();
                 }, chainedTimeOuts + 100);
             }, 1000);
-        }, doSetStateFromJSONStr(stateJSONStr: string): Promise<void>{
+        },
+        
+        doSetStateFromJSONStr(stateJSONStr: string): Promise<void>{
             return new Promise((resolve) => {
                 /* IFTRUE_isPython */
                 // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.

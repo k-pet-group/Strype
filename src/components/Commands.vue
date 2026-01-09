@@ -848,6 +848,12 @@ export default Vue.extend({
                 // The tricky case of when the state property has never been set
                 this.appStore.peaCommandsSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: event[1].size};
             }
+
+            // A change of divider position triggers a modification notification only when the user actively moves the divider,
+            // we can distinguish between a sitation when the divider is position is loaded and user event by the content of the event
+            if(event.length > 1){
+                this.appStore.isEditorContentModified = true;
+            }
         }, 
 
         setPEACommandsSplitterPanesMinSize(onlyResizePEA?: boolean) {

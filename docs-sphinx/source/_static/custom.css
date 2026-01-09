@@ -93,3 +93,12 @@ h2 {
     border: 1px solid rgba(0,0,0,0.1);
     border-radius: 4px;
 }
+
+/* Little bit fragile, but add space before all modules after first */
+.sphinxsidebarwrapper > div > ul > li> ul > li:not(:first-child) {
+    padding-top: 3em;
+}
+/* And a bit before first, but less: */
+.sphinxsidebarwrapper > div > ul > li> ul > li:first-child {
+    padding-top: 1em;
+}

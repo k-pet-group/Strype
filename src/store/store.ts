@@ -920,13 +920,16 @@ export const useStore = defineStore("app", {
                 nextCaret.caretPosition
             );
 
+            // Scroll caret into view when navigating with keyboard:
+            Vue.nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
+
             // Only frame containers (sections) are collapsable, so we don't need to check if a destination frame itself is collapsed,
             // but we do need to check if the target container is - and expand it if needed.
             const containerId = getFrameSectionIdFromFrameId(nextCaret.id);
             this.frameObjects[containerId].collapsedState = CollapsedState.FULLY_VISIBLE;
         },
 
-        setCurrentFrame(newCurrentFrame: CurrentFrame) {
+        setCurrentFrame(newCurrentFrame: CurrentFrame, scrollIntoView = true) {
             Vue.set(
                 this.frameObjects[this.currentFrame.id],
                 "caretVisibility",
@@ -941,6 +944,11 @@ export const useStore = defineStore("app", {
                 "caretVisibility",
                 newCurrentFrame.caretPosition
             );
+
+            // By default, scroll the new caret into view:
+            if (scrollIntoView) {
+                Vue.nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
+            }
         },
 
         setCurrentInitCodeValue(frameSlotInfos: SlotCoreInfos){
@@ -1586,6 +1594,7 @@ export const useStore = defineStore("app", {
                             "caretVisibility",
                             this.lastCriticalActionPositioning.lastCriticalCaretPosition.caretPosition
                         );
+                        Vue.nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
                     }
                     if(this.focusSlotCursorInfos && this.anchorSlotCursorInfos){
                         this.setSlotTextCursors(this.focusSlotCursorInfos, this.focusSlotCursorInfos);
@@ -2476,6 +2485,9 @@ export const useStore = defineStore("app", {
                     nextPosition.caretPosition
                 );
 
+                // Scroll it into view:
+                Vue.nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
+
                 this.setSlotTextCursors(undefined, undefined);
        
                 // The new caret
@@ -2518,7 +2530,7 @@ export const useStore = defineStore("app", {
                 stateCopy["frameObjects"][frameId].frameType = stateCopy["frameObjects"][frameId].frameType.type;
             });
 
-            const checksum = await getSHA1HashForObject(stateCopy);
+            const checksum = await getSHA1HashForObject(stateCopy, false);
             //add the checksum and other backup flags in the state object to be saved
             stateCopy["checksum"] = checksum;
             stateCopy["version"] = AppVersion;

@@ -6,9 +6,10 @@
 Strype API documentation
 ========================
 
-You can see more documentation for Strype on the `main documentation page <https://strype.org/doc/>`
+.. Note: the double underscore after the link is necessary syntax:
+You can see more documentation for Strype on the `main documentation page <https://strype.org/doc/>`__
 
-strype.graphics module
+Module strype.graphics
 ----------------------
 
 .. container:: module-wrapper
@@ -24,7 +25,7 @@ strype.graphics module
 
     Module strype.graphics
     
-strype.sound module
+Module strype.sound
 -------------------
 
 .. container:: module-wrapper

@@ -2,7 +2,7 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import Vue from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
 import { nextTick } from "@vue/composition-api";
@@ -471,8 +471,8 @@ export const checkStateDataIntegrity = async function(obj: {[id: string]: any}):
             foundPlatform = obj["platform"];
             delete obj["platform"];
         }
-        //get the checksum from the object
-        const expectedChecksum = await getSHA1HashForObject(obj);
+        //get the checksum from the object (we keep using the old library for decoding to ensure the same checksum is still found on pre-v2 projects...)
+        const expectedChecksum = await getSHA1HashForObject(obj, foundVersion < 6);
         //add the read version and platform as they are needed later
         obj["version"] = foundVersion;
         obj["platform"] = foundPlatform ?? StrypePlatform.standard;
@@ -496,7 +496,9 @@ export const restoreSavedStateFrameTypes = function(state:{[id: string]: any}): 
         if(typeof frameTypeValue === "string") {
             // The frame type in the state was saved by the type name (string): we get the equivalent frame type object
             // in the unlikely event we can't find the object we stop the restoration and notify failure
-            const correspondingFrameObj = getFrameDefType(frameTypeValue);
+            // Note: projects older than v2 might contain a section called "funcDefsContainer" that we have renamed "defsContainer", 
+            // so we need to handle this case
+            const correspondingFrameObj = (frameTypeValue == "funcDefsContainer") ? getFrameDefType(ContainerTypesIdentifiers.defsContainer) : getFrameDefType(frameTypeValue);
             if(correspondingFrameObj  !== undefined) {
                 state["frameObjects"][frameId].frameType = correspondingFrameObj;
                 // Make sure all label slots are in the frame state.  They might not be if we have added one
@@ -891,7 +893,7 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
     // We don't want to crash the application if something isn't handled correctly in TP.
     // So in case of an error, we catch it to allow the rest of the code to execute...
     try{
-        const parser = new Parser(true);
+        const parser = new Parser(true, "py", true);
         parser.getErrorsFormatted(parser.parse({}));
     }
     catch(error){

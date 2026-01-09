@@ -1739,6 +1739,8 @@ export const useStore = defineStore("app", {
                     "collapsedState",
                     collapsed
                 ));
+            // A change of collapse status triggers a modification notification
+            this.isEditorContentModified = true;
         },
 
         cycleFrameCollapsedState(frameId: number) {

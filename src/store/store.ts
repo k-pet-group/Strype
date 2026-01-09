@@ -1755,6 +1755,8 @@ export const useStore = defineStore("app", {
                 "frozenState",
                 payload.frozen
             );
+            // A change of freeze status triggers a modification notification
+            this.isEditorContentModified = true;
         },
         
 

@@ -412,6 +412,9 @@ export default Vue.extend({
                 }
             }
 
+            // A change of divider position triggers a modification notification
+            this.appStore.isEditorContentModified = true;            
+
             // Notify a resize of the PEA happened
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         },

@@ -3,7 +3,7 @@
     <div @keydown="handleKeyEvent" @keyup="handleKeyEvent" tabindex="-1" @mousedown.self.stop.prevent>
         <CloudDriveHandler :ref="cloudDriveHandlerComponentId" :openSharedProjectFileId="openSharedProjectId" />
         <div>
-            <a href="https://strype.org/" :title="$i18n.t('appMenu.homepage')"><img class="top-left-strype-logo" :src="require('@/assets/images/Strype-logo-128-2x.png')"></a>
+            <a href="https://strype.org/" :title="$i18n.t('appMenu.homepage')"><img class="top-left-strype-logo" src="@/assets/images/Strype-logo-128-2x.png"></a>
         </div>
         <Slide 
             :isOpen="showMenu"
@@ -23,17 +23,17 @@
                     <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
                         <div id="loadFromGDStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, this.loadProjectModalDlgId)"
                             @mouseenter="changeTargetFocusOnMouseOver">
-                            <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
+                            <img src="@/assets/images/logoGDrive.png" alt="Google Drive"/> 
                             <span>Google Drive</span>
                         </div>
                         <div id="loadFromODStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncODValue)" @keydown.self="onTargetButtonKeyDown($event, this.loadProjectModalDlgId)"
                             @mouseenter="changeTargetFocusOnMouseOver">
-                            <img :src="require('@/assets/images/logoOneDrive.svg')" alt="OneDrive"/> 
+                            <img src="@/assets/images/logoOneDrive.svg" alt="OneDrive"/> 
                             <span>OneDrive</span>
                         </div>
                         <div :id="loadFromFSStrypeButtonId" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, this.loadProjectModalDlgId)"
                             @mouseenter="changeTargetFocusOnMouseOver">
-                            <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
+                            <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
                             <span v-t="'appMessage.targetFS'"></span>
                         </div>
                     </div>
@@ -54,17 +54,17 @@
                             <div :ref="saveProjectTargetButtonGpId" class="project-target-button-container">
                                 <div id="saveToGDStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, this.saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncGDValue || tempSyncTarget == noSyncTargetValue}">
-                                    <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
+                                    <img src="@/assets/images/logoGDrive.png" alt="Google Drive"/> 
                                     <span>Google Drive</span>
                                 </div>
                                 <div id="saveToODStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncODValue, true)" @keydown.self="onTargetButtonKeyDown($event, this.saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncODValue}">
-                                    <img :src="require('@/assets/images/logoOneDrive.svg')" alt="OneDrive"/> 
+                                    <img src="@/assets/images/logoOneDrive.svg" alt="OneDrive"/> 
                                     <span>OneDrive</span>
                                 </div>
                                 <div :id="saveToFSStrypeButtonId" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, this.saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncFSValue}">
-                                    <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
+                                    <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
                                     <span v-t="'appMessage.targetFS'"></span>
                                 </div>
                             </div>
@@ -100,14 +100,14 @@
                     <div class="share-method-container">
                         <div id="shareMethodSnapshotButton" :class="scssVars.projectTargetButtonClassName + ' share-method-dlg'" tabindex="0"  @click="copySnapshotLink()" @keydown.self="onTargetButtonKeyDown($event, this.shareProjectChooseMethodDlgId)"
                              @mouseenter="changeTargetFocusOnMouseOver">
-                            <img :src="require('@/assets/images/snapshotIcon.svg')" :alt="$t('appMessage.methodSnapshotLink')"/>
+                            <img src="@/assets/images/snapshotIcon.svg" :alt="$t('appMessage.methodSnapshotLink')"/>
                             <span class="share-method-title" v-t="'appMessage.methodSnapshotLink'"></span>
                             <span class="share-method-explanation" v-t="'appMessage.methodSnapshotLinkExplanation'"></span>
                             <span class="share-method-warning" v-if="shareContentZippedBase64.length > 2000" v-t="'appMessage.snapshotLinkTooLarge'"></span>
                         </div>
                         <div id="shareMethodCloudButton" :class="scssVars.projectTargetButtonClassName + ' share-method-dlg'" tabindex="0"  @click="copyCloudLink()" @keydown.self="onTargetButtonKeyDown($event, this.shareProjectChooseMethodDlgId)"
                              @mouseenter="changeTargetFocusOnMouseOver">
-                            <img :src="require('@/assets/images/logoOneDrive.svg')" alt="$t('appMessage.methodCloudLink')"/>
+                            <img src="@/assets/images/logoOneDrive.svg" alt="$t('appMessage.methodCloudLink')"/>
                             <span class="share-method-title" v-t="'appMessage.methodCloudLink'"></span>
                             <span class="share-method-explanation" v-t="'appMessage.methodCloudLinkExplanation'"></span>
                             <span class="share-method-warning" v-if="!canShareProjectViaCloud" v-t="'appMessage.cloudShareUnavailable'"></span>
@@ -245,6 +245,10 @@ import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
 import { CloudFileSharingStatus, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import {deflateRaw} from "pako";
 import {Base64} from "js-base64";
+import disabledUndoImgPath from "@/assets/images/disabledUndo.svg";
+import disabledRedoImgPath from "@/assets/images/disabledRedo.svg";
+import undoImgPath from "@/assets/images/undo.svg";
+import redoImgPath from "@/assets/images/redo.svg";
 
 //////////////////////
 //     Component    //
@@ -583,11 +587,11 @@ export default Vue.extend({
         },
 
         undoImagePath(): string {
-            return (this.isUndoDisabled) ? require("@/assets/images/disabledUndo.svg") : require("@/assets/images/undo.svg");
+            return (this.isUndoDisabled) ? disabledUndoImgPath : undoImgPath;
         },
 
         redoImagePath(): string {
-            return (this.isRedoDisabled) ? require("@/assets/images/disabledRedo.svg") : require("@/assets/images/redo.svg");
+            return (this.isRedoDisabled) ? disabledRedoImgPath : redoImgPath;
         },
 
         errorCount(): number{

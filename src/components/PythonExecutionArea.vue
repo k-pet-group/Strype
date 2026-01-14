@@ -77,6 +77,7 @@ import {getDateTimeFormatted} from "@/helpers/common";
 import audioBufferToWav from "audiobuffer-to-wav";
 import { saveAs } from "file-saver";
 import {bufferToBase64} from "@/helpers/media";
+import turtleImgURL from "@/assets/images/turtle.png" ;
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -259,7 +260,7 @@ export default Vue.extend({
         this.$nextTick(() => {
             const graphicTaBElement = document.getElementById(this.graphicsTabId);
             if(graphicTaBElement){
-                graphicTaBElement.innerHTML = graphicTaBElement.innerHTML.replace("\uD83D\uDC22", `<img src="${require("@/assets/images/turtle.png")}" alt="${this.$i18n.t("PEA.Graphics")}" class="pea-turtle-img" />`);
+                graphicTaBElement.innerHTML = graphicTaBElement.innerHTML.replace("\uD83D\uDC22", `<img src="${turtleImgURL}" alt="${this.$i18n.t("PEA.Graphics")}" class="pea-turtle-img" />`);
             }
         });
        

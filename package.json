@@ -64,6 +64,7 @@
         "pyodide-worker-runner": "^1.4.0",
         "python-shell": "^2.0.3",
         "raw-loader": "^4.0.2",
+        "register-service-worker": "^1.7.2",
         "remove-files-webpack-plugin": "^1.5.0",
         "sortablejs": "^1.15.0",
         "splitpanes": "^2.4.1",
@@ -85,6 +86,9 @@
         "vue-context": "^6.0.0",
         "vue-i18n": "^8.27.1",
         "vue-input-autowidth": "^1.0.10",
+        "workbox-precaching": "^7.4.0",
+        "workbox-routing": "^7.4.0",
+        "workbox-strategies": "^7.4.0",
         "zod": "^3.25.32"
     },
     "devDependencies": {
@@ -112,6 +116,7 @@
         "@typescript-eslint/parser": "^4.33.0",
         "@vue/cli-plugin-babel": "^5",
         "@vue/cli-plugin-eslint": "^5.0.8",
+        "@vue/cli-plugin-pwa": "^5.0.9",
         "@vue/cli-plugin-typescript": "^5",
         "@vue/cli-plugin-unit-mocha": "^5",
         "@vue/cli-plugin-vuex": "^5",

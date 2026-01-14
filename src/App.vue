@@ -50,6 +50,7 @@
                                     @mousedown="handleWholeEditorMouseDown"
                                 >
                                     <FrameHeader
+                                        :id="getFrameHeaderUID(-10)"
                                         :labels="projectDocLabels"
                                         :frameId="-10"
                                         :frameType="projectDocFrameType"
@@ -120,7 +121,7 @@ import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
-import { getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
+import {getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID} from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
 /* IFTRUE_isPython */
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
@@ -817,6 +818,7 @@ export default Vue.extend({
     },
 
     methods: {
+        getFrameHeaderUID,
         setAutoSaveState() {
             // The autosave is only performed on the webstore
             autoSaveTimerId = window.setInterval(() => {

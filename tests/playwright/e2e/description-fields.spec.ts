@@ -1,7 +1,7 @@
 import {test, expect} from "@playwright/test";
 import {checkFrameXorTextCursor, doTextHomeEndKeyPress} from "../support/editor";
 import {readFileSync} from "node:fs";
-import {save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
+import {loadContent, save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
 
 const defaultStandardStrypeProjectDocLiteralWithDotSpace = "This is the default Strype starter project. ";
 
@@ -190,5 +190,111 @@ print(myString)
 
     test("Round trip awkward quotes #3", async ({page}, testInfo) => {
         await testPlaywrightRoundTripImportAndDownload(page, "tests/cypress/fixtures/project-documented-quotes-3.spy");
+    });
+});
+
+test.describe("Up/down in description slots", () => {
+    const multilineExample = `
+#(=> Strype:1:std
+'''One
+two
+three
+four'''
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo ( ) :
+    '''Five
+    six
+    seven
+    eight'''
+    return -4 
+#(=> Section:Main
+myString  = "Hello from Strype" 
+print(myString) 
+#(=> Section:End
+`.trimStart();
+    
+    
+    test("Navigates up/down in funcdoc slots then edits #1", async ({page}) => {
+        await loadContent(page, multilineExample);
+        // Cursor all the way to end, then back up to function:
+        for (let i = 0; i < 30; i++) {
+            await page.keyboard.press("ArrowDown");
+            await page.waitForTimeout(300);
+        }
+        await page.keyboard.press("ArrowUp");
+        await page.waitForTimeout(300);
+        await page.keyboard.press("ArrowUp");
+        await page.waitForTimeout(300);
+        await page.keyboard.press("ArrowUp");
+        await page.waitForTimeout(300);
+        await page.keyboard.press(process.platform == "darwin" ? "Alt+ArrowUp" : "Control+ArrowUp");
+        await page.waitForTimeout(300);
+        // Then go into function, type "a" before header, down three times which should take us to before seven, and type "b"
+        await page.keyboard.press("ArrowRight");
+        await page.waitForTimeout(200);
+        await page.keyboard.type("a");
+        await page.waitForTimeout(200);
+        await page.keyboard.press("ArrowDown");
+        await page.waitForTimeout(200);
+        await page.keyboard.press("ArrowDown");
+        await page.waitForTimeout(200);
+        await page.keyboard.press("ArrowDown");
+        await page.waitForTimeout(200);
+        await page.keyboard.type("b");
+        await page.waitForTimeout(200);
+        const expected = multilineExample.replace("foo", "afoo").replace("seven", "bseven");
+        expect(readFileSync(await save(page, false), "utf-8")).toEqual(expected);
+    });
+    test("Navigates up/down in funcdoc slots then edits #2", async ({page}) => {
+        test.setTimeout(90_000);
+        await loadContent(page, multilineExample);
+        // Cursor all the way to end, then back up to function:
+        for (let i = 0; i < 30; i++) {
+            await page.keyboard.press("ArrowDown");
+            await page.waitForTimeout(300);
+        }
+        // Get us beneath function header:
+        for (let i = 0; i < 5; i++) {
+            await page.keyboard.press("ArrowUp");
+            await page.waitForTimeout(300);
+        }
+        // Go left into header, then five times past "Eight":
+        for (let i = 0; i < 1 + 5; i++) {
+            await page.keyboard.press("ArrowLeft");
+            await page.waitForTimeout(300);
+        }
+        // Then up one:
+        await page.keyboard.press("ArrowUp");
+        await page.waitForTimeout(300);
+        await page.keyboard.type("a");
+        await page.waitForTimeout(200);
+        const expected = multilineExample.replace("seven", "aseven");
+        expect(readFileSync(await save(page, false), "utf-8")).toEqual(expected);
+    });
+
+    test("Navigates up/down in project documentation slots then edits", async ({page}) => {
+        await loadContent(page, multilineExample);
+        // Cursor all the way to top (but should only be top frame cursor)
+        for (let i = 0; i < 30; i++) {
+            await page.keyboard.press("ArrowUp");
+            await page.waitForTimeout(300);
+        }
+        await page.keyboard.press("ArrowLeft");
+        await page.waitForTimeout(300);
+        await page.keyboard.press("ArrowUp");
+        await page.waitForTimeout(300);
+        await page.keyboard.type("a");
+        await page.waitForTimeout(200);
+        for (let i = 0; i < 5; i++) {
+            await page.keyboard.press("ArrowLeft");
+            await page.waitForTimeout(200);
+        }
+        await page.keyboard.press("ArrowUp");
+        await page.waitForTimeout(200);
+        await page.keyboard.type("b");
+        await page.waitForTimeout(200);
+        const expected = multilineExample.replace("two", "btwo").replace("three", "threae");
+        expect(readFileSync(await save(page, false), "utf-8")).toEqual(expected);
     });
 });

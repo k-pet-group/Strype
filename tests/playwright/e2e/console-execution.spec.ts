@@ -44,7 +44,8 @@ async function checkConsoleContent(page: Page, expectedContent : string) {
 async function startRunning(page: Page) {
     // It should not be running:
     const button = page.locator("#runButton");
-    await expect(button).toHaveText("Run");
+    // It can take a while for Pyodide to load up:
+    await expect(button).toHaveText("Run", {timeout: 15000});
     // Click it:
     await page.click("#runButton");
     return button;

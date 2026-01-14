@@ -4,7 +4,6 @@ import * as Comlink from "comlink";
 
 declare const globalThis: any;
 async function loadOnly() : Promise<PyodideInterface> {
-    console.log("Loading pyodide");
     const ourPyodideLoader = async () => {
         await import(
             // eslint-disable-next-line @typescript-eslint/ban-ts-comment
@@ -21,24 +20,30 @@ async function loadOnly() : Promise<PyodideInterface> {
 }
 const reloader = new PyodideFatalErrorReloader(loadOnly);
 
-const executePython = pyodideExpose(async (extras: PyodideExtras, pythonCode: string, printStdout:  Comlink.Remote<(output: string) => void>) : Promise<string | null> => {
-    console.log("About to execute Python: " + pythonCode);
+const executePython = pyodideExpose(async (
+    extras: PyodideExtras,
+    pythonCode: string,
+    printStdout: Comlink.Remote<(output: string) => void>,
+    requestInput: Comlink.Remote<(prompt: string) => void>
+) : Promise<string | null> => {
     return await reloader.withPyodide(async (pyodide : PyodideInterface) => {
-        console.log("Found Pyodide");
         const runner = pyodide.runPython("from python_runner import PyodideRunner\nPyodideRunner()");
         const callback = makeRunnerCallback(extras, {
             output: (outputText: OutputPart[]) => {
-                console.log("Received output from Python", outputText);
                 const stdoutParts = outputText.filter((t) => t.type == "stdout");
                 if (stdoutParts.length > 0) {
                     printStdout(stdoutParts.map((t) => t.text).join(""));
                 }
             },
+            // We fire off the input request and it asynchronously gives back the input by writing a message,
+            // NOT by directly returning it:
+            input: requestInput,
+            other: (type: string, data: any) => {
+                //console.log("Received other [" + type + "] from Python: " + JSON.stringify(data));
+            },
         });
         runner.set_callback(callback);
-        console.log("Awaiting async Python runner");
         await runner.run_async(pythonCode, {});
-        console.log("Python runner complete");
         return null;
     });
 });

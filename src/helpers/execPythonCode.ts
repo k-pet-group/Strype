@@ -29,7 +29,7 @@ function outf(text: string) {
 
 // The function used for "transpiling" the input function of Python to some JS handled by Skulpt.
 // The function is to be registered against the Skulpt object.
-function sInput(prompt: string) {
+export function sInput(prompt: string) : Promise<string> {
     // When we encounter an input call, we make sure the console has focus (i.e. turtle is not shown, for example)
     return new Promise(function(resolve,reject){
         outf(prompt); 
@@ -132,6 +132,10 @@ function sInput(prompt: string) {
         // We check if the expand/collapse button needs to be repositioned.
         setPythonExecAreaLayoutButtonPos();
     });
+}
+
+export function setSInputConsole(aConsoleTextArea: HTMLTextAreaElement) : void {
+    consoleTextArea = aConsoleTextArea;
 }
 
 // Entry point function for running Python code with Skulpt - the UI is responsible for calling it,

@@ -272,4 +272,29 @@ print(myString)
         const expected = multilineExample.replace("seven", "aseven");
         expect(readFileSync(await save(page, false), "utf-8")).toEqual(expected);
     });
+
+    test("Navigates up/down in project documentation slots then edits", async ({page}) => {
+        await loadContent(page, multilineExample);
+        // Cursor all the way to top (but should only be top frame cursor)
+        for (let i = 0; i < 30; i++) {
+            await page.keyboard.press("ArrowUp");
+            await page.waitForTimeout(300);
+        }
+        await page.keyboard.press("ArrowLeft");
+        await page.waitForTimeout(300);
+        await page.keyboard.press("ArrowUp");
+        await page.waitForTimeout(300);
+        await page.keyboard.type("a");
+        await page.waitForTimeout(200);
+        for (let i = 0; i < 5; i++) {
+            await page.keyboard.press("ArrowLeft");
+            await page.waitForTimeout(200);
+        }
+        await page.keyboard.press("ArrowUp");
+        await page.waitForTimeout(200);
+        await page.keyboard.type("b");
+        await page.waitForTimeout(200);
+        const expected = multilineExample.replace("two", "btwo").replace("three", "threae");
+        expect(readFileSync(await save(page, false), "utf-8")).toEqual(expected);
+    });
 });

@@ -59,7 +59,6 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
-//import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
 import {adjustContextMenuPosition, checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getStrypeCommandComponentRefId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight} from "@/helpers/editor";
 import i18n from "@/i18n";
@@ -154,16 +153,15 @@ export default Vue.extend({
                 {iconName: "PEA-layout-split-expanded", mode: StrypePEALayoutMode.splitExpanded},
             ] as StrypePEALayoutData[],
             highlightPythonRunningState: false, // a flag used to trigger a CSS highlight of the PEA running state
-            pythonWorker: null as Worker | null,
             pythonClient: null as PyodideClient | null,
-            pythonWorkerReady: false,
+            pythonWorkerReady: false, // Is Pyodide loaded and ready to execute?
         };
     },
     
     mounted(){
-        this.pythonWorker = new Worker(new URL("@/workers/python-execution.ts", import.meta.url), {type: "module"});
+        const pythonWorker = new Worker(new URL("@/workers/python-execution.ts", import.meta.url), {type: "module"});
         const channel = makeServiceWorkerChannel({scope: "/editor/"});
-        this.pythonClient = new PyodideClient(() => this.pythonWorker as Worker, channel);
+        this.pythonClient = new PyodideClient(() => pythonWorker, channel);
         this.pythonClient.call(
             this.pythonClient.workerProxy.onReady,
             Comlink.proxy(() => {

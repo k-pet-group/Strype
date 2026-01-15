@@ -45,7 +45,6 @@ export function sInput(prompt: string) : Promise<string> {
         let compositionStartSelectStart = -1, compositionStartSelectEnd = -1; // this is used for dealing with composition, cf. below
 
         function consoleCompositionListener(event: CompositionEvent){
-            console.log("Console composition!");
             // Listened to handle the problem with IMEs: when used, they trigger text writing even if the key events prevent default behaviour.
             // So the approach to deal with it is to keep them anywhere, but if they appear in some parts of the console that shouldn't be edited
             // then we just update the flag of the input point of entry (initialConsoleTextAreaCaretPos)
@@ -65,7 +64,6 @@ export function sInput(prompt: string) : Promise<string> {
         }
 
         function consoleKeyListener(event: KeyboardEvent){
-            console.log("Console key!");
             const eventKeyLowerCase = event.key.toLowerCase();
             // monitor a key hit on "enter" to validate input
             if (eventKeyLowerCase == "enter") {
@@ -87,7 +85,6 @@ export function sInput(prompt: string) : Promise<string> {
                 event.stopImmediatePropagation();
                 event.preventDefault();
                 // now we can return the promise with the input text
-                console.log("sInput found text <" + inputText + "> and is resolving it");
                 resolve(inputText);   
                 // Clear the timer used to check interruptions
                 clearTimeout(checkInterruptionHandle);             
@@ -110,7 +107,6 @@ export function sInput(prompt: string) : Promise<string> {
             }
         }
 
-        console.log("Adding console listeners");
         consoleTextArea.addEventListener("keydown", consoleKeyListener);
         consoleTextArea.addEventListener("compositionstart", consoleCompositionListener);
         consoleTextArea.addEventListener("compositionend", consoleCompositionListener);

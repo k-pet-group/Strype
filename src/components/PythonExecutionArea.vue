@@ -80,7 +80,8 @@ import {bufferToBase64} from "@/helpers/media";
 import { PyodideClient } from "pyodide-worker-runner";
 import { makeServiceWorkerChannel } from "sync-message";
 import * as Comlink from "comlink";
-import { setSInputConsole, sInput } from "@/helpers/execPythonCode";
+import { handleErrorTrace, setSInputConsole, sInput } from "@/helpers/execPythonCode";
+import { ErrorDetails } from "@/workers/python-execution";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -539,7 +540,6 @@ export default Vue.extend({
 
                 setSInputConsole(pythonConsole);
                 
-                //this.postToWorker({toWorker: "ExecutePython", pythonCode: userCode});
                 if (this.pythonClient != null) {
                     const client = this.pythonClient;
                     (this.pythonClient.call(
@@ -560,8 +560,10 @@ export default Vue.extend({
                                 }
                             });
                         })
-                    ) as Promise<string | null>).then((possibleError) => {
-                        // TODO deal with any execution error if present
+                    ) as Promise<ErrorDetails | null>).then((possibleError) => {
+                        if (possibleError != null) {
+                            handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());
+                        }
                         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                         this.isRunningStrypeGraphics = false;
                         setPythonExecAreaLayoutButtonPos();

@@ -15,8 +15,6 @@ import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getF
 import {getPEATabContentContainerDivId} from "./helpers/editor";
 // #v-endif
 
-Vue.config.productionTip = false;
-
 // Version of the application to check code's import compatibility in the editor
 // note: that is not an offical software version of Strype, just a way to help us dealing with compatibility issues.
 // it MUST be kept as an integer matching value
@@ -96,7 +94,6 @@ Vue.use(vBlur);
 // Use a Pinia store (instead of Vuex store, because it handles type inferrence better)
 Vue.use(PiniaVuePlugin);
 const pinia = createPinia();
-Vue.config.productionTip = false;
 
 export const vm = new Vue({
     pinia,

@@ -3,7 +3,7 @@
 import { register } from "register-service-worker";
 
 register(`${process.env.BASE_URL}service-worker.js`, {
-    registrationOptions: { scope: "/editor/" },
+    registrationOptions: { scope: process.env.BASE_URL },
     ready () {
         console.log(
             "App is being served from cache by a service worker.\n" +

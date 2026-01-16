@@ -58,6 +58,7 @@ module.exports = {
         },
         // Don't try to include pyodide, as we bundle and reference it ourselves at a custom path inside public. 
         // pyodide-worker-runner doesn't actually need it as a dependency, because of this.
+        // TODO Vite might be different?
         externals: {
             "pyodide": "globalThis.pyodide",
         },
@@ -105,6 +106,7 @@ module.exports = {
             return [options];
         });
 
+        // TODO Vite
         config.plugin("copy-sw-after-emit")
             .use(class {
                 apply(compiler) {
@@ -139,6 +141,7 @@ module.exports = {
         },
     },
     
+    // TODO Vite
     pwa: {
         workboxPluginMode: "InjectManifest",
         workboxOptions: {

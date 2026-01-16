@@ -9,7 +9,7 @@
             <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the tabs -->
             <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
             <div class="flex-padding"/>            
-            <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}">
+            <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!pythonWorkerReady">
                 <img v-if="!isPythonExecuting" src="favicon.png" class="pea-play-img">
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
                 <span>{{runCodeButtonLabel}}</span>
@@ -59,7 +59,6 @@
 import Vue from "vue";
 import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
-import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
 import {adjustContextMenuPosition, checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getStrypeCommandComponentRefId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight} from "@/helpers/editor";
 import i18n from "@/i18n";
@@ -77,6 +76,11 @@ import {getDateTimeFormatted} from "@/helpers/common";
 import audioBufferToWav from "audiobuffer-to-wav";
 import { saveAs } from "file-saver";
 import {bufferToBase64} from "@/helpers/media";
+import { PyodideClient } from "pyodide-worker-runner";
+import { makeServiceWorkerChannel } from "sync-message";
+import * as Comlink from "comlink";
+import { handleErrorTrace, setSInputConsole, sInput } from "@/helpers/execPythonCode";
+import { ErrorDetails } from "@/workers/python-execution";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -149,10 +153,22 @@ export default Vue.extend({
                 {iconName: "PEA-layout-split-expanded", mode: StrypePEALayoutMode.splitExpanded},
             ] as StrypePEALayoutData[],
             highlightPythonRunningState: false, // a flag used to trigger a CSS highlight of the PEA running state
+            pythonClient: null as PyodideClient | null,
+            pythonWorkerReady: false, // Is Pyodide loaded and ready to execute?
         };
     },
     
     mounted(){
+        const pythonWorker = new Worker(new URL("@/workers/python-execution.ts", import.meta.url), {type: "module"});
+        const channel = makeServiceWorkerChannel({scope: process.env.BASE_URL});
+        this.pythonClient = new PyodideClient(() => pythonWorker, channel);
+        this.pythonClient.call(
+            this.pythonClient.workerProxy.onReady,
+            Comlink.proxy(() => {
+                this.pythonWorkerReady = true;
+            })
+        );
+        
         // Just to prevent any inconsistency with a uncompatible state, set a state value here and we'll know we won't get in some error
         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
         
@@ -366,6 +382,9 @@ export default Vue.extend({
         },
         
         runCodeButtonLabel(): string {
+            if (!this.pythonWorkerReady) {
+                return " " + i18n.t("PEA.loading");
+            }
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
                 return " " + i18n.t("PEA.run");
@@ -394,6 +413,7 @@ export default Vue.extend({
     },
 
     methods: {
+        
         handlePEAMouseDown() {
             // Force the Strype menu to close in case it was opened
             (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof Menu>).toggleMenuOnOff(null);
@@ -518,8 +538,41 @@ export default Vue.extend({
                 requestAnimationFrame(redraw);
                 
                 this.libraries = parser.getLibraries();
+
+                setSInputConsole(pythonConsole);
                 
+                if (this.pythonClient != null) {
+                    const client = this.pythonClient;
+                    (this.pythonClient.call(
+                        this.pythonClient.workerProxy.executePython,
+                        userCode,
+                        Comlink.proxy((output: string) => {
+                            pythonConsole.value = pythonConsole.value + output;
+                        }),
+                        Comlink.proxy((prompt: string) => {
+                            sInput(prompt).then(async (s : string) => {
+                                // We send the output back via writeMessage rather than a direct return:
+                                await navigator.serviceWorker.ready;
+                                try {
+                                    await client.writeMessage(s);
+                                }
+                                catch (e) {
+                                    console.error(e);
+                                }
+                            });
+                        })
+                    ) as Promise<ErrorDetails | null>).then((possibleError) => {
+                        if (possibleError != null) {
+                            handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());
+                        }
+                        useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
+                        this.isRunningStrypeGraphics = false;
+                        setPythonExecAreaLayoutButtonPos();
+                    });
+                }
+
                 // Trigger the actual Python code execution launch
+                /*
                 execPythonCode(pythonConsole, this.$refs.pythonTurtleDiv as HTMLDivElement, userCode, parser.getFramePositionMap(),parser.getLibraries(), () => useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop, (finishedWithError: boolean, isTurtleListeningKeyEvents: boolean, isTurtleListeningMouseEvents: boolean, isTurtleListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => {
                     // After Skulpt has executed the user code, we need to check if a keyboard listener is still pending from that user code.
                     this.isTurtleListeningKeyEvents = !!isTurtleListeningKeyEvents; 
@@ -545,6 +598,7 @@ export default Vue.extend({
                     // when Skulpt indicates the code execution has finished.
                     this.checkNonePrecompiledErrors();
                 });
+                */
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
                 // Note that a run time error can still occur later.                
                 this.checkNonePrecompiledErrors();

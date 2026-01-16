@@ -1,5 +1,9 @@
 /* eslint @typescript-eslint/no-var-requires: "off" */
 const RemoveFilePlugin = require("remove-files-webpack-plugin");
+/* eslint @typescript-eslint/no-var-requires: "off" */
+const fs = require("fs");
+/* eslint @typescript-eslint/no-var-requires: "off" */
+const path = require("path");
 
 // Application environment variable for the built date/hash.
 // The idea is to have a date value and hash at build time, so
@@ -52,6 +56,12 @@ module.exports = {
         resolve: {
             extensions: [ ".ts", ".js", ".py", ".pyi" ],
         },
+        // Don't try to include pyodide, as we bundle and reference it ourselves at a custom path inside public. 
+        // pyodide-worker-runner doesn't actually need it as a dependency, because of this.
+        // TODO Vite might be different?
+        externals: {
+            "pyodide": "globalThis.pyodide",
+        },
         ...configureWebpackExtraProps,
         // allows pinia to compile fine (https://github.com/vuejs/pinia/issues/675)
         module: {
@@ -95,6 +105,23 @@ module.exports = {
             }
             return [options];
         });
+
+        // TODO Vite
+        config.plugin("copy-sw-after-emit")
+            .use(class {
+                apply(compiler) {
+                    // To get the service worker working in webpack in dev mode, we have to copy to the public
+                    // directory.  This should be removed once we swap to Vite in future.
+                    compiler.hooks.afterEmit.tap("CopySWAfterEmit", (compilation) => {
+                        const swPath = path.resolve(__dirname, "dist/service-worker.js");
+                        const dest = path.resolve(__dirname, "public/service-worker.js");
+                        if (fs.existsSync(swPath)) {
+                            fs.copyFileSync(swPath, dest);
+                            console.log("Service worker copied to public/service-worker.js");
+                        }
+                    });
+                }
+            });
         
         // From https://stackoverflow.com/questions/61031121/vue-js-with-mocha-and-styles-resources-loader-cant-load-dependency-sass
         if (process.env.NODE_ENV === "test") {
@@ -111,6 +138,20 @@ module.exports = {
             fallbackLocale: "en",
             localeDir: "localisation",
             enableInSFC: false,
+        },
+    },
+    
+    // TODO Vite
+    pwa: {
+        workboxPluginMode: "InjectManifest",
+        workboxOptions: {
+            swSrc: "./src/workers/service-worker.ts",
+            swDest: "service-worker.js",
+        },
+        // Explicitly allow registration in dev
+        devOptions: {
+            enabled: true,
+            type: "module",  // Makes SW support ESM in browsers
         },
     },
 

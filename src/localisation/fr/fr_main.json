@@ -231,6 +231,7 @@
     "run": "Exécuter",
     "stop": "Arrêter",
     "stopping": "Arrêt...",
+    "loading": "Initialisation...",
     "runtimeErrorConsole": "Erreur d'exécution",
     "console": "Console",
     "Graphics": "Graphics",

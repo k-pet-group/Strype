@@ -29,7 +29,7 @@ function outf(text: string) {
 
 // The function used for "transpiling" the input function of Python to some JS handled by Skulpt.
 // The function is to be registered against the Skulpt object.
-function sInput(prompt: string) {
+export function sInput(prompt: string) : Promise<string> {
     // When we encounter an input call, we make sure the console has focus (i.e. turtle is not shown, for example)
     return new Promise(function(resolve,reject){
         outf(prompt); 
@@ -134,7 +134,100 @@ function sInput(prompt: string) {
     });
 }
 
+export function setSInputConsole(aConsoleTextArea: HTMLTextAreaElement) : void {
+    consoleTextArea = aConsoleTextArea;
+}
+
 // Entry point function for running Python code with Skulpt - the UI is responsible for calling it,
+export function handleErrorTrace(errorType : string, traceback: { filename: string, lineno: number }[] | undefined, handleExecutionFinished: (finishedWithError: boolean) => void, lineFrameMapping: LineAndSlotPositions) : void {
+    // We can use the mechanism in place in the Parser for the TigerPython errors mapping to find 
+    // what line of code maps with what frame in case of an execution error.
+    // We need to extract the line from the error message sent by Skulpt.
+    const skulptErrStr: string = errorType;
+    if (skulptErrStr.startsWith("SystemExit")) {
+        // SystemExit is an error, but not one we print out because it is a deliberate
+        // exit from the program (e.g. from strype.graphics.stop()).  So we just silently stop for that one:
+        handleExecutionFinished(false);
+        return;
+    }
+    let moreInfo = "";
+    let errorLine = -1;
+    if (traceback) {
+        let lastmodule = "";
+        for (const [index, entry] of traceback.entries()) {
+            const filename = entry.filename as string;
+            if (filename == "<stdin>.py" || filename == "/home/pyodide/my_program.py") {
+                errorLine = entry.lineno;
+                break;
+            }
+            else if (filename.endsWith(".py")) {
+                // Turn the filename into a module name:
+                const modulename = filename.replace(".py", "").replace("./", "").replace("/", ".");
+                if (index == 0) {
+                    moreInfo += "\n  Error raised in module " + modulename + " (line " + entry.lineno + ")";
+                }
+                else if (modulename != lastmodule) {
+                    // Only tell them the module if it's different to adjacent item in the traceback:
+                    moreInfo += "\n  From a call from module " + modulename;
+                }
+                lastmodule = modulename;
+            }
+        }
+        if (errorLine == -1) {
+            // This should never happen; their code should always be at the root,
+            // but we should probably point this out:
+            moreInfo = "\nWe did not find a call from your code; this may be a bug with Strype itself.  Report this to team@strype.org with details of your code." + moreInfo;
+        }
+        else {
+            moreInfo += "\n  From the highlighted call in your code";
+        }
+    }
+    else {
+        const errLineMatchArray = skulptErrStr.match(/( on line )(\d+)/);
+        if (errLineMatchArray !== null) {
+            errorLine = parseInt(errLineMatchArray[2]);
+        }
+    }
+
+
+    let frameId = -1;
+    if (errorLine > 0) {
+        // Skulpt starts indexing at 1, we use 0 for TigerPython, so we need to offset the line number
+        const locatableError = lineFrameMapping[errorLine - 1] !== undefined;
+
+        // We assume that if we cannot find a frame assiocated with an error, it must be a Python line that shows as extra 
+        // when the user code generates non well formated code --> e.g. adding an empty method call frame within an if frame
+        // that doesn't contain any other children and is at the bottom of the code. The code generated in Python will be as an EOF error.
+        // We then show the error on the last frame available in the list (that is, before the EOF, 2 lines ahead)
+        frameId = (locatableError) ? lineFrameMapping[errorLine - 1].frameId : lineFrameMapping[errorLine - 3].frameId;
+
+        const noLineSkulptErrStr = (locatableError) ? skulptErrStr.replaceAll(/ on line \d+/g, "") : i18n.t("errorMessage.EOFError") as string;
+        // In order to show the Skulpt error in the editor, we set an error on all the frames. That approach is the best compromise between
+        // our current error related code implementation and clarity for the user.
+        // Exception: if we have a "running action" message, we don't show anything (no message and no error).
+        if (!skulptErrStr.startsWith(STRYPE_INPUT_INTERRUPT_ERR_MSG)) {
+            consoleTextArea.value += ("< " + noLineSkulptErrStr + " >" + moreInfo);
+            // Set the error on the frame header -- do not use editable slots here as we can't give a detailed error location
+            Vue.set(useStore().frameObjects[frameId], "runTimeError", noLineSkulptErrStr);
+            useStore().wasLastRuntimeErrorFrameId = frameId;
+            // We now need to force expand that frame and all its ancestors so that it shows up:
+            useStore().forceExpand(frameId);
+        }
+    }
+    else {
+        // In case we couldn't get the line and the frame correctly, we just display a simple message,
+        // EXCEPT if we have a "running action" message, which doesn't need to be displayed as the UI already gives cues.
+        if (skulptErrStr.localeCompare(STRYPE_RUN_ACTION_MSG) != 0) {
+            consoleTextArea.value += ("< " + skulptErrStr + " >" + moreInfo);
+        }
+    }
+    handleExecutionFinished(true);
+    // We will have added text either way, now scroll to bottom:
+    Vue.nextTick(() => {
+        consoleTextArea.scrollTop = consoleTextArea.scrollHeight;
+    });
+}
+
 // and providing the code (usually, user defined code) and the text area to display the output
 export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv: HTMLDivElement|null, userCode: string, lineFrameMapping: LineAndSlotPositions, libraryAddresses: string[], keepRunning: () => boolean,
                                executionFinished: (finishedWithError: boolean, isListeningKeyEvents: boolean, isListeningMouseEvents: boolean, isListeningTimerEvents: boolean, stopTurtleListeners: VoidFunction | undefined) => any): void{
@@ -214,91 +307,6 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         return;
     },
     (err: any) => {
-        // We can use the mechanism in place in the Parser for the TigerPython errors mapping to find 
-        // what line of code maps with what frame in case of an execution error.
-        // We need to extract the line from the error message sent by Skulpt.
-        const skulptErrStr: string = err.toString();
-        if (skulptErrStr.startsWith("SystemExit")) {
-            // SystemExit is an error, but not one we print out because it is a deliberate
-            // exit from the program (e.g. from strype.graphics.stop()).  So we just silently stop for that one:
-            handleExecutionFinished(false);
-            return;
-        }
-        let moreInfo = "";
-        let errorLine = -1;
-        if (err.traceback) {
-            let lastmodule = "";
-            for (const [index, entry] of err.traceback.entries()) {
-                const filename = entry.filename as string;
-                if (filename == "<stdin>.py") {
-                    errorLine = entry.lineno;
-                    break;
-                }
-                else if (filename.endsWith(".py")) {
-                    // Turn the filename into a module name:
-                    const modulename = filename.replace(".py", "").replace("./", "").replace("/", ".");
-                    if (index == 0) {
-                        moreInfo += "\n  Error raised in module " + modulename + " (line " + entry.lineno + ")";
-                    }
-                    else if (modulename != lastmodule) {
-                        // Only tell them the module if it's different to adjacent item in the traceback:
-                        moreInfo += "\n  From a call from module " + modulename;
-                    }
-                    lastmodule = modulename;
-                }
-            }
-            if (errorLine == -1) {
-                // This should never happen; their code should always be at the root,
-                // but we should probably point this out:
-                moreInfo = "\nWe did not find a call from your code; this may be a bug with Strype itself.  Report this to team@strype.org with details of your code." + moreInfo;
-            }
-            else {
-                moreInfo += "\n  From the highlighted call in your code";
-            }
-        }
-        else {
-            const errLineMatchArray = skulptErrStr.match(/( on line )(\d+)/);
-            if (errLineMatchArray !== null) {
-                errorLine = parseInt(errLineMatchArray[2]);
-            }
-        }
-            
-        
-        let frameId = -1;        
-        if (errorLine > 0) { 
-            // Skulpt starts indexing at 1, we use 0 for TigerPython, so we need to offset the line number
-            const locatableError = lineFrameMapping[errorLine - 1] !== undefined;
-            
-            // We assume that if we cannot find a frame assiocated with an error, it must be a Python line that shows as extra 
-            // when the user code generates non well formated code --> e.g. adding an empty method call frame within an if frame
-            // that doesn't contain any other children and is at the bottom of the code. The code generated in Python will be as an EOF error.
-            // We then show the error on the last frame available in the list (that is, before the EOF, 2 lines ahead)
-            frameId = (locatableError) ? lineFrameMapping[errorLine - 1].frameId : lineFrameMapping[errorLine - 3].frameId;
-
-            const noLineSkulptErrStr = (locatableError) ? skulptErrStr.replaceAll(/ on line \d+/g,"") : i18n.t("errorMessage.EOFError") as string;
-            // In order to show the Skulpt error in the editor, we set an error on all the frames. That approach is the best compromise between
-            // our current error related code implementation and clarity for the user.
-            // Exception: if we have a "running action" message, we don't show anything (no message and no error).
-            if(!skulptErrStr.startsWith(STRYPE_INPUT_INTERRUPT_ERR_MSG)){
-                consoleTextArea.value += ("< " + noLineSkulptErrStr + " >" + moreInfo);
-                // Set the error on the frame header -- do not use editable slots here as we can't give a detailed error location
-                Vue.set(useStore().frameObjects[frameId],"runTimeError", noLineSkulptErrStr);   
-                useStore().wasLastRuntimeErrorFrameId = frameId;
-                // We now need to force expand that frame and all its ancestors so that it shows up:
-                useStore().forceExpand(frameId);
-            }   
-        }
-        else{
-            // In case we couldn't get the line and the frame correctly, we just display a simple message,
-            // EXCEPT if we have a "running action" message, which doesn't need to be displayed as the UI already gives cues.
-            if(skulptErrStr.localeCompare(STRYPE_RUN_ACTION_MSG) != 0){
-                consoleTextArea.value += ("< " + skulptErrStr + " >" + moreInfo);
-            }
-        }
-        handleExecutionFinished(true);
-        // We will have added text either way, now scroll to bottom:
-        Vue.nextTick(() => {
-            consoleTextArea.scrollTop = consoleTextArea.scrollHeight;
-        });
+        handleErrorTrace(err.toString(), err.traceback, handleExecutionFinished, lineFrameMapping);
     });
 }

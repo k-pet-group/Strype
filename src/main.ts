@@ -41,7 +41,7 @@ export const projectDocumentationFrameId = -10;
 
 let localeBuildDate = "";
 export function getLocaleBuildDate(): string {
-    // This method returns the build date, set in vue.config.js.
+    // This method returns the build date, set in vite.config.js.
     // To avoid calling the formatter every time, we keep a local
     // variable with the formatted date value for the web session.
     if(localeBuildDate.length > 0) {
@@ -49,7 +49,7 @@ export function getLocaleBuildDate(): string {
     }
     else{
         try{
-            const buildDateTicks = new Date(parseInt(process.env.VUE_APP_BUILD_DATE_TICKS as string));
+            const buildDateTicks = new Date(__BUILD_DATE_TICKS__);
             localeBuildDate = new Date(buildDateTicks).toLocaleDateString(navigator.language);
             return localeBuildDate;
         }

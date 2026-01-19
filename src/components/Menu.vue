@@ -623,7 +623,7 @@ export default Vue.extend({
         getBuildHash(): string {
             // The hash should exist as it is set when serving or compiling the server..
             // but to keep TS happy
-            return process.env.VUE_APP_BUILD_GIT_HASH ?? "Strype-hash-unknown";
+            return __BUILD_GIT_HASH__ ?? "Strype-hash-unknown";
         },
 
         strypeProjMIMEDescArray(): MIMEDesc[]{

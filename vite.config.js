@@ -6,7 +6,6 @@ import path from "path";
 export default defineConfig(({command}) => {
     // Environment variables for the Strype "platform" (standard Python or for micro:bit)
     const isPython = process.env.VITE_PYTHON === "true";
-    const isMicrobit = process.env.VITE_MICROBIT === "true";
     
     return {
         plugins: [vue2()],
@@ -36,8 +35,6 @@ export default defineConfig(({command}) => {
             __BUILD_GIT_HASH__: JSON.stringify(
                 execSync("git rev-parse --short=8 HEAD").toString().trim()
             ),
-            __IS_PYTHON__: isPython,
-            __IS_MICROBIT__: isMicrobit,
         },
 
         resolve: {

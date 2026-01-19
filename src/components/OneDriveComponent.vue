@@ -122,7 +122,12 @@ export default Vue.extend({
         },
 
         redirectURI(): string {
-            const redirectServerEditorPath = "" /*IFTRUE_isPython +"editor" FITRUE_isPython*//*IFTRUE_isMicrobit +"microbit" FITRUE_isMicrobit*/;
+            let redirectServerEditorPath = ""; 
+            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+            redirectServerEditorPath = "editor";
+            // #v-else
+            redirectServerEditorPath = "microbit";
+            // #v-endif
             return `${this.siteOrigin}/${redirectServerEditorPath}/`;
         },
 

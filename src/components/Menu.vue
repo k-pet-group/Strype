@@ -21,17 +21,17 @@
                 <div class="project-target-popup-content-container">
                     <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
                     <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
-                        <div id="loadFromGDStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, this.loadProjectModalDlgId)"
+                        <div id="loadFromGDStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
                             @mouseenter="changeTargetFocusOnMouseOver">
                             <img src="@/assets/images/logoGDrive.png" alt="Google Drive"/> 
                             <span>Google Drive</span>
                         </div>
-                        <div id="loadFromODStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncODValue)" @keydown.self="onTargetButtonKeyDown($event, this.loadProjectModalDlgId)"
+                        <div id="loadFromODStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncODValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
                             @mouseenter="changeTargetFocusOnMouseOver">
                             <img src="@/assets/images/logoOneDrive.svg" alt="OneDrive"/> 
                             <span>OneDrive</span>
                         </div>
-                        <div :id="loadFromFSStrypeButtonId" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, this.loadProjectModalDlgId)"
+                        <div :id="loadFromFSStrypeButtonId" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
                             @mouseenter="changeTargetFocusOnMouseOver">
                             <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
                             <span v-t="'appMessage.targetFS'"></span>
@@ -52,17 +52,17 @@
                         <span v-t="'appMessage.saveToTarget'" class="load-save-label cell" />
                         <div class="cell">
                             <div :ref="saveProjectTargetButtonGpId" class="project-target-button-container">
-                                <div id="saveToGDStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, this.saveProjectModalDlgId)"
+                                <div id="saveToGDStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncGDValue || tempSyncTarget == noSyncTargetValue}">
                                     <img src="@/assets/images/logoGDrive.png" alt="Google Drive"/> 
                                     <span>Google Drive</span>
                                 </div>
-                                <div id="saveToODStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncODValue, true)" @keydown.self="onTargetButtonKeyDown($event, this.saveProjectModalDlgId)"
+                                <div id="saveToODStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncODValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncODValue}">
                                     <img src="@/assets/images/logoOneDrive.svg" alt="OneDrive"/> 
                                     <span>OneDrive</span>
                                 </div>
-                                <div :id="saveToFSStrypeButtonId" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, this.saveProjectModalDlgId)"
+                                <div :id="saveToFSStrypeButtonId" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncFSValue}">
                                     <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
                                     <span v-t="'appMessage.targetFS'"></span>
@@ -89,23 +89,23 @@
             <div class="menu-separator-div"></div>           
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadDemoProjectModal">{{$t('appMenu.loadDemoProject')}}</a>
             <OpenDemoDlg ref="openDemoDlg" :dlg-id="loadDemoProjectModalDlgId"/>
-            /* IFTRUE_isPython
+            <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLibraryDoc">{{$t('appMenu.apiDocumentation')}}</a>
-               FITRUE_isPython */
+            <!-- #v-endif-->
             <!-- category: export -->
             <!-- share project -->
             <a :id="shareProjectLinkId" v-show="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true}" @click="onShareProjectClick">{{$t('appMenu.shareProject')}}<span class="strype-menu-kb-shortcut">{{shareProjectKBShortcut}}</span></a>
             <ModalDlg :dlgId="shareProjectChooseMethodDlgId" :dlgTitle="$t('appMessage.createShareProjectLink')" showCloseBtn hideDlgBtns>
                 <div>
                     <div class="share-method-container">
-                        <div id="shareMethodSnapshotButton" :class="scssVars.projectTargetButtonClassName + ' share-method-dlg'" tabindex="0"  @click="copySnapshotLink()" @keydown.self="onTargetButtonKeyDown($event, this.shareProjectChooseMethodDlgId)"
+                        <div id="shareMethodSnapshotButton" :class="scssVars.projectTargetButtonClassName + ' share-method-dlg'" tabindex="0"  @click="copySnapshotLink()" @keydown.self="onTargetButtonKeyDown($event, shareProjectChooseMethodDlgId)"
                              @mouseenter="changeTargetFocusOnMouseOver">
                             <img src="@/assets/images/snapshotIcon.svg" :alt="$t('appMessage.methodSnapshotLink')"/>
                             <span class="share-method-title" v-t="'appMessage.methodSnapshotLink'"></span>
                             <span class="share-method-explanation" v-t="'appMessage.methodSnapshotLinkExplanation'"></span>
                             <span class="share-method-warning" v-if="shareContentZippedBase64.length > 2000" v-t="'appMessage.snapshotLinkTooLarge'"></span>
                         </div>
-                        <div id="shareMethodCloudButton" :class="scssVars.projectTargetButtonClassName + ' share-method-dlg'" tabindex="0"  @click="copyCloudLink()" @keydown.self="onTargetButtonKeyDown($event, this.shareProjectChooseMethodDlgId)"
+                        <div id="shareMethodCloudButton" :class="scssVars.projectTargetButtonClassName + ' share-method-dlg'" tabindex="0"  @click="copyCloudLink()" @keydown.self="onTargetButtonKeyDown($event, shareProjectChooseMethodDlgId)"
                              @mouseenter="changeTargetFocusOnMouseOver">
                             <img src="@/assets/images/logoOneDrive.svg" alt="$t('appMessage.methodCloudLink')"/>
                             <span class="share-method-title" v-t="'appMessage.methodCloudLink'"></span>
@@ -140,9 +140,9 @@
                         </div>
                     </ModalDlg>
             <!-- download python/hex project -->
-            /* IFTRUE_isMicrobit 
+            <!-- #v-ifdef MODE == VITE_MICROBIT_MODE-->
             <a v-if="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="downloadHex();showMenu=false;" v-t="'appMenu.downloadHex'" />
-            FITRUE_isMicrobit */
+            <!-- #v-endif-->
             <a v-if="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="downloadPython();showMenu=false;" v-t="'appMenu.downloadPython'" />
             <!-- BLANK SPACE IN MENU TO FOOTER -->
             <div class="flex-padding" />
@@ -1273,9 +1273,9 @@ export default Vue.extend({
         toggleMenuOnOff(e: Event | null): void {
             if(e && this.isPythonRunning){
                 // When the project runs, we can't open the menu, but we show some "notification" in the PEA
-                /* IFTRUE_isPython */
+                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
                 document.dispatchEvent(new Event(CustomEventTypes.highlightPythonRunningState));
-                /* FITRUE_isPython */
+                // #v-endif
                 return;
             }
 

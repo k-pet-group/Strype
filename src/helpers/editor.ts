@@ -13,11 +13,11 @@ import Frame from "@/components/Frame.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
-/* IFTRUE_isPython */
+// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import CommandsComponent from "@/components/Commands.vue";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import { debounce } from "lodash";
-/* FITRUE_isPython */
+// #v-endif
 import {toUnicodeEscapes} from "@/parser/parser";
 import {fromUnicodeEscapes} from "@/helpers/pythonToFrames";
 
@@ -69,7 +69,7 @@ export enum CustomEventTypes {
     cutFrameSelection = "cutFrameSelection",
     copyFrameSelection = "copyFrameSelection",
     updateParamPrompts = "updateParamPrompts",
-    /* IFTRUE_isPython */
+    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
     pythonExecAreaMounted = "peaMounted",
     pythonExecAreaExpandCollapseChanged = "peaExpandCollapsChanged",
     pythonConsoleRequestFocus = "pythonConsoleReqFocus",
@@ -79,7 +79,7 @@ export enum CustomEventTypes {
     skulptMouseEventListenerOff = "skMouseEventsOff",
     skulptTimerEventListenerOff = "skTimerEventsOff",
     highlightPythonRunningState = "highlightPythonRunningState"
-    /* FITRUE_isPython */
+    // #v-endif
 }
 
 export const frameContextMenuShortcuts: FrameContextMenuShortcut[] = [
@@ -203,7 +203,7 @@ export function getAppLangSelectId(): string {
     return "strypeLangSelect";
 }
 
-/* IFTRUE_isPython */
+// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 /** This section contains accessors for the PEA components' ID, used within the application */
 export function getPEAComponentRefId(): string {
     return "peaComponent";
@@ -229,7 +229,7 @@ export function getPEAConsoleId(): string {
     return "peaConsole";
 }
 /** end of section */
-/*FITRUE_isPython */
+// #v-endif
 
 export function getTextStartCursorPositionOfHTMLElement(htmlElement: HTMLSpanElement): number {
     // For (editable) spans, it is not straight forward to retrieve the text cursor position, we do it via the selection API
@@ -1956,7 +1956,7 @@ export function getNumPrecedingBackslashes(content: string, cursorPos : number) 
 /**
  * Turtle  related bits for the editor
  */
-/* IFTRUE_isPython */
+// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 // This method acts the turtle module being imported or not in the editor's frame
 export function actOnTurtleImport(): void {
     let hasTurtleImported = false;
@@ -2090,7 +2090,7 @@ export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): vo
         }, 100);    
     }
 }
-/* FITRUE_isPython */
+// #v-endif
 
 
 export function getCurrentFrameSelectAllAction(): SelectAllFramesAction {

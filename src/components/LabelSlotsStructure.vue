@@ -632,7 +632,7 @@ export default Vue.extend({
             if (event.clipboardData && focusSlotCursorInfos) {
                 // First we need to check if it's a media item on the clipboard, because that needs
                 // to become a media literal rather than plain text:
-                /* IFTRUE_isPython */
+                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
                 if (preparePasteMediaData(event, (code: string, dataAndDim : MediaDataAndDim) => {
                     // The code is the code to load the literal from its base64 string representation:                    
                     document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))
@@ -641,7 +641,7 @@ export default Vue.extend({
                     // If pasting image, don't also paste text:
                     return;
                 }
-                /* FITRUE_isPython */
+                // #v-endif
 
                 interface PastedItem {
                     type: string;

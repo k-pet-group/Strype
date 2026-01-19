@@ -11,9 +11,9 @@ import { StrypePlatform } from "./types/types";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "./helpers/sharedIdCssWithTests";
 import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getFrameContainerUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getImportFileInputId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNewProjectLinkId, getSaveProjectLinkId, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, getShareProjectLinkId} from "./helpers/editor";
-/* IFTRUE_isPython */
+// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import {getPEATabContentContainerDivId} from "./helpers/editor";
-/* FITRUE_isPython */
+// #v-endif
 
 Vue.config.productionTip = false;
 
@@ -30,9 +30,9 @@ export const AppName = "Strype";
 export const AppSPYPrefix = "(=>";
 export const AppSPYFullPrefix = "#" + AppSPYPrefix;
 let appPlatform = StrypePlatform.standard;
-/* IFTRUE_isMicrobit */
+// #v-ifdef MODE == VITE_MICROBIT_MODE
 appPlatform = StrypePlatform.microbit;
-/* FITRUE_isMicrobit */
+// #v-endif
 export const AppPlatform = appPlatform;
 
 // The project defintion slot isn't attached to a "real" frame.
@@ -81,9 +81,9 @@ export function getLocaleBuildDate(): string {
     getFrameLabelSlotId: getLabelSlotUID,
     getStrypeSaveProjectNameInputId: getStrypeSaveProjectNameInputId,
     getSaveStrypeProjectToFSButtonId: getSaveStrypeProjectToFSButtonId,
-    /* IFTRUE_isPython */
+    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
     getPEATabContentContainerDivId: getPEATabContentContainerDivId,
-    /* FITRUE_isPython */
+    // #v-endif
 };
 Vue.use(AsyncComputed);
 

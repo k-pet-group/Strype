@@ -11,4 +11,4 @@ In order to serve or build Strype editor (python or microbit) follow the followi
 
 The tasks clear the npm cache and the cache-loader so that the code is compiled totally again.
 
-During development, you can use the npm or serve commands if you prefer -- but be aware that caching will prevent conditional rendering (in that case you'd need to go through each file containing the /*IFTRUE_xxx directive, and make a change to save and regenerate those files with the right condition applied)
+During development, you can use the npm or serve commands if you prefer -- but be aware that caching will prevent conditional rendering (in that case you'd need to go through each file containing the comment starting with the `#v-ifdef MODE ==` directive, and make a change to save and regenerate those files with the right condition applied)

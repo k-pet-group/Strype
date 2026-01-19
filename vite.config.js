@@ -1,14 +1,21 @@
-import { defineConfig } from "vite";
+import { defineConfig, loadEnv } from "vite";
 import { execSync } from "child_process";
 import vue2 from  "@vitejs/plugin-vue2";
 import path from "path";
+import ConditionalCompile from "vite-plugin-conditional-compiler";
 
-export default defineConfig(({command}) => {
-    // Environment variables for the Strype "platform" (standard Python or for micro:bit)
-    const isPython = process.env.VITE_PYTHON === "true";
+
+export default defineConfig(({mode, command}) => {
+    // Mode for the Strype "platform" (standard Python or for micro:bit)
+    // We use environment variables for the possible values (only exception is in the serve/build scripts...)
+    const viteEnv = loadEnv(mode, process.cwd(), "VITE_");
+    const isStandardPython = mode === viteEnv.VITE_STANDARD_PYTHON_MODE;
     
-    return {
-        plugins: [vue2()],
+    return {       
+        plugins: [
+            ConditionalCompile(),            
+            vue2(),
+        ],
 
         css: {
             preprocessorOptions: {
@@ -25,7 +32,7 @@ export default defineConfig(({command}) => {
 
         base: (process.env.VITE_GITHUB_PAGE)
             ? "/Strype/"
-            : ((isPython)
+            : ((isStandardPython)
                 ? "/editor/"
                 : "/microbit/"),
 

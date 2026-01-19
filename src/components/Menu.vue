@@ -272,7 +272,7 @@ export default Vue.extend({
         // Composition API allows watching an array of "sources" (cf https://vuejs.org/guide/essentials/watchers.html)
         // We need to update the current error Index when: the error count changes, navigation occurs (i.e. editing toggles, caret pos or focus pos changes)
         // but we bypass this when we manually change the error navigation index (i.e. when the user clicks on the navigation icons)
-        watch([() => vm.errorCount, () => vm.appStore.isEditing, () => vm.appStore.currentFrame.id, () => vm.appStore.currentFrame.caretPosition, () => vm.appStore.anchorSlotCursorInfos], () => {
+        watch([() => vm.errorCount, () => useStore().isEditing, () => useStore().currentFrame.id, () => useStore().currentFrame.caretPosition, () => useStore().anchorSlotCursorInfos], () => {
             if(!vm.navigateToErrorRequested){
                 vm.$nextTick(() => {
                     vm.currentErrorNavIndex = (vm.errorCount > 0) ? getNearestErrorIndex() : -1;

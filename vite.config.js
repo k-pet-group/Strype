@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import { execSync } from "child_process";
 import vue2 from  "@vitejs/plugin-vue2";
+import path from "path";
 
 export default defineConfig(({command}) => {
     // Environment variables for the Strype "platform" (standard Python or for micro:bit)
@@ -24,6 +25,13 @@ export default defineConfig(({command}) => {
             ),
             __IS_PYTHON__: isPython,
             __IS_MICROBIT__: isMicrobit,
+        },
+
+        resolve: {
+            // So that we still have compilation of imports like: import { STRYPE_LOCATION } from "@/helpers/pythonToFrames"
+            alias: {
+                "@": path.resolve(__dirname, "src"),
+            },
         },
     };
 });

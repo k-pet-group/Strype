@@ -5,7 +5,6 @@ import { useStore } from "@/store/store";
 import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import Vue from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID } from "./editor";
-import { nextTick } from "@vue/composition-api";
 import { cloneDeep, isEqual } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
 import { $enum } from "ts-enum-util";
@@ -902,7 +901,7 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
     }
     // We make sure the number of errors shown in the interface is in line with the current state of the code
     // As the UI should update first, we do it in the next tick
-    nextTick().then(() => {
+    Vue.nextTick().then(() => {
         checkEditorCodeErrors();
         useStore().errorCount = countEditorCodeErrors();
     }); 

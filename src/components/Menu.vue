@@ -222,7 +222,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue from "vue";
+import Vue, { getCurrentInstance, watch } from "vue";
 import { useStore, settingsStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, CaretPosition, CollapsedState, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
@@ -235,7 +235,6 @@ import { canBrowserOpenFilePicker, canBrowserSaveFilePicker, openFile, saveFile 
 import { generateSPYFileContent } from "@/helpers/load-save";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { BvModalEvent } from "bootstrap-vue";
-import { watch } from "@vue/composition-api";
 import { cloneDeep } from "lodash";
 import App from "@/App.vue";
 import appPackageJson from "@/../package.json";
@@ -259,6 +258,25 @@ export default Vue.extend({
         Slide,
         CloudDriveHandler,
         ModalDlg,
+    },
+
+    setup() {
+        const instance = getCurrentInstance() as any;
+        const vm = instance.proxy;
+
+        // Moved what we had in mounted() before Vue 3 here, as Vue 3, using the composition API natively, now requires having them in setup().
+        // Composition API allows watching an array of "sources" (cf https://vuejs.org/guide/essentials/watchers.html)
+        // We need to update the current error Index when: the error count changes, navigation occurs (i.e. editing toggles, caret pos or focus pos changes)
+        // but we bypass this when we manually change the error navigation index (i.e. when the user clicks on the navigation icons)
+        watch([() => vm.errorCount, () => vm.appStore.isEditing, () => vm.appStore.currentFrame.id, () => vm.appStore.currentFrame.caretPosition, () => vm.appStore.anchorSlotCursorInfos], () => {
+            if(!vm.navigateToErrorRequested){
+                vm.$nextTick(() => {
+                    vm.currentErrorNavIndex = (vm.errorCount > 0) ? getNearestErrorIndex() : -1;
+                });
+            }
+        });
+
+        return {};
     },
 
     data: function() {
@@ -349,18 +367,7 @@ export default Vue.extend({
         (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).$on(CustomEventTypes.openSharedFileDone, () => {
             this.openSharedProjectId = "";
             this.openSharedProjectTarget = StrypeSyncTarget.none;
-        });
-
-        // Composition API allows watching an array of "sources" (cf https://vuejs.org/guide/essentials/watchers.html)
-        // We need to update the current error Index when: the error count changes, navigation occurs (i.e. editing toggles, caret pos or focus pos changes)
-        // but we bypass this when we manually change the error navigation index (i.e. when the user clicks on the navigation icons)
-        watch([() => this.errorCount, () => this.appStore.isEditing, () => this.appStore.currentFrame.id, () => this.appStore.currentFrame.caretPosition, () => this.appStore.anchorSlotCursorInfos], () => {
-            if(!this.navigateToErrorRequested){
-                this.$nextTick(() => {
-                    this.currentErrorNavIndex = (this.errorCount > 0) ? getNearestErrorIndex() : -1;
-                });
-            }
-        });
+        });        
     },
 
     beforeDestroy(){

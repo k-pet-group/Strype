@@ -13,7 +13,6 @@ import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 import {cloneDeep, isEqual} from "lodash";
 import $ from "jquery";
 import { BvModalEvent } from "bootstrap-vue";
-import { nextTick } from "@vue/composition-api";
 import { TPyParser } from "tigerpython-parser";
 import AppComponent from "@/App.vue";
 import emptyState from "@/store/initial-states/empty-state";
@@ -1418,14 +1417,14 @@ export const useStore = defineStore("app", {
             this.projectLastSaveDate = -1;
 
             // We check the errors in the code applied to the that new state
-            nextTick().then(() => {
+            Vue.nextTick().then(() => {
                 this.wasLastRuntimeErrorFrameId = undefined,
                 checkEditorCodeErrors();
                 // To make sure that the error navigator gets updated properly (reactivity) we first set the error count to -1 and then count again in next tick so it notified
                 // because when we load a file, we update the error count value in the state but this error check won't be notified if there are actually
                 // still the same number of errors...
                 useStore().errorCount = -1;
-                nextTick().then(() => useStore().errorCount = countEditorCodeErrors());                
+                Vue.nextTick().then(() => useStore().errorCount = countEditorCodeErrors());                
             }); 
         },
 
@@ -1781,7 +1780,7 @@ export const useStore = defineStore("app", {
                 // the component gets created again.
                 // Remove the frame from its parent
                 sourceContainerFrame.childrenIds.splice(sourceContainerFrame.childrenIds.indexOf(draggedFrameId), 1);
-                nextTick(() => {
+                Vue.nextTick(() => {
                     // Append it to the destination list
                     const destFrameListInsertIndex = (destinationCaretPos == CaretPosition.body) ? 0 : destContainerFrame.childrenIds.indexOf(destinationCaretFrameId) + 1;
                     destContainerFrame.childrenIds.splice(destFrameListInsertIndex, 0, draggedFrameId);
@@ -1795,7 +1794,7 @@ export const useStore = defineStore("app", {
             });
 
             //save the state changes for undo/redo after all changes changing the order has been done
-            nextTick(() => {
+            Vue.nextTick(() => {
                 this.saveStateChanges(this.stateBeforeChanges);
 
                 //clear the stateBeforeChanges flag off

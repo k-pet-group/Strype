@@ -9,7 +9,20 @@ export default defineConfig(({command}) => {
     const isMicrobit = process.env.VITE_MICROBIT === "true";
     
     return {
-        plugins: [vue2()],        
+        plugins: [vue2()],
+
+        css: {
+            preprocessorOptions: {
+                scss: {
+                    additionalData: `
+                        @import "@/assets/style/variables.scss";
+                    ` + (process.env.VITE_GITHUB_PAGE ?  `
+                        @import "@/assets/style/test-watermark.scss";
+                    ` : ""),
+                },
+            },
+        },
+
 
         base: (process.env.VITE_GITHUB_PAGE)
             ? "/Strype/"

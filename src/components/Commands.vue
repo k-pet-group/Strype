@@ -122,6 +122,11 @@ import { downloadHex, getPythonContent } from "@/helpers/download";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 // #v-endif
 
+// #v-ifdef MODE == VITE_MICROBIT_MODE
+// This variable is moved to at the module level rather than in data because having a Window as a reactive property doesn't work with Vue 2.7 (and Vue 3)
+let mbSimulator: Window | null = null;
+// #v-endif
+
 export default Vue.extend({
     name: "Commands",
 
@@ -152,8 +157,6 @@ export default Vue.extend({
             commandSplitterPane2MinSize: 0, // to be adjusted after the component is mounted
             commandsSplitterPane2Size: 0, // to be adjused after the component is mounted
             isCommandsSplitterChanged: false,
-            // #v-else
-            mbSimulator: null as Window | null,
             // #v-endif
         };
     },
@@ -417,7 +420,7 @@ export default Vue.extend({
                 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
                 isTargetRefDefined = !!this.$refs[getPEAComponentRefId()];
                 // #v-else
-                isTargetRefDefined = (this.mbSimulator != null);
+                isTargetRefDefined = (mbSimulator != null);
                 // #v-endif
                 if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && isTargetRefDefined) {
                     // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
@@ -656,7 +659,7 @@ export default Vue.extend({
         );
         
         // #v-ifdef MODE == VITE_MICROBIT_MODE
-        this.mbSimulator = (document.querySelector("#mbSimulatorIframe") as HTMLIFrameElement)?.contentWindow;
+        mbSimulator = (document.querySelector("#mbSimulatorIframe") as HTMLIFrameElement)?.contentWindow;
         window.addEventListener("blur", this.handleMBSimulatorTakesFocus);        
         window.addEventListener("message", this.onMicrobitSimulatorMsgReceived);
         // #v-endif
@@ -744,7 +747,7 @@ export default Vue.extend({
         onMicrobitSimulatorMsgReceived(e: MessageEvent<Record<string, any>>){
             // Example reference: https://github.com/micropython-microbit-v2-simulator/micropython-microbit-v2-simulator/blob/main/src/demo.html
             const { data } = e;
-            const simulator = this.mbSimulator;
+            const simulator = mbSimulator;
             // Actions on the simulator will loose the focus on Strype, so we save where we were.
             if (simulator && e.source === simulator) {
                 switch (data.kind) {                            
@@ -753,7 +756,7 @@ export default Vue.extend({
                     getPythonContent()
                         .then((pyContent) => {                            
                             this.appStore.pythonExecRunningState = PythonExecRunningState.Running;
-                            this.mbSimulator?.postMessage({
+                            mbSimulator?.postMessage({
                                 "kind": "flash",
                                 "filesystem": {
                                     "main.py": new TextEncoder()
@@ -783,7 +786,7 @@ export default Vue.extend({
 
         stopMBSimulator() {
             // Send a stop message to the simulator
-            this.mbSimulator?.postMessage({"kind": "stop"}, "*");
+            mbSimulator?.postMessage({"kind": "stop"}, "*");
             this.appStore.pythonExecRunningState = PythonExecRunningState.NotRunning;
         },
         

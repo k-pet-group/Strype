@@ -790,6 +790,6 @@ describe.only("Show text", () => {
             # This should overlap because it's not the same coords after rounding:
             show_text("Player 1", 300.25, 200.25, 30)
             show_text("Anonymous", 300.75, 200, 30)
-        `, "show-text-items-toggle", ImageComparison.WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS);
+        `, "show-text-items-toggle");
     });
 });

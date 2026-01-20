@@ -656,7 +656,7 @@ class Actor:
         :param tag: The tag of the actor to check for touching, or None to check all actors.
         :return: The :class:`Actor` we are touching, if any, or None if we are not touching any actor. 
         """
-        return next(iter(self.get_all_touching(tag)), None)
+        return next(reversed(self.get_all_touching(tag)), None)
 
     def get_all_touching(self, tag = None):
         # type: (Any | None) -> list[Actor]
@@ -998,6 +998,25 @@ def get_actors(tag = None):
         """
     return [a for a in _strype_input_internal.getAllActors() if tag is None or tag == a.get_tag()]
 
+def get_actor_at(x, y, tag = None):
+    # type: (float, float, Any | None) -> (Actor|None)
+    """
+        Gets an actor that is touching the given X, Y position.
+        
+        If the tag is specified, only actors with the given tag will be considered.
+        
+        :param x: The X position.
+        :param y: The Y position.
+        :param tag: An optional tag used to constrain which actors to consider (if None, consider all actors).
+        :return: An actor touching the given position, or None if there is none. 
+    """
+    all = _strype_input_internal.getAllAt(x, y)
+    if tag is None:
+        with_tag = all
+    else:
+        with_tag = [a for a in all if a.get_tag() == tag]
+    return next(reversed(with_tag), None)
+    
 def stop():
     # type: () -> None
     """

@@ -477,6 +477,54 @@ describe("Collision detection", () => {
                 sq.get_image().fill()
             `, "graphics-get-actors");
     });
+
+    it("Gets objects at position with two choices", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        // Then we find all the colliding ones in a radius and colour them red
+        runCodeAndCheckImage("", `
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            yellow_square = Image(50, 50)
+            yellow_square.set_fill("yellow")
+            yellow_square.fill()
+            white_spacing = 40
+            yellow_spacing = 50
+            for y in range(-300//yellow_spacing, 300//yellow_spacing):
+                for x in range(-400//yellow_spacing, 400//yellow_spacing):
+                    Actor(yellow_square.clone(), x*yellow_spacing, y*yellow_spacing)
+            for y in range(-300//white_spacing, 300//white_spacing):
+                for x in range(-400//white_spacing, 400//white_spacing):
+                    Actor(white_square.clone(), x*white_spacing, y*white_spacing)
+            img = get_actor_at(0, 0).get_image()
+            img.set_fill("red")
+            img.fill()
+            `, "graphics-get-at-two");
+    });
+
+    it("Gets objects at position with one choice", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        // Then we find all the colliding ones in a radius and colour them red
+        runCodeAndCheckImage("", `
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            yellow_square = Image(50, 50)
+            yellow_square.set_fill("yellow")
+            yellow_square.fill()
+            white_spacing = 40
+            yellow_spacing = 50
+            for y in range(-300//yellow_spacing, 300//yellow_spacing):
+                for x in range(-400//yellow_spacing, 400//yellow_spacing):
+                    Actor(yellow_square.clone(), x*yellow_spacing, y*yellow_spacing)
+            for y in range(-300//white_spacing, 300//white_spacing):
+                for x in range(-400//white_spacing, 400//white_spacing):
+                    Actor(white_square.clone(), x*white_spacing, y*white_spacing)
+            img = get_actor_at(20, 0).get_image()
+            img.set_fill("red")
+            img.fill()
+            `, "graphics-get-at-one");
+    });
 });
 
 describe("Image download", () => {

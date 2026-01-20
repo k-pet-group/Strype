@@ -295,9 +295,9 @@ class Image:
         :return: A named tuple width width and height of the actually drawn area.
         """
         if font_family is not None:
-            font_family = _strype_graphics_internal.canvas_loadFont("google", font_name)
-            if not font_family:
-                raise Exception("Could not load font " + font_name)
+            loaded = _strype_graphics_internal.canvas_loadFont("google", font_family)
+            if not loaded:
+                raise Exception("Could not load font " + font_family)
         dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height, font_family)
         return _Dimension(dim['width'], dim['height'])
         

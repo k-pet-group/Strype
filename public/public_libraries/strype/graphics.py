@@ -284,7 +284,9 @@ class Image:
         If a maximum height is specified as well, the font size will be reduced if necessary to fit within the width and height.  
         If the text is too long, it may exceed the maximum width or height.
         
-        The text color is the current fill color (see `set_fill()`). 
+        The text will be filled with the current fill color (see `set_fill()`) or left hollow if fill is set to None.
+        The text will be outlined with the current stroke color (see `set_stroke()`) or left without an outline if stroke is set to None.
+        Note that if fill and stroke are both set to None, nothing will be drawn. 
         
         :param text: The text to draw.
         :param x: The x coordinate of the top-left corner of the text.

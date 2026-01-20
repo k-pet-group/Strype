@@ -1067,4 +1067,40 @@ def pace(actions_per_second = 25):
     sleep_for = max(0.0, 1 / actions_per_second - max(0.0, now - _last_frame))
     _last_frame = now + sleep_for
     _time.sleep(sleep_for)
+
+# Maps from integer (x,y) position to an Actor that shows the image text
+_shown_text = {}
+
+def show_text(text, x = 0, y = 0, font_size = 24):
+    # type: (str | None, float, float, float) -> None
+    """
+        Shows the text at the given X, Y position in the world.
+        
+        This allows you to easily draw text on the world, for example a "Game Over" message.  If you want to change the text,
+        call this function again with the same X, Y position and a new string; this will replace the previous text at that position.
+        To clear the text entirely, pass None as the text, with the same X, Y position. 
     
+        :param text: The text to show, or None to show no text.  Passing None allows you to clear text previously drawn at the same position. 
+        :param x: The X position.  This is rounded to the nearest integer.
+        :param y: The Y position.  This is rounded to the nearest integer.
+        :param font_size: The font size to use for the text.
+    """
+    x = round(x)
+    y = round(y)
+    existing = _shown_text.get((x, y))
+    # Always remove the old actor:
+    if existing is not None:
+        existing.remove()
+        del _shown_text[(x, y)]
+    # Show a new one if they've specified text:
+    if text is not None:
+        # We first make an image just with the text on, which also tells us the size:
+        textOnlyImg = Image(800, 600)
+        textOnlyImg.set_fill("white")
+        textOnlyImg.set_stroke("black")
+        textDimensions = textOnlyImg.draw_text(text, 0, 0, font_size, 800, 600, "Inconsolata")
+        # Now we prepare an image of the right size:
+        croppedImg = Image(textDimensions.width, textDimensions.height)
+        # We draw a rounded rect for the background, then draw the text on:
+        croppedImg._draw_part_of_image(textOnlyImg, 0, 0, 0, 0, textDimensions.width, textDimensions.height)
+        _shown_text[(x, y)] = Actor(croppedImg, x, y)

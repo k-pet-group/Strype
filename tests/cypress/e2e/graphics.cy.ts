@@ -757,3 +757,39 @@ describe("Saying", () => {
         `, "saying-top-left");
     });
 });
+
+describe.only("Show text", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // Graphics tests can't run in microbit
+        return;
+    }
+    it("Shows a line of text", () => {
+        runCodeAndCheckImage("", `
+            set_background("blue")
+            show_text("Game Over!")
+        `, "show-text-game-over");
+    });
+    it("Shows multiple bits of text", () => {
+        runCodeAndCheckImage("", `
+            set_background("red")
+            show_text("Score: 42", -300, -200, 40)
+            show_text("Game Over!")
+            show_text("Player 1", 300, 200)
+        `, "show-text-three-items");
+    });
+
+    it("Shows text, toggled back and forth", () => {
+        runCodeAndCheckImage("", `
+            set_background("red")
+            # This should replace (including font size):
+            show_text("Score: 42", -300, -200, 20)
+            show_text("No score", -300, -200, 50)
+            # This should turn off (by the time we round):
+            show_text("Game Over!")
+            show_text(None, 0.25, -0.25)
+            # This should overlap because it's not the same coords after rounding:
+            show_text("Player 1", 300.25, 200.25, 30)
+            show_text("Anonymous", 300.75, 200, 30)
+        `, "show-text-items-toggle", ImageComparison.WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS);
+    });
+});

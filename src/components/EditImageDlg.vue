@@ -32,6 +32,11 @@
 
             </div>
         </div>
+        <div class="d-flex justify-content-center align-items-center" style="font-size: 90%; gap: 20px;margin-top: 15px;">
+            <b-button class="EditImageDlg-flip-horizontal-button" variant="info" @click="doFlipHorizontal"><i class="fa fa-arrows-h"></i> {{$t("media.imageFlipHorizontal")}}</b-button>
+            <b-button class="EditImageDlg-flip-vertical-button" variant="info" @click="doFlipVertical"><i class="fa fa-arrows-v"></i> {{$t("media.imageFlipVertical")}}</b-button>
+            <b-button class="EditImageDlg-rotate-button" variant="info" @click="doRotate90"><i class="fa fa-undo fa-flip-horizontal"></i> {{$t("media.imageRotate")}}</b-button>
+        </div>
         <span class="EditImageDlg-header">{{$t("media.imageScale")}}</span>
         <div class="EditImageDlg-scale">
             <input v-model="imageScale" type="range" id="EditImageDlg-imageScale" min="1" max="200" />
@@ -235,6 +240,16 @@ export default Vue.extend({
                 event.stopImmediatePropagation();
                 event.preventDefault();
             }
+        },
+
+        doFlipHorizontal() {
+            (this.$refs.cropper as Cropper).flip(true, false);
+        },
+        doFlipVertical() {
+            (this.$refs.cropper as Cropper).flip(false, true);
+        },
+        doRotate90() {
+            (this.$refs.cropper as Cropper).rotate(90);
         },
     },
     watch: {

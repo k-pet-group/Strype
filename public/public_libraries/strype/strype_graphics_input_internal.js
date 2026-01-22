@@ -43,6 +43,12 @@ var $builtinmodule = function(name)  {
         return new Sk.builtin.list(peaComponent.__vue__.getPersistentImageManager().getAllOverlapping(id));
     });
 
+    mod.getAllAt = new Sk.builtin.func(function(x, y) {
+        // The return value is awkward here because we want to give back a Python list
+        // but without converting the objects within, so we don't use remapToPy:
+        return new Sk.builtin.list(peaComponent.__vue__.getPersistentImageManager().calculateAllOverlappingAtPos(x, y).map((p) => p.associatedObject).filter((o) => o != null));
+    });
+
     mod.getAllActors = new Sk.builtin.func(function(id) {
         // The return value is awkward here because we want to give back a Python list
         // but without converting the objects within, so we don't use remapToPy:

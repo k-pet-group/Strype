@@ -284,7 +284,9 @@ class Image:
         If a maximum height is specified as well, the font size will be reduced if necessary to fit within the width and height.  
         If the text is too long, it may exceed the maximum width or height.
         
-        The text color is the current fill color (see `set_fill()`). 
+        The text will be filled with the current fill color (see `set_fill()`) or left hollow if fill is set to None.
+        The text will be outlined with the current stroke color (see `set_stroke()`) or left without an outline if stroke is set to None.
+        Note that if fill and stroke are both set to None, nothing will be drawn. 
         
         :param text: The text to draw.
         :param x: The x coordinate of the top-left corner of the text.
@@ -295,9 +297,9 @@ class Image:
         :return: A named tuple width width and height of the actually drawn area.
         """
         if font_family is not None:
-            font_family = _strype_graphics_internal.canvas_loadFont("google", font_name)
-            if not font_family:
-                raise Exception("Could not load font " + font_name)
+            loaded = _strype_graphics_internal.canvas_loadFont("google", font_family)
+            if not loaded:
+                raise Exception("Could not load font " + font_family)
         dim = _strype_graphics_internal.canvas_drawText(self.__image, text, x, y, font_size, max_width, max_height, font_family)
         return _Dimension(dim['width'], dim['height'])
         
@@ -656,7 +658,7 @@ class Actor:
         :param tag: The tag of the actor to check for touching, or None to check all actors.
         :return: The :class:`Actor` we are touching, if any, or None if we are not touching any actor. 
         """
-        return next(iter(self.get_all_touching(tag)), None)
+        return next(reversed(self.get_all_touching(tag)), None)
 
     def get_all_touching(self, tag = None):
         # type: (Any | None) -> list[Actor]
@@ -998,6 +1000,25 @@ def get_actors(tag = None):
         """
     return [a for a in _strype_input_internal.getAllActors() if tag is None or tag == a.get_tag()]
 
+def get_actor_at(x, y, tag = None):
+    # type: (float, float, Any | None) -> (Actor|None)
+    """
+        Gets an actor that is touching the given X, Y position.
+        
+        If the tag is specified, only actors with the given tag will be considered.
+        
+        :param x: The X position.
+        :param y: The Y position.
+        :param tag: An optional tag used to constrain which actors to consider (if None, consider all actors).
+        :return: An actor touching the given position, or None if there is none. 
+    """
+    all = _strype_input_internal.getAllAt(x, y)
+    if tag is None:
+        with_tag = all
+    else:
+        with_tag = [a for a in all if a.get_tag() == tag]
+    return next(reversed(with_tag), None)
+    
 def stop():
     # type: () -> None
     """
@@ -1046,4 +1067,40 @@ def pace(actions_per_second = 25):
     sleep_for = max(0.0, 1 / actions_per_second - max(0.0, now - _last_frame))
     _last_frame = now + sleep_for
     _time.sleep(sleep_for)
+
+# Maps from integer (x,y) position to an Actor that shows the image text
+_shown_text = {}
+
+def show_text(text, x = 0, y = 0, font_size = 24):
+    # type: (str | None, float, float, float) -> None
+    """
+        Shows the text at the given X, Y position in the world.
+        
+        This allows you to easily draw text on the world, for example a "Game Over" message.  If you want to change the text,
+        call this function again with the same X, Y position and a new string; this will replace the previous text at that position.
+        To clear the text entirely, pass None as the text, with the same X, Y position. 
     
+        :param text: The text to show, or None to show no text.  Passing None allows you to clear text previously drawn at the same position. 
+        :param x: The X position of the centre of the text.  This is rounded to the nearest integer.
+        :param y: The Y position of the centre of the text.  This is rounded to the nearest integer.
+        :param font_size: The font size to use for the text.
+    """
+    x = round(x)
+    y = round(y)
+    existing = _shown_text.get((x, y))
+    # Always remove the old actor:
+    if existing is not None:
+        existing.remove()
+        del _shown_text[(x, y)]
+    # Show a new one if they've specified text:
+    if text is not None:
+        # We first make an image just with the text on, which also tells us the size:
+        textOnlyImg = Image(800, 600)
+        textOnlyImg.set_fill("white")
+        textOnlyImg.set_stroke("black")
+        textDimensions = textOnlyImg.draw_text(text, 0, 0, font_size, 800, 600, "Inconsolata")
+        # Now we prepare an image of the right size:
+        croppedImg = Image(textDimensions.width, textDimensions.height)
+        # We draw a rounded rect for the background, then draw the text on:
+        croppedImg._draw_part_of_image(textOnlyImg, 0, 0, 0, 0, textDimensions.width, textDimensions.height)
+        _shown_text[(x, y)] = Actor(croppedImg, x, y)

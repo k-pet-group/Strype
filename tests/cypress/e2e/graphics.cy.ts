@@ -477,6 +477,54 @@ describe("Collision detection", () => {
                 sq.get_image().fill()
             `, "graphics-get-actors");
     });
+
+    it("Gets objects at position with two choices", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        // Then we find all the colliding ones in a radius and colour them red
+        runCodeAndCheckImage("", `
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            yellow_square = Image(50, 50)
+            yellow_square.set_fill("yellow")
+            yellow_square.fill()
+            white_spacing = 40
+            yellow_spacing = 50
+            for y in range(-300//yellow_spacing, 300//yellow_spacing):
+                for x in range(-400//yellow_spacing, 400//yellow_spacing):
+                    Actor(yellow_square.clone(), x*yellow_spacing, y*yellow_spacing)
+            for y in range(-300//white_spacing, 300//white_spacing):
+                for x in range(-400//white_spacing, 400//white_spacing):
+                    Actor(white_square.clone(), x*white_spacing, y*white_spacing)
+            img = get_actor_at(0, 0).get_image()
+            img.set_fill("red")
+            img.fill()
+            `, "graphics-get-at-two");
+    });
+
+    it("Gets objects at position with one choice", () => {
+        // We make a grid of white squares every 50 pixels that are 20x20
+        // Then we find all the colliding ones in a radius and colour them red
+        runCodeAndCheckImage("", `
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            yellow_square = Image(50, 50)
+            yellow_square.set_fill("yellow")
+            yellow_square.fill()
+            white_spacing = 40
+            yellow_spacing = 50
+            for y in range(-300//yellow_spacing, 300//yellow_spacing):
+                for x in range(-400//yellow_spacing, 400//yellow_spacing):
+                    Actor(yellow_square.clone(), x*yellow_spacing, y*yellow_spacing)
+            for y in range(-300//white_spacing, 300//white_spacing):
+                for x in range(-400//white_spacing, 400//white_spacing):
+                    Actor(white_square.clone(), x*white_spacing, y*white_spacing)
+            img = get_actor_at(20, 0).get_image()
+            img.set_fill("red")
+            img.fill()
+            `, "graphics-get-at-one");
+    });
 });
 
 describe("Image download", () => {
@@ -707,5 +755,41 @@ describe("Saying", () => {
         runCodeAndCheckImage("", `
             Actor(load_image("cat-test.jpg").clone(0.5), 300).say("Meow!", 48);
         `, "saying-top-left");
+    });
+});
+
+describe.only("Show text", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // Graphics tests can't run in microbit
+        return;
+    }
+    it("Shows a line of text", () => {
+        runCodeAndCheckImage("", `
+            set_background("blue")
+            show_text("Game Over!")
+        `, "show-text-game-over");
+    });
+    it("Shows multiple bits of text", () => {
+        runCodeAndCheckImage("", `
+            set_background("red")
+            show_text("Score: 42", -300, -200, 40)
+            show_text("Game Over!")
+            show_text("Player 1", 300, 200)
+        `, "show-text-three-items");
+    });
+
+    it("Shows text, toggled back and forth", () => {
+        runCodeAndCheckImage("", `
+            set_background("red")
+            # This should replace (including font size):
+            show_text("Score: 42", -300, -200, 20)
+            show_text("No score", -300, -200, 50)
+            # This should turn off (by the time we round):
+            show_text("Game Over!")
+            show_text(None, 0.25, -0.25)
+            # This should overlap because it's not the same coords after rounding:
+            show_text("Player 1", 300.25, 200.25, 30)
+            show_text("Anonymous", 300.75, 200, 30)
+        `, "show-text-items-toggle");
     });
 });

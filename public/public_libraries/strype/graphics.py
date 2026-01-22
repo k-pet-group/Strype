@@ -1081,8 +1081,8 @@ def show_text(text, x = 0, y = 0, font_size = 24):
         To clear the text entirely, pass None as the text, with the same X, Y position. 
     
         :param text: The text to show, or None to show no text.  Passing None allows you to clear text previously drawn at the same position. 
-        :param x: The X position.  This is rounded to the nearest integer.
-        :param y: The Y position.  This is rounded to the nearest integer.
+        :param x: The X position of the centre of the text.  This is rounded to the nearest integer.
+        :param y: The Y position of the centre of the text.  This is rounded to the nearest integer.
         :param font_size: The font size to use for the text.
     """
     x = round(x)

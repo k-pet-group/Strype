@@ -48,12 +48,14 @@ export default Vue.extend({
     },
 
     created() {
-        this.image = (this.message.path.length > 0) ? require("@/assets/images/"+this.message.path) : "";
+        // Vite needs to bundle the image at build time, the following code allows Vite to bundle all the images
+        this.image = (this.message.path.length > 0) ? new URL(`../assets/images/${this.message.path}`, import.meta.url).href : "";
     },
     
     //Updated is needed in case one message pops and before its gone another is shown
     updated() {
-        this.image = (this.message.path.length > 0) ? require("@/assets/images/"+this.message.path) : "";
+        // Vite needs to bundle the image at build time, the following code allows Vite to bundle all the images
+        this.image = (this.message.path.length > 0) ? new URL(`../assets/images/${this.message.path}`, import.meta.url).href : "";
     },
 
     computed: {

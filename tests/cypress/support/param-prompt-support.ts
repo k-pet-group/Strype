@@ -226,6 +226,15 @@ function emptyDisplay(sig: Signature, defocused: boolean) {
     ].filter((p) => !defocused || p?.defaultValue == null).map(argToString).join(", ");
 }
 
+function insertKeyboardTypingToImport(keyboardTypingToImport: string | undefined){
+    // Some frames, like class, requires a pause after the key to inser them has been hit,
+    // so the body/joint sections loads in the editor.
+    // As we don't have an exact way to know when such case arises in func.keyboardTypingToImport,
+    // we just delay all key hit reasonably.
+    if (keyboardTypingToImport) {
+        cy.get("body").type(keyboardTypingToImport, {delay: 100});
+    }
+}
 
 function testFuncs(funcs: {
         keyboardTypingToImport?: string,
@@ -243,9 +252,7 @@ function testFuncs(funcs: {
         };
         it("Shows prompts after manually writing function name and brackets for " + func.displayName, () => {
             focusEditorAC();
-            if (func.keyboardTypingToImport) {
-                cy.get("body").type(func.keyboardTypingToImport);
-            }
+            insertKeyboardTypingToImport(func.keyboardTypingToImport);
             cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
             withFrameId((frameId) => {
                 assertState(frameId, func.funcName + "($)", func.funcName + "(" + emptyDisplay(func.params, false) + ")");
@@ -257,9 +264,7 @@ function testFuncs(funcs: {
         });
         it("Shows prompts after manually writing function name and brackets AND commas for " + func.displayName, () => {
             focusEditorAC();
-            if (func.keyboardTypingToImport) {
-                cy.get("body").type(func.keyboardTypingToImport);
-            }
+            insertKeyboardTypingToImport(func.keyboardTypingToImport);
             cy.get("body").type(" " + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
             const extra = [
                 ...func.params.varArgs ? [func.params.varArgs.name] : "",
@@ -280,9 +285,7 @@ function testFuncs(funcs: {
 
         it("Shows prompts in nested function " + func.displayName, () => {
             focusEditorAC();
-            if (func.keyboardTypingToImport) {
-                cy.get("body").type(func.keyboardTypingToImport);
-            }
+            insertKeyboardTypingToImport(func.keyboardTypingToImport);
             cy.get("body").type(" max(0," + func.funcName.replaceAll(/[‘’]/g, "'") + "(");
             withFrameId((frameId) => {
                 assertState(frameId, "max(0," + func.funcName + "($))", "max(0," + func.funcName + "(" + emptyDisplay(func.params, false) + "))");
@@ -296,9 +299,7 @@ function testFuncs(funcs: {
         if (func.params.positionalOrKeywordArgs.length >= 3) {
             it("Hides positional params and prev used named params once name entered " + func.displayName, () => {
                 focusEditorAC();
-                if (func.keyboardTypingToImport) {
-                    cy.get("body").type(func.keyboardTypingToImport);
-                }
+                insertKeyboardTypingToImport(func.keyboardTypingToImport);
                 // We pick an arbitrary param to pass from the middle:
                 const midParam = Math.floor(func.params.positionalOrKeywordArgs.length / 2);
                 // We enter first one, then named middle one:

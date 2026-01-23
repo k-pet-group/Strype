@@ -9,7 +9,7 @@ export function compileBlob(compiler: Compiler): Blob | undefined {
         const blob = compiler.getBlob();
         return blob;
     }
-    catch (error: any) {
+    catch {
         // Notify the user of any detected errors in the code
         useStore().simpleModalDlgMsg = i18n.t("appMessage.preCompiledErrorNeedFix") as string;
         vm.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());

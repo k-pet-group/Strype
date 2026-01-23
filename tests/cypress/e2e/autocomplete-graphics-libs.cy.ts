@@ -1,11 +1,9 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
 import "../support/autocomplete-test-support";
 import {checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, focusEditorAC, withAC, scssVars} from "../support/autocomplete-test-support";
 
 // Needed for the "be.sorted" assertion:
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 chai.use(require("chai-sorted"));
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();

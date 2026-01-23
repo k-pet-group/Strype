@@ -84,16 +84,15 @@ export default Vue.extend({
             // We must update the available demos based on the code.
             // Our built-in demos are always available:
             this.availableDemos = [
-                /* IFTRUE_isPython */
+                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
                 {name: this.$i18n.t("demos.builtinGraphics") as string, demos: getBuiltinDemos("graphics")},
                 {name: this.$i18n.t("demos.builtinTurtle") as string, demos: getBuiltinDemos("turtle")},
                 {name: this.$i18n.t("demos.builtinConsole") as string, demos: getBuiltinDemos("console")},
-                /* FITRUE_isPython */
-                /* IFTRUE_isMicrobit */
+                // #v-else
                 // A bit pointless to show "micro:bit" for micro:bit version since there is no other choice,
                 // but let's keep the same presentation across the different versions.
                 {name: this.$i18n.t("demos.builtinMicrobit") as string, demos: getBuiltinDemos("microbit")},
-                /* FITRUE_isMicrobit */
+                // #v-endif
 
             ];
             // To get library demos, we first get the libraries:
@@ -102,8 +101,11 @@ export default Vue.extend({
             p.parseJustImports();
             // Then we can get the libraries and look for demos:
             // Don't show mediacomp-strype in the micro:bit verison, nor when testing mode because it can get us temporarily banned by Github:
-            /*IFTRUE_isPython const testingMode = window.Cypress || (window as any).Playwright; FITRUE_isPython */
-            for (const library of [...new Set([/*IFTRUE_isPython ...(testingMode? [] : ["github:k-pet-group/mediacomp-strype"]), FITRUE_isPython*/...p.getLibraries()])]) {
+            let extraLibraries = [];            
+            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+            extraLibraries = (window.Cypress || (window as any).Playwright) ? [] :["github:k-pet-group/mediacomp-strype"];
+            // #v-endif
+            for (const library of [...new Set([...extraLibraries, ...p.getLibraries()])]) {
                 this.availableDemos.push(getThirdPartyLibraryDemos(library));
             }
         },

@@ -13,7 +13,7 @@ export async function addFakeClipboard(page: Page) : Promise<void> {
                         const b = await item.getType("text/plain");
                         mockTextContent = await b.text();
                     }
-                    catch (e) {
+                    catch {
                         // Ignore
                     }
                 }

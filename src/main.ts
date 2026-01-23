@@ -11,11 +11,9 @@ import { StrypePlatform } from "./types/types";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "./helpers/sharedIdCssWithTests";
 import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getFrameContainerUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getImportFileInputId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNewProjectLinkId, getSaveProjectLinkId, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, getShareProjectLinkId} from "./helpers/editor";
-/* IFTRUE_isPython */
+// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import {getPEATabContentContainerDivId} from "./helpers/editor";
-/* FITRUE_isPython */
-
-Vue.config.productionTip = false;
+// #v-endif
 
 // Version of the application to check code's import compatibility in the editor
 // note: that is not an offical software version of Strype, just a way to help us dealing with compatibility issues.
@@ -30,9 +28,9 @@ export const AppName = "Strype";
 export const AppSPYPrefix = "(=>";
 export const AppSPYFullPrefix = "#" + AppSPYPrefix;
 let appPlatform = StrypePlatform.standard;
-/* IFTRUE_isMicrobit */
+// #v-ifdef MODE == VITE_MICROBIT_MODE
 appPlatform = StrypePlatform.microbit;
-/* FITRUE_isMicrobit */
+// #v-endif
 export const AppPlatform = appPlatform;
 
 // The project defintion slot isn't attached to a "real" frame.
@@ -41,7 +39,7 @@ export const projectDocumentationFrameId = -10;
 
 let localeBuildDate = "";
 export function getLocaleBuildDate(): string {
-    // This method returns the build date, set in vue.config.js.
+    // This method returns the build date, set in vite.config.js.
     // To avoid calling the formatter every time, we keep a local
     // variable with the formatted date value for the web session.
     if(localeBuildDate.length > 0) {
@@ -49,7 +47,7 @@ export function getLocaleBuildDate(): string {
     }
     else{
         try{
-            const buildDateTicks = new Date(parseInt(process.env.VUE_APP_BUILD_DATE_TICKS as string));
+            const buildDateTicks = new Date(__BUILD_DATE_TICKS__);
             localeBuildDate = new Date(buildDateTicks).toLocaleDateString(navigator.language);
             return localeBuildDate;
         }
@@ -81,9 +79,9 @@ export function getLocaleBuildDate(): string {
     getFrameLabelSlotId: getLabelSlotUID,
     getStrypeSaveProjectNameInputId: getStrypeSaveProjectNameInputId,
     getSaveStrypeProjectToFSButtonId: getSaveStrypeProjectToFSButtonId,
-    /* IFTRUE_isPython */
+    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
     getPEATabContentContainerDivId: getPEATabContentContainerDivId,
-    /* FITRUE_isPython */
+    // #v-endif
 };
 Vue.use(AsyncComputed);
 
@@ -96,7 +94,6 @@ Vue.use(vBlur);
 // Use a Pinia store (instead of Vuex store, because it handles type inferrence better)
 Vue.use(PiniaVuePlugin);
 const pinia = createPinia();
-Vue.config.productionTip = false;
 
 export const vm = new Vue({
     pinia,

@@ -1,9 +1,9 @@
 <template>
     <div class="commands">
-        /* IFTRUE_isPython
+        <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
         <Splitpanes horizontal :class="{[scssVars.commandsPEASplitterThemeClassName]: true, [scssVars.expandedPEAClassName]: isExpandedPEA}" @resize="onCommandsSplitterResize">
             <pane key="1" ref="peaCommandsSplitterPane1Ref" :size="100 - commandsSplitterPane2Size" :min-size="commandSplitterPane1MinSize">
-        FITRUE_isPython */
+        <!-- #v-endif-->
                 <div :class="scssVars.noPEACommandsClassName" @wheel.stop>
                     <div :class="scssVars.strypeProjectNameContainerClassName">
                         <span class="project-name">{{projectName}}</span>
@@ -15,13 +15,17 @@
                         </div>
                     </div>     
                     <div @mousedown.prevent.stop @mouseup.prevent.stop>
-                        /* IFTRUE_isMicrobit
+                        <!-- #v-ifdef MODE == VITE_MICROBIT_MODE -->
                         <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
                             <b-tab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
-                        FITRUE_isMicrobit */
+                        <!-- #v-endif-->
                                 <div :id="commandsContainerUID" class="command-tab-content" >
                                     <div id="addFramePanel">
-                                        <div :class="{[scssVars.addFrameCommandsContainerClassName]: true/* IFTRUE_isPython , 'with-expanded-PEA': isExpandedPEA FITRUE_isPython*/}">
+                                        <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
+                                        <div :class="{[scssVars.addFrameCommandsContainerClassName]: true, 'with-expanded-PEA': isExpandedPEA}">
+                                        <!-- #v-else-->
+                                        <div :class="scssVars.addFrameCommandsContainerClassName">
+                                        <!-- #v-endif-->
                                             <p>
                                                 <AddFrameCommand
                                                     v-for="addFrameCommand in addFrameCommands"
@@ -46,25 +50,24 @@
                                         </div>
                                     </div>
                                 </div>
-                            /* IFTRUE_isMicrobit 
+                            <!-- #v-ifdef MODE == VITE_MICROBIT_MODE -->
                             </b-tab>
                                 <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
                                     <APIDiscovery  class="command-tab-content"/>
                                 </b-tab>
-                            FITRUE_isMicrobit */
+                            <!-- #v-endif-->
                         </b-tabs>
                     </div>
                     <text id="userCode"></text>
                     <span id="keystrokeSpan"></span>
                 </div>
-        /* IFTRUE_isPython
+        <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
             </pane>
             <pane key="2" ref="peaCommandsSplitterPane2Ref" :size="commandsSplitterPane2Size" :min-size="commandSplitterPane2MinSize" :class="{'collapsed-pea-splitter-pane': !isExpandedPEA}">
                 <python-execution-area :class="scssVars.peaContainerClassName" :ref="peaComponentRefId" v-on:[peaMountedEventName]="onPEAMounted" :hasDefault43Ratio="!isCommandsSplitterChanged && !hasPEAExpanded"/>
             </pane>
         </Splitpanes>
-        FITRUE_isPython */
-        /* IFTRUE_isMicrobit 
+        <!-- #v-else -->
         <div :class="scssVars.peaContainerClassName">  
             <div v-if="showProgress" class="progress cmd-progress-container">
                 <div 
@@ -86,7 +89,7 @@
             </div>
         </div>
         <SimpleMsgModalDlg :dlgId="startMBSimulatorlDlgId" />
-        FITRUE_isMicrobit */
+    <!-- #v-endif-->
     </div>
 </template>
 
@@ -107,32 +110,35 @@ import gdIcon from "@/assets/images/logoGDrive.png";
 import odIcon from "@/assets/images/logoOneDrive.svg";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 import { clamp } from "lodash";
-/* IFTRUE_isPython */
+// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import {getPEAConsoleId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getPEAComponentRefId, getPEAControlsDivId} from "@/helpers/editor";
-/* FITRUE_isPython */
-/* IFTRUE_isMicrobit */
+// #v-else
 import APIDiscovery from "@/components/APIDiscovery.vue";
 import { flash } from "@/helpers/webUSB";
 import CloudDriveHandlerComponent from "./CloudDriveHandler.vue";
 import { downloadHex, getPythonContent } from "@/helpers/download";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
-/* FITRUE_isMicrobit */
+// #v-endif
+
+// #v-ifdef MODE == VITE_MICROBIT_MODE
+// This variable is moved to at the module level rather than in data because having a Window as a reactive property doesn't work with Vue 2.7 (and Vue 3)
+let mbSimulator: Window | null = null;
+// #v-endif
 
 export default Vue.extend({
     name: "Commands",
 
     components: {
         AddFrameCommand,
-        /* IFTRUE_isMicrobit */
-        APIDiscovery,
-        SimpleMsgModalDlg,
-        /* FITRUE_isMicrobit */
-        /* IFTRUE_isPython */
+        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
         Splitpanes, Pane,
         PythonExecutionArea, 
-        /* FITRUE_isPython */
+        // #v-else
+        APIDiscovery,
+        SimpleMsgModalDlg,
+        // #v-endif
     },
 
     data: function () {
@@ -143,7 +149,7 @@ export default Vue.extend({
             uploadThroughUSB: false,
             frameCommandsReactiveFlag: false, // this flag is only use to allow a reactive binding when the add frame commands are updated (language),
             lastProjectSavedDateTooltip: "", // update on a mouse over event (in getLastProjectSavedDateTooltip)
-            /* IFTRUE_isPython */
+            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
             isExpandedPEA: false, // flag indicating whether the Python Execution Area is expanded (to update the UI parts accordingly)
             hasPEAExpanded: false, // flag indicating whether the Python Execution Area *has ever been* expanded
             peaMountedEventName: CustomEventTypes.pythonExecAreaMounted,
@@ -151,19 +157,16 @@ export default Vue.extend({
             commandSplitterPane2MinSize: 0, // to be adjusted after the component is mounted
             commandsSplitterPane2Size: 0, // to be adjused after the component is mounted
             isCommandsSplitterChanged: false,
-            /* FITRUE_isPython */
-            /* IFTRUE_isMicrobit */
-            mbSimulator: null as Window | null,
-            /* FITRUE_isMicrobit */
+            // #v-endif
         };
     },
 
-    /* IFTRUE_isMicrobit */
+    // #v-ifdef MODE == VITE_MICROBIT_MODE
     beforeMount() {
         Vue.use(browserDetect);
         this.uploadThroughUSB = (this.$browserDetect.isChrome || this.$browserDetect.isOpera || this.$browserDetect.isEdge);
     },
-    /* FITRUE_isMicrobit */
+    // #v-endif
 
     computed: {
         ...mapStores(useStore),
@@ -217,13 +220,11 @@ export default Vue.extend({
             }
         },
         
-        /* IFTRUE_isPython */
+        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
         peaComponentRefId(): string {
             return getPEAComponentRefId();
         },
-        /* FITRUE_isPython */
-
-        /* IFTRUE_isMicrobit */
+        // #v-else
         tabIndex: {
             get(): number{
                 return this.appStore.commandsTabIndex;
@@ -241,7 +242,7 @@ export default Vue.extend({
             // Indicates when the users triggered the simulator
             return this.appStore.pythonExecRunningState == PythonExecRunningState.Running; 
         },
-        /* FITRUE_isMicrobit */
+        // #v-endif
 
         commandsContainerUID(): string {
             return getCommandsContainerUID();
@@ -415,18 +416,20 @@ export default Vue.extend({
                 }
                 
                 // If ctrl-enter/cmd-enter is pressed, make sure we quit the editing (if that's the case) and run the code
-                if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" 
-                /* IFTRUE_isPython && this.$refs[getPEAComponentRefId()] FITRUE_isPython *//* IFTRUE_isMicrobit && this.mbSimulator FITRUE_isMicrobit */) {
-                    /* IFTRUE_isPython */
+                let isTargetRefDefined = false;
+                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                isTargetRefDefined = !!this.$refs[getPEAComponentRefId()];
+                // #v-else
+                isTargetRefDefined = (mbSimulator != null);
+                // #v-endif
+                if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && isTargetRefDefined) {
+                    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
                     ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).focus();
                     ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).click();
                     // Need to unfocus to avoid keyboard focus non-obviously remaining with the run button:
                     ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).blur();
-                    /* FITRUE_isPython */
-
-                    /* IFTRUE_isMicrobit */
-                    // If the run Python shortcut is triggered with the micro:bit version, we start/stop the simulator.
-                        
+                    // #v-else
+                    // If the run Python shortcut is triggered with the micro:bit version, we start/stop the simulator.                        
                     if(event.ctrlKey){
                         if(this.isMBSimulatorRunning) {
                             this.stopMBSimulator();
@@ -438,7 +441,7 @@ export default Vue.extend({
                             this.$root.$emit("bv::show::modal", this.startMBSimulatorlDlgId);                            
                         }
                     }
-                    /* FITRUE_isMicrobit */
+                    // #v-endif
                     
                     // Don't then process the keypress for other purposes:
                     event.preventDefault();
@@ -458,7 +461,11 @@ export default Vue.extend({
 
                 // Prevent default scrolling and navigation in the editor, except if Turtle is currently running and listening for key events
                 // (then we just leave the PEA handling it, see at the end of these conditions for related code)
-                if (!isDraggingFrames && !isEditing && /*IFTRUE_isPython*/ !(isPythonExecuting && ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents || (this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isRunningStrypeGraphics)) && /*FITRUE_isPython*/ ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End", "PageUp", "PageDown"].includes(event.key)) {
+                let extraConditionsForPEA = true;
+                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                extraConditionsForPEA = !(isPythonExecuting && ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents || (this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isRunningStrypeGraphics));
+                // #v-endif
+                if (!isDraggingFrames && !isEditing && extraConditionsForPEA && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End", "PageUp", "PageDown"].includes(event.key)) {
                     event.stopImmediatePropagation();
                     event.stopPropagation();
                     event.preventDefault();
@@ -581,7 +588,7 @@ export default Vue.extend({
                             }
                         }
                     }
-                    /* IFTRUE_isPython */
+                    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
                     else if(isPythonExecuting && !(this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isRunningStrypeGraphics){
                         // The special case when the user's code is being executing, we want to handle the key events carefully.
                         // If there is a combination key (ctrl,...) we just ignore the events, otherwise, if Turtle is active we pass events to the Turtle graphics,
@@ -615,7 +622,7 @@ export default Vue.extend({
                             return;
                         }
                     }
-                    /* FITRUE_isPython */
+                    // #v-endif
                 }
                 else if(this.appStore.isDraggingFrame){
                     // Hitting escape during a DnD cancels it.
@@ -651,11 +658,11 @@ export default Vue.extend({
             false
         );
         
-        /* IFTRUE_isMicrobit */
-        this.mbSimulator = (document.querySelector("#mbSimulatorIframe") as HTMLIFrameElement)?.contentWindow;
+        // #v-ifdef MODE == VITE_MICROBIT_MODE
+        mbSimulator = (document.querySelector("#mbSimulatorIframe") as HTMLIFrameElement)?.contentWindow;
         window.addEventListener("blur", this.handleMBSimulatorTakesFocus);        
         window.addEventListener("message", this.onMicrobitSimulatorMsgReceived);
-        /* FITRUE_isMicrobit */
+        // #v-endif
     },
 
     methods: {
@@ -725,7 +732,7 @@ export default Vue.extend({
             this.lastProjectSavedDateTooltip = toolTipVal;
         },
 
-        /* IFTRUE_isMicrobit */
+        // #v-ifdef MODE == VITE_MICROBIT_MODE
         runToMicrobit() {
             // If we can directly upload on microbit, we run the method flash().
             // If we cannot, we run downloadHex(), it already contains code to show a message to the user.
@@ -740,7 +747,7 @@ export default Vue.extend({
         onMicrobitSimulatorMsgReceived(e: MessageEvent<Record<string, any>>){
             // Example reference: https://github.com/micropython-microbit-v2-simulator/micropython-microbit-v2-simulator/blob/main/src/demo.html
             const { data } = e;
-            const simulator = this.mbSimulator;
+            const simulator = mbSimulator;
             // Actions on the simulator will loose the focus on Strype, so we save where we were.
             if (simulator && e.source === simulator) {
                 switch (data.kind) {                            
@@ -749,7 +756,7 @@ export default Vue.extend({
                     getPythonContent()
                         .then((pyContent) => {                            
                             this.appStore.pythonExecRunningState = PythonExecRunningState.Running;
-                            this.mbSimulator?.postMessage({
+                            mbSimulator?.postMessage({
                                 "kind": "flash",
                                 "filesystem": {
                                     "main.py": new TextEncoder()
@@ -779,7 +786,7 @@ export default Vue.extend({
 
         stopMBSimulator() {
             // Send a stop message to the simulator
-            this.mbSimulator?.postMessage({"kind": "stop"}, "*");
+            mbSimulator?.postMessage({"kind": "stop"}, "*");
             this.appStore.pythonExecRunningState = PythonExecRunningState.NotRunning;
         },
         
@@ -792,9 +799,7 @@ export default Vue.extend({
                 return ["commands-tab" + disabledClassStr];
             }
         },
-        /*FITRUE_isMicrobit */
-
-        /* IFTRUE_isPython */
+        // #v-else
         onPEAMounted(){
             // Once the PEA is ready, we need to fix the splitter's position between the frame commands area and the PEA,
             // so that the PEA stays at the bottom of the viewport as intially intented (in its initial 4:3 ratio).
@@ -912,7 +917,7 @@ export default Vue.extend({
                 }
             }
         },
-        /* FITRUE_isPython */
+        // #v-endif
     },
 });
 </script>
@@ -949,18 +954,18 @@ export default Vue.extend({
     color: #252323;
     background-color: #E2E7E0;
     height: 100vh;
-    /* IFTRUE_isMicrobit */
+    // #v-ifdef MODE == VITE_MICROBIT_MODE
     display: flex;
     flex-direction: column;
     padding:0px 15px;
-    /* FITRUE_isMicrobit */
+    // #v-endif
 }
 
 /**
  * The following classes overwrite the spitter's style
  * for the splitter in use in this component.
  */
-/* IFTRUE_isPython */
+// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 .#{$strype-classname-commands-pea-splitter-theme}.splitpanes--horizontal>.splitpanes__splitter,
 .#{$strype-classname-commands-pea-splitter-theme} > .splitpanes--horizontal>.splitpanes__splitter {
     height: 1px !important;
@@ -988,7 +993,7 @@ export default Vue.extend({
 .collapsed-pea-splitter-pane {
     background-color: $pea-outer-background-color;
 }
-/* FITRUE_isPython */
+// #v-endif
 /** End splitter classes */
 
 .cmd-progress-container {
@@ -1005,15 +1010,14 @@ export default Vue.extend({
 }
 
 .#{$strype-classname-no-pea-commands} {
-    /* IFTRUE_isPython */
+    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
     overflow-y: hidden;
     display: flex;
     flex-direction: column;
     height: 100%;    
-    /* FITRUE_isPython */
-    /* IFTRUE_isMicrobit */
+    // #v-else
     overflow-y: auto;
-    /* FITRUE_isMicrobit */
+    // #v-endif
 }
 
 .progress-bar-text {
@@ -1045,15 +1049,14 @@ export default Vue.extend({
 }
 
 .#{$strype-classname-pea-container} {
-    /* IFTRUE_isPython */
+    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
     margin: 0px $strype-python-exec-area-margin $strype-python-exec-area-margin $strype-python-exec-area-margin;
-    /* FITRUE_isPython */
-    /* IFTRUE_isMicrobit */
+    // #v-else
     margin-bottom: 40px;
     overflow: hidden; // that is used to keep the margin https://stackoverflow.com/questions/44165725/flexbox-preventing-margins-from-being-respected
     flex-grow: 3;
     flex-shrink: 0;
-    /* FITRUE_isMicrobit */
+    // #v-endif
     display: flex;
     flex-direction: column;    
     align-items: flex-start;
@@ -1086,7 +1089,7 @@ export default Vue.extend({
 }
 //ends bootstrap overriding
 
-/* IFTRUE_isMicrobit */
+// #v-ifdef MODE == VITE_MICROBIT_MODE
 .commands-container {
     display: inline-block;
 }
@@ -1110,5 +1113,5 @@ export default Vue.extend({
 .cmd-button {
     padding: 1px 6px 1px 6px !important;
 }
-/* FITRUE_isMicrobit */
+// #v-endif
 </style>

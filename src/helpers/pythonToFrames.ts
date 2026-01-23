@@ -581,7 +581,6 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
         return null;
     }
     catch (e) {
-        // eslint-disable-next-line
         console.warn(e); // + "On:\n" + debugToString(parsedBySkulpt, "  "));
         // Don't leave partial content:
         useStore().copiedFrames = {};
@@ -654,7 +653,7 @@ function parseNextTerm(ps : ParseState) : SlotsStructure {
                 return {fields: [{code: nextVal + valAfterThat}], operators: []};
             }
         }
-        catch (e) {
+        catch {
             // Not an integer then...
         }
         

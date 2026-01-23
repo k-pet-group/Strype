@@ -53,8 +53,8 @@ export interface AcResultsWithCategory {
     [category: string]: AcResultType[];
 }
 
-/* IFTRUE_isMicrobit */
+// #v-ifdef MODE == VITE_MICROBIT_MODE
 export interface AcMicrobitResultType extends AcResultType {
     mbVarType?: string;
 }
-/* FITRUE_isMicrobit */
+// #v-endif

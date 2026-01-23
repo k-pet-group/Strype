@@ -35,7 +35,6 @@ export function saveFile(suggestedFileName: string, mimeTypesArray: MIMEDesc[], 
         // Call the success callback method
         onSuccess(fileSysHandle);
     }, (reason: any) => {
-        // eslint-disable-next-line
         console.error("Save with showFilePicker failed with reason:\n" + reason);
     });
 }
@@ -48,7 +47,6 @@ export function openFile(mimeTypesArray: MIMEDesc[], startInFolder: ProjectLocat
  
     noTypedWindow.showOpenFilePicker(options).then((fileSysHandles: FileSystemFileHandle[]) => onSuccess(fileSysHandles),
         (reason: any) => {
-            // eslint-disable-next-line
             console.error("Load with showFilePicker failed with reason:\n" + reason);
         });
 }

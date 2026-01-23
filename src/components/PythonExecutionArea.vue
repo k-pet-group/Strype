@@ -10,7 +10,7 @@
             <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
             <div class="flex-padding"/>            
             <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}">
-                <img v-if="!isPythonExecuting" src="favicon.png" class="pea-play-img">
+                <img v-if="!isPythonExecuting" :src="faviconURL" class="pea-play-img">
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
                 <span>{{runCodeButtonLabel}}</span>
             </button>
@@ -77,6 +77,7 @@ import {getDateTimeFormatted} from "@/helpers/common";
 import audioBufferToWav from "audiobuffer-to-wav";
 import { saveAs } from "file-saver";
 import {bufferToBase64} from "@/helpers/media";
+import turtleImgURL from "@/assets/images/turtle.png" ;
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -259,7 +260,7 @@ export default Vue.extend({
         this.$nextTick(() => {
             const graphicTaBElement = document.getElementById(this.graphicsTabId);
             if(graphicTaBElement){
-                graphicTaBElement.innerHTML = graphicTaBElement.innerHTML.replace("\uD83D\uDC22", `<img src="${require("@/assets/images/turtle.png")}" alt="${this.$i18n.t("PEA.Graphics")}" class="pea-turtle-img" />`);
+                graphicTaBElement.innerHTML = graphicTaBElement.innerHTML.replace("\uD83D\uDC22", `<img src="${turtleImgURL}" alt="${this.$i18n.t("PEA.Graphics")}" class="pea-turtle-img" />`);
             }
         });
        
@@ -301,6 +302,11 @@ export default Vue.extend({
 
     computed:{
         ...mapStores(useStore),
+
+        faviconURL(): string {
+            // We use a computed library to reference the favicon.png to avoid Vite getting confused with paths.
+            return "favicon.png";
+        },
 
         peaComponentId(): string {
             return getPEAComponentRefId();

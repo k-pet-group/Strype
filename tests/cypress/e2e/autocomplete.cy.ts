@@ -1,11 +1,9 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
 import "../support/autocomplete-test-support";
 import {BUILTIN, checkAutocompleteSorted, checkExactlyOneItem, checkNoItems, checkNoneAvailable, focusEditorAC, withAC, assertState} from "../support/autocomplete-test-support";
 
 // Needed for the "be.sorted" assertion:
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 chai.use(require("chai-sorted"));
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
@@ -180,8 +178,12 @@ describe("Control flow", () => {
         // any of the following frames (even if they were present in the code)
 
         focusEditorAC();
-        // Go down then add a try then a print then a method call on myString.: 
-        cy.get("body").type("{downarrow}{downarrow}tpmyString{downarrow} myString.{ctrl} ");
+        // Go down then add a try then a print then a method call on myString:
+        //(try is followed by pause, because it can take a bit longer to add its body/joint sections)
+ 
+        cy.get("body").type("{downarrow}{downarrow}t");
+        cy.wait(100);
+        cy.get("body").type("pmyString{downarrow} myString.{ctrl} ");
         withAC((acIDSel, frameId) => {
             cy.get(acIDSel).should("be.visible");
             checkExactlyOneItem(acIDSel, null, "capitalize()");

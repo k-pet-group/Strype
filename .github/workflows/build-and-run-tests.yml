@@ -21,7 +21,7 @@ jobs:
         # ci is better than npm install for CI jobs, apparently (quicker + more predictable):
         run: npm ci
       - name: NPM Build
-        run: npm run build
+        run: npm run build:${{ matrix.testtype }}
       - name: NPM Linter
         run: npm run lint:check        
       - name: NPM Test (Cypress)

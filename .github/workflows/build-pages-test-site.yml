@@ -32,7 +32,7 @@ jobs:
             - name: NPM Install
               run: npm install
             - name: NPM Build
-              run: npm run build --python --githubpages
+              run: npm run build:github-pages
             - name: Upload artifact
               uses: actions/upload-pages-artifact@v3
               with:

@@ -119,16 +119,9 @@ export default Vue.extend({
         FrameHeader,
         VueContext,
         CaretContainer,
-    },
-
-    beforeCreate() {
-        const components = this.$options.components;
-        if (components !== undefined) {
-            /* eslint-disable */
-            components.FrameBody = require("@/components/FrameBody.vue").default;
-            components.JointFrames = require("@/components/JointFrames.vue").default;
-            /* eslint-enable */
-        }
+        // Loaded like that because of circular references of components
+        FrameBody: () => import("@/components/FrameBody.vue"),
+        JointFrames: () => import("@/components/JointFrames.vue"),
     },
 
     props: {

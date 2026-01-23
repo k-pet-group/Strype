@@ -86,10 +86,10 @@ import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
 import {Completion, Signature, SignatureArg, TPyParser} from "tigerpython-parser";
 import scssVars from "@/assets/style/_export.module.scss";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
-/* IFTRUE_isMicrobit */
+// #v-ifdef MODE == VITE_MICROBIT_MODE
 import microbitDescriptions from "@/autocompletion/microbit.json";
 import microbitAPI from "@/autocompletion/microbit-api.json";
-/* FITRUE_isMicrobit */
+// #v-endif
 
 //////////////////////
 export default Vue.extend({
@@ -145,7 +145,7 @@ export default Vue.extend({
             }; 
         },
 
-        /* IFTRUE_isMicrobit */
+        // #v-ifdef MODE == VITE_MICROBIT_MODE
         allMicrobitAnnotatedVariables(): AcMicrobitResultType[] {
             // We retrieve the micro:bit annoted variables only once, as this won't change.
             // See updateAC() why.
@@ -159,7 +159,7 @@ export default Vue.extend({
             });
             return res;
         },
-        /* FITRUE_isMicrobit */
+        // #v-endif
     },
 
     methods: {
@@ -305,8 +305,11 @@ export default Vue.extend({
                 // end (and for microbit, we add a dummy "from builtins import *" to allow builtins a/c): 
                 // For the specific case of a call after "self." within a function defintion of 
                 // a user defined class, we pass the full class code (see above) to TigerPython
-                // and add an extra line after that class that call as "<class name>()." to replace self.
-                const preamble = "" /* IFTRUE_isMicrobit + "from builtins import *\n" FITRUE_isMicrobit */;
+                // and add an extra line after that class that call as "<class name>()." to replace self.   
+                let preamble = "";
+                // #v-ifdef MODE == VITE_MICROBIT_MODE
+                preamble = "from builtins import *\n";
+                // #v-endif
                 const extraLineContent = (isGettingWholeClassContext) 
                     ? `${(this.appStore.frameObjects[currentStrypeLocationForClassInfos.locationFrameId].labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code}().` 
                     : parser.getStoppedIndentation() + context + ".";
@@ -315,7 +318,7 @@ export default Vue.extend({
                 if (tppCompletions == null) {
                     tppCompletions = [];                    
                 }
-                /* IFTRUE_isMicrobit */
+                // #v-ifdef MODE == VITE_MICROBIT_MODE
                 // TODO 
                 // TPP, at least now, doesn't interpret module annotated-only variable in PYI properly,
                 // like for "button_a: Button" for the microbit init file :
@@ -326,7 +329,6 @@ export default Vue.extend({
                 try{
                     const tppCompletions2 = TPyParser.autoComplete(totalCode, totalCode.length, false);
                     if(tppCompletions.filter((s) => !s.acResult.startsWith("_")).length != tppCompletions2.length){
-                        // eslint-disable-next-line
                         console.warn("There is a mismatch between autoCompleteEx and autoComplete");
                         throw new Error();
                     }
@@ -369,16 +371,22 @@ export default Vue.extend({
                         tppCompletions = [];
                     }                       
                 }                
-                /* FITRUE_isMicrobit */
+                // #v-endif
                 
 
-                let version0 = 0;                
+                let version0 = 0;
+                let mbVersionExtra = 0;
+                // #v-ifdef MODE == VITE_MICROBIT_MODE
+                //for micro:bit we can get the version from the version reference JSON
+                mbVersionExtra = this.getMicrobitVersionFor(context + "." + token);
+                // #v-endif
+
                 const items =  tppCompletions.filter((s) => !s.acResult.startsWith("_") || token.startsWith("_")).map((s) => ({
                     acResult: s.acResult,
                     documentation: s.documentation,
                     params: s.params == null ? [] : s.params.map((p) => ({name: p})),
                     type: ["function", "module", "variable", "type"].includes(s.type ?? "") ? [s.type] : [],
-                    version: version0 /* IFTRUE_isMicrobit + this.getMicrobitVersionFor(context + "." + token) FITRUE_isMicrobit */, //for micro:bit we can get the version from the version reference JSON
+                    version: version0 + mbVersionExtra,
                 } as AcResultType));
                 this.acResults = {[context]: items};
                 this.showSuggestionsAC(token);
@@ -567,7 +575,6 @@ export default Vue.extend({
             const curAC = this.resultsToShow[this.currentModule].find((e) => e.index === this.selected) as AcResultType;
             if (curAC) {
                 let doc = curAC.documentation;
-                // eslint-disable-next-line no-inner-declarations
                 function argText(arg: SignatureArg) : string {
                     if (arg.defaultValue != null) {
                         return _.escape(arg.name) + " = " + _.escape(arg.defaultValue);
@@ -576,7 +583,6 @@ export default Vue.extend({
                         return _.escape(arg.name);
                     }
                 }
-                // eslint-disable-next-line no-inner-declarations
                 function paramsText(sig: Signature) : string{
                     const posOnly = sig.positionalOnlyArgs.slice(sig.firstParamIsSelfOrCls ? 1 : 0);
                     return [
@@ -601,7 +607,7 @@ export default Vue.extend({
             return Object.values(this.resultsToShow)?.length > 0;
         },  
 
-        /* IFTRUE_isMicrobit */
+        // #v-ifdef MODE == VITE_MICROBIT_MODE
         getMicrobitVersionFor(elementPath: string): number {
             // Get through the version definitions to find the version.
             // The version is listed for things v2+.
@@ -624,7 +630,7 @@ export default Vue.extend({
             }
             return resVersion;
         },        
-        /* FITRUE_isMicrobit */
+        // #v-endif
     }, 
 
 });

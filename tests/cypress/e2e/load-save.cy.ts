@@ -5,12 +5,13 @@
 // the same result.  The other is that if we enter some code (especially code with metadata-required things like disabled frames)
 // it should save correctly.
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
-import i18n from "@/i18n";
+// imports the locale files we need for the locales used by this test
+import en from "@/localisation/en/en_main.json";
+
 import "../support/expression-test-support";
 import {checkDownloadedFileEquals, loadFile} from "../support/load-save-support";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
@@ -100,18 +101,25 @@ function testRoundTripImportAndDownload(filepath: string) {
     });
 }
 
-function testEntryDisableAndSave(commands: string, disableFrames: string[], filepath: string) {
+function testEntryDisableAndSave(commands: string|string[], disableFrames: string[], filepath: string) {
     filepath = adjustIfMicrobit(filepath);
     
     cy.readFile(filepath).then((spy) => {
         // Delete existing:
         focusEditorPasteAndClear();
         
-        cy.get("body").type(commands);
+        // Some commands may require a pause in the middle of typing, for example when adding block frames which
+        // can take a bit of time for their body/joint sections to be rendered in the UI.
+        // Therefore, we assume the commands breaks (via the array) already provides when we should pause.
+        const commandsAsArray = (typeof commands === "string") ? [commands] : commands;
+        commandsAsArray.forEach((cmd) => {
+            cy.get("body").type(cmd);
+            cy.wait(100); // might be useless for last iteration, but never mind.
+        });
         
         disableFrames.forEach((txt) => {
             cy.contains("span." + scssVars.labelSlotInputClassName, txt).rightclick();
-            cy.contains("*", i18n.t("contextMenu.disable") as string).click();
+            cy.contains("*", en.contextMenu.disable).click();
         });
 
         // The files will contain the default project documentation, so we need to include it in the code
@@ -128,7 +136,8 @@ describe("Loads and re-saves fixture files", () => {
     });
     it("Outputs a dummy for solo try", () => {
         // Make an empty try, which should save with a placeholder:
-        testEntryDisableAndSave("tpmsg{enter}{downarrow}{backspace}", [], "tests/cypress/fixtures/project-try-solo.spy");
+        // (try is followed by a pause, because it can take a bit longer to add its body/join sections)
+        testEntryDisableAndSave(["t","pmsg{enter}{downarrow}{backspace}"], [], "tests/cypress/fixtures/project-try-solo.spy");
     });
     it("Loads and saves a solo try", () => {
         // Make an empty try, which should save with a placeholder:
@@ -139,7 +148,8 @@ describe("Loads and re-saves fixture files", () => {
 describe("Tests disabling frames", () => {
     it("Outputs a dummy for try with disabled except", () => {
         // Make an empty try, which should save with a placeholder:
-        testEntryDisableAndSave("tpmsg{enter}{rightarrow}extype{rightarrow}pword", ["extype"], "tests/cypress/fixtures/project-try-disabled-except.spy");
+        // (try is followed by a pause, because it can take a bit longer to add its body/join sections):
+        testEntryDisableAndSave(["t","pmsg{enter}{rightarrow}extype{rightarrow}pword"], ["extype"], "tests/cypress/fixtures/project-try-disabled-except.spy");
     });
     it("Loads and saves a try with disabled except", () => {
         // Make an empty try, which should save with a placeholder:
@@ -178,10 +188,12 @@ describe("Tests blanks", () => {
         //     return
         // raise ___strype_blank
         // ___strype_blank = 1 + ___strype_blank * ___strype_blank / () - __strype_blank
-        testEntryDisableAndSave("{uparrow}{uparrow}" +
+
+        //(function and if are followed by a pause, because it can take a bit longer to add their body/joint section)
+        testEntryDisableAndSave(["{uparrow}{uparrow}" +
             "ix {rightarrow}f{downarrow}{downarrow}" +
-            "f{downarrow}{downarrow}i{rightarrow} {downarrow}{downarrow}r{rightarrow}{downarrow}{downarrow}" +
-            "a{rightarrow}={rightarrow}1+*/()-", [], "tests/cypress/fixtures/project-blanks.spy");
+            "f","{downarrow}{downarrow}i","{rightarrow} {downarrow}{downarrow}r{rightarrow}{downarrow}{downarrow}" +
+            "a{rightarrow}={rightarrow}1+*/()-"], [], "tests/cypress/fixtures/project-blanks.spy");
     });
     it("Loads and saves with lots of blanks", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-blanks.spy");
@@ -208,7 +220,7 @@ describe("Tests saving layout metadata", () => {
     it("Saves changed layout to tabsExpanded", () => {
         focusEditorPasteAndClear();
         cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
-        cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-expanded") + "']").click();
+        cy.get("div[title='" + en.PEA["PEA-layout-tabs-expanded"] + "']").click();
 
         // Since the default code contains a project doc, we need to include it to the code
         cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f.replace("#(=> Section:Imports", defaultProjectDocFullLine + "#(=> Section:Imports"), "My project.spy", true));
@@ -216,8 +228,8 @@ describe("Tests saving layout metadata", () => {
     it("Saves changed layout to tabsExpanded and back", () => {
         focusEditorPasteAndClear();
         cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
-        cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-expanded") + "']").click();
-        cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-collapsed") + "']").click();
+        cy.get("div[title='" + en.PEA["PEA-layout-tabs-expanded"] + "']").click();
+        cy.get("div[title='" + en.PEA["PEA-layout-tabs-collapsed"] + "']").click();
 
         // Since the default code contains a project doc, we need to include it to the code
         cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded-collapsed.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f.replace("#(=> Section:Imports", defaultProjectDocFullLine + "#(=> Section:Imports"), "My project.spy", true));

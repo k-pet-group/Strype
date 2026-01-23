@@ -5,7 +5,6 @@
             "label": "Serve Strype micro:bit",
             "dependsOn": [
                 "npm: clear",
-                "clear cache loader",
                 "SUB serve strype microbit"
             ],
             "problemMatcher": []
@@ -15,7 +14,6 @@
             "dependsOn": [
                 "SUB notify pre-built requirements",
                 "npm: clear",
-                "clear cache loader",
                 "SUB build strype microbit"
             ],
             "problemMatcher": []
@@ -24,7 +22,6 @@
             "label": "Serve Strype python",
             "dependsOn": [
                 "npm: clear",
-                "clear cache loader",
                 "SUB serve strype python"
             ],
             "problemMatcher": []
@@ -34,24 +31,23 @@
             "dependsOn": [
                 "SUB notify pre-built requirements",
                 "npm: clear",
-                "clear cache loader",
                 "SUB build strype python"
             ],
             "problemMatcher": []
         },
         {
             "type": "npm",
-            "script": "serve --microbit",
+            "script": "serve:microbit",
             "problemMatcher": [],
             "label": "SUB serve strype microbit",
-            "detail": "vue-cli-service serve"
+            "detail": "vite (serve)"
         },
         {
             "type": "npm",
-            "script": "serve --python",
+            "script": "serve:python",
             "problemMatcher": [],
             "label": "SUB serve strype python",
-            "detail": "vue-cli-service serve"
+            "detail": "vite (serve)"
         },
         {
             "type": "shell",
@@ -60,19 +56,19 @@
         },
         {
             "type": "npm",
-            "script": "build --microbit",
+            "script": "build:microbit",
             "group": "build",
             "problemMatcher": [],
             "label": "SUB build strype microbit",
-            "detail": "vue-cli-service build"
+            "detail": "vite build"
         },
         {
             "type": "npm",
-            "script": "build --python",
+            "script": "build:python",
             "group": "build",
             "problemMatcher": [],
             "label": "SUB build strype python",
-            "detail": "vue-cli-service build"
+            "detail": "vite build"
         },
         {
             "type":"npm",
@@ -86,13 +82,5 @@
             "problemMatcher": [],
             "label": "npm: clear",
         },
-        {
-			"type": "shell",
-			"command": "rm -rf ./node_modules/.cache",
-            "windows": {
-                "command":"remove-item -path .\\node_modules\\.cache\\ -Force -Recurse"
-            },
-			"label": "clear cache loader",
-		}
     ]
 }

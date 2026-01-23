@@ -1762,7 +1762,7 @@ export default Vue.extend({
 .#{$strype-classname-error-slot} {
     display: inline-block;
     position:relative;
-    background: url("~@/assets/images/wave.png") bottom repeat-x;
+    background: url("@/assets/images/wave.png") bottom repeat-x;
     min-width: 15px !important; // if a slot is empty, it is almost impossible to see the wave underline, so we get a minimum width set to erroneous slots
 }
 

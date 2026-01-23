@@ -3,7 +3,7 @@
     <div @keydown="handleKeyEvent" @keyup="handleKeyEvent" tabindex="-1" @mousedown.self.stop.prevent>
         <CloudDriveHandler :ref="cloudDriveHandlerComponentId" :openSharedProjectFileId="openSharedProjectId" />
         <div>
-            <a href="https://strype.org/" :title="$i18n.t('appMenu.homepage')"><img class="top-left-strype-logo" :src="require('@/assets/images/Strype-logo-128-2x.png')"></a>
+            <a href="https://strype.org/" :title="$i18n.t('appMenu.homepage')"><img class="top-left-strype-logo" src="@/assets/images/Strype-logo-128-2x.png"></a>
         </div>
         <Slide 
             :isOpen="showMenu"
@@ -21,19 +21,19 @@
                 <div class="project-target-popup-content-container">
                     <span v-t="'appMessage.loadToTarget'" class="load-save-label"/>
                     <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
-                        <div id="loadFromGDStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, this.loadProjectModalDlgId)"
+                        <div id="loadFromGDStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
                             @mouseenter="changeTargetFocusOnMouseOver">
-                            <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
+                            <img src="@/assets/images/logoGDrive.png" alt="Google Drive"/> 
                             <span>Google Drive</span>
                         </div>
-                        <div id="loadFromODStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncODValue)" @keydown.self="onTargetButtonKeyDown($event, this.loadProjectModalDlgId)"
+                        <div id="loadFromODStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncODValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
                             @mouseenter="changeTargetFocusOnMouseOver">
-                            <img :src="require('@/assets/images/logoOneDrive.svg')" alt="OneDrive"/> 
+                            <img src="@/assets/images/logoOneDrive.svg" alt="OneDrive"/> 
                             <span>OneDrive</span>
                         </div>
-                        <div :id="loadFromFSStrypeButtonId" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, this.loadProjectModalDlgId)"
+                        <div :id="loadFromFSStrypeButtonId" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
                             @mouseenter="changeTargetFocusOnMouseOver">
-                            <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
+                            <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
                             <span v-t="'appMessage.targetFS'"></span>
                         </div>
                     </div>
@@ -52,19 +52,19 @@
                         <span v-t="'appMessage.saveToTarget'" class="load-save-label cell" />
                         <div class="cell">
                             <div :ref="saveProjectTargetButtonGpId" class="project-target-button-container">
-                                <div id="saveToGDStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, this.saveProjectModalDlgId)"
+                                <div id="saveToGDStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncGDValue || tempSyncTarget == noSyncTargetValue}">
-                                    <img :src="require('@/assets/images/logoGDrive.png')" alt="Google Drive"/> 
+                                    <img src="@/assets/images/logoGDrive.png" alt="Google Drive"/> 
                                     <span>Google Drive</span>
                                 </div>
-                                <div id="saveToODStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncODValue, true)" @keydown.self="onTargetButtonKeyDown($event, this.saveProjectModalDlgId)"
+                                <div id="saveToODStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncODValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncODValue}">
-                                    <img :src="require('@/assets/images/logoOneDrive.svg')" alt="OneDrive"/> 
+                                    <img src="@/assets/images/logoOneDrive.svg" alt="OneDrive"/> 
                                     <span>OneDrive</span>
                                 </div>
-                                <div :id="saveToFSStrypeButtonId" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, this.saveProjectModalDlgId)"
+                                <div :id="saveToFSStrypeButtonId" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncFSValue}">
-                                    <img :src="require('@/assets/images/FSicon.png')" :alt="$t('appMessage.targetFS')"/> 
+                                    <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
                                     <span v-t="'appMessage.targetFS'"></span>
                                 </div>
                             </div>
@@ -89,25 +89,25 @@
             <div class="menu-separator-div"></div>           
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadDemoProjectModal">{{$t('appMenu.loadDemoProject')}}</a>
             <OpenDemoDlg ref="openDemoDlg" :dlg-id="loadDemoProjectModalDlgId"/>
-            /* IFTRUE_isPython
+            <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLibraryDoc">{{$t('appMenu.apiDocumentation')}}</a>
-               FITRUE_isPython */
+            <!-- #v-endif-->
             <!-- category: export -->
             <!-- share project -->
             <a :id="shareProjectLinkId" v-show="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true}" @click="onShareProjectClick">{{$t('appMenu.shareProject')}}<span class="strype-menu-kb-shortcut">{{shareProjectKBShortcut}}</span></a>
             <ModalDlg :dlgId="shareProjectChooseMethodDlgId" :dlgTitle="$t('appMessage.createShareProjectLink')" showCloseBtn hideDlgBtns>
                 <div>
                     <div class="share-method-container">
-                        <div id="shareMethodSnapshotButton" :class="scssVars.projectTargetButtonClassName + ' share-method-dlg'" tabindex="0"  @click="copySnapshotLink()" @keydown.self="onTargetButtonKeyDown($event, this.shareProjectChooseMethodDlgId)"
+                        <div id="shareMethodSnapshotButton" :class="scssVars.projectTargetButtonClassName + ' share-method-dlg'" tabindex="0"  @click="copySnapshotLink()" @keydown.self="onTargetButtonKeyDown($event, shareProjectChooseMethodDlgId)"
                              @mouseenter="changeTargetFocusOnMouseOver">
-                            <img :src="require('@/assets/images/snapshotIcon.svg')" :alt="$t('appMessage.methodSnapshotLink')"/>
+                            <img src="@/assets/images/snapshotIcon.svg" :alt="$t('appMessage.methodSnapshotLink')"/>
                             <span class="share-method-title" v-t="'appMessage.methodSnapshotLink'"></span>
                             <span class="share-method-explanation" v-t="'appMessage.methodSnapshotLinkExplanation'"></span>
                             <span class="share-method-warning" v-if="shareContentZippedBase64.length > 2000" v-t="'appMessage.snapshotLinkTooLarge'"></span>
                         </div>
-                        <div id="shareMethodCloudButton" :class="scssVars.projectTargetButtonClassName + ' share-method-dlg'" tabindex="0"  @click="copyCloudLink()" @keydown.self="onTargetButtonKeyDown($event, this.shareProjectChooseMethodDlgId)"
+                        <div id="shareMethodCloudButton" :class="scssVars.projectTargetButtonClassName + ' share-method-dlg'" tabindex="0"  @click="copyCloudLink()" @keydown.self="onTargetButtonKeyDown($event, shareProjectChooseMethodDlgId)"
                              @mouseenter="changeTargetFocusOnMouseOver">
-                            <img :src="require('@/assets/images/logoOneDrive.svg')" alt="$t('appMessage.methodCloudLink')"/>
+                            <img src="@/assets/images/logoOneDrive.svg" alt="$t('appMessage.methodCloudLink')"/>
                             <span class="share-method-title" v-t="'appMessage.methodCloudLink'"></span>
                             <span class="share-method-explanation" v-t="'appMessage.methodCloudLinkExplanation'"></span>
                             <span class="share-method-warning" v-if="!canShareProjectViaCloud" v-t="'appMessage.cloudShareUnavailable'"></span>
@@ -140,9 +140,9 @@
                         </div>
                     </ModalDlg>
             <!-- download python/hex project -->
-            /* IFTRUE_isMicrobit 
+            <!-- #v-ifdef MODE == VITE_MICROBIT_MODE-->
             <a v-if="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="downloadHex();showMenu=false;" v-t="'appMenu.downloadHex'" />
-            FITRUE_isMicrobit */
+            <!-- #v-endif-->
             <a v-if="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="downloadPython();showMenu=false;" v-t="'appMenu.downloadPython'" />
             <!-- BLANK SPACE IN MENU TO FOOTER -->
             <div class="flex-padding" />
@@ -222,7 +222,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue from "vue";
+import Vue, { getCurrentInstance, watch } from "vue";
 import { useStore, settingsStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, CaretPosition, CollapsedState, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
@@ -235,7 +235,6 @@ import { canBrowserOpenFilePicker, canBrowserSaveFilePicker, openFile, saveFile 
 import { generateSPYFileContent } from "@/helpers/load-save";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { BvModalEvent } from "bootstrap-vue";
-import { watch } from "@vue/composition-api";
 import { cloneDeep } from "lodash";
 import App from "@/App.vue";
 import appPackageJson from "@/../package.json";
@@ -246,6 +245,10 @@ import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
 import { CloudFileSharingStatus, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import {deflateRaw} from "pako";
 import {Base64} from "js-base64";
+import disabledUndoImgPath from "@/assets/images/disabledUndo.svg";
+import disabledRedoImgPath from "@/assets/images/disabledRedo.svg";
+import undoImgPath from "@/assets/images/undo.svg";
+import redoImgPath from "@/assets/images/redo.svg";
 
 //////////////////////
 //     Component    //
@@ -259,6 +262,25 @@ export default Vue.extend({
         Slide,
         CloudDriveHandler,
         ModalDlg,
+    },
+
+    setup() {
+        const instance = getCurrentInstance() as any;
+        const vm = instance.proxy;
+
+        // Moved what we had in mounted() before Vue 3 here, as Vue 3, using the composition API natively, now requires having them in setup().
+        // Composition API allows watching an array of "sources" (cf https://vuejs.org/guide/essentials/watchers.html)
+        // We need to update the current error Index when: the error count changes, navigation occurs (i.e. editing toggles, caret pos or focus pos changes)
+        // but we bypass this when we manually change the error navigation index (i.e. when the user clicks on the navigation icons)
+        watch([() => vm.errorCount, () => useStore().isEditing, () => useStore().currentFrame.id, () => useStore().currentFrame.caretPosition, () => useStore().anchorSlotCursorInfos], () => {
+            if(!vm.navigateToErrorRequested){
+                vm.$nextTick(() => {
+                    vm.currentErrorNavIndex = (vm.errorCount > 0) ? getNearestErrorIndex() : -1;
+                });
+            }
+        });
+
+        return {};
     },
 
     data: function() {
@@ -349,18 +371,7 @@ export default Vue.extend({
         (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).$on(CustomEventTypes.openSharedFileDone, () => {
             this.openSharedProjectId = "";
             this.openSharedProjectTarget = StrypeSyncTarget.none;
-        });
-
-        // Composition API allows watching an array of "sources" (cf https://vuejs.org/guide/essentials/watchers.html)
-        // We need to update the current error Index when: the error count changes, navigation occurs (i.e. editing toggles, caret pos or focus pos changes)
-        // but we bypass this when we manually change the error navigation index (i.e. when the user clicks on the navigation icons)
-        watch([() => this.errorCount, () => this.appStore.isEditing, () => this.appStore.currentFrame.id, () => this.appStore.currentFrame.caretPosition, () => this.appStore.anchorSlotCursorInfos], () => {
-            if(!this.navigateToErrorRequested){
-                this.$nextTick(() => {
-                    this.currentErrorNavIndex = (this.errorCount > 0) ? getNearestErrorIndex() : -1;
-                });
-            }
-        });
+        });        
     },
 
     beforeDestroy(){
@@ -576,11 +587,11 @@ export default Vue.extend({
         },
 
         undoImagePath(): string {
-            return (this.isUndoDisabled) ? require("@/assets/images/disabledUndo.svg") : require("@/assets/images/undo.svg");
+            return (this.isUndoDisabled) ? disabledUndoImgPath : undoImgPath;
         },
 
         redoImagePath(): string {
-            return (this.isRedoDisabled) ? require("@/assets/images/disabledRedo.svg") : require("@/assets/images/redo.svg");
+            return (this.isRedoDisabled) ? disabledRedoImgPath : redoImgPath;
         },
 
         errorCount(): number{
@@ -612,7 +623,7 @@ export default Vue.extend({
         getBuildHash(): string {
             // The hash should exist as it is set when serving or compiling the server..
             // but to keep TS happy
-            return process.env.VUE_APP_BUILD_GIT_HASH ?? "Strype-hash-unknown";
+            return __BUILD_GIT_HASH__ ?? "Strype-hash-unknown";
         },
 
         strypeProjMIMEDescArray(): MIMEDesc[]{
@@ -1262,9 +1273,9 @@ export default Vue.extend({
         toggleMenuOnOff(e: Event | null): void {
             if(e && this.isPythonRunning){
                 // When the project runs, we can't open the menu, but we show some "notification" in the PEA
-                /* IFTRUE_isPython */
+                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
                 document.dispatchEvent(new Event(CustomEventTypes.highlightPythonRunningState));
-                /* FITRUE_isPython */
+                // #v-endif
                 return;
             }
 

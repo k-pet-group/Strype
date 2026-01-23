@@ -49,13 +49,13 @@ import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/help
 import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import scssVars  from "@/assets/style/_export.module.scss";
 import {detectBrowser} from "@/helpers/browser";
-/* IFTRUE_isPython */
+// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { getFrameDefType, SlotType, MediaDataAndDim} from "@/types/types";
 import { getFrameLabelSlotsStructureUID, getLabelSlotUID } from "@/helpers/editor";
 import { preparePasteMediaData } from "@/helpers/media";
 import LabelSlotsStructureComponent from "@/components/LabelSlotsStructure.vue";
 import { getParentOrJointParent } from "@/helpers/storeMethods";
-/* FITRUE_isPython */
+// #v-endif
 
 //////////////////////
 //     Component    //
@@ -217,7 +217,7 @@ export default Vue.extend({
             // so we check that 1) we are on the caret position that is currently selected and 2) that paste is allowed here.
             // We should know the action is about pasting frames or text if some text is present in the clipboard (we clear it when copying frames)
             if (this.isFocusedForPaste) {
-                /*IFTRUE_isPython */
+                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
                 const inFrameType = this.appStore.frameObjects[(this.appStore.currentFrame.caretPosition == CaretPosition.body) ? this.frameId : getParentOrJointParent(this.frameId)].frameType;
                 if(!inFrameType.forbiddenChildrenTypes.includes(AllFrameTypesIdentifier.funccall) && Object.values((event as ClipboardEvent).clipboardData?.items??[]).some((dataTransferItem: DataTransferItem) => dataTransferItem.kind == "file" && /^(image)|(audio)\//.test(dataTransferItem.type))){
                     // For the special case of image media, we want to simulate the addition of a method call with that media.
@@ -261,7 +261,7 @@ export default Vue.extend({
                     event.stopPropagation();
                     return;
                 }
-                /*FITRUE_isPython */
+                // #v-endif
                 const pythonCode = overrideText ?? (event as ClipboardEvent).clipboardData?.getData("text");
                 if (this.pasteAvailable && (pythonCode == undefined || pythonCode.trim().length == 0)) {
                     // We check if pasting frames is possible here, if not, show a message.

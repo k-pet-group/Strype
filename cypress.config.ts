@@ -1,8 +1,6 @@
 import { defineConfig } from "cypress";
 import {rimraf} from "rimraf";
 import fs from "fs";
-// https://github.com/bahmutov/cypress-split
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 const cypressSplit = require("cypress-split");
 
 export default defineConfig({

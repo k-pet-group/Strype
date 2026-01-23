@@ -37,13 +37,13 @@ export function generateSPYFileContent(): string {
     const headers = new Map<string, string | undefined>();
     headers.set(AppName, AppSPYSaveVersion + ":" + AppPlatform);
     headers.set("editorCommandsSplitterPane2Size", saveDivider(useStore().editorCommandsSplitterPane2Size));
-    /* IFTRUE_isPython */
+    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
     const peaLayoutMode = useStore().peaLayoutMode;
     headers.set("peaLayoutMode", (peaLayoutMode === undefined || peaLayoutMode == StrypePEALayoutMode.tabsCollapsed) ? undefined : StrypePEALayoutMode[peaLayoutMode]);
     headers.set("peaCommandsSplitterPane2Size", saveDivider(useStore().peaCommandsSplitterPane2Size));
     headers.set("peaSplitViewSplitterPane1Size", saveDivider(useStore().peaSplitViewSplitterPane1Size));
     headers.set("peaExpandedSplitterPane2Size", saveDivider(useStore().peaExpandedSplitterPane2Size));
-    /* FITRUE_isPython */
+    // #v-endif
     saveContent = Array.from(headers.entries()).filter(([k, v]) => v !== undefined).map((e) => AppSPYFullPrefix + " " + e[0] + ":" + e[1] + "\n").join("") + saveContent;
     return saveContent;
 }

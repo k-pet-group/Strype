@@ -1,7 +1,8 @@
 // Copied from src/types/types.ts
 // Bit annoying that this must be copied, but it's a pain to try to share the original:
 
-const i18n = { t: ((x : string) => x)};
+// imports the locale files we need for the locales used by this test
+import en from "@/localisation/en/en_main.json";
 
 export enum CollapsedState {
     ONLY_HEADER_VISIBLE,
@@ -160,7 +161,7 @@ export const ImportsContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.importsContainer,
     labels: [
-        { label: (i18n.t("appMessage.importsContainer") as string), showSlots: false, defaultText: ""},
+        { label: en.appMessage.importsContainer, showSlots: false, defaultText: ""},
     ],
     allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
@@ -172,7 +173,7 @@ export const DefsContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.defsContainer,
     labels: [
-        { label: (i18n.t("appMessage.defsContainer") as string), showSlots: false, defaultText: ""},
+        { label: en.appMessage.defsContainer, showSlots: false, defaultText: ""},
     ],
     allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
@@ -184,7 +185,7 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     ...BlockDefinition,
     type: ContainerTypesIdentifiers.framesMainContainer,
     labels: [
-        { label: (i18n.t("appMessage.mainContainer") as string), showSlots: false, defaultText: ""},
+        { label: en.appMessage.mainContainer, showSlots: false, defaultText: ""},
     ],
     allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
     forbiddenChildrenTypes: BlockDefinition.forbiddenChildrenTypes.concat(Object.values(AllFrameTypesIdentifier)
@@ -218,7 +219,7 @@ export function generateAllFrameDefinitionTypes(): void{
     const FuncCallDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.funccall,
-        labels: [{ label: "", defaultText: i18n.t("frame.defaultText.funcCall") as string, showLabel: false}],
+        labels: [{ label: "", defaultText: en.frame.defaultText.funcCall, showLabel: false}],
     };
 
     const BlankDefinition: FramesDefinitions = {
@@ -230,21 +231,21 @@ export function generateAllFrameDefinitionTypes(): void{
     const ReturnDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.return,
-        labels: [{ label: "return ", defaultText: i18n.t("frame.defaultText.expression") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK}],
+        labels: [{ label: "return ", defaultText: en.frame.defaultText.expression, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK}],
     };
 
     const GlobalDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.global,
-        labels: [{ label: "global ", defaultText: i18n.t("frame.defaultText.variable") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES}],
+        labels: [{ label: "global ", defaultText: en.frame.defaultText.variable, allowedSlotContent: AllowedSlotContent.ONLY_NAMES}],
     };
 
     const VarAssignDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.varassign,
         labels: [
-            { label: "", defaultText: i18n.t("frame.defaultText.identifier") as string},
-            { label: " &#x21D0; ", defaultText: i18n.t("frame.defaultText.value") as string},
+            { label: "", defaultText: en.frame.defaultText.identifier},
+            { label: " &#x21D0; ", defaultText: en.frame.defaultText.value},
         ],
     };
 
@@ -268,7 +269,7 @@ export function generateAllFrameDefinitionTypes(): void{
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.raise,
         labels: [
-            { label: "raise ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK },
+            { label: "raise ", defaultText: en.frame.defaultText.exception, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK },
         ],
     };
 
@@ -276,7 +277,7 @@ export function generateAllFrameDefinitionTypes(): void{
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.import,
         labels: [
-            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "import ", defaultText: en.frame.defaultText.modulePart, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
@@ -288,8 +289,8 @@ export function generateAllFrameDefinitionTypes(): void{
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.fromimport,
         labels: [
-            { label: "from ", defaultText: i18n.t("frame.defaultText.module") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
-            { label: "import ", defaultText: i18n.t("frame.defaultText.modulePart") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES_OR_STAR },
+            { label: "from ", defaultText: en.frame.defaultText.module, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "import ", defaultText: en.frame.defaultText.modulePart, allowedSlotContent: AllowedSlotContent.ONLY_NAMES_OR_STAR },
             // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
             // and thus not giving us back any AC results on the shortcut
             //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
@@ -301,14 +302,14 @@ export function generateAllFrameDefinitionTypes(): void{
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.library,
         labels: [
-            { label: "library ", defaultText: i18n.t("frame.defaultText.libraryAddress") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.LIBRARY_ADDRESS },
+            { label: "library ", defaultText: en.frame.defaultText.libraryAddress, acceptAC: false, allowedSlotContent: AllowedSlotContent.LIBRARY_ADDRESS },
         ],
     };
 
     const CommentDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.comment,
-        labels: [{ label: "# ", defaultText: i18n.t("frame.defaultText.comment") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION}],
+        labels: [{ label: "# ", defaultText: en.frame.defaultText.comment, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION}],
     };
 
     // Blocks
@@ -316,7 +317,7 @@ export function generateAllFrameDefinitionTypes(): void{
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.if,
         labels: [
-            { label: "if ", defaultText: i18n.t("frame.defaultText.condition") as string},
+            { label: "if ", defaultText: en.frame.defaultText.condition},
             { label: " :", showSlots: false, defaultText: ""},
         ],
         allowJointChildren: true,
@@ -331,7 +332,7 @@ export function generateAllFrameDefinitionTypes(): void{
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.elif,
         labels: [
-            { label: "elif ", defaultText: i18n.t("frame.defaultText.condition") as string},
+            { label: "elif ", defaultText: en.frame.defaultText.condition},
             { label: " :", showSlots: false, defaultText: ""},
         ],
         isJointFrame: true,
@@ -350,8 +351,8 @@ export function generateAllFrameDefinitionTypes(): void{
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.for,
         labels: [
-            { label: "for ", defaultText: i18n.t("frame.defaultText.identifier") as string, acceptAC: false},
-            { label: " in ", defaultText: i18n.t("frame.defaultText.list") as string},
+            { label: "for ", defaultText: en.frame.defaultText.identifier, acceptAC: false},
+            { label: " in ", defaultText: en.frame.defaultText.list},
             { label: " :", showSlots: false, defaultText: ""},
         ],
         allowJointChildren: true,
@@ -363,7 +364,7 @@ export function generateAllFrameDefinitionTypes(): void{
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.while,
         labels: [
-            { label: "while ", defaultText: i18n.t("frame.defaultText.condition") as string},
+            { label: "while ", defaultText: en.frame.defaultText.condition},
             { label: " :", showSlots: false, defaultText: ""},
         ],
         allowJointChildren: true,
@@ -375,7 +376,7 @@ export function generateAllFrameDefinitionTypes(): void{
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.except,
         labels: [
-            { label: "except ", defaultText: i18n.t("frame.defaultText.exception") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, allowedSlotContent: AllowedSlotContent.ONLY_NAMES},
+            { label: "except ", defaultText: en.frame.defaultText.exception, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, allowedSlotContent: AllowedSlotContent.ONLY_NAMES},
             { label: " :", showSlots: false, defaultText: ""},
         ],
         jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
@@ -407,8 +408,8 @@ export function generateAllFrameDefinitionTypes(): void{
         ...BlockDefinition,
         type: DefIdentifiers.funcdef,
         labels: [
-            { label: "def ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
-            { label: "(", defaultText: i18n.t("frame.defaultText.parameters") as string, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_FORMAL_PARAMS },
+            { label: "def ", defaultText: en.frame.defaultText.name, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "(", defaultText: en.frame.defaultText.parameters, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_FORMAL_PARAMS },
             { label: ") :", showSlots: false, defaultText: ""},
             { label: "‘‘‘", newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: "Describe the function", allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
@@ -419,9 +420,9 @@ export function generateAllFrameDefinitionTypes(): void{
         ...BlockDefinition,
         type: DefIdentifiers.classdef,
         labels: [
-            { label: "class ", defaultText: i18n.t("frame.defaultText.name") as string, acceptAC: false},
+            { label: "class ", defaultText: en.frame.defaultText.name, acceptAC: false},
             { label: " :", showSlots: false, defaultText: ""},
-            { label: "'''", newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.classDescription") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
+            { label: "'''", newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: en.frame.defaultText.classDescription, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
         colour: "#baded3",
         forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
@@ -434,8 +435,8 @@ export function generateAllFrameDefinitionTypes(): void{
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.with,
         labels: [
-            { label: "with ", defaultText: i18n.t("frame.defaultText.expression") as string},
-            { label: " as ", defaultText: i18n.t("frame.defaultText.identifier") as string, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: "with ", defaultText: en.frame.defaultText.expression},
+            { label: " as ", defaultText: en.frame.defaultText.identifier, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
             { label: " :", showSlots: false, defaultText: ""},
         ],
         colour: "#ede8f2",
@@ -485,13 +486,13 @@ export function getFrameDefType(key: string): FramesDefinitions{
 export const allFrameCommandsDefs = {
     " ": [{
         type: getFrameDefType(AllFrameTypesIdentifier.funccall),
-        description: i18n.t("frame.funccall_desc") as string,
+        description: en.frame.funccall_desc,
         shortcuts: [" "],
-        symbol: i18n.t("buttonLabel.spaceBar") as string,
+        symbol: en.buttonLabel.spaceBar,
     }],
     "=": [{
         type: getFrameDefType(AllFrameTypesIdentifier.varassign),
-        description: i18n.t("frame.varassign_desc") as string,
+        description: en.frame.varassign_desc,
         shortcuts: ["="],
     }],
     "g": [{
@@ -538,7 +539,7 @@ export const allFrameCommandsDefs = {
         },
         {
             type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
-            description: i18n.t("frame.funcdef_desc") as string,
+            description: en.frame.funcdef_desc,
             shortcuts: ["f"],
             index: 1,
         },
@@ -551,7 +552,7 @@ export const allFrameCommandsDefs = {
     ],
     "c": [{
         type: getFrameDefType(AllFrameTypesIdentifier.classdef),
-        description: i18n.t("frame.classdef_desc") as string,
+        description: en.frame.classdef_desc,
         shortcuts: ["c"],
     }],
     "w": [{
@@ -576,12 +577,12 @@ export const allFrameCommandsDefs = {
     }],
     "#": [{
         type: getFrameDefType(AllFrameTypesIdentifier.comment),
-        description: i18n.t("frame.comment_desc") as string,
+        description: en.frame.comment_desc,
         shortcuts: ["#"],
     }],
     "enter": [{
         type: getFrameDefType(AllFrameTypesIdentifier.blank),
-        description: i18n.t("frame.blank_desc") as string,
+        description: en.frame.blank_desc,
         shortcuts: ["\x13"],
         symbol: "enter",
         isSVGIconSymbol: true,

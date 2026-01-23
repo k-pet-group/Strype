@@ -5,22 +5,22 @@
   <meta charset="utf-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge">
   <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <link rel="icon" type="image/png" href="<%= BASE_URL %>favicon.png">
-  <link rel="apple-touch-icon" href="<%= BASE_URL %>favicon.png">
-  <link rel="apple-touch-startup-image" href="<%= BASE_URL %>favicon.png">
+  <link rel="icon" type="image/png" href="favicon.png">
+  <link rel="apple-touch-icon" href="favicon.png">
+  <link rel="apple-touch-startup-image" href="favicon.png">
   <!-- Import for the fontawesome icons (v5.15.4) -->
-  <link rel="stylesheet" href="<%= BASE_URL %>fontawesome/css/all.min.css">
-  <link rel="stylesheet" href="<%= BASE_URL %>fontawesome/css/v4-shims.min.css">
-  <script src="<%= BASE_URL %>js/skulpt.min.js" defer></script>
-  <script src="<%= BASE_URL %>js/skulpt-stdlib.js" defer></script>
+  <link rel="stylesheet" href="/fontawesome/css/all.min.css">
+  <link rel="stylesheet" href="/fontawesome/css/v4-shims.min.css">
+  <script src="/js/skulpt.min.js" defer></script>
+  <script src="/js/skulpt-stdlib.js" defer></script>
   <!-- Needed to dynamically load fonts: -->
   <script src="https://ajax.googleapis.com/ajax/libs/webfont/1.6.26/webfont.js" async integrity="sha256-gQFqxr6FC3LfXU+qDDzsjiwbC6AEVxIUSmdmrfrUC+4=" crossorigin="anonymous"></script>
     <!-- fonts-->
   <style>
       @font-face {
           font-family: 'AHN-Strype';
-          src:  url("<%= BASE_URL %>fonts/AHN-Strype-Regular.woff2") format('woff2'),
-                url("<%= BASE_URL %>fonts/AHN-Strype-Regular.woff") format('woff');
+          src:  url("/fonts/AHN-Strype-Regular.woff2") format('woff2'),
+                url("/fonts/AHN-Strype-Regular.woff") format('woff');
       }
       /* latin-ext */
       @font-face {
@@ -28,7 +28,7 @@
         font-style: normal;
         font-weight: 200 900;
         font-stretch: 50% 200%;
-        src: url("<%= BASE_URL %>fonts/Inconsolata-latin-ext.woff2") format('woff2');) format('woff2');
+        src: url("/fonts/Inconsolata-latin-ext.woff2") format('woff2');
         unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
       }
       /* latin */
@@ -37,7 +37,7 @@
         font-style: normal;
         font-weight: 200 900;
         font-stretch: 50% 200%;
-        src: url("<%= BASE_URL %>fonts/Inconsolata-latin.woff2") format('woff2');
+        src: url("/fonts/Inconsolata-latin.woff2") format('woff2');
         unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
       }
   </style>
@@ -91,6 +91,8 @@
   
   <b id="uncompatibleBrowserSpan" style="display: block; white-space: pre; margin:auto; width: 50%;"></b>
   
+  <!-- Vite (contrary to Vue CLI), requires an explicit load of the main Vue script -->
+  <script type="module" src="/src/main.ts"></script>
   <div id="app"></div>
   <!-- built files will be auto injected -->
 

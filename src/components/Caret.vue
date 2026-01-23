@@ -3,7 +3,7 @@
         <!-- The inner content of the caret is reserved for the cross (x) that is displayed during DnD when a location is forbidden for dropping -->
          <span v-if="!isInvisible && areFramesDraggedOver && !areDropFramesAllowed" class="caret-cross-forbidden-dnd caret-cross-forbidden-dnd-arm1"></span>
          <span v-if="!isInvisible && areFramesDraggedOver && !areDropFramesAllowed" class="caret-cross-forbidden-dnd caret-cross-forbidden-dnd-arm2"></span>
-         <img  v-if="!isInvisible && areFramesDraggedOver && isDuplicateDnDAction" :src="require('@/assets/images/plus.svg')" alt="+" class="caret-plus-dnd">
+         <img  v-if="!isInvisible && areFramesDraggedOver && isDuplicateDnDAction" src="@/assets/images/plus.svg" alt="+" class="caret-plus-dnd">
     </div>
 </template>
 

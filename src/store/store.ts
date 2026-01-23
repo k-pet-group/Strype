@@ -13,15 +13,14 @@ import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 import {cloneDeep, isEqual} from "lodash";
 import $ from "jquery";
 import { BvModalEvent } from "bootstrap-vue";
-import { nextTick } from "@vue/composition-api";
 import { TPyParser } from "tigerpython-parser";
 import AppComponent from "@/App.vue";
 import emptyState from "@/store/initial-states/empty-state";
-/* IFTRUE_isPython */
+// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import PEAComponent from "@/components/PythonExecutionArea.vue";
 import CommandsComponent from "@/components/Commands.vue";
 import { actOnTurtleImport, getPEAComponentRefId } from "@/helpers/editor";
-/* FITRUE_isPython */
+// #v-endif
 
 function getState(): StateAppObject {
     // If we have a state available in the local (browser's) storage, we strip off the frame contents
@@ -31,9 +30,9 @@ function getState(): StateAppObject {
     let returnedState;
     if(typeof(Storage) !== "undefined") {
         let storageString = AutoSaveKeyNames.pythonEditorState;
-        /* IFTRUE_isMicrobit */
+        // #v-ifdef MODE == VITE_MICROBIT_MODE
         storageString = AutoSaveKeyNames.mbEditor;
-        /* FITRUE_isMicrobit */
+        // #v-endif
         const savedState = localStorage.getItem(storageString);
         if(savedState) {
             isExistingStateLocated = true;
@@ -42,12 +41,11 @@ function getState(): StateAppObject {
     }
     
     if(!isExistingStateLocated) {
-        /* IFTRUE_isPython */
+        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
         returnedState = initialStates["initialPythonState"];
-        /* FITRUE_isPython */
-        /* IFTRUE_isMicrobit */
+        // #v-else
         returnedState = initialStates["initialMicrobitState"];
-        /* FITRUE_isMicrobit */
+        // #v-endif
     }
     return (returnedState as StateAppObject);
 }
@@ -112,7 +110,7 @@ export const useStore = defineStore("app", {
              ***/ 
             editorCommandsSplitterPane2Size: undefined as StrypeLayoutDividerSettings | undefined, // same as above for the divider between the editor and the commands (pane 2), default is 34%
             
-            /* IFTRUE_isPython */
+            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
             peaLayoutMode:  undefined as StrypePEALayoutMode | undefined, // the project layout view is saved with the store
             
             // The size of the commands/PEA splitter pane 2 size is saved with the store.
@@ -122,7 +120,7 @@ export const useStore = defineStore("app", {
             peaSplitViewSplitterPane1Size: undefined as StrypeLayoutDividerSettings | undefined, // same as above for the split view PEA divider (pane 1), this time a default value is 50%
             
             peaExpandedSplitterPane2Size: undefined as StrypeLayoutDividerSettings | undefined, // same as above for the expanded view divider (pane 2), this time a default value is 50%
-            /* FITRUE_isPython */
+            // #v-endif
             /* end properties for saving layout */
 
             // This flag indicates if the user code is being executed in the Python Execution Area (including the micro:bit simulator)
@@ -1418,14 +1416,14 @@ export const useStore = defineStore("app", {
             this.projectLastSaveDate = -1;
 
             // We check the errors in the code applied to the that new state
-            nextTick().then(() => {
+            Vue.nextTick().then(() => {
                 this.wasLastRuntimeErrorFrameId = undefined,
                 checkEditorCodeErrors();
                 // To make sure that the error navigator gets updated properly (reactivity) we first set the error count to -1 and then count again in next tick so it notified
                 // because when we load a file, we update the error count value in the state but this error check won't be notified if there are actually
                 // still the same number of errors...
                 useStore().errorCount = -1;
-                nextTick().then(() => useStore().errorCount = countEditorCodeErrors());                
+                Vue.nextTick().then(() => useStore().errorCount = countEditorCodeErrors());                
             }); 
         },
 
@@ -1739,6 +1737,8 @@ export const useStore = defineStore("app", {
                     "collapsedState",
                     collapsed
                 ));
+            // A change of collapse status triggers a modification notification
+            this.isEditorContentModified = true;
         },
 
         cycleFrameCollapsedState(frameId: number) {
@@ -1753,6 +1753,8 @@ export const useStore = defineStore("app", {
                 "frozenState",
                 payload.frozen
             );
+            // A change of freeze status triggers a modification notification
+            this.isEditorContentModified = true;
         },
         
 
@@ -1777,7 +1779,7 @@ export const useStore = defineStore("app", {
                 // the component gets created again.
                 // Remove the frame from its parent
                 sourceContainerFrame.childrenIds.splice(sourceContainerFrame.childrenIds.indexOf(draggedFrameId), 1);
-                nextTick(() => {
+                Vue.nextTick(() => {
                     // Append it to the destination list
                     const destFrameListInsertIndex = (destinationCaretPos == CaretPosition.body) ? 0 : destContainerFrame.childrenIds.indexOf(destinationCaretFrameId) + 1;
                     destContainerFrame.childrenIds.splice(destFrameListInsertIndex, 0, draggedFrameId);
@@ -1791,7 +1793,7 @@ export const useStore = defineStore("app", {
             });
 
             //save the state changes for undo/redo after all changes changing the order has been done
-            nextTick(() => {
+            Vue.nextTick(() => {
                 this.saveStateChanges(this.stateBeforeChanges);
 
                 //clear the stateBeforeChanges flag off
@@ -2652,7 +2654,7 @@ export const useStore = defineStore("app", {
                                 .finally(doFinaliseCheckup);                                   
                         }
                     }
-                    catch(err){
+                    catch {
                         // We cannot use the string arguemnt to retrieve a valid state --> inform the users
                         isStateJSONStrValid = false;
                         errorDetailMessage = i18n.t("errorMessage.wrongDataFormat") as string;
@@ -2661,6 +2663,7 @@ export const useStore = defineStore("app", {
                 }            
             });
         },
+
         setDividerStates(newEditorCommandsSplitterPane2Size: StrypeLayoutDividerSettings | undefined, newPEALayout: StrypePEALayoutMode, newPEACommandsSplitterPane2Size: StrypeLayoutDividerSettings | undefined, newPEASplitViewSplitterPane1Size: StrypeLayoutDividerSettings | undefined, newPEAExpandedSplitterPane2Size: StrypeLayoutDividerSettings | undefined, resolve: (value: (PromiseLike<void> | void)) => void, forceSetUndefined?: boolean) {
             setTimeout(() => {
                 let chainedTimeOuts = 400;
@@ -2678,9 +2681,9 @@ export const useStore = defineStore("app", {
                 if (this.peaLayoutMode != newPEALayout) {
                     setTimeout(() => {
                         this.peaLayoutMode = newPEALayout;
-                        /* IFTRUE_isPython */
+                        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
                         ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).togglePEALayout(newPEALayout);
-                        /* FITRUE_isPython */
+                        // #v-endif
                     }, chainedTimeOuts += 200);
                 }
 
@@ -2718,9 +2721,11 @@ export const useStore = defineStore("app", {
                     resolve();
                 }, chainedTimeOuts + 100);
             }, 1000);
-        }, doSetStateFromJSONStr(stateJSONStr: string): Promise<void>{
+        },
+        
+        doSetStateFromJSONStr(stateJSONStr: string): Promise<void>{
             return new Promise((resolve) => {
-                /* IFTRUE_isPython */
+                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
                 // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
                 actOnTurtleImport();
 
@@ -2752,11 +2757,10 @@ export const useStore = defineStore("app", {
                     // Wait a bit after we have reset everything for the UI to get ready, then affect backed up changes
                     this.setDividerStates(newEditorCommandsSplitterPane2Size, newPEALayout ?? StrypePEALayoutMode.tabsCollapsed, newPEACommandsSplitterPane2Size, newPEASplitViewSplitterPane1Size, newPEAExpandedSplitterPane2Size, resolve, true);
                 });
-                /* FITRUE_isPython */
-                /* IFTRUE_isMicrobit */
+                // #v-else
                 this.updateState(JSON.parse(stateJSONStr));
                 resolve();
-                /* FITRUE_isMicrobit */
+                // #v-endif
             });
         },
 
@@ -3202,10 +3206,10 @@ export const settingsStore = defineStore("settings", {
             // Change the frame command labels / details 
             generateAllFrameCommandsDefs();
 
-            /* IFTRUE_isMicrobit */
+            // #v-ifdef MODE == VITE_MICROBIT_MODE
             //change the API description content here, as we don't want to construct the textual API description every time we need it
             getAPIItemTextualDescriptions(true);
-            /* FITRUE_isMicrobit */
+            // #v-endif
 
             // Save the settings
             (vm.$children[0] as InstanceType<typeof AppComponent>).autoSaveStateToWebLocalStorage(SaveRequestReason.saveSettings);

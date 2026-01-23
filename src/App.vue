@@ -16,14 +16,14 @@
                 </div>
             </div>
         </div>
-        /* IFTRUE_isPython
+        <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
         <Splitpanes class="expanded-PEA-splitter-overlay strype-split-theme" v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
             <pane key="1" :size="100 - expandedPEAOverlaySplitterPane2Size">
             </pane>
             <pane ref="overlayExpandedPEAPane2Ref" key="2" :size="expandedPEAOverlaySplitterPane2Size" :min-size="peaOverlayPane2MinSize" :max-size="peaOverlayPane2MaxSize">
             </pane>
         </Splitpanes>
-        FITRUE_isPython */
+        <!-- #v-endif-->
         <!-- Keep the style position of the row div to get proper z order layout of the app -->
         <div class="row" style="position: relative;">
             <Splitpanes class="strype-split-theme" @resize=onStrypeCommandsSplitPaneResize>
@@ -46,10 +46,11 @@
                             <div class="col">
                                 <div 
                                     :id="editorUID" 
-                                    :class="{'editor-code-div noselect print-full-height':true/* IFTRUE_isPython , 'full-height-editor-code-div':!isExpandedPythonExecArea, [scssVars.croppedEditorDivClassName]: isExpandedPythonExecArea FITRUE_isPython */}"
+                                    :class="{'editor-code-div noselect print-full-height':true, ...layoutClassesForStandardVersion}"
                                     @mousedown="handleWholeEditorMouseDown"
                                 >
                                     <FrameHeader
+                                        :id="getFrameHeaderUID(-10)"
                                         :labels="projectDocLabels"
                                         :frameId="-10"
                                         :frameType="projectDocFrameType"
@@ -120,15 +121,14 @@ import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
-import { getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
+import {getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID} from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
-/* IFTRUE_isPython */
+// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
-/* FITRUE_isPython */
-/* IFTRUE_isMicrobit */
+// #v-else
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
 import { DAPWrapper } from "./helpers/partial-flashing";
-/* FITRUE_isMicrobit */
+// #v-endif
 import { mapStores } from "pinia";
 import { getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos, getFrameBelowCaretPosition, checkCodeErrors, calculateNextCollapseState } from "./helpers/storeMethods";
 import { cloneDeep } from "lodash";
@@ -180,9 +180,9 @@ export default Vue.extend({
             setAppNotOnTop: false,
             progressbarMessage: "",
             cloudDriveName: "",
-            /* IFTRUE_isPython */
+            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
             isExpandedPythonExecArea: false,
-            /* FITRUE_isPython */
+            // #v-endif
             imgToEditInDialog: "",
             soundToEditInDialog: null as AudioBuffer | null,
             showImgPreview: (() => {}) as (dataURL: string) => void,
@@ -194,6 +194,14 @@ export default Vue.extend({
 
         editorId(): string {
             return getEditorID();
+        },
+
+        layoutClassesForStandardVersion(){
+            let classes = {};
+            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+            classes = {"full-height-editor-code-div":!this.isExpandedPythonExecArea, [scssVars.croppedEditorDivClassName]: this.isExpandedPythonExecArea};            
+            // #v-endif
+            return classes;
         },
              
         // gets the container frames objects which are in the root
@@ -239,7 +247,7 @@ export default Vue.extend({
                 let value = (this.appStore.editorCommandsSplitterPane2Size != undefined && this.appStore.editorCommandsSplitterPane2Size[StrypePEALayoutMode.tabsCollapsed] != undefined) 
                     ? this.appStore.editorCommandsSplitterPane2Size[StrypePEALayoutMode.tabsCollapsed] 
                     : parseFloat(scssVars.editorCommandsSplitterPane2SizePercentValue);
-                /* IFTRUE_isPython */
+                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
                 value = (this.appStore.peaLayoutMode != undefined && this.appStore.editorCommandsSplitterPane2Size != undefined && this.appStore.editorCommandsSplitterPane2Size[this.appStore.peaLayoutMode] != undefined) 
                     ? this.appStore.editorCommandsSplitterPane2Size[this.appStore.peaLayoutMode] as number
                     // When there is no set value for a given layout mode,
@@ -247,7 +255,7 @@ export default Vue.extend({
                     : ((this.appStore.editorCommandsSplitterPane2Size != undefined)
                         ? parseFloat(((this.$refs.editorCommandsSplitterPane2 as InstanceType<typeof Pane>).$data as PaneData).style.width.replace("%",""))
                         : parseFloat(scssVars.editorCommandsSplitterPane2SizePercentValue));
-                /* FITRUE_isPython */
+                // #v-endif
                 return value;
                 
             },
@@ -266,9 +274,9 @@ export default Vue.extend({
 
         localStorageAutosaveEditorKey(): string {
             let storageString = AutoSaveKeyNames.pythonEditorState;
-            /* IFTRUE_isMicrobit */
+            // #v-ifdef MODE == VITE_MICROBIT_MODE
             storageString = AutoSaveKeyNames.mbEditor;
-            /*FITRUE_isMicrobit */
+            // #v-endif
             return storageString;
         },
 
@@ -300,7 +308,7 @@ export default Vue.extend({
             return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
         },
         
-        /* IFTRUE_isPython */
+        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
         expandedPEAOverlaySplitterPane2Size: {
             get(): number {
                 const value = (this.appStore.peaExpandedSplitterPane2Size != undefined && this.appStore.peaLayoutMode != undefined && this.appStore.peaExpandedSplitterPane2Size[this.appStore.peaLayoutMode] != undefined)
@@ -328,7 +336,7 @@ export default Vue.extend({
         peaOverlayPane2MaxSize(): number {
             return 95;
         },
-        /* FITRUE_isPython */
+        // #v-endif
 
         getCompanionDndCanvasId(): string {
             return getCompanionDndCanvasId();
@@ -523,7 +531,7 @@ export default Vue.extend({
             }
         });
 
-        /* IFTRUE_isPython */
+        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
         // Listen to the Python execution area size change events (as the editor needs to be resized too)
         document.addEventListener(CustomEventTypes.pythonExecAreaExpandCollapseChanged, (event) => {
             this.isExpandedPythonExecArea = (event as CustomEvent).detail;
@@ -551,9 +559,7 @@ export default Vue.extend({
             }, 200);
            
         });
-        /* FITRUE_isPython */
-
-        /* IFTRUE_isMicrobit */
+        // #v-else
         // Register an event for WebUSB to detect when the micro:bit has been disconnected. We only do that once, and if WebUSB is available...
         if (navigator.usb) {
             navigator.usb.addEventListener("disconnect", () => this.appStore.previousDAPWrapper = {} as DAPWrapper);
@@ -561,7 +567,7 @@ export default Vue.extend({
         
         // As the application starts up, we compile the microbit library with the appropriate language setting.
         getAPIItemTextualDescriptions(true);
-        /* FITRUE_isMicrobit */
+        // #v-endif
 
         // Add an event listener for text selection changes. It will be used for changes of text selection and text cursors (start/end).
         document.addEventListener("selectionchange", this.handleDocumentSelectionChange);
@@ -572,7 +578,7 @@ export default Vue.extend({
         // Add a listener for the mouse scroll events. We do not want to allow scrolling when the context menu is shown
         document.addEventListener("wheel", this.blockScrollOnContextMenu, {passive:false});
 
-        /* IFTRUE_isPython */
+        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
         // Add a listener for the whole window resize.
         window.addEventListener("resize",() => {
             // When the window is resized, the overlay expanded PEA splitter is properly updated. However, the underlying UI is not updated
@@ -584,7 +590,7 @@ export default Vue.extend({
             // Re-scale the Turtle canvas.
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
         });
-        /* FITRUE_isPython */
+        // #v-endif
 
         // When the page is loaded, we might load an existing code for which the caret is not visible, so we get it into view.
         setTimeout(() => {
@@ -809,14 +815,15 @@ export default Vue.extend({
             }
         });
 
-        /* IFTRUE_isPython */
+        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
         // This case may not happen, but if we had a Strype version that contains a default initial state working with Turtle,
         // the UI should reflect it (showing the Turtle tab) so we look for Turtle in any case.
         actOnTurtleImport();
-        /* FITRUE_isPython */
+        // #v-endif
     },
 
     methods: {
+        getFrameHeaderUID,
         setAutoSaveState() {
             // The autosave is only performed on the webstore
             autoSaveTimerId = window.setInterval(() => {
@@ -1402,7 +1409,7 @@ export default Vue.extend({
             menuTarget.focus();
         },
 
-        /* IFTRUE_isPython */
+        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
         onExpandedPythonExecAreaSplitPaneResize(event: any, calledForResize?: boolean){
             // We want to know the size of the second pane (https://antoniandre.github.io/splitpanes/#emitted-events).
             // It will dictate the size of the Python execution area (expanded, with a range between 20% and 80% of the vh)
@@ -1416,6 +1423,12 @@ export default Vue.extend({
                     // The tricky case of when the state property has never been set
                     this.appStore.peaExpandedSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: lowerPanelSize};
 
+                }
+
+                // A change of divider position triggers a modification notification only when the user actively moves the divider,
+                // we can distinguish between a sitation when the divider is position is loaded and user event by the content of the event
+                if((event?.length??0) > 1){
+                    this.appStore.isEditorContentModified = true;
                 }
             }
             if(lowerPanelSize >= this.peaOverlayPane2MinSize && lowerPanelSize <= this.peaOverlayPane2MaxSize){
@@ -1449,7 +1462,7 @@ export default Vue.extend({
             // Update the Python Execution Area layout buttons' position
             setPythonExecAreaLayoutButtonPos();
         },
-        /* FITRUE_isPython */
+        // #v-endif
 
         onStrypeCommandsSplitPaneResize(event: any, useSpecificPEALayout?: StrypePEALayoutMode){
             // Save the new size of the RHS pane of the editor/commands splitter
@@ -1461,11 +1474,17 @@ export default Vue.extend({
                 this.appStore.editorCommandsSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed)]: event[1].size};
             }
 
-            /* IFTRUE_isPython */
+            // A change of divider position triggers a modification notification only when the user actively moves the divider,
+            // we can distinguish between a sitation when the divider is position is loaded and user event by the content of the event
+            if(event.length > 1){
+                this.appStore.isEditorContentModified = true;
+            }
+
+            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
             // When the rightmost panel (with Strype commands) is resized, we need to also update the Turtle canvas and break the natural 4:3 ratio of the PEA
             (this.$refs[this.strypeCommandsRefId] as InstanceType<typeof Commands>).isCommandsSplitterChanged = true;
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
-            /* FITRUE_isPython */
+            // #v-endif
         },
         
         setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, requestFSFileLoadedNotification: boolean, fileLocation?: FileSystemFileHandle) : Promise<void> {
@@ -1477,13 +1496,13 @@ export default Vue.extend({
                     // Now we can clear other non-frame related elements
                     this.appStore.clearNoneFrameRelatedState();
                 
-                    /* IFTRUE_isPython */
+                    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
                     // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
                     actOnTurtleImport();
 
                     // Clear the Python Execution Area as it could have be run before.
                     ((this.$root.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as any).clear();
-                    /* FITRUE_isPython */
+                    // #v-endif
                     
                     this.appStore.setDividerStates(
                         loadDivider(s.headers["editorCommandsSplitterPane2Size"]),

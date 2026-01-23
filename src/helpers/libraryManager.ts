@@ -102,7 +102,7 @@ async function attemptFetchFile(address: LibraryAddress, fileName: FilePath) : P
             return response.status;
         }
     }
-    catch (error) {
+    catch {
         return 520;
     }
 }
@@ -156,7 +156,7 @@ export function getLibraryName(libraryAddress: LibraryAddress) : string | undefi
                 return segments[segments.length - 1];
             }
         }
-        catch (e) {
+        catch {
             // Just return undefined, below
         }
     }
@@ -178,7 +178,6 @@ export async function getRawFileFromLibraries(libraryAddresses: LibraryAddress[]
         return null;
     }
 
-    // eslint-disable-next-line prefer-const
     let [currentAddress, ...rest] = libraryAddresses;
 
     // Convert Github URLs to our Github protocol:
@@ -220,7 +219,7 @@ export async function getTextFileFromLibraries(libraryAddresses: LibraryAddress[
         try {
             return new TextDecoder("utf-8").decode(r.buffer);
         }
-        catch (e) {
+        catch {
             return undefined;
         }
     }

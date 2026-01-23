@@ -10,7 +10,7 @@
             <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
             <div class="flex-padding"/>            
             <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!pythonWorkerReady">
-                <img v-if="!isPythonExecuting" src="favicon.png" class="pea-play-img">
+                <img v-if="!isPythonExecuting" src="faviconURL" class="pea-play-img">
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
                 <span>{{runCodeButtonLabel}}</span>
             </button>
@@ -44,7 +44,7 @@
             </Splitpanes>
             <div :class="{[scssVars.peaToggleLayoutButtonsContainerClassName]: true, hidden: (!isTabContentHovered || isPythonExecuting)}">
                 <div v-for="(layoutData, index) in PEALayoutsData" :key="'strype-PEA-Layout-'+index" 
-                    @click="togglePEALayout(layoutData.mode)" :title="$t('PEA.'+layoutData.iconName)">
+                    @click="togglePEALayout(layoutData.mode, true)" :title="$t('PEA.'+layoutData.iconName)">
                     <SVGIcon :name="layoutData.iconName" :customClass="{'pea-toggle-layout-button': true, 'pea-toggle-layout-button-selected': layoutData.mode === currentPEALayoutMode}"/>
                 </div>
             </div>
@@ -76,6 +76,7 @@ import {getDateTimeFormatted} from "@/helpers/common";
 import audioBufferToWav from "audiobuffer-to-wav";
 import { saveAs } from "file-saver";
 import {bufferToBase64} from "@/helpers/media";
+import turtleImgURL from "@/assets/images/turtle.png" ;
 import { PyodideClient } from "pyodide-worker-runner";
 import { makeServiceWorkerChannel } from "sync-message";
 import * as Comlink from "comlink";
@@ -275,7 +276,7 @@ export default Vue.extend({
         this.$nextTick(() => {
             const graphicTaBElement = document.getElementById(this.graphicsTabId);
             if(graphicTaBElement){
-                graphicTaBElement.innerHTML = graphicTaBElement.innerHTML.replace("\uD83D\uDC22", `<img src="${require("@/assets/images/turtle.png")}" alt="${this.$i18n.t("PEA.Graphics")}" class="pea-turtle-img" />`);
+                graphicTaBElement.innerHTML = graphicTaBElement.innerHTML.replace("\uD83D\uDC22", `<img src="${turtleImgURL}" alt="${this.$i18n.t("PEA.Graphics")}" class="pea-turtle-img" />`);
             }
         });
        
@@ -317,6 +318,11 @@ export default Vue.extend({
 
     computed:{
         ...mapStores(useStore),
+
+        faviconURL(): string {
+            // We use a computed library to reference the favicon.png to avoid Vite getting confused with paths.
+            return "favicon.png";
+        },
 
         peaComponentId(): string {
             return getPEAComponentRefId();
@@ -431,6 +437,9 @@ export default Vue.extend({
                     this.appStore.peaSplitViewSplitterPane1Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: event[0].size};
                 }
             }
+
+            // A change of divider position triggers a modification notification
+            this.appStore.isEditorContentModified = true;            
 
             // Notify a resize of the PEA happened
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
@@ -663,9 +672,9 @@ export default Vue.extend({
             setPythonExecAreaLayoutButtonPos();
         },
 
-        togglePEALayout(layoutMode: StrypePEALayoutMode){
+        togglePEALayout(layoutMode: StrypePEALayoutMode, userTriggeredAction?: boolean){           
             // Save the layout mode with the project
-            this.appStore.peaLayoutMode  = layoutMode;
+            this.appStore.peaLayoutMode = layoutMode;
               
             const newTabsLayout = (layoutMode == StrypePEALayoutMode.tabsCollapsed || layoutMode == StrypePEALayoutMode.tabsExpanded);
             const newExpandLayout = (layoutMode == StrypePEALayoutMode.tabsExpanded || layoutMode == StrypePEALayoutMode.splitExpanded);
@@ -716,6 +725,11 @@ export default Vue.extend({
                 setTimeout(() => {
                     document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
                 }, refreshUITimeout + 100);
+
+                // A change of layout triggers a modification notification only when the user actively changed it (flagged by "userTriggeredAction")
+                if(userTriggeredAction){
+                    this.appStore.isEditorContentModified = true;
+                }
             }
         },
 

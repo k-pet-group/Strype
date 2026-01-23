@@ -19,7 +19,6 @@ import Vue from "vue";
 import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
 import { MessageDefinitions, StrypeSyncTarget } from "@/types/types";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker.vue";
-import { PropType } from "@vue/composition-api";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { AppSPYFullPrefix } from "@/main";
 import { getCloudLoginErrorModalDlgId } from "@/helpers/editor";
@@ -594,11 +593,9 @@ export default Vue.extend({
             gapi.client.init({
             }).then((response) => {
                 this.gapiLoadedState = CloudDriveAPIState.LOADED;
-                // eslint-disable-next-line
                 console.info("GAPI loaded");
             }, (reason) => {
                 this.gapiLoadedState = CloudDriveAPIState.FAILED;
-                // eslint-disable-next-line
                 console.warn(reason.result.error.message);
             });
         },

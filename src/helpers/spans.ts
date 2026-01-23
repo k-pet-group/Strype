@@ -7,20 +7,41 @@ function getCaretScreenPosition() : { x: number; y: number } | null {
     if (!sel || sel.rangeCount === 0 || !sel.focusNode) {
         return null;
     }
-
-    const range = document.createRange();
-    try {
-        range.setStart(sel.focusNode, sel.focusOffset);
-        range.collapse(true);
-    }
-    catch {
-        return null;
-    }
-    const rect = range.getBoundingClientRect();
-    return { x: rect.left, y: rect.top };
+    
+    return getCaretRect(sel.focusNode, sel.focusOffset);
 }
 
+// Note: the x is the left, and y is the bottom of the character as it's easier to reliably determine 
 type SpanRect = { span: HTMLSpanElement, offset: number, x: number, y: number };
+
+// Given a Node and an offset, finds the x and y (as per SpanRect type, above)
+function getCaretRect(node : Node, offset : number) : { offset: number, x: number, y: number } {
+    const range = document.createRange();
+
+    // In most cases, we can make a zero-sized selection and ask for the bounding rect:
+    range.setStart(node, offset);
+    range.collapse(true);
+
+    const domRect = range.getBoundingClientRect();
+    let pos = { x: domRect.x, y: domRect.bottom};
+
+    // However, if the zero-sized selection is at the start of a new line (i.e. immediately after a \n),
+    // all the browsers report its location as the end of the previous line, not the beginning of the new one
+    // So we have to ask for the location of the following character:
+    if (offset > 0 && node.nodeValue && node.nodeValue[offset - 1] === "\n" && offset + 1 < node.nodeValue.length) {
+        // Measure first character of the next line instead
+        range.setStart(node, offset);
+        range.setEnd(node, offset + 1);
+
+        const charRect = range.getBoundingClientRect();
+        pos = {x: charRect.left, y: charRect.bottom };
+    }
+    
+    range.detach();
+
+    return {...pos, offset: offset};
+}
+
 
 function getCharRects(span : HTMLSpanElement) : SpanRect[] {
     const rects : SpanRect[] = [];
@@ -35,14 +56,7 @@ function getCharRects(span : HTMLSpanElement) : SpanRect[] {
         if (i === text.length && text[i - 1] == "\u200B") {
             break;
         }
-        const range = document.createRange();
-        range.setStart(node, i);
-        range.setEnd(node, i);
-        const rect = range.getBoundingClientRect();
-        if (rect.width > 0 || rect.height > 0) {
-            rects.push({ span, offset: i, x: rect.left, y: rect.top });
-        }
-        range.detach();
+        rects.push({...getCaretRect(node, i), span});
     }
     return rects;
 }

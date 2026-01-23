@@ -1,4 +1,6 @@
-import i18n from "@/i18n";
+// imports the locale files we need for the locales used by this test
+import en from "@/localisation/en/en_main.json";
+
 import path from "path";
 
 export function checkDownloadedFileEquals(strypeElIds: {[varName: string]: (...args: any[]) => string}, fullContent: string, filename: string, firstSave?: boolean) : void {
@@ -12,8 +14,8 @@ export function checkDownloadedFileEquals(strypeElIds: {[varName: string]: (...a
     cy.get("#saveStrypeProjLink").click({force: true});
     if (firstSave) {
         // For testing, we always want to save to this device:
-        cy.contains(i18n.t("appMessage.targetFS") as string).click({force: true});
-        cy.contains(i18n.t("OK") as string).click({force: true});
+        cy.contains(en.appMessage.targetFS).click({force: true});
+        cy.contains(en.buttonLabel.ok).click({force: true});
     }
 
     cy.readFile(destFile).then((p : string) => {
@@ -27,7 +29,7 @@ export function loadFile(strypeElIds: {[varName: string]: (...args: any[]) => st
     cy.get("#" + strypeElIds.getLoadProjectLinkId()).click();
     // If the current state of the project is modified,
     // we first need to discard the changes (we check the button is available)
-    cy.get("button").contains(i18n.t("buttonLabel.discardChanges") as string).should("exist").click();
+    cy.get("button").contains(en.buttonLabel.discardChanges).should("exist").click();
     cy.wait(2000);
     // The "button" for the target selection is now a div element.
     cy.get("#" + strypeElIds.getLoadFromFSStrypeButtonId()).click();

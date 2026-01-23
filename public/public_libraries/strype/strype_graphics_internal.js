@@ -389,6 +389,7 @@ var $builtinmodule = function(name)  {
             // Since we are passing the baseline, we always add an extra 1 * fontSize to get from the top-left
             // down to the baseline, then add i * lineHeightMultiplier from there:
             let actualY = y + details.fontSize * (1 + i * lineHeightMultiplier);
+            ctx.strokeText(details.lines[i], x, actualY);
             ctx.fillText(details.lines[i], x, actualY); 
         }
         return Sk.ffi.remapToPy({width: details.width, height: details.height});

@@ -10,6 +10,16 @@ export async function load(page: Page, filepath: string) : Promise<void> {
 
     await page.click("#" + await strypeElIds(page).getEditorMenuUID());
     await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
+    // A modification update might arise because we had changed something in the editor:
+    // so we check if this situation happened, and discard changes if so.
+    await page.waitForTimeout(2000);
+    const discardChangesButton = page.locator("button.btn-secondary");
+    if(await discardChangesButton.count() > 0) {
+        const discardChangesButtonContent = await discardChangesButton.textContent();
+        if(discardChangesButtonContent == "Discard changes"){
+            await discardChangesButton.click();
+        }
+    }
     // The "button" for the target selection is now a div element.
     await page.click("#" + await strypeElIds(page).getLoadFromFSStrypeButtonId());
     // Must force because the <input> is hidden:

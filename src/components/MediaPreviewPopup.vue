@@ -11,6 +11,7 @@
         </div>
         <div class="MediaPreviewPopup-controls">
             <b-button size="sm" variant="outline-success" class="MediaPreviewPopup-header-preview-button" @click="doPreview">{{$t("media.preview")}}</b-button>
+            <b-button size="sm" variant="outline-success" class="MediaPreviewPopup-header-download-button" @click="doDownload"><i class="fa fa-download"></i></b-button>
             <b-button size="sm" variant="outline-danger" class="MediaPreviewPopup-header-edit-button" @click="doEdit">{{$t("media.edit")}}</b-button>
         </div>
         <div class="MediaPreviewPopup-img-container-wrapper">
@@ -28,6 +29,8 @@ import Vue from "vue";
 import {EditImageInDialogFunction, EditSoundInDialogFunction, LoadedMedia} from "@/types/types";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import {PersistentImageManager} from "@/stryperuntime/image_and_collisions";
+import {getDateTimeFormatted} from "@/helpers/common";
+import {saveAs} from "file-saver";
 
 // These bits of text are not translated because they are class names:
 const HTMLImageClass = "<a href='https://strype.org/doc/library/#strype.graphics.Image' target='_blank'>Image</a>";
@@ -180,6 +183,14 @@ export default Vue.extend({
                 this.doEditImageInDialog(this.imgDataURL, this.doPreviewImage, (replacement : {code: string, mediaType: string}) => {
                     this.replaceAfterEdit(replacement);
                 });
+            }
+        },
+        doDownload() {
+            if (this.audioBuffer !== undefined) {
+                this.peaComponentRef?.downloadWAV(this.audioBuffer, "strype-sound");
+            }
+            else if (this.imgDataURL) {
+                saveAs(this.imgDataURL, `strype-image_${getDateTimeFormatted(new Date(Date.now()))}.png`);
             }
         },
     },

@@ -9,6 +9,7 @@
         "build:microbit": "cross-env vite build --mode microbit",
         "build:python": "cross-env vite build --mode standard",
         "build:github-pages": "cross-env VITE_GITHUB_PAGE=true vite build --mode standard",
+        "lint:check": "eslint . --ext .js,.vue --max-warnings 0",
         "library:make-ac-json": "cd scripts && npm install && npx tsc && (node -e \"console.log('library_arg = \\'' + process.env.LIBRARY + '\\';')\" && npx esbuild --bundle compiled/scripts/process-skulpt-api.js) | npx browser-run -s ../public > ../autocomplete.json",
         "preprocess:update-microbit-api": "python3.9 scripts/process-microbit-api.py | python3.8 scripts/add-docs-from-python.py > src/autocompletion/microbit-api.json",
         "preprocess:update-skulpt-api": "cd scripts && npm install && npx tsc && (((echo 'library_arg=null;' && npx esbuild --bundle compiled/scripts/process-skulpt-api.js) | npx browser-run  -s ../public) | python3.9 add-docs-from-python.py) > ../src/autocompletion/skulpt-api.json",
@@ -18,11 +19,11 @@
         "cy:run:python": "npx cypress run --env mode=python",
         "test:cypress:serve-assets": "npx serve tests/cypress/test-http-assets/ -l 8089 --cors",
         "test:cypress:serve-both": "concurrently \"npm run serve:python\" \"npm run test:cypress:serve-assets\"",
-        "test:cypress:microbit-only": "cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test serve:microbit http-get://127.0.0.1:8081/microbit/ cy:run:microbit",
-        "test:cypress:python-only": "cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test test:cypress:serve-both http-get://127.0.0.1:8081/editor/ cy:run:python",
-        "test:cypress": "cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test test:cypress:serve-both http-get://127.0.0.1:8081/editor/ cy:run:python && cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test serve:microbit http-get://127.0.0.1:8081/microbit/ cy:run:microbit",
+        "test:cypress:microbit-only": "cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test serve:microbit http-get://localhost:8081/microbit/ cy:run:microbit",
+        "test:cypress:python-only": "cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test test:cypress:serve-both http-get://localhost:8081/editor/ cy:run:python",
+        "test:cypress": "cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test test:cypress:serve-both http-get://localhost:8081/editor/ cy:run:python && cross-env WAIT_ON_TIMEOUT=90000 start-server-and-test serve:microbit http-get://localhost:8081/microbit/ cy:run:microbit",
         "playwright:run": "npx playwright test",
-        "test:playwright": "cross-env BASE_URL=http://127.0.0.1:8081/editor/ start-server-and-test serve:python:dist:playwright http-get://127.0.0.1:8081/editor/ playwright:run"
+        "test:playwright": "cross-env BASE_URL=http://localhost:8081/editor/ start-server-and-test serve:python:dist:playwright http-get://localhost:8081/editor/ playwright:run"
     },
     "dependencies": {
         "@azure/msal-browser": "^4.15.0",

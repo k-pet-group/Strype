@@ -41,17 +41,17 @@
         },
         {
             "type": "npm",
-            "script": "serve --microbit",
+            "script": "serve:microbit",
             "problemMatcher": [],
             "label": "SUB serve strype microbit",
-            "detail": "vue-cli-service serve"
+            "detail": "vite (serve)"
         },
         {
             "type": "npm",
-            "script": "serve --python",
+            "script": "serve:python",
             "problemMatcher": [],
             "label": "SUB serve strype python",
-            "detail": "vue-cli-service serve"
+            "detail": "vite (serve)"
         },
         {
             "type": "shell",
@@ -60,19 +60,19 @@
         },
         {
             "type": "npm",
-            "script": "build --microbit",
+            "script": "build:microbit",
             "group": "build",
             "problemMatcher": [],
             "label": "SUB build strype microbit",
-            "detail": "vue-cli-service build"
+            "detail": "vite build"
         },
         {
             "type": "npm",
-            "script": "build --python",
+            "script": "build:python",
             "group": "build",
             "problemMatcher": [],
             "label": "SUB build strype python",
-            "detail": "vue-cli-service build"
+            "detail": "vite build"
         },
         {
             "type":"npm",

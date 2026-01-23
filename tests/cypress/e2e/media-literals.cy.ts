@@ -4,7 +4,9 @@ import {PNG} from "pngjs";
 import pixelmatch from "pixelmatch";
 import failOnConsoleError from "cypress-fail-on-console-error";
 import path from "path";
-import i18n from "@/i18n";
+// imports the locale files we need for the locales used by this test
+import en from "@/localisation/en/en_main.json";
+
 import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
 
 
@@ -155,7 +157,7 @@ function checkDownloadedCodeMatchesRegexes(codeLines : RegExp[]) : void {
     // Conversion to Python is located in the menu, so we need to open it first, then find the link and click on it
     // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
     cy.get("button#showHideMenu").click({force: true});
-    cy.contains(i18n.t("appMenu.downloadPython") as string).click({force: true});
+    cy.contains(en.appMenu.downloadPython).click({force: true});
 
     cy.readFile(path.join(downloadsFolder, "main.py")).then((p : string) => {
         expectMatchRegex(p.split("\n").map((l) => l.trimEnd()),

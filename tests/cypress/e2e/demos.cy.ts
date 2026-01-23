@@ -1,7 +1,8 @@
 
 // This does the beforeEach bits for us:
 import "../support/autocomplete-test-support";
-import i18n from "@/i18n";
+// imports the locale files we need for the locales used by this test
+import en from "@/localisation/en/en_main.json";
 import {strypeElIds} from "../support/autocomplete-test-support";
 
 describe("Demo dialog", () => {
@@ -15,7 +16,7 @@ describe("Demo dialog", () => {
         }
         
         cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true});
-        cy.contains(i18n.t("appMenu.loadDemoProject") as string).click({force: true});
+        cy.contains(en.appMenu.loadDemoProject as string).click({force: true});
         // Check the main three categories are there:
         cy.contains(".list-group-item", "Console").should("exist");
         cy.contains(".list-group-item", "Graphics").should("exist");

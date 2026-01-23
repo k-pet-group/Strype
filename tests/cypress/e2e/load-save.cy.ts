@@ -9,7 +9,9 @@ require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
-import i18n from "@/i18n";
+// imports the locale files we need for the locales used by this test
+import en from "@/localisation/en/en_main.json";
+
 import "../support/expression-test-support";
 import {checkDownloadedFileEquals, loadFile} from "../support/load-save-support";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
@@ -110,7 +112,7 @@ function testEntryDisableAndSave(commands: string, disableFrames: string[], file
         
         disableFrames.forEach((txt) => {
             cy.contains("span." + scssVars.labelSlotInputClassName, txt).rightclick();
-            cy.contains("*", i18n.t("contextMenu.disable") as string).click();
+            cy.contains("*", en.contextMenu.disable).click();
         });
 
         // The files will contain the default project documentation, so we need to include it in the code
@@ -207,7 +209,7 @@ describe("Tests saving layout metadata", () => {
     it("Saves changed layout to tabsExpanded", () => {
         focusEditorPasteAndClear();
         cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
-        cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-expanded") + "']").click();
+        cy.get("div[title='" + en.PEA["PEA-layout-tabs-expanded"] + "']").click();
 
         // Since the default code contains a project doc, we need to include it to the code
         cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f.replace("#(=> Section:Imports", defaultProjectDocFullLine + "#(=> Section:Imports"), "My project.spy", true));
@@ -215,8 +217,8 @@ describe("Tests saving layout metadata", () => {
     it("Saves changed layout to tabsExpanded and back", () => {
         focusEditorPasteAndClear();
         cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
-        cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-expanded") + "']").click();
-        cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-collapsed") + "']").click();
+        cy.get("div[title='" + en.PEA["PEA-layout-tabs-expanded"] + "']").click();
+        cy.get("div[title='" + en.PEA["PEA-layout-tabs-collapsed"] + "']").click();
 
         // Since the default code contains a project doc, we need to include it to the code
         cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded-collapsed.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f.replace("#(=> Section:Imports", defaultProjectDocFullLine + "#(=> Section:Imports"), "My project.spy", true));

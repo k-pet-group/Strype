@@ -1,7 +1,9 @@
 import path from "path";
-import i18n from "@/i18n";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "../../../src/helpers/sharedIdCssWithTests";
 import {focusEditor} from "../support/expression-test-support";
+
+// imports the locale files we need for the locales used by this test
+import en from "@/localisation/en/en_main.json";
 
 // Must clear all local storage between tests to reset the state,
 // and also retrieve the shared CSS and HTML elements IDs exposed
@@ -67,16 +69,16 @@ export function checkDownloadedCodeEquals(fullCode: string, format: "py" | "spy"
     // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
     cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true});
     if (format == "py") {
-        cy.contains(i18n.t("appMenu.downloadPython") as string).click({force: true});
+        cy.contains(en.appMenu.downloadPython).click({force: true});
     }
     else {
-        cy.contains(i18n.t("appMenu.saveProject") as string).click({force: true});
+        cy.contains(en.appMenu.saveProject).click({force: true});
         cy.wait(500);
         // For testing, we always want to save to this device:
         cy.get("#saveStrypeFileNameInput").clear();
         cy.get("#saveStrypeFileNameInput").type("main");
-        cy.contains(i18n.t("appMessage.targetFS") as string).click({force: true});
-        cy.contains(i18n.t("OK") as string).click({force: true});
+        cy.contains(en.appMessage.targetFS).click({force: true});
+        cy.contains(en.buttonLabel.ok).click({force: true});
     }
     
     cy.wait(1000);
@@ -138,7 +140,7 @@ export function testRoundTripImportAndDownload(filepath: string, expected?: stri
         cy.get("#" + strypeElIds.getLoadProjectLinkId()).click();
         // If the current state of the project is modified,
         // we first need to discard the changes (we check the button is available)
-        cy.get("button").contains(i18n.t("buttonLabel.discardChanges") as string).should("exist").click();
+        cy.get("button").contains(en.buttonLabel.discardChanges).should("exist").click();
         cy.wait(2000);
         // The "button" for the target selection is now a div element.
         cy.get("#" + strypeElIds.getLoadFromFSStrypeButtonId()).click();

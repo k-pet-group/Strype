@@ -1,6 +1,11 @@
 // Test that the translation is working properly
 import path from "path";
-import i18n from "@/i18n";
+// imports the locale files we need for the locales used by this test
+import en from "@/localisation/en/en_main.json";
+import zh from "@/localisation/zh/zh_main.json";
+import fr from "@/localisation/fr/fr_main.json";
+import de from "@/localisation/de/de_main.json";
+
 import {expect} from "chai";
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
@@ -45,11 +50,35 @@ function focusEditor(): void {
     cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();
 }
 
+function getLocalisedString(keyPath: string, locale: string="en"): string{
+    // We use a hard coded way to get the localised value here as with Vite we no longer rely on the Vue i18n import anymore.
+    const locales: Record<string, any> = {
+        en,
+        fr,
+        zh,
+        de,
+    };
+    let localeJson = locales[locale];
+
+    const keys = keyPath.split(".");
+    for (let key of keys){
+        localeJson = (localeJson as any)[key];
+        // If ever a localised entry doesn't exist, we fall back on English, like vue 18n does:
+        // (of course we assume English is fully valid!)
+        if(localeJson == undefined){
+            localeJson = getLocalisedString(keyPath) as any;
+            break;
+        }
+    }
+
+    return localeJson as any;
+}
+
 // This method expected the frame cursor to be at the start of "my code":
 // it will test the frame container labels as well as the autocompletion
 function checkTranslationsForLocale(locale: string): void {    
     // Check that the sections are present and translated:
-    cy.get("."+ scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer", locale) as string, i18n.t("appMessage.defsContainer", locale) as string, i18n.t("appMessage.mainContainer", locale) as string]));
+    cy.get("."+ scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, [getLocalisedString("appMessage.importsContainer", locale), getLocalisedString("appMessage.defsContainer", locale), getLocalisedString("appMessage.mainContainer", locale)]));
 
     // Check that sections in the autocomplete are translated:
     // Add a function:
@@ -59,7 +88,7 @@ function checkTranslationsForLocale(locale: string): void {
     // Then trigger autocomplete:
     cy.get("body").type(" {ctrl} ");
     // And check the sections:
-    const expAuto = [i18n.t("autoCompletion.myVariables", locale) as string, i18n.t("autoCompletion.myFunctions", locale) as string];
+    const expAuto = [getLocalisedString("autoCompletion.myVariables", locale), getLocalisedString("autoCompletion.myFunctions", locale)];
     if (Cypress.env("mode") === "microbit") {
         expAuto.push("microbit");
     }
@@ -69,7 +98,7 @@ function checkTranslationsForLocale(locale: string): void {
 // and swap Strype to a given locale, then check translations for that given locale.
 function changeLocaleAndCheckTranslations(locale: string): void {
     // Starts as English:
-    cy.get("." + scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, [i18n.t("appMessage.importsContainer") as string, i18n.t("appMessage.defsContainer") as string, i18n.t("appMessage.mainContainer") as string]));
+    cy.get("." + scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, [getLocalisedString("appMessage.importsContainer"), getLocalisedString("appMessage.defsContainer"), getLocalisedString("appMessage.mainContainer")]));
     cy.get("select#" + strypeElIds.getAppLangSelectId()).should("have.value", "en");
 
     // Swap to another locale and check it worked:
@@ -94,7 +123,7 @@ function changeCodeThenDownloadPy(parameters?: {locale?: string, renamedFileName
         cy.log("deleting the python file");
         cy.task("deleteFile", path.join(downloadsFolder, "main.py"));
         cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true}); 
-        cy.contains(i18n.t("appMenu.downloadPython", (parameters?.locale)??"en") as string).click({force: true});
+        cy.contains(getLocalisedString("appMenu.downloadPython", (parameters?.locale)??"en")).click({force: true});
         // If we request the file to be renamed, we rename it after a short wait (for download to be done)
         if(parameters?.renamedFileName) {
             cy.wait(2000);
@@ -145,10 +174,10 @@ describe("Locale persistence", () => {
         // Part 2: resetting the editor ("New Project" in menu), the code should be in the initial state (we have changed it in part 1)
         // but the locale should still be the same as before.
         cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true}); 
-        cy.contains(i18n.t("appMenu.resetProject", localeForTest) as string).click({force: true}).then(() => {
+        cy.contains(getLocalisedString("appMenu.resetProject", localeForTest)).click({force: true}).then(() => {
             // Accept the change for a new project
             cy.wait(500);
-            return cy.contains(i18n.t("buttonLabel.yes", localeForTest) as string).click({force: true}).then(() => {
+            return cy.contains(getLocalisedString("buttonLabel.yes", localeForTest)).click({force: true}).then(() => {
                 // Check the editor contains the initial state code: we download the conversion and compare with the backed up Python file
                 changeCodeThenDownloadPy({locale: localeForTest});
                 cy.wait(500);            
@@ -192,7 +221,7 @@ describe("Locale persistence", () => {
         // with the name of the project (so we keep it as "My project").
         cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true}); 
         cy.wait(200);
-        cy.contains(i18n.t("appMenu.saveProject") as string).click({force: true});
+        cy.contains(getLocalisedString("appMenu.saveProject")).click({force: true});
         cy.get("#" + strypeElIds.getSaveStrypeProjectToFSButtonId()).click({force: true});
         cy.wait(500);
         cy.get("#" + strypeElIds.getStrypeSaveProjectNameInputId()).type("{enter}");
@@ -225,7 +254,7 @@ describe("Locale persistence", () => {
 
         // 2) the locale is correct (usual test + the function call placeholder text, which is in frame 4 for normal editor, and 5 for microbit because of import)
         checkTranslationsForLocale(localeForTest);
-        cy.get("span[placeholder='" + i18n.t("frame.defaultText.funcCall", localeForTest) + "']").should("exist");
+        cy.get("span[placeholder='" + getLocalisedString("frame.defaultText.funcCall", localeForTest) + "']").should("exist");
             
         // Clean up the downloads folder for the backed up files (not sure we need though)
         cy.task("deleteFile", path.join(downloadsFolder, englishPyFileName));

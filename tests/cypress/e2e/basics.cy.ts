@@ -1,6 +1,8 @@
 import * as path from "path";
 import {expect} from "chai";
-import i18n from "@/i18n";
+// imports the locale files we need for the locales used by this test
+import en from "@/localisation/en/en_main.json";
+
 import failOnConsoleError from "cypress-fail-on-console-error";
 import {cleanFromHTML, getDefaultStrypeProjectDocumentationFullLine} from "../support/test-support";
 failOnConsoleError();
@@ -198,7 +200,7 @@ function checkCodeEquals(codeLines : CodeMatch[]) : Cypress.Chainable<JQuery<HTM
         // Conversion to Python is located in the menu, so we need to open it first, then find the link and click on it
         // Force these because sometimes cypress gives false alarm about webpack overlay being on top:
         cy.get("button#" + strypeElIds.getEditorMenuUID()).click({force: true}); 
-        cy.contains(i18n.t("appMenu.downloadPython") as string).click({force: true});
+        cy.contains(en.appMenu.downloadPython).click({force: true});
             
         cy.readFile(path.join(downloadsFolder, "main.py")).then((p : string) => {
             // The default projects contains the default project description.

@@ -6,7 +6,9 @@ import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-su
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
-import i18n from "@/i18n";
+// imports the locale files we need for the locales used by this test
+import en from "@/localisation/en/en_main.json";
+
 import {deflateRaw} from "pako";
 import "../support/expression-test-support";
 import {checkDownloadedFileEquals} from "../support/load-save-support";
@@ -174,15 +176,15 @@ describe("Tests saving layout metadata", () => {
     it("Saves changed layout to tabsExpanded", () => {
         focusEditorPasteAndClear();
         cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
-        cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-expanded") + "']").click();
+        cy.get("div[title='" + en.PEA["PEA-layout-tabs-expanded"] + "']").click();
 
         cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f.replace("#(=> Section:Imports", defaultProjectDocFullLine + "#(=> Section:Imports"), "My project.spy", true));
     });
     it("Saves changed layout to tabsExpanded and back", () => {
         focusEditorPasteAndClear();
         cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
-        cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-expanded") + "']").click();
-        cy.get("div[title='" + i18n.t("PEA.PEA-layout-tabs-collapsed") + "']").click();
+        cy.get("div[title='" + en.PEA["PEA-layout-tabs-expanded"]).click();
+        cy.get("div[title='" + en.PEA["PEA-layout-tabs-collapsed"] + "']").click();
 
         // Since the default code contains a project doc, we need to include it to the code
         cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded-collapsed.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f.replace("#(=> Section:Imports", defaultProjectDocFullLine + "#(=> Section:Imports"), "My project.spy", true));

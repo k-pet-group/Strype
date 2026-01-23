@@ -5,7 +5,6 @@
             "label": "Serve Strype micro:bit",
             "dependsOn": [
                 "npm: clear",
-                "clear cache loader",
                 "SUB serve strype microbit"
             ],
             "problemMatcher": []
@@ -15,7 +14,6 @@
             "dependsOn": [
                 "SUB notify pre-built requirements",
                 "npm: clear",
-                "clear cache loader",
                 "SUB build strype microbit"
             ],
             "problemMatcher": []
@@ -24,7 +22,6 @@
             "label": "Serve Strype python",
             "dependsOn": [
                 "npm: clear",
-                "clear cache loader",
                 "SUB serve strype python"
             ],
             "problemMatcher": []
@@ -34,7 +31,6 @@
             "dependsOn": [
                 "SUB notify pre-built requirements",
                 "npm: clear",
-                "clear cache loader",
                 "SUB build strype python"
             ],
             "problemMatcher": []
@@ -86,13 +82,5 @@
             "problemMatcher": [],
             "label": "npm: clear",
         },
-        {
-			"type": "shell",
-			"command": "rm -rf ./node_modules/.cache",
-            "windows": {
-                "command":"remove-item -path .\\node_modules\\.cache\\ -Force -Recurse"
-            },
-			"label": "clear cache loader",
-		}
     ]
 }

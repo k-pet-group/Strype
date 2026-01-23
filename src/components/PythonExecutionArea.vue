@@ -10,7 +10,7 @@
             <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
             <div class="flex-padding"/>            
             <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}">
-                <img v-if="!isPythonExecuting" src="favicon.png" class="pea-play-img">
+                <img v-if="!isPythonExecuting" :src="faviconURL" class="pea-play-img">
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
                 <span>{{runCodeButtonLabel}}</span>
             </button>
@@ -302,6 +302,11 @@ export default Vue.extend({
 
     computed:{
         ...mapStores(useStore),
+
+        faviconURL(): string {
+            // We use a computed library to reference the favicon.png to avoid Vite getting confused with paths.
+            return "favicon.png";
+        },
 
         peaComponentId(): string {
             return getPEAComponentRefId();

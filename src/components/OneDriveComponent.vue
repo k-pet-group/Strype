@@ -42,6 +42,10 @@ import { CustomEventTypes } from "@/helpers/editor";
 //////////////////////
 //     Component    //
 //////////////////////
+
+// This variable is moved to at the module level rather than in data because having a Window as a reactive property doesn't work with Vue 2.7 (and Vue 3)
+let pickerPopup: Window | null = null;
+
 export default Vue.extend({
     name: "OneDriveComponent",
 
@@ -76,7 +80,6 @@ export default Vue.extend({
             isPersonalAccount: false,
             app: null as PublicClientApplication | null,
             baseUrl: "https://onedrive.live.com/picker", // default value for personal accounts
-            pickerPopup: null as WindowProxy | null,
             pickerOptions: null as OneDrivePickConfigurationOptions | null,
             pickerPort: null as MessagePort | null,
             isPickingFile: true, // flag to indicate whether the picker is in file or folder picking mode
@@ -223,7 +226,7 @@ export default Vue.extend({
                             const patternForTrimming = /https:\/\/.+\.sharepoint\.com\/personal\/[^/]+/g;
                             const matchingRes = data.webUrl.match(patternForTrimming);
                             if(matchingRes){
-                                this.baseUrl = data.webUrl.substring(0, matchingRes[0].length); 
+                                this.baseUrl = data.webUrl.substring(0, matchingRes[0].length);
                             }
                         }
                     }
@@ -412,7 +415,7 @@ export default Vue.extend({
                 
                 // create a new window. The Picker's recommended maximum size is 1080x680, but it can scale down to
                 // a minimum size of 250x230 for very small screens or very large zoom.
-                this.pickerPopup = window.open("", "Picker", "width=1080,height=680");
+                pickerPopup = window.open("", "Picker", "width=1080,height=680");
                 this.isPickingFile = false;
             
                 // options: These are the picker configuration, see the schema link for a full explaination of the available options
@@ -437,8 +440,8 @@ export default Vue.extend({
                 // we create the absolute url by combining the base url, appending the _layouts path, and including the query string
                 const url = `${this.baseUrl}?${queryString}`;
                 // create a form
-                const form = this.pickerPopup?.document.createElement("form");
-                if(this.pickerPopup && form){
+                const form = pickerPopup?.document.createElement("form");
+                if(pickerPopup && form){
                     // set the action of the form to the url defined above
                     // This will include the query string options for the picker.
                     form.setAttribute("action", url);
@@ -448,14 +451,14 @@ export default Vue.extend({
 
                     // Create a hidden input element to send the OAuth token to the Picker.
                     // This optional when using a popup window but required when using an iframe.
-                    const tokenInput = this.pickerPopup.document.createElement("input");
+                    const tokenInput = pickerPopup.document.createElement("input");
                     tokenInput.setAttribute("type", "hidden");
                     tokenInput.setAttribute("name", "access_token");
                     tokenInput.setAttribute("value", pickerAccessToken);
                     form.appendChild(tokenInput);
 
                     // append the form to the body
-                    this.pickerPopup.document.body.append(form);
+                    pickerPopup.document.body.append(form);
 
                     // submit the form, this will load the picker page
                     form.submit();
@@ -559,7 +562,7 @@ export default Vue.extend({
                     
                     // create a new window. The Picker's recommended maximum size is 1080x680, but it can scale down to
                     // a minimum size of 250x230 for very small screens or very large zoom.
-                    this.pickerPopup = window.open("", "Picker", "width=1080,height=680");
+                    pickerPopup = window.open("", "Picker", "width=1080,height=680");
                     this.isPickingFile = true;
                 
                     // options: These are the picker configuration, see the schema link for a full explaination of the available options
@@ -586,8 +589,8 @@ export default Vue.extend({
                     const layoutPath = (this.isPersonalAccount) ? "" : "/_layouts/15/FilePicker.aspx";
                     const url = `${this.baseUrl + layoutPath}?${queryString}`;
                     // create a form
-                    const form = this.pickerPopup?.document.createElement("form");
-                    if(this.pickerPopup && form){
+                    const form = pickerPopup?.document.createElement("form");
+                    if(pickerPopup && form){
                         // set the action of the form to the url defined above
                         // This will include the query string options for the picker.
                         form.setAttribute("action", url);
@@ -597,14 +600,14 @@ export default Vue.extend({
 
                         // Create a hidden input element to send the OAuth token to the Picker.
                         // This optional when using a popup window but required when using an iframe.
-                        const tokenInput = this.pickerPopup.document.createElement("input");
+                        const tokenInput = pickerPopup.document.createElement("input");
                         tokenInput.setAttribute("type", "hidden");
                         tokenInput.setAttribute("name", "access_token");
                         tokenInput.setAttribute("value", pickerAccessToken);
                         form.appendChild(tokenInput);
 
                         // append the form to the body
-                        this.pickerPopup.document.body.append(form);
+                        pickerPopup.document.body.append(form);
 
                         // submit the form, this will load the picker page
                         form.submit();
@@ -948,7 +951,7 @@ export default Vue.extend({
 
         async onPickerMsg(event: MessageEvent){
             // we validate the message is for us, win here is the same variable as above
-            if (event.source && event.source === this.pickerPopup) {
+            if (event.source && event.source === pickerPopup) {
                 const message = event.data;
                 // the channelId is part of the configuration options, but we could have multiple pickers so that is supported via channels
                 // On initial load and if it ever refreshes in its window, the Picker will send an 'initialize' message.
@@ -1003,7 +1006,7 @@ export default Vue.extend({
                     }}
                     break;
                 case "close":
-                    this.pickerPopup?.close();
+                    pickerPopup?.close();
                     break;
                 case "pick":
                 {
@@ -1014,7 +1017,7 @@ export default Vue.extend({
                             result: "success",
                         },
                     });
-                    this.pickerPopup?.close();
+                    pickerPopup?.close();
                     // Trigger the actual retrieval of the file (if we had selected a file) or get the folder details (if we had selected a folder)
                     const strypeFileItem = message.data.data.items[0] as BaseItem;
                     const fileId = strypeFileItem.id??"";

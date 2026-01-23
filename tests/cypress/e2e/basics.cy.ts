@@ -288,8 +288,13 @@ describe("Adding frames", () => {
     it("Lets you add nested frames", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode)).then(() => {
             // i adds an if; add an if True with an if False inside:
-            cy.get("body").type("iTrue{rightArrow}");
-            cy.get("body").type("iFalse{rightArrow}");
+            // (if is followed by a pause, because it can take a bit longer to add its body/joint section)
+            cy.get("body").type("i");
+            cy.wait(100);
+            cy.get("body").type("True{rightArrow}");
+            cy.get("body").type("i");
+            cy.wait(100);
+            cy.get("body").type("False{rightArrow}");            
             // Put a foo() in the inner body:
             cy.get("body").type(" foo({rightArrow}{rightArrow}");
             // Put a bar(3) in the outer if, just after the inner if:
@@ -379,7 +384,10 @@ describe("Deleting frames", () => {
     });
     it("Lets you delete a class member frame with delete", () => {
         // Makes a class with a constructor then we try to delete it:
-        cy.get("body").type("{upArrow}cA{rightArrow}{rightArrow}");
+        //(class followed by a pause, because it can take a bit longer to add its body/joint section)
+        cy.get("body").type("{upArrow}c");
+        cy.wait(100);
+        cy.get("body").type("A{rightArrow}{rightArrow}");
         cy.get("body").type("{del}");
         checkCodeEquals(defaultImports.concat([
             {h:/class +A +:/, b: []},
@@ -399,7 +407,14 @@ describe("Deleting frames", () => {
     });
     it("Lets you delete joint frames with backspace", () => {
         // Add if, two elif and an else:
-        cy.get("body").type("{end}{backspace}{backspace}iTrue{rightarrow}lx==0{rightarrow}lx==1{rightarrow}=x=0{rightarrow}e foo(){rightarrow}");
+        //(if/elif/else are followed by a pause, because it can take a bit longer to add their body/joint sections)
+        cy.get("body").type("{end}{backspace}{backspace}i");
+        cy.wait(100);
+        cy.get("body").type("True{rightarrow}l");
+        cy.wait(100);
+        cy.get("body").type("x==0{rightarrow}l");
+        cy.wait(100);
+        cy.get("body").type("x==1{rightarrow}=x=0{rightarrow}e foo(){rightarrow}");
         checkCodeEquals(defaultImports.concat([
             {h: /if\s+True\s+:/, b:[]},
             {h: /elif\s+x\s*==\s*0\s*:/, b:[]},

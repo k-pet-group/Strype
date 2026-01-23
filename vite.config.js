@@ -58,7 +58,6 @@ export default defineConfig(({mode}) => {
             },
         },
 
-
         base: (process.env.VITE_GITHUB_PAGE)
             ? "/Strype/"
             : ((isStandardPython)

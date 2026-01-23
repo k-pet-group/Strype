@@ -32,7 +32,7 @@ import { uniqueId } from "lodash";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { CloudDriveAPIState } from "@/types/cloud-drive-types";
 import { CloudDriveFile } from "@/types/cloud-drive-types";
-import { BaseItem, DriveItem, Permission, UploadSession } from "@microsoft/microsoft-graph-types";
+import type { BaseItem, DriveItem, Permission, UploadSession } from "@microsoft/microsoft-graph-types";
 import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
 import CloudDriveItemPicker from "@/components/CloudDriveItemPicker.vue";
 import ModalDlg from "@/components/ModalDlg.vue";

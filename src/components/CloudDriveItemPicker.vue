@@ -24,7 +24,7 @@ import { CustomEventTypes } from "@/helpers/editor";
 import { CloudDriveItemPickerFolderPathResolutionMode, CloudDriveItemPickerItem, CloudDriveItemPickerMode, CTreeItemPickerItem } from "@/types/cloud-drive-types";
 import Vue, { PropType } from "vue";
 import CTree from "@wsfe/ctree";
-import { TreeNode } from "@wsfe/ctree/types/src/store";
+import type { TreeNode } from "@wsfe/ctree/types/src/store";
 import AppComponent from "@/App.vue";
 import { AppEvent } from "@/types/types";
 

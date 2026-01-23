@@ -166,7 +166,7 @@ export interface IAuthenticateCommand {
     type: "SharePoint" | "OneDrive";
 }
 type OneDriveExtFilter = "folder" | "site" | "documentLibrary" | "list" | "onenote" | "file" | "media" | "photo" | "video" | "audio" | "document" | "listItem" | "playlist" | "syntexTemplate" | "syntexSnippet" | "syntexField" | `.${string}`;
-import { DriveItem } from "@microsoft/microsoft-graph-types";
+import type { DriveItem } from "@microsoft/microsoft-graph-types";
 export type OneDrivePickConfigurationOptions = {
     sdk: "8.0";
     /**

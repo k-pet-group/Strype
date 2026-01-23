@@ -347,7 +347,7 @@ export default Vue.extend({
 
                 return true;
             } 
-            catch(err) {
+            catch {
                 return false;
             }
         },

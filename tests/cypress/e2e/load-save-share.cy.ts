@@ -1,7 +1,6 @@
 // This file tests loading and sharing via the spy: protocol that encodes the full source file
 // into the URL
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
 import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
 import failOnConsoleError from "cypress-fail-on-console-error";

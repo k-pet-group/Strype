@@ -593,11 +593,9 @@ export default Vue.extend({
             gapi.client.init({
             }).then((response) => {
                 this.gapiLoadedState = CloudDriveAPIState.LOADED;
-                // eslint-disable-next-line
                 console.info("GAPI loaded");
             }, (reason) => {
                 this.gapiLoadedState = CloudDriveAPIState.FAILED;
-                // eslint-disable-next-line
                 console.warn(reason.result.error.message);
             });
         },

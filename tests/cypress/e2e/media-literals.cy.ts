@@ -1,7 +1,5 @@
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
 import {expect} from "chai";
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 import {PNG} from "pngjs";
 import pixelmatch from "pixelmatch";
 import failOnConsoleError from "cypress-fail-on-console-error";

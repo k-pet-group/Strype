@@ -896,7 +896,6 @@ export function checkCodeErrors(frameIdForPrecompiled?: number): void {
         parser.getErrorsFormatted(parser.parse({}));
     }
     catch(error){
-        // eslint-disable-next-line
         console.warn(error);
     }
     // We make sure the number of errors shown in the interface is in line with the current state of the code

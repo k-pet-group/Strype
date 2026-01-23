@@ -127,7 +127,6 @@ export function getCandidatesForAC(slotCode: SlotsStructure, location: number[])
         }
     }
     catch (e) {
-        // eslint-disable-next-line
         console.warn("Exception while constructing code for autocompletion:" + e);
     }
     return {tokenAC: null, contextAC: ""};
@@ -406,7 +405,6 @@ export async function getAvailableModulesForImport() : Promise<AcResultsWithCate
         }
     }
 
-    // eslint-disable-next-line prefer-const
     let isMicrobit = false;
     // #v-ifdef MODE == VITE_MICROBIT_MODE
     isMicrobit = true;
@@ -599,7 +597,6 @@ export async function tpyDefineLibraries(parser: Parser) : Promise<void> {
                     TPyParser.defineModule(pyPYI.replace(/\.pyi?$/, "").replaceAll("/", "."), pyi, "pyi");
                 }
                 catch (e) {
-                    // eslint-disable-next-line
                     console.warn(e);
                 }
             }

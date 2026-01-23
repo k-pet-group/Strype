@@ -869,7 +869,6 @@ export default Vue.extend({
             }
             else {
                 // Don't think this should ever happen; for now, log:
-                // eslint-disable-next-line
                 console.trace("Didn't find \"" + toRemove + "\" before " + cursorPos + " within content: \"" + content + "\"");
             }
         },

@@ -5,7 +5,6 @@
 // the same result.  The other is that if we enter some code (especially code with metadata-required things like disabled frames)
 // it should save correctly.
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
 require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();

@@ -329,7 +329,6 @@ export default Vue.extend({
                 try{
                     const tppCompletions2 = TPyParser.autoComplete(totalCode, totalCode.length, false);
                     if(tppCompletions.filter((s) => !s.acResult.startsWith("_")).length != tppCompletions2.length){
-                        // eslint-disable-next-line
                         console.warn("There is a mismatch between autoCompleteEx and autoComplete");
                         throw new Error();
                     }
@@ -576,7 +575,6 @@ export default Vue.extend({
             const curAC = this.resultsToShow[this.currentModule].find((e) => e.index === this.selected) as AcResultType;
             if (curAC) {
                 let doc = curAC.documentation;
-                // eslint-disable-next-line no-inner-declarations
                 function argText(arg: SignatureArg) : string {
                     if (arg.defaultValue != null) {
                         return _.escape(arg.name) + " = " + _.escape(arg.defaultValue);
@@ -585,7 +583,6 @@ export default Vue.extend({
                         return _.escape(arg.name);
                     }
                 }
-                // eslint-disable-next-line no-inner-declarations
                 function paramsText(sig: Signature) : string{
                     const posOnly = sig.positionalOnlyArgs.slice(sig.firstParamIsSelfOrCls ? 1 : 0);
                     return [

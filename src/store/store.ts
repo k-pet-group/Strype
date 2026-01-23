@@ -2654,7 +2654,7 @@ export const useStore = defineStore("app", {
                                 .finally(doFinaliseCheckup);                                   
                         }
                     }
-                    catch(err){
+                    catch {
                         // We cannot use the string arguemnt to retrieve a valid state --> inform the users
                         isStateJSONStrValid = false;
                         errorDetailMessage = i18n.t("errorMessage.wrongDataFormat") as string;

@@ -626,7 +626,7 @@ export default class Parser {
         try {
             return TPyParser.findAllErrors(code);
         }
-        catch (e) {
+        catch {
             return [{line:1, offset: 0, msg: "Unknown TigerPython error", code: ""}];
         }
     }

@@ -1,9 +1,9 @@
 import { defineConfig, loadEnv } from "vite";
 import { execSync } from "child_process";
-import vue2 from  "@vitejs/plugin-vue2";
 import path from "path";
 import ConditionalCompile from "vite-plugin-conditional-compiler";
 import fs from "fs";
+import vue from "@vitejs/plugin-vue";
 
 function removeFilesPlugin(isStandardPython) {
     // The  library files we ship in the website depending on the platform we're on (standard Python or micro;bit).
@@ -38,11 +38,19 @@ export default defineConfig(({mode}) => {
     // We use environment variables for the possible values (only exception is in the serve/build scripts...)
     const viteEnv = loadEnv(mode, process.cwd(), "VITE_");
     const isStandardPython = mode === viteEnv.VITE_STANDARD_PYTHON_MODE;
-    
+  
     return {       
         plugins: [
-            ConditionalCompile(),            
-            vue2(),
+            ConditionalCompile(),
+            vue({
+                template: {
+                    compilerOptions: {
+                        compatConfig: {
+                            MODE: 2,
+                        },
+                    },
+                },
+            }),
             removeFilesPlugin(isStandardPython),
         ],
 
@@ -76,6 +84,7 @@ export default defineConfig(({mode}) => {
             // So that we still have compilation of imports like: import { STRYPE_LOCATION } from "@/helpers/pythonToFrames"
             alias: {
                 "@": path.resolve(__dirname, "src"),
+                vue: "@vue/compat",
             },
         },
     };

@@ -39,7 +39,7 @@
         "@types/path-browserify": "^1.0.3",
         "@types/sortablejs": "^1.10.6",
         "@types/splitpanes": "^2.2.6",
-        "@vitejs/plugin-vue2": "^2.3.4",
+        "@vitejs/plugin-vue": "^6",
         "@wsfe/ctree": "^2.4.1",
         "audiobuffer-to-wav": "^1.0.0",
         "axios": "^0.30.2",
@@ -73,6 +73,8 @@
         "v-blur": "^1.0.4",
         "velocity": "^0.7.3",
         "vite-plugin-conditional-compiler": "^0.4.0",
+        "vue": "^3.1.0",
+        "@vue/compat": "^3.1.0",
         "vue-advanced-cropper": "^2.8.9",
         "vue-autosize-input": "^0.1.1",
         "vue-browser-detect-plugin": "^0.1.18",
@@ -132,7 +134,7 @@
         "start-server-and-test": "^1.15.4",
         "typescript": "^4.9.5",
         "vue-eslint-parser": "^10.2.0",
-        "vue-template-compiler": "2.7.14"
+        "@vue/compiler-sfc": "^3.1.0"
     },
     "husky": {
         "hooks": {

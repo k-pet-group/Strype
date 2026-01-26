@@ -54,9 +54,9 @@
                             </b-tab>
                                 <b-tab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
                                     <APIDiscovery  class="command-tab-content"/>
-                                </b-tab>
-                            <!-- #v-endif-->
+                                </b-tab>                       
                         </b-tabs>
+                        <!-- #v-endif-->
                     </div>
                     <text id="userCode"></text>
                     <span id="keystrokeSpan"></span>

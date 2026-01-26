@@ -39,7 +39,7 @@
 
 <script lang="ts">
 import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, MediaDataAndDim, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
-import Vue from "vue";
+import Vue, { getCurrentInstance } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import FrameHeaderComponent from "@/components/FrameHeader.vue";
@@ -53,12 +53,43 @@ import { isMacOSPlatform, splitByRegexMatches } from "@/helpers/common";
 import { detectBrowser } from "@/helpers/browser";
 import { handleVerticalCaretMove } from "@/helpers/spans";
 import { preparePasteMediaData } from "@/helpers/media";
+import { useAsyncComputed } from "@/helpers/vue3composables";
 
 export default Vue.extend({
     name: "LabelSlotsStructure",
 
     components:{
         LabelSlot,
+    },
+
+    setup(){
+        const instance = getCurrentInstance() as any;
+        const vm = instance.proxy;
+
+        // Migrating to Vue 3, we don't use the Vue 2 package vue-async-computed anymore.
+        // Instead we can natively use a helper (see vue3composables.ts).
+        const placeholderText = useAsyncComputed(async () => {
+            // Look for the placeholder (default) text to put in slots.
+            // Special rules apply for the "function name" part of a function call frame cf getFunctionCallDefaultText() in editor.ts.
+            const isFuncCallFrame = useStore().frameObjects[vm.frameId].frameType.type == AllFrameTypesIdentifier.funccall;
+            if (vm.subSlots.length == 1) {
+                // If we are on an optional label slots structure that doesn't contain anything yet, we only show the placeholder if we're focused
+                const isOptionalEmpty = (useStore().frameObjects[vm.frameId].frameType.labels[vm.labelIndex].optionalSlot??OptionalSlotType.REQUIRED) == OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK && vm.subSlots.length == 1 && vm.subSlots[0].code.length == 0;
+                if(isOptionalEmpty && !vm.isFocused()){
+                    return Promise.resolve([" "]);
+                }
+                return Promise.resolve([(isFuncCallFrame) ? getFunctionCallDefaultText(vm.frameId) : vm.defaultText]);
+            }
+            else {
+                return Promise.all(vm.subSlots.map((slotItem, index) => slotItem.placeholderSource !== undefined 
+                    ? calculateParamPrompt(vm.frameId, slotItem.placeholderSource, slotItem.focused ?? false) 
+                    : Promise.resolve((useStore().frameObjects[vm.frameId].frameType.type == AllFrameTypesIdentifier.funccall && index == 0) 
+                        ? getFunctionCallDefaultText(vm.frameId)
+                        : "\u200b")));
+            }
+        }, []);
+
+        return { placeholderText };
     },
 
     props: {
@@ -113,30 +144,7 @@ export default Vue.extend({
         
         focusSlotCursorInfos(): SlotCursorInfos | undefined {
             return this.appStore.focusSlotCursorInfos;
-        },
-    },
-
-    asyncComputed: {
-        placeholderText() : Promise<string[]> {
-            // Look for the placeholder (default) text to put in slots.
-            // Special rules apply for the "function name" part of a function call frame cf getFunctionCallDefaultText() in editor.ts.
-            const isFuncCallFrame = this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall;
-            if (this.subSlots.length == 1) {
-                // If we are on an optional label slots structure that doesn't contain anything yet, we only show the placeholder if we're focused
-                const isOptionalEmpty = (this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].optionalSlot??OptionalSlotType.REQUIRED) == OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK && this.subSlots.length == 1 && this.subSlots[0].code.length == 0;
-                if(isOptionalEmpty && !this.isFocused()){
-                    return Promise.resolve([" "]);
-                }
-                return Promise.resolve([(isFuncCallFrame) ? getFunctionCallDefaultText(this.frameId) : this.defaultText]);
-            }
-            else {
-                return Promise.all(this.subSlots.map((slotItem, index) => slotItem.placeholderSource !== undefined 
-                    ? calculateParamPrompt(this.frameId, slotItem.placeholderSource, slotItem.focused ?? false) 
-                    : Promise.resolve((this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && index == 0) 
-                        ? getFunctionCallDefaultText(this.frameId)
-                        : "\u200b")));
-            }
-        },
+        },        
     },
 
     watch: {

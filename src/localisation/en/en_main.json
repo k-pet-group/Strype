@@ -205,6 +205,7 @@
     "downloadPython": "Convert to Python file",
     "loadProject": "Open...",
     "loadDemoProject": "Examples...",
+    "loadTutorial": "Tutorials...",
     "saveProject": "Save",
     "saveAsProject": "Save as...",
     "resetProject": "New project",
@@ -270,6 +271,16 @@
   },
   "demos": {
     "dialogTitle": "Choose an example to load",
+    "addLibrary": "Add library:",
+    "libraryAddrPlaceholder": "Library address",
+    "add": "Add",
+    "builtinGraphics": "Graphics",
+    "builtinConsole": "Console",
+    "builtinTurtle": "Turtle",
+    "builtinMicrobit": "micro:bit"
+  },
+  "tutorials": {
+    "dialogTitle": "Choose an tutorial to load",
     "addLibrary": "Add library:",
     "libraryAddrPlaceholder": "Library address",
     "add": "Add",

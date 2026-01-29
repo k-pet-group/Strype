@@ -89,6 +89,8 @@
             <div class="menu-separator-div"></div>           
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadDemoProjectModal">{{$t('appMenu.loadDemoProject')}}</a>
             <OpenDemoDlg ref="openDemoDlg" :dlg-id="loadDemoProjectModalDlgId"/>
+            <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadTutorialModal">{{$t('appMenu.loadTutorial')}}</a>
+            <OpenTutorialDlg ref="openTutorialDlg" :dlg-id="loadTutorialModalDlgId"/>
             /* IFTRUE_isPython
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLibraryDoc">{{$t('appMenu.apiDocumentation')}}</a>
                FITRUE_isPython */
@@ -243,6 +245,7 @@ import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/help
 import { getLocaleBuildDate } from "@/main";
 import scssVars from "@/assets/style/_export.module.scss";
 import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
+import OpenTutorialDlg from "@/components/OpenTutorialDlg.vue";
 import { CloudFileSharingStatus, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import {deflateRaw} from "pako";
 import {Base64} from "js-base64";
@@ -259,6 +262,7 @@ export default Vue.extend({
         Slide,
         CloudDriveHandler,
         ModalDlg,
+        OpenTutorialDlg,
     },
 
     data: function() {
@@ -452,6 +456,10 @@ export default Vue.extend({
 
         loadDemoProjectModalDlgId(): string {
             return "load-strype-demo-project-modal-dlg";
+        },
+
+        loadTutorialModalDlgId(): string {
+            return "load-strype-tutorial-modal-dlg";
         },
 
         loadProjectTargetButtonGpId(): string {
@@ -696,6 +704,27 @@ export default Vue.extend({
             }
             else {
                 this.$root.$emit("bv::show::modal", this.loadDemoProjectModalDlgId);
+            }
+        },
+
+        openLoadTutorialModal(): void {
+            // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer 
+            // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
+            // So we open it manually here...
+            // We might need to check, first that a project has been modified and needs to be saved.
+            if(this.appStore.isEditorContentModified){
+                // Show a modal dialog to let user save/discard their changes. Saving loop is handled with saving methods.
+                // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
+                this.showDialogAfterSave = this.loadTutorialModalDlgId;
+                this.$root.$emit("bv::show::modal", this.saveOnLoadModalDlgId);
+            }
+            else if(this.openSharedProjectId.length == 0) {
+                // The normal "open target" dialog
+                this.$root.$emit("bv::show::modal", this.loadTutorialModalDlgId);
+            }
+            else {
+                // The case of opening a shared project: we don't need a target selection, we just try to open the project
+                this.loadProject();
             }
         },
 

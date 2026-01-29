@@ -105,7 +105,6 @@ import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesAction, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import { defineComponent } from "vue";
-import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
 import { getAvailableNavigationPositions, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import scssVars  from "@/assets/style/_export.module.scss";
@@ -125,6 +124,7 @@ import { flash } from "@/helpers/webUSB";
 import CloudDriveHandlerComponent from "./CloudDriveHandler.vue";
 import { downloadHex, getPythonContent } from "@/helpers/download";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
+import { useBrowserDetect } from "vue3-detect-browser";
 // #v-endif
 
 // #v-ifdef MODE == VITE_MICROBIT_MODE
@@ -134,6 +134,14 @@ let mbSimulator: Window | null = null;
 
 export default defineComponent({
     name: "Commands",
+
+    setup(){
+        // #v-ifdef MODE == VITE_MICROBIT_MODE
+        // Get the detectBrowser function from the (replaced for Vue 3) browser detection package
+        const detectBrowser = useBrowserDetect;
+        return { detectBrowser };
+        // #v-endif
+    },
 
     components: {
         AddFrameCommand,
@@ -168,8 +176,7 @@ export default defineComponent({
 
     // #v-ifdef MODE == VITE_MICROBIT_MODE
     beforeMount() {
-        Vue.use(browserDetect);
-        this.uploadThroughUSB = (this.$browserDetect.isChrome || this.$browserDetect.isOpera || this.$browserDetect.isEdge);
+        this.uploadThroughUSB = (this.detectBrowser().isChrome || this.detectBrowser().isOpera || this.detectBrowser().isEdge);
     },
     // #v-endif
 

@@ -77,7 +77,7 @@
         "@vue/compat": "^3.1.0",
         "vue-advanced-cropper": "^2.8.9",
         "vue-autosize-input": "^0.1.1",
-        "vue-browser-detect-plugin": "^0.1.18",
+        "vue3-detect-browser": "^0.1.2",
         "vue-burger-menu": "^2.0.5",
         "vue-context": "^6.0.0",
         "vue-i18n": "^11",

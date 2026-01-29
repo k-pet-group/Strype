@@ -19,12 +19,6 @@
                     <span class="tutorial-dlg-demo-group-type" v-if="item.type">{{item.type}}</span>
                     {{ item.name }}
                 </b-list-group-item>
-                
-                <div class="tutorial-dlg-add-library-panel">
-                    <span>{{$t('tutorials.addLibrary')}}</span>
-                    <input ref="newLibraryAddress" :placeholder="$t('tutorials.libraryAddrPlaceholder')" type="text" autocomplete="off" class="cell" />
-                    <b-button @click="addSpecifiedLibrary">{{ $t('tutorials.add') }}</b-button>
-                </div>
             </b-list-group>
 
             <!-- Right Pane: Dynamic Grid -->
@@ -56,10 +50,7 @@
 import Vue from "vue";
 import MenuComponent from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
-import {Demo, DemoGroup, getBuiltinDemos, getThirdPartyLibraryDemos} from "@/helpers/demos";
-import Parser from "@/parser/parser";
-import {AppSPYPrefix} from "@/main";
-import {escapeRegExp} from "lodash";
+import {Demo, DemoGroup, getBuiltinDemos} from "@/helpers/demos";
 import { BvModalEvent } from "bootstrap-vue";
 import { getMenuLeftPaneUID } from "@/helpers/editor";
 
@@ -96,16 +87,6 @@ export default Vue.extend({
                 /* FITRUE_isMicrobit */
 
             ];
-            // To get library demos, we first get the libraries:
-            const p = new Parser();
-            // We only need to parse the imports container:
-            p.parseJustImports();
-            // Then we can get the libraries and look for demos:
-            // Don't show mediacomp-strype in the micro:bit verison, nor when testing mode because it can get us temporarily banned by Github:
-            /*IFTRUE_isPython const testingMode = window.Cypress || (window as any).Playwright; FITRUE_isPython */
-            for (const library of [...new Set([/*IFTRUE_isPython ...(testingMode? [] : ["github:k-pet-group/mediacomp-strype"]), FITRUE_isPython*/...p.getLibraries()])]) {
-                this.availableDemos.push(getThirdPartyLibraryDemos(library));
-            }
         },
 
         async changeDemoDialogCategory(index: number, itemPromise: Promise<Demo[]>) {
@@ -159,44 +140,6 @@ export default Vue.extend({
             // We first close the dialog, than simulate a "close with action" in the Menu (since we can't close with "OK" status.)
             this.$root.$emit("bv::hide::modal", this.dlgId);
             (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.dlgId);
-        },
-
-        addSpecifiedLibrary() {
-            let address = (this.$refs.newLibraryAddress as HTMLInputElement).value;
-            address = address.trim();
-            if (address) {
-                // We want to be quite permissive here.  We accept the following syntaxes:
-                // #(=> Library:protocol:addr
-                // protocol:addr
-                // addr <-- Guess protocol
-                const mLib = address.match(new RegExp("^#\\s*" + escapeRegExp(AppSPYPrefix) + "\\s*Library:(.*)$"));
-                if (mLib) {
-                    address = mLib[1];
-                    // We do the rest of the code anyway, in case some bits are incomplete:
-                }
-                if (!(address.startsWith("http:") || address.startsWith("https:") || address.startsWith("github:"))) {
-                    // Need to guess the protocol.  Github usernames can't have dots, so a simple rule is this:
-                    // If the first part before the first slash has a dot, it's a web URL.
-                    // Special case: if it's "localhost" we also assume web URL.
-                    // If it has two or three slashes we guess Github
-                    // But otherwise we fall back to web URL again
-                    // So let's assume web and just see if matches Github:
-                    let protocol = "https://";
-                    
-                    // Does it have content before the first slash?
-                    const mSlash = address.match(/^([^/]+)\//);
-                    if (mSlash) {
-                        if (!mSlash[1].includes(".") && !mSlash[1].toLowerCase().startsWith("localhost")) {
-                            const components = address.split("/").length;
-                            if (components == 2 || components == 3) {
-                                protocol = "github:";
-                            }
-                        }
-                    }
-                    address = protocol + address;
-                }
-                this.availableDemos.push(getThirdPartyLibraryDemos(address));
-            }
         },
     },
 });

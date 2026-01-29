@@ -280,14 +280,9 @@
     "builtinMicrobit": "micro:bit"
   },
   "tutorials": {
-    "dialogTitle": "Choose an tutorial to load",
-    "addLibrary": "Add library:",
-    "libraryAddrPlaceholder": "Library address",
-    "add": "Add",
-    "builtinGraphics": "Graphics",
-    "builtinConsole": "Console",
-    "builtinTurtle": "Turtle",
-    "builtinMicrobit": "micro:bit"
+    "dialogTitle": "Choose a tutorial to load",
+    "onboarding": "Onboarding",
+    "examples": "Examples"
   },
   "shortcut": {
     "delete": "Delete",

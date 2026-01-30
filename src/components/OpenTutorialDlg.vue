@@ -76,16 +76,9 @@ export default Vue.extend({
             // Our built-in tutorials are always available:
             this.availableTutorials = [
                 /* IFTRUE_isPython */
-                {name: this.$i18n.t("tutorials.builtinGraphics") as string, tutorials: getBuiltinTutorials("graphics")},
-                {name: this.$i18n.t("tutorials.builtinTurtle") as string, tutorials: getBuiltinTutorials("turtle")},
-                {name: this.$i18n.t("tutorials.builtinConsole") as string, tutorials: getBuiltinTutorials("console")},
+                {name: this.$i18n.t("tutorials.builtinOnboarding") as string, tutorials: getBuiltinTutorials("onboarding")},
+                {name: this.$i18n.t("tutorials.builtinExample") as string, tutorials: getBuiltinTutorials("example")},
                 /* FITRUE_isPython */
-                /* IFTRUE_isMicrobit */
-                // A bit pointless to show "micro:bit" for micro:bit version since there is no other choice,
-                // but let's keep the same presentation across the different versions.
-                {name: this.$i18n.t("tutorials.builtinMicrobit") as string, tutorials: getBuiltinTutorials("microbit")},
-                /* FITRUE_isMicrobit */
-
             ];
         },
 

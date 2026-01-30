@@ -281,12 +281,8 @@
   },
   "tutorials": {
     "dialogTitle": "Choose a tutorial to load",
-    "onboarding": "Onboarding",
-    "examples": "Examples",
-    "builtinGraphics": "Graphics",
-    "builtinConsole": "Console",
-    "builtinTurtle": "Turtle",
-    "builtinMicrobit": "micro:bit"
+    "builtinOnboarding": "Onboarding",
+    "builtinExample": "Examples"
   },
   "shortcut": {
     "delete": "Delete",

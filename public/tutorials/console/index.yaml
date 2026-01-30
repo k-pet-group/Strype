@@ -1,0 +1,9 @@
+- name: Number Guessing Game
+  description: A number guessing game
+  image: console-ngg.png
+  file: console-ngg.spy
+
+- name: Rock Paper Scissors
+  description: A rock-paper-scissors game
+  image: console-rps.png
+  file: console-rps.spy

@@ -1,0 +1,32 @@
+#(=> Strype:1:std
+'''Play the classic hand game... against Strype'''
+#(=> Section:Imports
+import random 
+#(=> Section:Definitions
+def get_computer_choice ( ) :
+    return random.choice(["rock","paper","scissors"]) 
+def get_user_choice ( ) :
+    choice  = input("Enter rock, paper, or scissors: ").lower() 
+    while choice not in ["rock","paper","scissors"]  :
+        print("Invalid input. Enter rock, paper or scissors.") 
+        choice  = input("Enter rock, paper, or scissors: ").lower() 
+    return choice 
+def determine_winner (user,computer ) :
+    print(___strype_invalid_u0066u0022u005cu006eu0059u006fu0075u0020u0063u0068u006fu0073u0065u0020u007bu0075u0073u0065u0072u007du002cu0020u0063u006fu006du0070u0075u0074u0065u0072u0020u0063u0068u006fu0073u0065u0020u007bu0063u006fu006du0070u0075u0074u0065u0072u007du002eu0022) 
+    
+    if user==computer  :
+        return "It's a tie!" 
+    elif user=="rock" and computer=="scissors"  :
+        return "You win!" 
+    elif user=="scissors" and computer=="paper"  :
+        return "You win!" 
+    elif user=="paper" and computer=="rock"  :
+        return "You win!" 
+    else :
+        return "Computer wins!" 
+#(=> Section:Main
+user_choice  = get_user_choice() 
+computer_choice  = get_computer_choice() 
+result  = determine_winner(user_choice,computer_choice) 
+print(result) 
+#(=> Section:End

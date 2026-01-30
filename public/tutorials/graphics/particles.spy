@@ -1,0 +1,37 @@
+#(=> Strype:1:std
+#(=> peaLayoutMode:tabsCollapsed
+#(=> peaCommandsSplitterPane2Size:{"2":68.42,"tabsCollapsed":48.22}
+#(=> peaSplitViewSplitterPane1Size:{"2":77.23}
+'''A particle sparkling effect that follows the mouse'''
+#(=> Section:Imports
+from strype.graphics import * 
+import random 
+#(=> Section:Definitions
+def init ( ) :
+    #Constants:
+    global GRAVITY 
+    GRAVITY  = 0.3 
+    global FORCE 
+    FORCE  = 6 
+    set_background("Black") 
+def act (particle ) :
+    if particle.is_at_edge()  :
+        particle.remove() 
+    else :
+        particle.set_location(particle.get_x()+particle.dx,particle.get_y()-particle.dy) 
+        particle.dy  = particle.dy+GRAVITY 
+def create_particles ( ) :
+    mouse  = get_mouse() 
+    for i  in range(10)  :
+        particle  = Actor(load_image("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC0AAAAtCAYAAAA6GuKaAAAACXBIWXMAAAsTAAALEwEAmpwYAAAFLElEQVRYha2Z7W7bRhBFL0UptoOkKdr3f8MCrdvYdSyK7A/uFQ+vhpLcdoEFP0TtnhnemZ2Vumma9D+2rh056K74XJLGeO7utv83X9poXXHeaYbu0N1G9A/B/1foCtTnBu5bJ/ykGfYkaWjHu+E/Cp3e6uKYwHtJn9qxj+cMfJT0juub4PdCEy771v1dA35sx749O7VuSL+F9/b5gHlLA+6BThCe37r+JOmh9R0gLI1dfM/ttAV8DbryovW5i3O/9l6XBvQN+KB1FjE09c7mN/Eh6IR1tzb7ds57W57n54SqPGyDrmaVhE7v9lpDuh8AQyh62+MYLlsFPWoOzEGLnC7ACZ2BRNCDZn0e0PfxzFY+pgETOqEZnHTAFP0M3eFGAhvWAeVzQqc0CEpYYXJr2vd6LYFZZScpoKXawwZ+1JIBDJ7AlgFBq+aJB1xz6R+DZ4f7Z+MJzYj3ovDQoAnunFulQL6xqtkwBiY9biPM0GmdRVbQBCf0I7qNoH4rSXjiCjzfyqjZ63xzhw3jLzSd2cLSoCys4ww6AyQ026S1kYR23VFJIx1ykjTttfbwFrB1zPTWaR2EmQmkdeApQBTPSuv0+gMGDHh2qjztIGRqS+BcWHzNwGGWoBcNy5TWxbhZFQrjjNc0XcGm5jNnJ/RJ82JBCVQLRpYJrAhZwo4KeRCKK10f952rnVEM32udVdQm+iHpb0lvzQCCe1yCcwWdtNTbPu4ojwTPAmmnRe9PrTNIXRzZmL5N9CrpWdLvkr43I+hpSjM3CkMb+winlPKoViUWP/byk5ZUuG+gXyV9a8dDm/QvSb+1cY5a5EKZEHTfjpX0OkldtSJmNqiyywOgHbhfJf3a+rdmzCDpz/b5SdKLZpl4RbRuKYdOs4QYWyzchqrKqwr+9La94NXxUdIXST9L+kXST82wU3tm1CyNL82Idy3azoXIwOwrFkNnRFcrWr6FNOJJ0mct0nnAuC/ts88w1PVEVU87JVZ9FYhZS7NdlIdoBs/X6Dx8KPoeY2WtfcIxa/mdoa+1Cn5rwWAuZV52qnLwOS62ys9K06v0S4v5xSmuCTygG2bQnItf23EP6O+aM8ir5swhLXvGBPZ3ttaLXlKfmmbin+K+PXjUnGudm5lnn9uEP7QEoFPec7svLa/ajQWTdJmxVts6QtPiSsP08rvm1MVqzcv2m6Q/2iROc8/t3jsMZK1Mx3BDm8v7WdP5+k9aa3CMftT61XrlOjbgFy1L80mzd9/akdUaAS2xlB5T4nlOBiIlwN7jvlc1N0/40LzIWnuKcTzGhGsGrg2vfuNzO+fp3Gym1Q4qV3CG77QOTmqcjtiKDR5ZFFUcqwpxH4PS4qPWGWIHTxGK38ndTG4IUmppxBb0EefjvhiMv2Tm1sp51sC91kZdg/Z3fJ+5nG+EjiD02YnUtCdmhsjfNDhJFxNkveJWraK5u0no9DY9PWTKMzgzRJaN+QPNtU1utmp/WOme5xcSoaY98UnLb8Xc8jjYrv3gSLitWoZO8Njc/PKY3j4Kmqb1TvgETmhuZKVLWVTn2SvoZEk9X2haWlvsa987qt593wtd/UrqObb+cxm0LEwXgUivbg2am9yEJmAliZQTx2cw0mksGfy/zJie5iCZgrL4vwa4JY8quDNrENoFGteMqYs/P7cm54T5ilOj16ArXVfgimvWQlOl6WwMmC3PZrvleR+5Wt7qZ81f27k4DU5xnZAdPlOcJ2QaxLkSXsX5PMCN/8ZvefGeduutsFW7pgvAfwAD44DCww8llwAAAABJRU5ErkJggg=="),mouse.x,mouse.y) 
+        #Instance variables
+        particle.dx  = random.gauss(0,1)*FORCE 
+        particle.dy  = random.gauss(0,1)*FORCE 
+#(=> Section:Main
+init() 
+while True  :
+    create_particles() 
+    for p  in get_actors()  :
+        act(p) 
+    pace(30) 
+#(=> Section:End

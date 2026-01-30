@@ -1,0 +1,13 @@
+#(=> Strype:1:mb
+#(=> editorCommandsSplitterPane2Size:{"tabsCollapsed":34.13}
+'''A simple programme to show emotions on the micro:bit when pressing the buttons'''
+#(=> Section:Imports
+from microbit import * 
+#(=> Section:Definitions
+#(=> Section:Main
+while True  :
+    if button_a.is_pressed()  :
+        display.show(Image.HAPPY) 
+    if button_b.is_pressed()  :
+        display.show(Image.SAD) 
+#(=> Section:End

@@ -1,0 +1,9 @@
+- name: Flowers
+  description: Draws colourful flowers
+  image: turtle-flowers.png
+  file: turtle-flowers.spy
+
+- name: Rainbow spiral
+  description: Draws a rainbow spiral
+  image: turtle-rainbow.png
+  file: turtle-rainbow.spy

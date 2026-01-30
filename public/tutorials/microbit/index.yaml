@@ -1,0 +1,13 @@
+- name: Emotion badge
+  description: |
+    Simply show your emotion on your micro:bit.
+    (From the <a href="https://microbit.org/projects/make-it-code-it/" target="_blank">micro:bit foundation</a>.)
+  image: mb1.png
+  file: mb1.spy
+
+- name: Frère Jacques
+  description: |
+    Play this famous song on on your micro:bit.<br/>
+    (From the <a href="https://microbit.org/projects/make-it-code-it/" target="_blank">micro:bit foundation</a>.)
+  image: mb2.png
+  file: mb2.spy

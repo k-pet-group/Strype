@@ -1,0 +1,19 @@
+- name: Crab game
+  description: Can the crab eat the worms before it is eaten by the lobster?
+  image: graphics-crab-game.png
+  file: graphics-crab-game.spy
+
+- name: Sparks
+  description: Visual particle effects
+  image: particles.png
+  file: particles.spy
+  
+- name: Knock knock
+  description: A knock-knock joke
+  image: graphics-knock-knock.png
+  file: graphics-knock-knock.spy
+
+- name: Sea life game
+  description: Starting point for the sea life game
+  image: graphics-sea-life.png
+  file: graphics-sea-life.spy

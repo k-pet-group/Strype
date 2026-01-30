@@ -1,0 +1,34 @@
+#(=> Strype:1:std
+'''Get your best shot at guessing the programme's number'''
+#(=> Section:Imports
+import random 
+#(=> Section:Definitions
+def getGuess ( ) :
+    global numGuesses 
+    numGuesses  = numGuesses+1 
+    guess  = int(input("Your number: ")) 
+    return guess 
+def gameOver ( ) :
+    return ___strype_invalid_u0067u0075u0065u0073u0073u0065u0064u0020u006fu0072(numGuesses>7) 
+#(=> Section:Main
+print("Welcome to the Number Guessing Game (NGG)") 
+number  = random.randint(0,100) 
+numGuesses  = 0 
+guessed  = False 
+print("Guess a number between 0 and 100") 
+guess  = getGuess() 
+while not gameOver()  :
+    if guess==number  :
+        print("You got it!") 
+        guessed  = True 
+    elif guess<number  :
+        print("You're too low...  Try again.") 
+    else :
+        print("You're too high. Try again.") 
+    guess  = getGuess() 
+
+if guessed  :
+    print(___strype_opsinvalid(f,___strype_operator_,"Well done - you won. You needed {numGuesses} guesses",___strype_operator_,___strype_blank)) 
+else :
+    print("Sorry, you are out of guesses. You lose.") 
+#(=> Section:End

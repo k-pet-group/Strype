@@ -708,6 +708,7 @@ export default Vue.extend({
         },
 
         openLoadTutorialModal(): void {
+            (this.$refs.openTutorialDlg as InstanceType<typeof OpenTutorialDlg>).updateAvailableTutorials();
             // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer 
             // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
             // So we open it manually here...
@@ -718,13 +719,8 @@ export default Vue.extend({
                 this.showDialogAfterSave = this.loadTutorialModalDlgId;
                 this.$root.$emit("bv::show::modal", this.saveOnLoadModalDlgId);
             }
-            else if(this.openSharedProjectId.length == 0) {
-                // The normal "open target" dialog
-                this.$root.$emit("bv::show::modal", this.loadTutorialModalDlgId);
-            }
             else {
-                // The case of opening a shared project: we don't need a target selection, we just try to open the project
-                this.loadProject();
+                this.$root.$emit("bv::show::modal", this.loadTutorialModalDlgId);
             }
         },
 
@@ -892,6 +888,9 @@ export default Vue.extend({
             }
             else if (dlgId == this.loadDemoProjectModalDlgId) {
                 (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).shown();
+            }
+            else if (dlgId == this.loadTutorialModalDlgId) {
+                (this.$refs.openTutorialDlg as InstanceType<typeof OpenTutorialDlg>).shown();
             }
             else {
                 // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
@@ -1144,6 +1143,21 @@ export default Vue.extend({
                         selectedDemo.demoFile.then((content) => {
                             if (content) {
                                 (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0, false)
+                                    .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
+                            }
+                        });
+                    }
+                }
+                else if (dlgId == this.loadTutorialModalDlgId) {
+                    // We do not do anything if the modal is closed by a "hide" event.
+                    if(event.trigger == "event" && event.type == "hide"){
+                        return;
+                    }
+                    const selectedTutorial = (this.$refs.openTutorialDlg as InstanceType<typeof OpenTutorialDlg>).getSelectedTutorial();
+                    if (selectedTutorial) {
+                        selectedTutorial.tutorialFile.then((content) => {
+                            if (content) {
+                                (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, selectedTutorial.name ?? "Tutorial", 0, false)
                                     .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
                             }
                         });

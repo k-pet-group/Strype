@@ -5,18 +5,18 @@
             showCloseBtn
             :autoFocusButton="'ok'"
             css-class="tutorial-dlg"
-            :ok-disabled="!(selectedDemoCategoryIndex >= 0 && selectedDemoCategoryIndex < availableDemos.length && selectedDemoItemIndex >= 0 && selectedDemoItemIndex < demosInCurrentCategory.length)" >
+            :ok-disabled="!(selectedTutorialCategoryIndex >= 0 && selectedTutorialCategoryIndex < availableTutorials.length && selectedTutorialItemIndex >= 0 && selectedTutorialItemIndex < tutorialsInCurrentCategory.length)" >
         <div class="d-flex" style="height: 400px;">
             <!-- Left Pane: List Group -->
             <b-list-group class="flex-column" style="width: 30% !important;">
                 <b-list-group-item
-                    v-for="(item, index) in availableDemos"
+                    v-for="(item, index) in availableTutorials"
                     :key="index"
-                    :active="selectedDemoCategoryIndex === index && availableDemos.length > 1"
-                    @click="changeDemoDialogCategory(index, item.demos)"
+                    :active="selectedTutorialCategoryIndex === index && availableTutorials.length > 1"
+                    @click="changeTutorialDialogCategory(index, item.tutorials)"
                     button
                 >
-                    <span class="tutorial-dlg-demo-group-type" v-if="item.type">{{item.type}}</span>
+                    <span class="tutorial-dlg-tutorial-group-type" v-if="item.type">{{item.type}}</span>
                     {{ item.name }}
                 </b-list-group-item>
             </b-list-group>
@@ -25,13 +25,13 @@
             <div class="flex-grow-1 p-3 overflow-auto">
                 <div class="d-flex flex-column">
                     <button
-                        v-for="(item, i) in demosInCurrentCategory"
+                        v-for="(item, i) in tutorialsInCurrentCategory"
                         :key="i"
-                        :class="{'d-flex': true, 'tutorial-dlg-demo-item': true, 'tutorial-dlg-selected-demo-item': selectedDemoItemIndex === i}"
+                        :class="{'d-flex': true, 'tutorial-dlg-tutorial-item': true, 'tutorial-dlg-selected-tutorial-item': selectedTutorialItemIndex === i}"
                         type="button"
-                        @click="selectedDemoItemIndex = i"
+                        @click="selectedTutorialItemIndex = i"
                         @dblclick="onDblClick"
-                        @keydown.space.self="selectedDemoItemIndex = i"
+                        @keydown.space.self="selectedTutorialItemIndex = i"
                     >
                         <!-- 1x1 transparent image if image is missing: -->
                         <img :src="item.imgURL || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII='" alt="Preview" class="tutorial-dlg-preview flex-shrink-0"/>
@@ -50,7 +50,7 @@
 import Vue from "vue";
 import MenuComponent from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
-import {Demo, DemoGroup, getBuiltinDemos} from "@/helpers/demos";
+import {Tutorial, TutorialGroup, getBuiltinTutorials} from "@/helpers/tutorials";
 import { BvModalEvent } from "bootstrap-vue";
 import { getMenuLeftPaneUID } from "@/helpers/editor";
 
@@ -63,80 +63,77 @@ export default Vue.extend({
     
     data: function() {
         return {
-            availableDemos: [] as DemoGroup[],
-            selectedDemoCategoryIndex: 0, // LHS, always a selection
-            selectedDemoItemIndex: 0, // RHS, -1 if no selection
-            demosInCurrentCategory: [] as { name: string, description: string | undefined, imgURL: string | undefined, demoFile: () => Promise<string | undefined> }[],
+            availableTutorials: [] as TutorialGroup[],
+            selectedTutorialCategoryIndex: 0, // LHS, always a selection
+            selectedTutorialItemIndex: 0, // RHS, -1 if no selection
+            tutorialsInCurrentCategory: [] as { name: string, description: string | undefined, imgURL: string | undefined, tutorialFile: () => Promise<string | undefined> }[],
         };
     },
     
     methods: {       
-        updateAvailableDemos() {
-            // We must update the available demos based on the code.
-            // Our built-in demos are always available:
-            this.availableDemos = [
+        updateAvailableTutorials() {
+            // We must update the available tutorials based on the code.
+            // Our built-in tutorials are always available:
+            this.availableTutorials = [
                 /* IFTRUE_isPython */
-                {name: this.$i18n.t("tutorials.builtinGraphics") as string, demos: getBuiltinDemos("graphics")},
-                {name: this.$i18n.t("tutorials.builtinTurtle") as string, demos: getBuiltinDemos("turtle")},
-                {name: this.$i18n.t("tutorials.builtinConsole") as string, demos: getBuiltinDemos("console")},
+                {name: this.$i18n.t("tutorials.builtinGraphics") as string, tutorials: getBuiltinTutorials("graphics")},
+                {name: this.$i18n.t("tutorials.builtinTurtle") as string, tutorials: getBuiltinTutorials("turtle")},
+                {name: this.$i18n.t("tutorials.builtinConsole") as string, tutorials: getBuiltinTutorials("console")},
                 /* FITRUE_isPython */
                 /* IFTRUE_isMicrobit */
                 // A bit pointless to show "micro:bit" for micro:bit version since there is no other choice,
                 // but let's keep the same presentation across the different versions.
-                {name: this.$i18n.t("tutorials.builtinMicrobit") as string, demos: getBuiltinDemos("microbit")},
+                {name: this.$i18n.t("tutorials.builtinMicrobit") as string, tutorials: getBuiltinTutorials("microbit")},
                 /* FITRUE_isMicrobit */
 
             ];
         },
 
-        async changeDemoDialogCategory(index: number, itemPromise: Promise<Demo[]>) {
-            this.selectedDemoCategoryIndex = index;
-            this.demosInCurrentCategory = [];
-            const demos = await itemPromise;
+        async changeTutorialDialogCategory(index: number, itemPromise: Promise<Tutorial[]>) {
+            this.selectedTutorialCategoryIndex = index;
+            this.tutorialsInCurrentCategory = [];
+            const tutorials = await itemPromise;
             const r = [];
             // Note async: will run each in background
-            for (const demo of demos) {
+            for (const tutorial of tutorials) {
                 let img : Promise<string | undefined>;
-                if ("dataURL" in demo.image) {
-                    img = demo.image.dataURL;
-                }
-                else if ("imgURL" in demo.image) {
-                    img = Promise.resolve(demo.image.imgURL);
+                if ("imgURL" in tutorial.image) {
+                    img = Promise.resolve(tutorial.image.imgURL);
                 }
                 else {
                     img = Promise.resolve<string | undefined>(undefined);
                 }
                 const details = {
-                    name: demo.name,
-                    description: demo.description,
+                    name: tutorial.name,
+                    description: tutorial.description,
                     imgURL: undefined as (string | undefined),
-                    demoFile: demo.demoFile,
+                    tutorialFile: tutorial.tutorialFile,
                 };
                 r.push(details);
                 img.then((url) => {
                     Vue.set(details, "imgURL", url);
                 });
             }
-            this.demosInCurrentCategory = r;
+            this.tutorialsInCurrentCategory = r;
 
         },
         
         // Called by Menu component when we are shown:
         shown() {
-            this.changeDemoDialogCategory(0, this.availableDemos.length > 0 ? this.availableDemos[0].demos: Promise.resolve([]));
+            this.changeTutorialDialogCategory(0, this.availableTutorials.length > 0 ? this.availableTutorials[0].tutorials: Promise.resolve([]));
         },
 
-        getSelectedDemo() : ({ name : string, demoFile: Promise<string | undefined> } | undefined) {
-            if (this.selectedDemoItemIndex >= 0 && this.selectedDemoItemIndex < this.demosInCurrentCategory.length) {
-                const d = this.demosInCurrentCategory[this.selectedDemoItemIndex];
-                return {name: d.name, demoFile: d.demoFile()};
+        getSelectedTutorial() : ({ name : string, tutorialFile: Promise<string | undefined> } | undefined) {
+            if (this.selectedTutorialItemIndex >= 0 && this.selectedTutorialItemIndex < this.tutorialsInCurrentCategory.length) {
+                const d = this.tutorialsInCurrentCategory[this.selectedTutorialItemIndex];
+                return {name: d.name, tutorialFile: d.tutorialFile()};
             }
             return undefined;
         },
 
         onDblClick(){
             // Triggers the modal's OK event to load the selected example. The click event is fired before the double-click event:
-            // selectedDemoItemIndex is already set to the right value.
+            // selectedTutorialItemIndex is already set to the right value.
             // We first close the dialog, than simulate a "close with action" in the Menu (since we can't close with "OK" status.)
             this.$root.$emit("bv::hide::modal", this.dlgId);
             (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.dlgId);
@@ -150,18 +147,18 @@ export default Vue.extend({
   min-width: min(800px, 80vw);
 }
 
-.tutorial-dlg-demo-item {
+.tutorial-dlg-tutorial-item {
   padding: 10px 20px 10px 20px;
   background-color: white;
   border: 0px;
   text-align: left;
 }
 
-.tutorial-dlg-demo-item:hover {
+.tutorial-dlg-tutorial-item:hover {
   background-color: #f8f9fa;
 }
 
-.tutorial-dlg-selected-demo-item, .tutorial-dlg-selected-demo-item:hover {
+.tutorial-dlg-selected-tutorial-item, .tutorial-dlg-selected-tutorial-item:hover {
     background-color: #007bff;
 }
 
@@ -178,7 +175,7 @@ span.tutorial-dlg-name {
     font-size: 125%;
 }
 
-.tutorial-dlg-selected-demo-item span.tutorial-dlg-name {
+.tutorial-dlg-selected-tutorial-item span.tutorial-dlg-name {
     color: white;
 }
 
@@ -191,15 +188,15 @@ span.tutorial-dlg-description {
     -webkit-box-orient: vertical;
 }
 
-.tutorial-dlg-selected-demo-item span.tutorial-dlg-description {
+.tutorial-dlg-selected-tutorial-item span.tutorial-dlg-description {
   color: #eee;
 }
 
-.tutorial-dlg-selected-demo-item span.tutorial-dlg-description a {
+.tutorial-dlg-selected-tutorial-item span.tutorial-dlg-description a {
     color: white;
 }
 
-.tutorial-dlg-demo-group-type {
+.tutorial-dlg-tutorial-group-type {
     display: block;
     color: #999;
     font-size: 80%;

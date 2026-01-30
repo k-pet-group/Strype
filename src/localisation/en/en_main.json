@@ -282,7 +282,11 @@
   "tutorials": {
     "dialogTitle": "Choose a tutorial to load",
     "onboarding": "Onboarding",
-    "examples": "Examples"
+    "examples": "Examples",
+    "builtinGraphics": "Graphics",
+    "builtinConsole": "Console",
+    "builtinTurtle": "Turtle",
+    "builtinMicrobit": "micro:bit"
   },
   "shortcut": {
     "delete": "Delete",

@@ -1,9 +1,14 @@
-- name: Number Guessing Game
-  description: A number guessing game
-  image: console-ngg.png
+- name: An Introduction To Frames
+  description: How to insert, delete and update frames.
+  image: favicon.png
   file: console-ngg.spy
 
-- name: Rock Paper Scissors
-  description: A rock-paper-scissors game
-  image: console-rps.png
-  file: console-rps.spy
+- name: The Context Menu
+  description: How to use the context menu to insert, delete and update frames.
+  image: favicon.png
+  file: console-ngg.spy
+
+- name: Code Completion
+  description: How to use Strype's inbuilt code completion.
+  image: favicon.png
+  file: console-ngg.spy

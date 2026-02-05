@@ -1,0 +1,14 @@
+- name: An Introduction To Frames
+  description: How to insert, delete and update frames.
+  image: favicon.png
+  file: console-ngg.spy
+
+- name: The Context Menu
+  description: How to use the context menu to insert, delete and update frames.
+  image: favicon.png
+  file: console-ngg.spy
+
+- name: Code Completion
+  description: How to use Strype's inbuilt code completion.
+  image: favicon.png
+  file: console-ngg.spy

@@ -89,6 +89,8 @@
             <div class="menu-separator-div"></div>           
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadDemoProjectModal">{{$t('appMenu.loadDemoProject')}}</a>
             <OpenDemoDlg ref="openDemoDlg" :dlg-id="loadDemoProjectModalDlgId"/>
+            <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadTutorialModal">{{$t('appMenu.loadTutorial')}}</a>
+            <OpenTutorialDlg ref="openTutorialDlg" :dlg-id="loadTutorialModalDlgId"/>
             /* IFTRUE_isPython
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLibraryDoc">{{$t('appMenu.apiDocumentation')}}</a>
                FITRUE_isPython */
@@ -243,6 +245,7 @@ import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/help
 import { getLocaleBuildDate } from "@/main";
 import scssVars from "@/assets/style/_export.module.scss";
 import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
+import OpenTutorialDlg from "@/components/OpenTutorialDlg.vue";
 import { CloudFileSharingStatus, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import {deflateRaw} from "pako";
 import {Base64} from "js-base64";
@@ -259,6 +262,7 @@ export default Vue.extend({
         Slide,
         CloudDriveHandler,
         ModalDlg,
+        OpenTutorialDlg,
     },
 
     data: function() {
@@ -452,6 +456,10 @@ export default Vue.extend({
 
         loadDemoProjectModalDlgId(): string {
             return "load-strype-demo-project-modal-dlg";
+        },
+
+        loadTutorialModalDlgId(): string {
+            return "load-strype-tutorial-modal-dlg";
         },
 
         loadProjectTargetButtonGpId(): string {
@@ -699,6 +707,23 @@ export default Vue.extend({
             }
         },
 
+        openLoadTutorialModal(): void {
+            (this.$refs.openTutorialDlg as InstanceType<typeof OpenTutorialDlg>).updateAvailableTutorials();
+            // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer 
+            // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
+            // So we open it manually here...
+            // We might need to check, first that a project has been modified and needs to be saved.
+            if(this.appStore.isEditorContentModified){
+                // Show a modal dialog to let user save/discard their changes. Saving loop is handled with saving methods.
+                // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
+                this.showDialogAfterSave = this.loadTutorialModalDlgId;
+                this.$root.$emit("bv::show::modal", this.saveOnLoadModalDlgId);
+            }
+            else {
+                this.$root.$emit("bv::show::modal", this.loadTutorialModalDlgId);
+            }
+        },
+
         handleSaveMenuClick(saveReason?: SaveRequestReason): void {
             // Some problem, like for the load project menu, happens because of changing v-if to v-show (it works first time, but not second time).
             // So again, we handle things manually for the menu entry click
@@ -863,6 +888,9 @@ export default Vue.extend({
             }
             else if (dlgId == this.loadDemoProjectModalDlgId) {
                 (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).shown();
+            }
+            else if (dlgId == this.loadTutorialModalDlgId) {
+                (this.$refs.openTutorialDlg as InstanceType<typeof OpenTutorialDlg>).shown();
             }
             else {
                 // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
@@ -1115,6 +1143,21 @@ export default Vue.extend({
                         selectedDemo.demoFile.then((content) => {
                             if (content) {
                                 (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0, false)
+                                    .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
+                            }
+                        });
+                    }
+                }
+                else if (dlgId == this.loadTutorialModalDlgId) {
+                    // We do not do anything if the modal is closed by a "hide" event.
+                    if(event.trigger == "event" && event.type == "hide"){
+                        return;
+                    }
+                    const selectedTutorial = (this.$refs.openTutorialDlg as InstanceType<typeof OpenTutorialDlg>).getSelectedTutorial();
+                    if (selectedTutorial) {
+                        selectedTutorial.tutorialFile.then((content) => {
+                            if (content) {
+                                (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, selectedTutorial.name ?? "Tutorial", 0, false)
                                     .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
                             }
                         });

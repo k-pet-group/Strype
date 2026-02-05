@@ -205,6 +205,7 @@
     "downloadPython": "Convert to Python file",
     "loadProject": "Open...",
     "loadDemoProject": "Examples...",
+    "loadTutorial": "Tutorials...",
     "saveProject": "Save",
     "saveAsProject": "Save as...",
     "resetProject": "New project",
@@ -277,6 +278,11 @@
     "builtinConsole": "Console",
     "builtinTurtle": "Turtle",
     "builtinMicrobit": "micro:bit"
+  },
+  "tutorials": {
+    "dialogTitle": "Choose a tutorial to load",
+    "builtinOnboarding": "Onboarding",
+    "builtinExample": "Examples"
   },
   "shortcut": {
     "delete": "Delete",

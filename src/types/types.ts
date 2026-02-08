@@ -363,6 +363,7 @@ export const ContainerTypesIdentifiers = {
 
 const SpecialTypesIdentifiers = {
     projectDocumentation: "projectDocumentation",
+    tutorial: "tutorial",
 };
 
 const CommentFrameTypesIdentifier = {
@@ -498,7 +499,14 @@ export const ProjectDocumentationDefinition: FramesDefinitions = {
     colour: "#A00000",
 };
 
-
+export const TutorialDefinition: FramesDefinitions = {
+    ...StatementDefinition,
+    type: AllFrameTypesIdentifier.tutorial,
+    labels: [
+        { label: "", showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.t("frame.defaultText.projectTutorial") as string, allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
+    ],
+    colour: "#A00000",
+};
 let Definitions = {};
 
 // Entry point for generating the frame definition types -- only doing so to allow dynamic localisation bits...
@@ -774,6 +782,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         CommentDefinition,
         GlobalDefinition,
         ProjectDocumentationDefinition,
+        TutorialDefinition,
         // also add the frame containers as we might need to retrieve them too
         ...FrameContainersDefinitions,
     };
@@ -796,6 +805,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
                 MainFramesContainerDefinition.labels[0].label = i18n.t("appMessage.mainContainer") as string;
                 break;
             case ProjectDocumentationDefinition.type:
+                break;
+            case TutorialDefinition.type:
                 break;
             default:
                 // For all normal frames, we rely on the frame definition type                

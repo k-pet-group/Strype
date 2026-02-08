@@ -37,7 +37,9 @@ export const AppPlatform = appPlatform;
 
 // The project defintion slot isn't attached to a "real" frame.
 // We declare the fake frame ID we used for it here.
-export const projectDocumentationFrameId = -10;
+export const tutorialFrameId = -10;
+export const projectDocumentationFrameId = -9;
+
 
 let localeBuildDate = "";
 export function getLocaleBuildDate(): string {

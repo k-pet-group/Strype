@@ -1,5 +1,25 @@
 #(=> Strype:1:std
 '''Get your best shot at guessing the programme's number'''
+#(=> Section:Tutorial
+steps:
+- title: "Welcome!"
+  description: "In this tutorial, we are going to create a simple number guessing game in Python. The programme will generate a random number between 0 and 100, and the player will have to guess it. The player will have a limited number of guesses, and after each guess, the programme will provide feedback on whether the guess is too low, too high, or correct."
+- title: "Importing the Random Module"
+  description: "First, we need to import the random module, which will allow us to generate a random number for the game."
+- title: "Defining the getGuess Function"
+  description: "Next, we will define a function called getGuess that will prompt the player to enter their guess and return it as an integer. We will also keep track of the number of guesses the player has made."
+- title: "Defining the gameOver Function"
+  description: "We will also define a function called gameOver that will check if the player has exceeded the maximum number of guesses allowed. In this case, we will set the limit to 7 guesses."
+- title: "Setting Up the Main Game Loop"
+  description: "Now we will set up the main game loop. We will generate a random number, initialize the number of guesses and a flag to indicate whether the player has guessed correctly. We will then prompt the player to make their first guess."
+- title: "Providing Feedback and Updating the Game State"
+  description: "Inside the game loop, we will check if the player's guess is correct, too low, or too high. We will provide feedback accordingly and prompt the player to make another guess until the game is over."
+- title: "Ending the Game"
+  description: "Finally, we will check if the player guessed the number correctly or if they ran out of guesses, and print the appropriate message to the player."
+- title: "Congratulations!"
+  description: "If the player guessed the number correctly, we will congratulate them and display the number of guesses they needed."
+- title: "Game Over"
+  description: "If the player ran out of guesses, we will inform them that they have lost the game."
 #(=> Section:Imports
 import random 
 #(=> Section:Definitions

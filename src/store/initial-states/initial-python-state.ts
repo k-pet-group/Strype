@@ -16,6 +16,19 @@ const initialPythonState: EditorFrameObjects = {
     },
     "-10": {
         id: -10,
+        frameType : getFrameDefType(AllFrameTypesIdentifier.tutorial),
+        isDisabled: false,
+        isSelected: false,
+        isVisible: true,
+        parentId: 0,
+        childrenIds: [],
+        jointParentId: 0,
+        jointFrameIds: [],
+        labelSlotsDict: {0: {slotStructures: {fields: [{code: "Default Tutorial Content"}], operators: []}}},
+        caretVisibility: CaretPosition.none,
+    },
+    "-9": {
+        id: -9,
         frameType : getFrameDefType(AllFrameTypesIdentifier.projectDocumentation),
         isDisabled: false,
         isSelected: false,
@@ -27,6 +40,7 @@ const initialPythonState: EditorFrameObjects = {
         labelSlotsDict: {0: {slotStructures: {fields: [{code: "This is the default Strype starter project"}], operators: []}}},
         caretVisibility: CaretPosition.none,
     },
+    
     "-1": {
         id: -1,
         frameType : ImportsContainerDefinition,

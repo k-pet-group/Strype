@@ -50,8 +50,19 @@
                                     @mousedown="handleWholeEditorMouseDown"
                                 >
                                     <FrameHeader
-                                        :labels="projectDocLabels"
+                                        :labels="tutorialLabels"
                                         :frameId="-10"
+                                        :frameType="tutorialFrameType"
+                                        :isDisabled="true"
+                                        :frameAllowChildren="false"
+                                        :erroneous="false"
+                                        :wasLastRuntimeError="false"
+                                        :frameAllowedCollapsedStates="[]"
+                                        :frameAllowedFrozenStates="[]"
+                                        :onFocus="() => {}"/>
+                                    <FrameHeader
+                                        :labels="projectDocLabels"
+                                        :frameId="-9"
                                         :frameType="projectDocFrameType"
                                         :isDisabled="false"
                                         :frameAllowChildren="false"
@@ -118,7 +129,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState } from "@/types/types";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, TutorialDefinition, CollapsedState } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import { getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
@@ -198,7 +209,7 @@ export default Vue.extend({
              
         // gets the container frames objects which are in the root
         containerFrames(): FrameObject[] {
-            return this.appStore.getFramesForParentId(0).filter((f) => f.frameType.type != AllFrameTypesIdentifier.projectDocumentation);
+            return this.appStore.getFramesForParentId(0).filter((f) => f.frameType.type != AllFrameTypesIdentifier.tutorial);
         },
 
         slotFocusId() : string {
@@ -232,6 +243,14 @@ export default Vue.extend({
         
         projectDocFrameType() {
             return AllFrameTypesIdentifier.projectDocumentation;
+        },
+
+        tutorialLabels() {
+            return TutorialDefinition.labels;
+        },
+        
+        tutorialFrameType() {
+            return AllFrameTypesIdentifier.tutorial;
         },
 
         editorCommandsSplitterPane2Size: {

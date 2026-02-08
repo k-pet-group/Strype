@@ -22,6 +22,7 @@
       "libraryAddress": "location",
       "comment": "comment ",
       "projectDescription": "project description",
+      "projectTutorial": "project tutorial",
       "funcDescription": "function description",
       "classDescription": "class description"
     },

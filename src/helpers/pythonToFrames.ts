@@ -3,7 +3,7 @@ import {useStore} from "@/store/store";
 import {getCaretContainerComponent, getFrameComponent, operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
-import {AppName, AppSPYFullPrefix, projectDocumentationFrameId} from "@/main";
+import {AppName, AppSPYFullPrefix, projectDocumentationFrameId,tutorialFrameId} from "@/main";
 import {toUnicodeEscapes, stringToCollapsed, stringToFrozen} from "@/parser/parser";
 import FrameContainer from "@/components/FrameContainer.vue";
 
@@ -47,6 +47,7 @@ declare const Sk: any;
 export enum STRYPE_LOCATION {
     UNKNOWN,
     PROJECT_DOC_SECTION,
+    TUTORIAL_SECTION,
     MAIN_CODE_SECTION,
     IN_FUNCDEF,
     IN_CLASSDEF,
@@ -1304,6 +1305,10 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
         removeTopLevelBlankFrames();
         // Given we transform top comment, shouldn't be anything left:
         return topLevelCopiedFrames.length == 0;
+    case STRYPE_LOCATION.TUTORIAL_SECTION:
+        removeTopLevelBlankFrames();
+        // Given we transform top comment, shouldn't be anything left:
+        return topLevelCopiedFrames.length == 0;
     default:
         // We shouldn't reach this but for safety we return false
         return false;
@@ -1340,7 +1345,7 @@ function makeMapping(section: NumberedLine[]) : Record<number, number> {
 // Each line of the original will end up in exactly one of the three parts of the return.
 // With Python's indentation rules, this operation is actually easier at line level than it is post-parse.
 // The mappings map line numbers in the returned sections to line numbers in the original
-export function splitLinesToSections(allLines : string[]) : {projectDoc: string[], imports: string[]; defs: string[]; main: string[], importsMapping: Record<number, number>, defsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
+export function splitLinesToSections(allLines : string[]) : {projectDoc: string[], tutorial: string[], imports: string[]; defs: string[]; main: string[], importsMapping: Record<number, number>, defsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
     // There's two possibilities:
     //  - we're loading a .spy with section headings, or
     //  - we're loading a .py where we must infer it.
@@ -1350,6 +1355,7 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
         let line = 1;
         const r = {
             projectDoc: [] as string[],
+            tutorial: [] as string[],
             imports: [] as string[],
             defs: [] as string[],
             main: [] as string[],
@@ -1359,7 +1365,7 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
             headers: {} as Record<string, string>,
             format: "spy" as "py" | "spy",
         };
-        while (line < allLines.length && !allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:Imports"))) {
+        while (line < allLines.length && !allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:(Tutorial|Imports)"))) {
             // Everything here should be metadata, add it to headers:
             const m = allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + "([^:]+):(.*)"));
             if (m) {
@@ -1371,7 +1377,15 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
             }
             line += 1;
         }
-        line += 1;
+        // Not all .spy files will have tutorial sections, so we check before trying to parse it:
+        if (allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:Tutorial"))) {
+            line += 1;
+            while (line < allLines.length && !allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:Imports"))) {
+                r.tutorial.push(allLines[line]);
+                line += 1;
+            }
+        }
+        line+=1;
         const firstImportLine = line;
         while (line < allLines.length && !allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:Definitions"))) {
             r.imports.push(allLines[line]);
@@ -1387,7 +1401,7 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
         }
         line += 1;
         const firstMainLine = line;
-        while (line < allLines.length && !allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:Main"))) {
+        while (line < allLines.length && !allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:End"))) {
             r.main.push(allLines[line]);
             r.mainMapping[line - firstMainLine] = line;
             line += 1;
@@ -1402,6 +1416,8 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
     const imports: NumberedLine[] = [];
     const defs: NumberedLine[] = [];
     const main: NumberedLine[] = [];
+    // Note: We assume that .py files do not contain tutorial data.
+
     // -1 if we're not in a def
     let outermostDefIndentLevel = -1;
     allLines.forEach((line : string, zeroBasedLine : number) => {
@@ -1447,7 +1463,8 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
     // Add any trailing comments:
     main.push(...latestComments);
     return {
-        projectDoc: projectDoc.map((l) => l.text), 
+        projectDoc: projectDoc.map((l) => l.text),
+        tutorial: [], // We assume .py files do not contain tutorial data
         imports: imports.map((l) => l.text),
         defs: defs.map((l) => l.text),
         main: main.map((l) => l.text),
@@ -1501,6 +1518,10 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
             isCurLocationInMainCodeSection = curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION, isCurLocationInAFuncDefFrame = curLocation == STRYPE_LOCATION.IN_FUNCDEF;
 
         copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format);
+        if (s.tutorial.length > 0) {
+            const tutorialFrame = useStore().frameObjects[tutorialFrameId] as FrameObject;
+            tutorialFrame.labelSlotsDict[0].slotStructures = { operators: [], fields: [{ code: s.tutorial.join("\n") }] };
+        }
         copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format);
         if (useStore().copiedSelectionFrameIds.length > 0) {
             getCaretContainerComponent(getFrameComponent((isCurLocationInImportsSection) ? useStore().currentFrame.id : useStore().getImportsFrameContainerId) as InstanceType<typeof FrameContainer>).doPaste(isCurLocationInImportsSection ? "caret" : "end");

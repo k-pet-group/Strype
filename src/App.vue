@@ -49,17 +49,11 @@
                                     :class="{'editor-code-div noselect print-full-height':true/* IFTRUE_isPython , 'full-height-editor-code-div':!isExpandedPythonExecArea, [scssVars.croppedEditorDivClassName]: isExpandedPythonExecArea FITRUE_isPython */}"
                                     @mousedown="handleWholeEditorMouseDown"
                                 >
-                                    <FrameHeader
-                                        :labels="tutorialLabels"
-                                        :frameId="-10"
-                                        :frameType="tutorialFrameType"
-                                        :isDisabled="true"
-                                        :frameAllowChildren="false"
-                                        :erroneous="false"
-                                        :wasLastRuntimeError="false"
-                                        :frameAllowedCollapsedStates="[]"
-                                        :frameAllowedFrozenStates="[]"
-                                        :onFocus="() => {}"/>
+                                    <div class="">
+                                        <TutorialSteps
+                                            v-if="showTutorialSteps"
+                                        />
+                                    </div>
                                     <FrameHeader
                                         :labels="projectDocLabels"
                                         :frameId="-9"
@@ -155,6 +149,7 @@ import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
 import {loadDivider} from "@/helpers/load-save";
 import FrameHeader from "@/components/FrameHeader.vue";
+import TutorialSteps from "@/components/TutorialSteps.vue";
 import { projectDocumentationFrameId } from "./main";
 import {inflateRaw} from "pako";
 import { Base64 } from "js-base64";
@@ -170,6 +165,7 @@ export default Vue.extend({
     
     components: {
         FrameHeader,
+        TutorialSteps,
         MessageBanner,
         FrameContainer,
         Commands,
@@ -223,6 +219,10 @@ export default Vue.extend({
 
         showMessage(): boolean {
             return this.appStore.isMessageBannerOn;
+        },
+
+        showTutorialSteps(): boolean {
+            return this.appStore.isTutorialStepsOn;
         },
 
         menuUID(): string {

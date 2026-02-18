@@ -3,7 +3,7 @@ import {useStore} from "@/store/store";
 import {getCaretContainerComponent, getFrameComponent, operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
-import {AppName, AppSPYFullPrefix, projectDocumentationFrameId,tutorialFrameId} from "@/main";
+import {AppName, AppSPYFullPrefix, projectDocumentationFrameId} from "@/main";
 import {toUnicodeEscapes, stringToCollapsed, stringToFrozen} from "@/parser/parser";
 import FrameContainer from "@/components/FrameContainer.vue";
 
@@ -1518,9 +1518,12 @@ export function pasteMixedPython(completeSource: string, clearExisting: boolean)
             isCurLocationInMainCodeSection = curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION, isCurLocationInAFuncDefFrame = curLocation == STRYPE_LOCATION.IN_FUNCDEF;
 
         copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format);
+        // Files optionally have tutorials.
         if (s.tutorial.length > 0) {
-            const tutorialFrame = useStore().frameObjects[tutorialFrameId] as FrameObject;
-            tutorialFrame.labelSlotsDict[0].slotStructures = { operators: [], fields: [{ code: s.tutorial.join("\n") }] };
+            useStore().tutorialRaw = s.tutorial.join("\n");
+        }
+        else {
+            useStore().tutorialRaw = "";
         }
         copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format);
         if (useStore().copiedSelectionFrameIds.length > 0) {

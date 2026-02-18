@@ -197,6 +197,9 @@ export const useStore = defineStore("app", {
 
             projectName: i18n.t("defaultProjName") as string,
 
+            // Raw tutorial YAML/text loaded with the project
+            tutorialRaw: "",
+
             isEditorContentModified: false,
 
             syncTarget: StrypeSyncTarget.none, // default value: no target
@@ -536,6 +539,10 @@ export const useStore = defineStore("app", {
         
         isMessageBannerOn: (state) => {
             return state.currentMessage.type !== MessageDefinitions.NoMessage.type;
+        },
+
+        isTutorialStepsOn: (state) => {
+            return state.tutorialRaw !== "";
         },
         
         // Automatically checks returns index in Parent OR JointParent

@@ -3,21 +3,21 @@
 #(=> Section:Tutorial
 steps:
 - title: "Welcome!"
-    description: "In this tutorial we'll build a simple Rock–Paper–Scissors console game in Python. The player will compete against the computer with clear rules and input validation."
+  description: "In this tutorial we'll build a simple Rock–Paper–Scissors console game in Python. The player will compete against the computer with clear rules and input validation."
 - title: "Game Rules"
-    description: "Rock beats scissors, scissors beats paper, and paper beats rock. If both players choose the same move, the round is a tie."
+  description: "Rock beats scissors, scissors beats paper, and paper beats rock. If both players choose the same move, the round is a tie."
 - title: "Importing Random"
-    description: "Import the random module so the computer can choose moves at random using `random.choice`."
+  description: "Import the random module so the computer can choose moves at random using `random.choice`."
 - title: "Reading and Validating Input"
-    description: "Implement `get_user_choice()` to prompt the player, normalize input to lowercase, and keep asking until a valid choice ('rock', 'paper', 'scissors') is entered."
+  description: "Implement `get_user_choice()` to prompt the player, normalize input to lowercase, and keep asking until a valid choice ('rock', 'paper', 'scissors') is entered."
 - title: "Computer Move"
-    description: "Implement `get_computer_choice()` to return a random move from the three options."
+  description: "Implement `get_computer_choice()` to return a random move from the three options."
 - title: "Determine Winner"
-    description: "Write `determine_winner(user, computer)` to compare moves and return a message indicating win, loss, or tie."
+  description: "Write `determine_winner(user, computer)` to compare moves and return a message indicating win, loss, or tie."
 - title: "Main Loop"
-    description: "Combine the functions: get both choices, determine the result, print it, and optionally repeat for multiple rounds or track score."
+  description: "Combine the functions: get both choices, determine the result, print it, and optionally repeat for multiple rounds or track score."
 - title: "Enhancements"
-    description: "Add best-of-N series, short input aliases (r/p/s), score tracking, or a simple GUI (e.g., `tkinter`) as future improvements."
+  description: "Add best-of-N series, short input aliases (r/p/s), score tracking, or a simple GUI (e.g., `tkinter`) as future improvements."
 #(=> Section:Imports
 import random 
 #(=> Section:Definitions

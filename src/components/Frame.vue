@@ -1457,7 +1457,7 @@ export default defineComponent({
         showFrameParseErrorPopupOnHeaderFocus(isFocusing: boolean): void{
             // We need to be able to show the frame error popup programmatically
             // (if applies) when we navigate to the error - we make sure the frame still exists.
-            if(this.appStore.frameObjects[this.frameId] && this.hasParsingError){
+            if(this.appStore.frameObjects[this.frameId] && (this.hasParsingError || this.hasRuntimeError || this.wasLastRuntimeError)){
                 if(isFocusing){
                     this.toggleErrorPopover.show();
                 }

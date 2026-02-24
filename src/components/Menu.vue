@@ -222,7 +222,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import { defineComponent, getCurrentInstance, watch } from "vue";
+import { computed, defineComponent, nextTick, ref, watch } from "vue";
 import { useStore, settingsStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, CaretPosition, CollapsedState, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
@@ -259,22 +259,26 @@ export default defineComponent({
     name: "Menu",
     
     setup() {
-        const instance = getCurrentInstance() as any;
-        const vm = instance.proxy;
+        // Move the Composition API style coputerd properties or data here if we need them in setup:
+        // Indicator of the error index that is currently being looked at (0-based index, and reset when errors are regenerated)
+        const currentErrorNavIndex = ref(-1);
+        const errorCount = computed(() => useStore().errorCount ?? countEditorCodeErrors());
+        // Flag indicating if navigating to an error has been triggered by the user: used to inhibit reactive changes
+        const navigateToErrorRequested = ref(false);
 
         // Moved what we had in mounted() before Vue 3 here, as Vue 3, using the composition API natively, now requires having them in setup().
         // Composition API allows watching an array of "sources" (cf https://vuejs.org/guide/essentials/watchers.html)
         // We need to update the current error Index when: the error count changes, navigation occurs (i.e. editing toggles, caret pos or focus pos changes)
         // but we bypass this when we manually change the error navigation index (i.e. when the user clicks on the navigation icons)
-        watch([() => vm.errorCount, () => useStore().isEditing, () => useStore().currentFrame.id, () => useStore().currentFrame.caretPosition, () => useStore().anchorSlotCursorInfos], () => {
-            if(!vm.navigateToErrorRequested){
-                vm.$nextTick(() => {
-                    vm.currentErrorNavIndex = (vm.errorCount > 0) ? getNearestErrorIndex() : -1;
+        watch([() => errorCount, () => useStore().isEditing, () => useStore().currentFrame.id, () => useStore().currentFrame.caretPosition, () => useStore().anchorSlotCursorInfos], () => {
+            if(!navigateToErrorRequested.value){
+                nextTick(() => {
+                    currentErrorNavIndex.value = (errorCount.value > 0) ? getNearestErrorIndex() : -1;
                 });
             }
         });
 
-        return {};
+        return { currentErrorNavIndex, errorCount, navigateToErrorRequested };
     },
 
     components: {
@@ -333,11 +337,7 @@ export default defineComponent({
             // Flag to know if a request to change with a different folder location for Googe Drive has been requested
             saveAtOtherLocation: false,
             // Flag to know if a "save as" request has been made
-            requestSaveAs: false,
-            // Indicator of the error index that is currently being looked at (0-based index, and reset when errors are regenerated)
-            currentErrorNavIndex: -1,
-            // Flag indicating if navigating to an error has been triggered by the user: used to inhibit reactive changes
-            navigateToErrorRequested: false,
+            requestSaveAs: false,  
             // Using the reference ID for knowing on what popup's button group we are on isnt reliable: there may be a delay between
             // the moment the dialog is closed and when we need to use the ID, so we should instead save an ID flag that is set to
             // the right button group value when the dialog is opened, and cleared when the dialog is explicitly closed by the user
@@ -626,10 +626,6 @@ export default defineComponent({
 
         redoImagePath(): string {
             return (this.isRedoDisabled) ? disabledRedoImgPath : redoImgPath;
-        },
-
-        errorCount(): number{
-            return this.appStore.errorCount ?? countEditorCodeErrors();
         },
 
         acceptedInputFileFormat(): string {

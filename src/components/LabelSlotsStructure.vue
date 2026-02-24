@@ -39,7 +39,7 @@
 
 <script lang="ts">
 import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, MediaDataAndDim, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
-import Vue, { defineComponent, getCurrentInstance } from "vue";
+import Vue, { computed, defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
@@ -59,34 +59,46 @@ import { eventBus } from "@/helpers/appContext";
 export default defineComponent({
     name: "LabelSlotsStructure",
     
-    setup(){
-        const instance = getCurrentInstance() as any;
-        const vm = instance.proxy;
+    setup(componentInstance){
+        // Move the Composition API style computed properties or methods here if we need them in setup:
+        const subSlots = computed(() => useStore().getFlatSlotBases(componentInstance.frameId, componentInstance.labelIndex));
+        const labelSlotsStructDivId = computed(() => getFrameLabelSlotsStructureUID(componentInstance.frameId, componentInstance.labelIndex));
+        const isFocused = () => {
+            // We check if we are the parent of the currently focused element, as it may be a contenteditable item within us:
+            var selectedElement = window.getSelection()?.focusNode;
+            while (selectedElement != null) {
+                if (selectedElement instanceof Element && selectedElement.id === labelSlotsStructDivId.value) {
+                    return true;
+                }
+                selectedElement = selectedElement.parentNode;
+            }
+            return false;
+        };
 
         // Migrating to Vue 3, we don't use the Vue 2 package vue-async-computed anymore.
         // Instead we can natively use a helper (see vue3composables.ts).
         const placeholderText = useAsyncComputed(async () => {
             // Look for the placeholder (default) text to put in slots.
             // Special rules apply for the "function name" part of a function call frame cf getFunctionCallDefaultText() in editor.ts.
-            const isFuncCallFrame = useStore().frameObjects[vm.frameId].frameType.type == AllFrameTypesIdentifier.funccall;
-            if (vm.subSlots.length == 1) {
+            const isFuncCallFrame = useStore().frameObjects[componentInstance.frameId].frameType.type == AllFrameTypesIdentifier.funccall;
+            if (subSlots.value.length == 1) {
                 // If we are on an optional label slots structure that doesn't contain anything yet, we only show the placeholder if we're focused
-                const isOptionalEmpty = (useStore().frameObjects[vm.frameId].frameType.labels[vm.labelIndex].optionalSlot??OptionalSlotType.REQUIRED) == OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK && vm.subSlots.length == 1 && vm.subSlots[0].code.length == 0;
-                if(isOptionalEmpty && !vm.isFocused()){
+                const isOptionalEmpty = (useStore().frameObjects[componentInstance.frameId].frameType.labels[componentInstance.labelIndex].optionalSlot??OptionalSlotType.REQUIRED) == OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK && subSlots.value.length == 1 && subSlots.value[0].code.length == 0;
+                if(isOptionalEmpty && !isFocused()){
                     return Promise.resolve([" "]);
                 }
-                return Promise.resolve([(isFuncCallFrame) ? getFunctionCallDefaultText(vm.frameId) : vm.defaultText]);
+                return Promise.resolve([(isFuncCallFrame) ? getFunctionCallDefaultText(componentInstance.frameId) : componentInstance.defaultText]);
             }
             else {
-                return Promise.all((vm.subSlots as FlatSlotBase[]).map((slotItem, index) => slotItem.placeholderSource !== undefined 
-                    ? calculateParamPrompt(vm.frameId, slotItem.placeholderSource, slotItem.focused ?? false) 
-                    : Promise.resolve((useStore().frameObjects[vm.frameId].frameType.type == AllFrameTypesIdentifier.funccall && index == 0) 
-                        ? getFunctionCallDefaultText(vm.frameId)
+                return Promise.all((subSlots.value as FlatSlotBase[]).map((slotItem, index) => slotItem.placeholderSource !== undefined 
+                    ? calculateParamPrompt(componentInstance.frameId, slotItem.placeholderSource, slotItem.focused ?? false) 
+                    : Promise.resolve((useStore().frameObjects[componentInstance.frameId].frameType.type == AllFrameTypesIdentifier.funccall && index == 0) 
+                        ? getFunctionCallDefaultText(componentInstance.frameId)
                         : "\u200b")));
             }
         }, []);
 
-        return { placeholderText };
+        return { subSlots, labelSlotsStructDivId, isFocused, placeholderText };
     },
 
     components:{
@@ -150,15 +162,7 @@ export default defineComponent({
         scssVars() {
             // just to be able to use in template
             return scssVars;
-        },
-
-        labelSlotsStructDivId(): string {
-            return getFrameLabelSlotsStructureUID(this.frameId, this.labelIndex);
-        },
-
-        subSlots(): FlatSlotBase[] {
-            return this.appStore.getFlatSlotBases(this.frameId, this.labelIndex);  
-        },   
+        },           
         
         focusSlotCursorInfos(): SlotCursorInfos | undefined {
             return this.appStore.focusSlotCursorInfos;
@@ -1071,18 +1075,6 @@ export default defineComponent({
             }
 
             
-        },
-        
-        isFocused() {
-            // We check if we are the parent of the currently focused element, as it may be a contenteditable item within us:
-            var selectedElement = window.getSelection()?.focusNode;
-            while (selectedElement != null) {
-                if (selectedElement instanceof Element && selectedElement.id === this.labelSlotsStructDivId) {
-                    return true;
-                }
-                selectedElement = selectedElement.parentNode;
-            }
-            return false;
         },
         
         updatePrependText() {

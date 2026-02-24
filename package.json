@@ -72,8 +72,6 @@
         "ts-enum-util": "^4.1.0",
         "ts-node": "^10.9.1",
         "ts-node-dev": "^2.0.0",
-        "v-blur": "^1.0.4",
-        "velocity": "^0.7.3",
         "vite-plugin-conditional-compiler": "^0.4.0",
         "vue": "^3.1.0",
         "vue-advanced-cropper": "^2.8.9",

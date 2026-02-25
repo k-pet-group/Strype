@@ -42,7 +42,6 @@ import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, Bas
 import Vue, { defineComponent, getCurrentInstance } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
-import FrameHeaderComponent from "@/components/FrameHeader.vue";
 import LabelSlot from "@/components/LabelSlot.vue";
 import { CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID } from "@/helpers/editor";
 import { checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId} from "@/helpers/storeMethods";
@@ -54,6 +53,7 @@ import { detectBrowser } from "@/helpers/browser";
 import { handleVerticalCaretMove } from "@/helpers/spans";
 import { preparePasteMediaData } from "@/helpers/media";
 import { useAsyncComputed } from "@/helpers/vue3composables";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
 export default defineComponent({
     name: "LabelSlotsStructure",
@@ -112,6 +112,28 @@ export default defineComponent({
             refactorCount : 0,
             prependText: "", // This is updated properly in updatePrependText()
         };
+    },
+
+    created(){
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        const apiMethods = {
+            checkSlotRefactoring: this.checkSlotRefactoring,
+            updatePrependText: this.updatePrependText,
+            updatePrependTextAndCheckErrors: this.updatePrependTextAndCheckErrors,
+        };
+        
+        if(vueComponentsAPIHandler.labelSlotsStructureComponentAPI == null){    
+            vueComponentsAPIHandler.labelSlotsStructureComponentAPI = {
+                forInstance: {
+                    [this.labelSlotsStructDivId]: apiMethods,
+                },
+            };
+        }
+        else{
+            vueComponentsAPIHandler.labelSlotsStructureComponentAPI.forInstance[this.labelSlotsStructDivId] = apiMethods;
+        }
     },
 
     mounted() {
@@ -345,7 +367,7 @@ export default defineComponent({
 
         checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean}) {
             // Slot errors will be check later again. We clear off the notification on the parent (frame header) for slot errors so it can reset the triangle error indicator
-            (this.$parent as InstanceType<typeof FrameHeaderComponent>).$data.hasErroneousSlot = false;
+            vueComponentsAPIHandler.frameHeaderComponentAPI?.forInstance[this.frameId].setHasErroneousSlot(false);
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
             const currentFocusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
             const allowed = this.appStore.frameObjects[this.frameId].frameType.labels[this.labelIndex].allowedSlotContent;
@@ -764,13 +786,13 @@ export default defineComponent({
             event.preventDefault();
             
             if (!(event.shiftKey || event.metaKey || event.altKey || event.ctrlKey)) {
-                const subSlots = this.$refs.labelSlots as InstanceType<typeof LabelSlot>[];
-                for (const subSlot of subSlots) {
-                    if (subSlot.handleUpDown(event)) {
+                for(const subSlot of this.subSlots){
+                    const subSlotCoreInfos = {frameId: this.frameId, labelSlotsIndex: this.labelIndex, slotId: subSlot.id, slotType: subSlot.type};
+                    if(vueComponentsAPIHandler.labelSlotComponentAPI?.forInstance[getLabelSlotUID(subSlotCoreInfos)].handleUpDown(event)){
                         // Consumed by focused slot which is showing autocomplete:
                         return;
                     }
-                }
+                }               
             }
             
             if (!(event.metaKey || event.altKey || event.ctrlKey)) {

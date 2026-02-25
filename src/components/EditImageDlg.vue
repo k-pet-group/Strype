@@ -59,6 +59,7 @@ import { mapStores } from "pinia";
 import { BvModalEvent } from "bootstrap-vue";
 import {debounce} from "lodash";
 import {isMacOSPlatform} from "@/helpers/common";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
 const picaInstance = pica();
 
@@ -90,6 +91,13 @@ export default defineComponent({
     },
 
     created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        vueComponentsAPIHandler.editImageDlgComponentAPI = {
+            getUpdatedMedia: this.getUpdatedMedia,
+        };
+
         // Register the event listener for the dialog here
         this.$root.$on("bv::modal::hide", this.onHideModalDlg);
         this.updatePreview = debounce(this.updatePreview, 500);

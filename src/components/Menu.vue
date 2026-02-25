@@ -236,7 +236,6 @@ import { generateSPYFileContent } from "@/helpers/load-save";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { BvModalEvent } from "bootstrap-vue";
 import { cloneDeep } from "lodash";
-import App from "@/App.vue";
 import appPackageJson from "@/../package.json";
 import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import { getLocaleBuildDate } from "@/main";
@@ -250,6 +249,7 @@ import disabledRedoImgPath from "@/assets/images/disabledRedo.svg";
 import undoImgPath from "@/assets/images/undo.svg";
 import redoImgPath from "@/assets/images/redo.svg";
 import { useI18n } from "vue-i18n";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
 //////////////////////
 //     Component    //
@@ -284,7 +284,38 @@ export default defineComponent({
         ModalDlg,
     },
 
-   
+    created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        vueComponentsAPIHandler.menuComponentAPI = {
+            onStrypeMenuHideModalDlg: this.onStrypeMenuHideModalDlg,
+            toggleMenuOnOff: this.toggleMenuOnOff,
+            setCurrentErrorNavIndex: (value: number) => {
+                this.currentErrorNavIndex = value;
+            },
+            goToError: this.goToError,
+            getCurrentDriveLocation: () => {
+                return this.currentDriveLocation;
+            },
+            setRequestSaveAs: (value: boolean) => {
+                this.requestSaveAs = value;
+            },
+            saveTargetChoice: this.saveTargetChoice,
+            getRequestOpenProjectLater: () => {
+                return this.requestOpenProjectLater;
+            },
+            setOpenSharedProjectTarget: (value: StrypeSyncTarget) => {
+                this.openSharedProjectTarget = value;
+            },
+            setOpenSharedProjectId: (value: string) => {
+                this.openSharedProjectId = value;
+            },
+            handleSaveMenuClick: this.handleSaveMenuClick,
+            onFileLoaded: this.onFileLoaded,
+        };
+    },
+    
     data: function() {
         return {
             scssVars, // just to be able to use in template
@@ -545,7 +576,7 @@ export default defineComponent({
         
         shareProjectWithinCloudDriveModeLabel(): string {
             if(this.isSyncingToCloud){
-                return this.$t("appMessage.shareProjectWithinCloudDriveMode", {drivename: (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).getDriveName()}) as string;
+                return this.$t("appMessage.shareProjectWithinCloudDriveMode", {drivename: vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getDriveName()??""});
             }
             else{
                 return "";
@@ -554,7 +585,7 @@ export default defineComponent({
 
         shareProjectWithinCloudDriveModeDetailsLabel(): string {
             if(this.isSyncingToCloud){
-                return this.$t("appMessage.shareProjectWithinCloudDriveModeDetails", {drivename: (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).getDriveName()}) as string;
+                return this.$t("appMessage.shareProjectWithinCloudDriveModeDetails", {drivename: vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getDriveName()??""});
             }
             else{
                 return "";
@@ -563,7 +594,7 @@ export default defineComponent({
 
         shareProjectPublicCloudDriveNotDirectDownloadLabel(): string {
             if(this.isSyncingToCloud){
-                return this.$t("appMessage.shareProjectPublicModeDetailsNoDirectDownload", {drivename: (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).getDriveName()}) as string;
+                return this.$t("appMessage.shareProjectPublicModeDetailsNoDirectDownload", {drivename:  vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getDriveName()??""});
             }
             else{
                 return "";
@@ -696,7 +727,7 @@ export default defineComponent({
         },
 
         openLoadDemoProjectModal(): void {
-            (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).updateAvailableDemos();
+            vueComponentsAPIHandler.openDemoDlgComponentAPI?.updateAvailableDemos();
             // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer 
             // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).
             // So we open it manually here...
@@ -826,18 +857,18 @@ export default defineComponent({
                 this.publicModeProjectSharingLink = "";
                 this.shareProjectInitialCall = true;
                 // First we retrieve the current Cloud File sharing status, as we may need to restore the sharing status later
-                const cloudDriveHandlerComponent = (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>);
-                cloudDriveHandlerComponent.getCurrentCloudFileCurrentSharingStatus(this.appStore.syncTarget)
-                    .then((prevCloudFileSharingStatus: CloudFileSharingStatus) => {
+                const cloudDriveHandlerComponentAPI = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI;
+                cloudDriveHandlerComponentAPI?.getCurrentCloudFileCurrentSharingStatus(this.appStore.syncTarget)
+                    .then((prevCloudFileSharingStatus) => {
                         // Save the status and then open the dialog.
-                        cloudDriveHandlerComponent.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, prevCloudFileSharingStatus).then(() => {
+                        cloudDriveHandlerComponentAPI?.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, prevCloudFileSharingStatus).then(() => {
                             this.$root.$emit("bv::show::modal", this.shareProjectModalDlgId);                             
                         });                       
                     })
                     .catch((_: any) => {
                         // Something happened, we let the user know
                         const erroMsg = (typeof _ == "string") ? _ : JSON.stringify(_);
-                        this.appStore.simpleModalDlgMsg = this.$t("errorMessage.clouldFileRestoreSharingStatus", {drivename: cloudDriveHandlerComponent.getDriveName(), errordetails: erroMsg}) as string;
+                        this.appStore.simpleModalDlgMsg = this.$t("errorMessage.clouldFileRestoreSharingStatus", {drivename: vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getDriveName()??"", errordetails: erroMsg});
                         this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
                     });
 
@@ -861,9 +892,12 @@ export default defineComponent({
                     const saveFileNameInputElement = (document.getElementById(this.saveFileNameInputId) as HTMLInputElement);
                     // If the save as is opened because the user requested to create a copy of a file name, we use the file stored in the save existing file infos
                     // because if there are consecutive attempts with different names (that all already exist) we want to show the last attempted name
-                    saveFileNameInputElement.value = ((this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>)?.saveExistingCloudProjectInfos.isCopyFileRequested) 
-                        ? (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveExistingCloudProjectInfos.existingFileName
-                        : this.appStore.projectName;
+                    const saveExistingCloudProjectInfos = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getSaveExistingCloudProjectInfos();
+                    if(saveExistingCloudProjectInfos){
+                        saveFileNameInputElement.value = (saveExistingCloudProjectInfos.isCopyFileRequested)
+                            ? saveExistingCloudProjectInfos.existingFileName
+                            : this.appStore.projectName;
+                    }
                     saveFileNameInputElement.focus();
                     saveFileNameInputElement.click();
                 }, 500);           
@@ -877,7 +911,7 @@ export default defineComponent({
                 }, 2000);
             }
             else if (dlgId == this.loadDemoProjectModalDlgId) {
-                (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).shown();
+                vueComponentsAPIHandler.openDemoDlgComponentAPI?.shown();
             }
             else {
                 // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
@@ -928,16 +962,16 @@ export default defineComponent({
                 // We only generate the link if we don't have it already (from one dialog opening)
                 if(this.publicModeProjectSharingLink.length == 0) {
                     // Before generating a link, we change the file setttings on Google Drive to make it accessible at large.
-                    const cloudDriveHandlerComponent = (this.$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandler>);
+                    const cloudDriveHandlerComponentAPI = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI;
                     let createPermissionSucceeded = false;
-                    cloudDriveHandlerComponent.shareCloudDriveFile(this.appStore.syncTarget)
+                    cloudDriveHandlerComponentAPI?.shareCloudDriveFile(this.appStore.syncTarget)
                         .then((succeeded) => createPermissionSucceeded = succeeded)
                         .catch((errorMsg) => alertMessage = (errorMsg?.status)??errorMsg)
                         .finally(() => {
                             clearTimeout(noShareActionTimeOutHandle);
                             if(createPermissionSucceeded){
                                 // We have set the file public on the Drive, now we retrieve the sharing link.
-                                cloudDriveHandlerComponent.getPublicShareLink(this.appStore.syncTarget)
+                                cloudDriveHandlerComponentAPI?.getPublicShareLink(this.appStore.syncTarget)
                                     .then(({respStatus, webLink}) => {
                                         // We got the link or not, but we can only make it useful or show an error *if the user is still expecting this sharing mode from the dialog (if not, we just return)
                                         if(this.areShareProjectActionStillValid(forShareMode)){
@@ -999,28 +1033,30 @@ export default defineComponent({
                     navigator.clipboard.writeText((this.shareProjectMode == ShareProjectMode.public) ? this.publicModeProjectSharingLink : `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentCloudSaveFileId}`);
                     // If we have set the sharing to internal (within the Cloud Drive) then we might need to restore the previous sharing state as it was
                     if(this.shareProjectMode == ShareProjectMode.withinCloudDrive){
-                        (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>)
-                            .restoreCloudDriveFileSharingStatus(this.appStore.syncTarget)
+                        vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.restoreCloudDriveFileSharingStatus(this.appStore.syncTarget)
                             ?.finally(() => {
                                 // Reset the flag we kept during the sharing action
-                                (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>)?.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, CloudFileSharingStatus.UNKNOWN);
+                                vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, CloudFileSharingStatus.UNKNOWN);
                             });
                     }
                     else{
                         // Reset the flag we kept during the sharing action
-                        (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>)?.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, CloudFileSharingStatus.UNKNOWN);                         
+                        vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, CloudFileSharingStatus.UNKNOWN);                         
                     }
                 }
                 else{
                     // When a sharing is cancelled, we may need to clean after ourselves and restore the sharing status of the file
                     // to what it was before we intefered with the sharing on the Cloud Drive.
-                    (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).restoreCloudDriveFileSharingStatus(this.appStore.syncTarget);
+                    vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.restoreCloudDriveFileSharingStatus(this.appStore.syncTarget);
                 }
                 return;
             }
 
             if(dlgId == this.saveProjectModalDlgId){
-                (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveExistingCloudProjectInfos.isCopyFileRequested = false;  
+                const saveExistingCloudProjectInfos = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getSaveExistingCloudProjectInfos();
+                if(saveExistingCloudProjectInfos){
+                    vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.setSaveExistingCloudProjectInfos({...saveExistingCloudProjectInfos, isCopyFileRequested: false});  
+                }
             }
 
             if(event.trigger == "cancel" || event.trigger == "esc"){
@@ -1113,8 +1149,8 @@ export default defineComponent({
                                 return;
                             }
                             const saveReason = (this.saveAtOtherLocation) ? SaveRequestReason.saveProjectAtOtherLocation : SaveRequestReason.saveProjectAtLocation; 
-                            (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveFileName = saveFileName;
-                            (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).saveFile(selectValue,saveReason);
+                            vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.setSaveFileName(saveFileName);
+                            vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.saveFile(selectValue, saveReason);
                         }, 2000);
                         
                     }
@@ -1125,11 +1161,11 @@ export default defineComponent({
                     if(event.trigger == "event" && event.type == "hide"){
                         return;
                     }
-                    const selectedDemo = (this.$refs.openDemoDlg as InstanceType<typeof OpenDemoDlg>).getSelectedDemo();
+                    const selectedDemo = vueComponentsAPIHandler.openDemoDlgComponentAPI?.getSelectedDemo();
                     if (selectedDemo) {
                         selectedDemo.demoFile.then((content) => {
                             if (content) {
-                                (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0, false)
+                                vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, selectedDemo.name ?? "Demo", 0, false)
                                     .then(() => this.saveTargetChoice(StrypeSyncTarget.none));
                             }
                         });
@@ -1152,7 +1188,7 @@ export default defineComponent({
             // Reset the temporary sync file flag
             this.tempSyncTarget = this.appStore.syncTarget;
             if(isSyncTargetCloudDrive(selectValue) || this.openSharedProjectId.length > 0 ){
-                (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).loadFile(selectValue);
+                vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.loadFile(selectValue);
             }            
             else{               
                 // And let the user choose a file
@@ -1169,7 +1205,7 @@ export default defineComponent({
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for old-style spy files:
                                 if (file.name.endsWith(".py") || !(reader.result as string).trimStart().startsWith("{")) {
-                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(reader.result as string, fileHandles[0].name, file.lastModified, true, fileHandles[0]);
+                                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(reader.result as string, fileHandles[0].name, file.lastModified, true, fileHandles[0]);
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(
@@ -1209,7 +1245,7 @@ export default defineComponent({
                                 // name is not always available so we also check if content starts with a {,
                                 // which it will do for spy files:
                                 if (fileName.endsWith(".py") || !content.trimStart().startsWith("{")) {
-                                    (this.$root.$children[0] as InstanceType<typeof App>).setStateFromPythonFile(content, fileName, lastModified, true);
+                                    vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(content, fileName, lastModified, true);
                                 }
                                 else {
                                     this.appStore.setStateFromJSONStr(

@@ -95,7 +95,6 @@
 //////////////////////
 import Vue, { defineComponent } from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
-import LabelSlotsStructureComponent from "@/components/LabelSlotsStructure.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, FrozenState, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName, ContainerTypesIdentifiers } from "@/types/types";
@@ -108,12 +107,34 @@ import html2canvas from "html2canvas";
 import { saveAs } from "file-saver";
 import scssVars from "@/assets/style/_export.module.scss";
 import {getDateTimeFormatted, isMacOSPlatform, removeIf} from "@/helpers/common";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
 //////////////////////
 //     Component    //
 //////////////////////
 export default defineComponent({
     name: "Frame",
+
+    created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        const apiMethods = {
+            changeToggledCaretPosition: this.changeToggledCaretPosition,
+            handleClick: this.handleClick,
+        };
+        
+        if(vueComponentsAPIHandler.frameComponentAPI == null){    
+            vueComponentsAPIHandler.frameComponentAPI = {
+                forInstance: {
+                    [this.frameId]: apiMethods,
+                },
+            };
+        }
+        else{
+            vueComponentsAPIHandler.frameComponentAPI.forInstance[this.frameId] = apiMethods;
+        }
+    },
 
     components: {
         FrameHeader,
@@ -383,9 +404,9 @@ export default defineComponent({
         // ONLY if the frame is really removed from the state (because for a very strange reason, when reloading
         // a page and overwriting the frames with a state, the initial state's frame are destroyed after registered).
         if(this.appStore.frameObjects[this.frameId] == undefined){
-            delete this.appStore.caretContainerComponentAPI?.forInstance[getCaretUID(this.caretPosition.below, this.frameId)];
-            delete this.appStore.frameComponentAPI?.forInstance[this.frameId];
-            delete this.appStore.frameHeaderComponentAPI?.forInstance[this.frameId];
+            delete vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretUID(this.caretPosition.below, this.frameId)];
+            delete vueComponentsAPIHandler.frameComponentAPI?.forInstance[this.frameId];
+            delete vueComponentsAPIHandler.frameHeaderComponentAPI?.forInstance[this.frameId];
         }
     },
 
@@ -898,10 +919,8 @@ export default defineComponent({
                 // However, since no actual slot is clicked, the change from "self" to "self," isn't triggered.
                 // We can retrieve the LabelSlotsStructure component because its ref is in the root object, and 
                 // call updatePrependText() which will now notice the right context and do its work.
-                const labelSlotsStructComponent = this.slotsStructComponentsRegistry[getFrameLabelSlotsStructureUID(this.frameId, 1)];
-                if(labelSlotsStructComponent){
-                    (labelSlotsStructComponent as InstanceType<typeof LabelSlotsStructureComponent>).updatePrependText();
-                }
+                vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(this.frameId, 1)]
+                    .updatePrependText();                
                 return;
             }
 

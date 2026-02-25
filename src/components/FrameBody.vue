@@ -42,6 +42,7 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
 import { getCaretContainerRef, getCaretUID, getFrameBodyUID, getFrameUID } from "@/helpers/editor";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
 //////////////////////
 //     Component    //
@@ -65,7 +66,7 @@ export default defineComponent({
 
     destroyed() {
         // Remove the registration of the caret container component API related to this frame body
-        delete this.appStore.caretContainerComponentAPI?.forInstance[getCaretUID(this.caretPosition.body, this.frameId)];
+        delete vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretUID(this.caretPosition.body, this.frameId)];
     },
 
     computed: {

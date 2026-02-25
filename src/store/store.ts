@@ -3,10 +3,10 @@ import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, 
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
-import { AppPlatform, AppVersion, projectDocumentationFrameId, vm } from "@/main";
+import { AppPlatform, AppVersion, projectDocumentationFrameId } from "@/main";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
-import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getStrypeCommandComponentRefId, getCaretContainerUID, isCaretContainerElement, AutoSaveKeyNames } from "@/helpers/editor";
+import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, isCaretContainerElement, AutoSaveKeyNames } from "@/helpers/editor";
 import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
@@ -14,12 +14,10 @@ import {cloneDeep, isEqual} from "lodash";
 import $ from "jquery";
 import { BvModalEvent } from "bootstrap-vue";
 import { TPyParser } from "tigerpython-parser";
-import AppComponent from "@/App.vue";
 import emptyState from "@/store/initial-states/empty-state";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-import PEAComponent from "@/components/PythonExecutionArea.vue";
-import CommandsComponent from "@/components/Commands.vue";
-import { actOnTurtleImport, getPEAComponentRefId } from "@/helpers/editor";
+import { actOnTurtleImport } from "@/helpers/editor";
 // #v-endif
 
 function getState(): StateAppObject {
@@ -74,7 +72,7 @@ export const useStore = defineStore("app", {
 
             defsContainerId: -2,
 
-            /** END of flags that need checking when a build is done **/
+            /** END of flags that need checking when a build is done **/           
 
             currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
 
@@ -296,15 +294,15 @@ export const useStore = defineStore("app", {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === RootContainerFrameDefinition.type)[0].id;
         },
         
-        getMainCodeFrameContainerId: (state) => {
+        getMainCodeFrameContainerId: (state): number => {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === MainFramesContainerDefinition.type)[0].id;
         },
 
-        getImportsFrameContainerId:(state) => {
+        getImportsFrameContainerId:(state): number => {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === ImportsContainerDefinition.type)[0].id;
         },
 
-        getDefsFrameContainerId:(state) => {
+        getDefsFrameContainerId:(state): number => {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === DefsContainerDefinition.type)[0].id;
         },
 
@@ -2674,7 +2672,7 @@ export const useStore = defineStore("app", {
                     // If this splitter was changed, the PEA needs to be resized once the splitter has updated
                     setTimeout(() => {
                         if (this.editorCommandsSplitterPane2Size != undefined && this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed] != undefined) {
-                            (vm.$children[0] as InstanceType<typeof AppComponent>).onStrypeCommandsSplitPaneResize({1: {size: this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed]}}, newPEALayout);
+                            vueComponentsAPIHandler.appComponentAPI?.onStrypeCommandsSplitPaneResize({1: {size: this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed]}}, newPEALayout);
                         }
                     }, chainedTimeOuts);
                 }
@@ -2682,7 +2680,7 @@ export const useStore = defineStore("app", {
                     setTimeout(() => {
                         this.peaLayoutMode = newPEALayout;
                         // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-                        ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).togglePEALayout(newPEALayout);
+                        vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(newPEALayout);
                         // #v-endif
                     }, chainedTimeOuts += 200);
                 }
@@ -2693,7 +2691,7 @@ export const useStore = defineStore("app", {
                     if (forceSetUndefined || (newPEACommandsSplitterPane2Size && newPEACommandsSplitterPane2Size[newPEALayout] != undefined)) {
                         setTimeout(() => {
                             if (this.peaCommandsSplitterPane2Size && this.peaCommandsSplitterPane2Size[newPEALayout] != undefined) {
-                                (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).onCommandsSplitterResize({1: {size: this.peaCommandsSplitterPane2Size[newPEALayout]}});
+                                vueComponentsAPIHandler.commandsComponentAPI?.onCommandsSplitterResize({1: {size: this.peaCommandsSplitterPane2Size[newPEALayout]}});
                             }
                         }, (chainedTimeOuts += 200));
                     }
@@ -2710,7 +2708,7 @@ export const useStore = defineStore("app", {
                     if (forceSetUndefined || (newPEAExpandedSplitterPane2Size != undefined && newPEAExpandedSplitterPane2Size[newPEALayout] != undefined)) {
                         setTimeout(() => {
                             if (this.peaExpandedSplitterPane2Size != undefined && this.peaExpandedSplitterPane2Size[newPEALayout] != undefined) {
-                                (vm.$children[0] as InstanceType<typeof AppComponent>).onExpandedPythonExecAreaSplitPaneResize({1: {size: this.peaExpandedSplitterPane2Size[newPEALayout]}});
+                                vueComponentsAPIHandler.appComponentAPI?.onExpandedPythonExecAreaSplitPaneResize({1: {size: this.peaExpandedSplitterPane2Size[newPEALayout]}});
                             }
                         }, (chainedTimeOuts += 200));
                     }
@@ -2730,7 +2728,7 @@ export const useStore = defineStore("app", {
                 actOnTurtleImport();
 
                 // Clear the Python Execution Area as it could have be run before.
-                ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as Vue).$refs[getPEAComponentRefId()] as InstanceType<typeof PEAComponent>).clear(); 
+                vueComponentsAPIHandler.peaComponentAPI?.clear(); 
                 
                 // With the PEA, the styling of the overall UI layout is quite complex as some things depend on the "natural"
                 // default state of the layout, and we handle some styling manually. To make things clearer, we always reset 
@@ -2750,9 +2748,8 @@ export const useStore = defineStore("app", {
                 delete newState.peaExpandedSplitterPane2Size;
                 const newPEASplitViewSplitterPane1Size = newState.peaSplitViewSplitterPane1Size;
                 delete newState.peaSplitViewSplitterPane1Size;  
-                const commandsComponent = (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>);
 
-                commandsComponent.resetPEACommmandsSplitterDefaultState().then(() => {
+                vueComponentsAPIHandler.commandsComponentAPI?.resetPEACommmandsSplitterDefaultState().then(() => {
                     this.updateState(JSON.parse(JSON.stringify(newState)));
                     // Wait a bit after we have reset everything for the UI to get ready, then affect backed up changes
                     this.setDividerStates(newEditorCommandsSplitterPane2Size, newPEALayout ?? StrypePEALayoutMode.tabsCollapsed, newPEACommandsSplitterPane2Size, newPEASplitViewSplitterPane1Size, newPEAExpandedSplitterPane2Size, resolve, true);
@@ -3185,6 +3182,9 @@ export const settingsStore = defineStore("settings", {
             // on the project's locale.
             // The default state is undefined so we can detect real undefined locale to the default English...
             locale: undefined as undefined | string,
+            // Handler for saving the settings in LocalStorage (from Vue 3, we cannot directly access the App instance via vm.$children)
+            // so we use a callback function App MUST supply instead
+            saveSettingInLocalStorageHandler: null as null | ((r: SaveRequestReason) => void),
         };
     },
 
@@ -3212,7 +3212,9 @@ export const settingsStore = defineStore("settings", {
             // #v-endif
 
             // Save the settings
-            (vm.$children[0] as InstanceType<typeof AppComponent>).autoSaveStateToWebLocalStorage(SaveRequestReason.saveSettings);
+            if(this.saveSettingInLocalStorageHandler){
+                this.saveSettingInLocalStorageHandler(SaveRequestReason.saveSettings);
+            }
         },
     },
 });

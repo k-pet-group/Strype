@@ -54,14 +54,13 @@
 <script lang="ts">
 
 import Vue, { defineComponent } from "vue";
-import MenuComponent from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import {Demo, DemoGroup, getBuiltinDemos, getThirdPartyLibraryDemos} from "@/helpers/demos";
 import Parser from "@/parser/parser";
 import {AppSPYPrefix} from "@/main";
 import {escapeRegExp} from "lodash";
 import { BvModalEvent } from "bootstrap-vue";
-import { getMenuLeftPaneUID } from "@/helpers/editor";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
 export default defineComponent({
     components: {ModalDlg},
@@ -70,6 +69,17 @@ export default defineComponent({
         dlgId: {type: String, required: true},
     },
     
+    created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        vueComponentsAPIHandler.openDemoDlgComponentAPI = {
+            getSelectedDemo: this.getSelectedDemo,
+            updateAvailableDemos: this.updateAvailableDemos,
+            shown: this.shown,
+        };
+    },
+
     data: function() {
         return {
             availableDemos: [] as DemoGroup[],
@@ -160,7 +170,7 @@ export default defineComponent({
             // selectedDemoItemIndex is already set to the right value.
             // We first close the dialog, than simulate a "close with action" in the Menu (since we can't close with "OK" status.)
             this.$root.$emit("bv::hide::modal", this.dlgId);
-            (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.dlgId);
+            vueComponentsAPIHandler.menuComponentAPI?.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.dlgId);
         },
 
         addSpecifiedLibrary() {

@@ -4,18 +4,13 @@
  * At the moment, we only support file IO in the cloud (due to restrictions on 
  * the browser's access to the host file system).
  */
-import { vm } from "@/main";
 import path from "path-browserify";
-import { getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID } from "./editor";
-import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
-import MenuComponent from "@/components/Menu.vue";
 import { useStore } from "@/store/store";
 import i18n from "@/i18n";
 import { CloudDriveComponent, CloudDriveFile, CloudFileWithMetaData, CloudFolder, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
+import { CloudDriveHandlerComponentAPI } from "@/types/vue-component-api-types";
 
 declare const Sk: any;
-// Will be set later as we need to make sure Vue application has started...
-let cloudDriveHandlerComponent: InstanceType<typeof CloudDriveHandlerComponent>;
 
 const cloudFilesMap: CloudFileWithMetaData[] = [];
 
@@ -70,11 +65,6 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
         return {succeeded: false, errorMsg: i18n.global.t("errorMessage.fileIO.notConnectedToCloud") as string};
     }
 
-    // Initialisator of the variable
-    if(cloudDriveHandlerComponent == undefined){
-        cloudDriveHandlerComponent = ((vm.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>);
-    }
-
     // We cannot make any assumption on what the file name path separator is.
     // Because the path is written in the user code, and because the project can be open on any platform,
     // the separator can be anything (even if knowing the project looks up file in the Cloud, "/" is more likely).
@@ -95,9 +85,9 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
             getCloudFileFolderIdFromPath(posixPathObj)
                 .then((fileFolderId) => {
                     // We have a fileFolder Id so we can now get the file itself within that location
-                    const modifiedDataSearchOptionName  = (cloudDriveHandlerComponent.getSpecificCloudDriveComponent(useStore().syncTarget) as CloudDriveComponent).modifiedDataSearchOptionName;
-                    const fileFields = (cloudDriveHandlerComponent.getSpecificCloudDriveComponent(useStore().syncTarget) as CloudDriveComponent).fileMoreFieldsForIO;
-                    return cloudDriveHandlerComponent.searchCloudDriveElements(useStore().syncTarget, fileName, fileFolderId, false, {orderBy: modifiedDataSearchOptionName, fileFields: fileFields})
+                    const modifiedDataSearchOptionName  = ((useStore().cloudDriveHandlerComponentAPI as CloudDriveHandlerComponentAPI).getSpecificCloudDriveComponent(useStore().syncTarget) as CloudDriveComponent).modifiedDataSearchOptionName;
+                    const fileFields = ((useStore().cloudDriveHandlerComponentAPI as CloudDriveHandlerComponentAPI).getSpecificCloudDriveComponent(useStore().syncTarget) as CloudDriveComponent).fileMoreFieldsForIO;
+                    return (useStore().cloudDriveHandlerComponentAPI as CloudDriveHandlerComponentAPI).searchCloudDriveElements(useStore().syncTarget, fileName, fileFolderId, false, {orderBy: modifiedDataSearchOptionName, fileFields: fileFields})
                         .then((cloudFiles: CloudDriveFile[]) => {
                             if(cloudFiles[0]){
                                 const cloudDriveFile = cloudFiles[0];
@@ -108,7 +98,7 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
 
                                 }
                                 // Check 2: if the file is in write, append, or r+ mode, it can't be readonly.
-                                const isReadonly = (cloudDriveHandlerComponent.getSpecificCloudDriveComponent(useStore().syncTarget) as CloudDriveComponent).checkIsCloudDriveFileReadonly(cloudDriveFile);
+                                const isReadonly = ((useStore().cloudDriveHandlerComponentAPI as CloudDriveHandlerComponentAPI).getSpecificCloudDriveComponent(useStore().syncTarget) as CloudDriveComponent).checkIsCloudDriveFileReadonly(cloudDriveFile);
                                 if(isReadonly && /^([wa])|(rb?\+)/.test(skFile.mode.v)) {
                                     return {succeeded: false, errorMsg: i18n.global.t("errorMessage.fileIO.readonlyFile", {filename: filePath}) as string};
                                 }
@@ -146,7 +136,7 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
                                     return {succeeded: false, errorMsg: i18n.global.t("errorMessage.fileIO.fileNotFound", {filename: filePath}) as string};
                                 }
                                 else if(skFile.mode.v.startsWith("w") || skFile.mode.v.startsWith("a") || skFile.mode.v.startsWith("x")){
-                                    return cloudDriveHandlerComponent.writeFileContentForIO(useStore().syncTarget, (skFile.mode.v.includes("b") ? new Uint8Array(0) : ""), {filePath: filePath, fileName: fileName, folderId: fileFolderId})
+                                    return (useStore().cloudDriveHandlerComponentAPI as CloudDriveHandlerComponentAPI).writeFileContentForIO(useStore().syncTarget, (skFile.mode.v.includes("b") ? new Uint8Array(0) : ""), {filePath: filePath, fileName: fileName, folderId: fileFolderId})
                                         .then((newFileId) => {
                                             // Since the file has been created we can now keep it's fileId in the map:
                                             cloudFilesMap.push({name: fileName, content: (skFile.mode.v.includes("b")) ? new Uint8Array(0) : "", filePath: filePath, id: newFileId, locationId: fileFolderId,
@@ -161,7 +151,7 @@ export const skulptOpenFileIO = (skFile: SkulptFile): {succeeded: boolean, error
                         },
                         (reason: any) => {
                             const errorMsg = i18n.global.t("errorMessage.fileIO.accessToCloudDriveError",
-                                {drivename: cloudDriveHandlerComponent.getDriveName(), fileName: filePath, error: (typeof reason == "string") ? reason : (reason.status??"unknown")});
+                                {drivename: (useStore().cloudDriveHandlerComponentAPI as CloudDriveHandlerComponentAPI).getDriveName(), fileName: filePath, error: (typeof reason == "string") ? reason : (reason.status??"unknown")});
                             return {succeeded:false,errorMsg: errorMsg};
                         });
                 },
@@ -215,9 +205,9 @@ const getCloudFileFolderIdFromPath = (fileFolderPath: path.PathObject): Promise<
             }
             else{
                 // It's not cached: we need to look for it against the Cloud Drive.
-                const modifiedDataSearchOptionName  = (cloudDriveHandlerComponent.getSpecificCloudDriveComponent(useStore().syncTarget) as CloudDriveComponent).modifiedDataSearchOptionName;
-                const fileFields = (cloudDriveHandlerComponent.getSpecificCloudDriveComponent(useStore().syncTarget) as CloudDriveComponent).fileBasicFieldsForIO;
-                return cloudDriveHandlerComponent.searchCloudDriveElements(useStore().syncTarget, folderNameToCheck, (currentCachedFolder?.id)??baseFolderLocationId, false, {orderBy: modifiedDataSearchOptionName, fileFields: fileFields})
+                const modifiedDataSearchOptionName  = ((useStore().cloudDriveHandlerComponentAPI as CloudDriveHandlerComponentAPI).getSpecificCloudDriveComponent(useStore().syncTarget) as CloudDriveComponent).modifiedDataSearchOptionName;
+                const fileFields = ((useStore().cloudDriveHandlerComponentAPI as CloudDriveHandlerComponentAPI).getSpecificCloudDriveComponent(useStore().syncTarget) as CloudDriveComponent).fileBasicFieldsForIO;
+                return (useStore().cloudDriveHandlerComponentAPI as CloudDriveHandlerComponentAPI).searchCloudDriveElements(useStore().syncTarget, folderNameToCheck, (currentCachedFolder?.id)??baseFolderLocationId, false, {orderBy: modifiedDataSearchOptionName, fileFields: fileFields})
                     .then((cloudFolderFiles) => {                             
                         // The search succeeded and we expect only one folder to be found (if any, so we'll use the first one returned).
                         // We can save that folder in the cache and either return it's ID if we don't have other folder to resolve, or continue resolving otherwise.
@@ -287,7 +277,7 @@ const skupltReadFileIO = (filePath: string, isBinary: boolean): Promise<string|U
     // We retrieve the Cloud Drive file ID - it should be valid as no call to this when a file is closed in Skulpt should happen.
     const fileId = cloudFilesMap.find((mapEntry) => mapEntry.filePath == filePath)?.id??"";
     return new Promise<string|Uint8Array>((resolve, reject) => {
-        cloudDriveHandlerComponent.readFileContentForIO(useStore().syncTarget, fileId, isBinary, filePath)
+        (useStore().cloudDriveHandlerComponentAPI as CloudDriveHandlerComponentAPI).readFileContentForIO(useStore().syncTarget, fileId, isBinary, filePath)
             .then((fileContent) => {
                 resolve(fileContent as string|Uint8Array);
             }, (error) => {
@@ -335,7 +325,7 @@ export const skulptInteralFileWrite = (skFile: SkulptFile, toWrite: string | Uin
 const skulptWriteFileIO = (skFile: SkulptFile, toWrite: string|Uint8Array): Promise<{succeeded: boolean, errorMsg: string}> => {
     // We retrieve the Cloud Drive file ID - it should be valid as no call to this after a file is closed in Skulpt should happen.
     const fileId = cloudFilesMap.find((mapEntry) => mapEntry.filePath == skFile.name)?.id??"";
-    return cloudDriveHandlerComponent.writeFileContentForIO(useStore().syncTarget, toWrite, {filePath: skFile.name, fileId: fileId})
+    return (useStore().cloudDriveHandlerComponentAPI as CloudDriveHandlerComponentAPI).writeFileContentForIO(useStore().syncTarget, toWrite, {filePath: skFile.name, fileId: fileId})
         .then((_) => {
             return {succeeded: true, errorMsg: ""};
         },

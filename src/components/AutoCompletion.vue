@@ -86,6 +86,7 @@ import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
 import {Completion, Signature, SignatureArg, TPyParser} from "tigerpython-parser";
 import scssVars from "@/assets/style/_export.module.scss";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 // #v-ifdef MODE == VITE_MICROBIT_MODE
 import microbitDescriptions from "@/autocompletion/microbit.json";
 import microbitAPI from "@/autocompletion/microbit-api.json";
@@ -99,7 +100,30 @@ export default defineComponent({
         PopUpItem,
     },
 
+    created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        const apiMethods = {
+            updateACForModuleImport: this.updateACForModuleImport,
+            updateACForImportFrom: this.updateACForImportFrom,
+            updateAC: this.updateAC,
+        };
+        
+        if(vueComponentsAPIHandler.autoCompletionComponentAPI == null){    
+            vueComponentsAPIHandler.autoCompletionComponentAPI = {
+                forInstance: {
+                    [this.AC_UID]: apiMethods,
+                },
+            };
+        }
+        else{
+            vueComponentsAPIHandler.autoCompletionComponentAPI.forInstance[this.AC_UID] = apiMethods;
+        }
+    },
+
     props: {
+        AC_UID: {type: String, required: true},
         list: [String],
         slotId: {type: String, required: true},
     },

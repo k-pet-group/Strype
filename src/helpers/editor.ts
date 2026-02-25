@@ -1,25 +1,18 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesAction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameContainer, getFrameSectionIdFromFrameId } from "./storeMethods";
+import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameSectionIdFromFrameId } from "./storeMethods";
 import { splitByRegexMatches, strypeFileExtension } from "./common";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
 import scssVars  from "@/assets/style/_export.module.scss";
 import html2canvas, { Options } from "html2canvas";
-import CaretContainer from "@/components/CaretContainer.vue";
-import { vm } from "@/main";
 import Vue from "vue";
-import Frame from "@/components/Frame.vue";
-import FrameContainer from "@/components/FrameContainer.vue";
-import FrameBody from "@/components/FrameBody.vue";
-import JointFrames from "@/components/JointFrames.vue";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-import CommandsComponent from "@/components/Commands.vue";
-import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import { debounce } from "lodash";
 // #v-endif
 import {toUnicodeEscapes} from "@/parser/parser";
 import {fromUnicodeEscapes} from "@/helpers/pythonToFrames";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
 export const undoMaxSteps = 50;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -512,69 +505,6 @@ export function getLoadFromFSStrypeButtonId(): string {
 export function getStrypeCommandComponentRefId(): string {
     return "strypeCommands";
 }
-
-// The following helpers traverse the component refs to retrieve the desired component
-export function getFrameComponent(frameId: number, innerLookDetails?: {frameParentComponent: InstanceType<typeof Frame> | InstanceType<typeof FrameContainer> | InstanceType<typeof FrameBody> | InstanceType<typeof JointFrames>, listOfFrameIdToCheck: number[]}): InstanceType<typeof Frame> | InstanceType<typeof FrameContainer> | undefined {
-    // This methods gets the (Vue) reference of a frame based on its ID, or undefined if we could not find it.
-    // The logic to retrieve the reference relies on the implementation of the editor, as we look in 
-    // the frame containers which are supposed to hold the frames, and within frame body/joint when a frame can have children/joint frames.
-    // If no root is provided, we assume we search the frame reference everywhere in the editor, meaning we look into the frame containers of App (this)
-    // IMPORTANT NOTE: we are getting arrays of refs here when retrieving the refs, because the referenced elements are within a v-for
-    // https://laracasts.com/discuss/channels/vue/ref-is-an-array 
-    let result = undefined;
-    if(innerLookDetails){                
-        for(const childFrameId of innerLookDetails.listOfFrameIdToCheck){
-            const childFrameComponent = ((innerLookDetails.frameParentComponent.$refs[getFrameUID(childFrameId)] as (Vue|Element)[])[0] as InstanceType<typeof Frame>);
-            if(childFrameId == frameId){
-                // Found the frame directly inside this list of frames
-                result =  childFrameComponent;
-                break;
-            }
-            else if(useStore().frameObjects[childFrameId].childrenIds.length > 0 || useStore().frameObjects[childFrameId].jointFrameIds.length > 0){
-                // That frame isn't the one we want, but maybe it contains the one we want so we look into it.
-                // We first look into the children, the joint frames (which may have children as well)
-                const frameBodyComponent = (childFrameComponent.$refs[getFrameBodyRef()] as InstanceType<typeof FrameBody>); // There is 1 body in a frame, no v-for is used, we have 1 element
-                if (!frameBodyComponent){
-                    // This can happen when a frame is folded; have to return undefined:
-                    return undefined;
-                }
-                result = getFrameComponent(frameId, {frameParentComponent: frameBodyComponent, listOfFrameIdToCheck: useStore().frameObjects[childFrameId].childrenIds});
-
-                if(!result){
-                    // Check joints if we didn't find anything in the children
-                    const jointFramesComponent = (childFrameComponent.$refs[getJointFramesRef()] as InstanceType<typeof FrameBody>); // There is 1 joint frames strcut in a frame, no v-for is used, we have 1 element
-                    result = getFrameComponent(frameId, {frameParentComponent: jointFramesComponent, listOfFrameIdToCheck: useStore().frameObjects[childFrameId].jointFrameIds});
-                }
-
-                if(result){
-                    break;
-                }
-            }
-        }
-    }
-    else{
-        // When we look for the frame from the whole editor, we need to find in wich frame container that frame lives.
-        // We don't need to parse recursively for getting the refs/frames as we can just find out what frame container it is in first directly...
-        // And if we are already in the container (body), then we just return this component 
-        const frameContainerId = (frameId < 0) ? frameId : getFrameContainer(frameId);
-        const containerElementRefs = vm.$root.$children[0].$refs[getFrameContainerUID(frameContainerId)] as (Vue|Element)[]; // Retrieve in App
-        if(containerElementRefs) {
-            result = (frameId < 0) 
-                ? containerElementRefs[0] as InstanceType<typeof FrameContainer>
-                : getFrameComponent(frameId,{frameParentComponent: containerElementRefs[0] as InstanceType<typeof FrameContainer>, listOfFrameIdToCheck: useStore().frameObjects[frameContainerId].childrenIds});
-        }
-    }
-
-    return result;
-}
-
-export function getCaretContainerComponent(frameComponent: InstanceType<typeof Frame> | InstanceType<typeof FrameContainer>): InstanceType<typeof CaretContainer> {
-    const caretContainerComponent = (useStore().currentFrame.id < 0 || useStore().currentFrame.caretPosition == CaretPosition.below)
-        ? (frameComponent.$refs[getCaretContainerRef()] as InstanceType<typeof CaretContainer>)
-        : ((frameComponent.$refs[getFrameBodyRef()] as InstanceType<typeof FrameBody>).$refs[getCaretContainerRef()] as InstanceType<typeof CaretContainer>); 
-    return caretContainerComponent;                              
-}
-// End for component retriever
 
 export function getSaveAsProjectModalDlg(): string {
     return "save-strype-project-modal-dlg";
@@ -1114,18 +1044,17 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
             const closestCaretEl = document.getElementById(getCaretUID(currentCaretPositionsForDnD[closestCaretPositionIndex].caretPosition as string, currentCaretPositionsForDnD[closestCaretPositionIndex].frameId));
             // First remove the drop indicator of the current drop position (if any)
             if(currentCaretDropPosId.length > 0){
-                (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = false;
+                vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)].setAreFramesDraggedOver(false);
                 // Not really required but just better to reset things properly
-                (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
+                vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)].setAreDropFramesAllowed(true);
                 // We make sure that we remove the "drag and d&d" flag on this caret since it's no longer a candidate for dropping the frames at this position...
                 removeDuplicateActionOnFramesDnD();
             }
             currentCaretDropPosId = closestCaretEl?.id??"";
             currentCaretDropPosFrameId = newCaretDropPosFrameId;
             currentCaretDropPosCaretPos = newCaretDropPosCaretPos;
-            (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = true;
-            (vm.$refs[getCaretUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = 
-                isFrameDropAllowed(newCaretDropPosFrameId, newCaretDropPosCaretPos);
+            vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)]?.setAreFramesDraggedOver(true);
+            vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(newCaretDropPosCaretPos, newCaretDropPosFrameId)]?.setAreDropFramesAllowed(isFrameDropAllowed(newCaretDropPosFrameId, newCaretDropPosCaretPos));            
         }
 
         // Update the duplicate status based on whether they are holding ctrl/alt:
@@ -1142,7 +1071,7 @@ const bodyMouseMoveEventHandlerForFrameDnD = (mouseEvent: MouseEvent): void => {
 export function addDuplicateActionOnFramesDnD(): void {
     // Add the "+" symbol
     if(currentCaretDropPosFrameId != 0){
-        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).isDuplicateDnDAction = true;
+        vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)].setIsDuplicateDnDAction(true);
     }
 
     // Do not blur the source frame(s)
@@ -1153,7 +1082,7 @@ export function addDuplicateActionOnFramesDnD(): void {
 export function removeDuplicateActionOnFramesDnD(): void {
     // Remove the "+" symbol on the destination caret
     if(currentCaretDropPosFrameId != 0){
-        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).isDuplicateDnDAction = false;
+        vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)].setIsDuplicateDnDAction(false);
     }
 
     // Restore the blur on the source frame(s) only if we are still dragging 
@@ -1167,7 +1096,7 @@ export function removeDuplicateActionOnFramesDnD(): void {
 // there is no "dragend" being raised by the browser consequently.
 const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
     if(useStore().isDraggingFrame){
-        const areDropFramesAllowed = (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed;
+        const areDropFramesAllowed = vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)].getAreDropFramesAllowed();
         // Notify the drag even is finished
         notifyDragEnded();
 
@@ -1310,9 +1239,9 @@ export function notifyDragEnded():void {
     (document.getElementsByTagName("body")[0] as HTMLBodyElement).removeEventListener("mouseup", bodyMouseUpEventHandlerForFrameDnD);
     document.getElementsByTagName("body")[0]?.classList.remove(scssVars.draggingFrameClassName);
     if(currentCaretDropPosId.length > 0){
-        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areFramesDraggedOver = false;
+        vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)].setAreFramesDraggedOver(false);
         // Not really required but just better to reset things properly
-        (vm.$refs[getCaretUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)] as InstanceType<typeof CaretContainer>).areDropFramesAllowed = true;
+        vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(currentCaretDropPosCaretPos, currentCaretDropPosFrameId)].setAreDropFramesAllowed(true);
     }
     // Reset flags in the next tick to let UI update properly
     Vue.nextTick(() => {
@@ -2014,12 +1943,12 @@ export function setPythonExecAreaLayoutButtonPos(): void{
         const pythonConsoleTextArea = document.getElementById(getPEAConsoleId());
         const pythonTurtleContainerDiv = document.getElementById(getPEAGraphicsContainerDivId());
         const peaLayoutButtonsContainer = document.getElementsByClassName(scssVars.peaToggleLayoutButtonsContainerClassName)?.[0];
-        const peaComponent = ((vm.$children[0].$refs[getStrypeCommandComponentRefId()] as any).$refs[getPEAComponentRefId()]);
-        if(pythonConsoleTextArea && pythonTurtleContainerDiv && peaLayoutButtonsContainer && peaComponent){
+        const peaComponentAPI = vueComponentsAPIHandler.peaComponentAPI;
+        if(pythonConsoleTextArea && pythonTurtleContainerDiv && peaLayoutButtonsContainer && peaComponentAPI){
             // First get the natural position offset of the button, so can compute the new position:
             const peaExpandButtonNaturalPosOffset = parseInt((scssVars.pythonExecutionAreaLayoutButtonsPosOffset as string).replace("px",""));
             // Then, look for the scrollbars
-            if((peaComponent as InstanceType<typeof PythonExecutionArea>).isConsoleAreaShowing && !(peaComponent as InstanceType<typeof PythonExecutionArea>).isGraphicsAreaShowing){
+            if(peaComponentAPI?.getIsConsoleAreaShowing() && !peaComponentAPI?.getIsGraphicsAreaShowing()){
                 // In the Python console, we wrap the text, only the vertical scrollbar can appear.
                 const scrollDiff = pythonConsoleTextArea.getBoundingClientRect().width - pythonConsoleTextArea.clientWidth;
                 (peaLayoutButtonsContainer as HTMLDivElement).style.right = (pythonConsoleTextArea.scrollHeight > pythonConsoleTextArea.clientHeight) ? (peaExpandButtonNaturalPosOffset + scrollDiff + 2) + "px" : "";
@@ -2086,7 +2015,7 @@ export function computeAddFrameCommandContainerSize(isExpandedPEA?: boolean): vo
         // When we are done, we need to check again the min size of the commands/PEA splitter pane 1, since scroll bars
         // could have been added with the new change (need to wait for it to be effective though).
         setTimeout(() => {
-            (vm.$children[0].$refs[getStrypeCommandComponentRefId()] as InstanceType<typeof CommandsComponent>).setPEACommandsSplitterPanesMinSize(true);    
+            vueComponentsAPIHandler.commandsComponentAPI?.setPEACommandsSplitterPanesMinSize(true);    
         }, 100);    
     }
 }

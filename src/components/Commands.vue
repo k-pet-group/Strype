@@ -100,7 +100,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCloudDriveHandlerComponentRefId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesAction, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -114,6 +114,7 @@ import gdIcon from "@/assets/images/logoGDrive.png";
 import odIcon from "@/assets/images/logoOneDrive.svg";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 import { clamp } from "lodash";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
@@ -121,7 +122,6 @@ import {getPEAConsoleId, getPEAGraphicsDivId, getPEATabContentContainerDivId, ge
 // #v-else
 import APIDiscovery from "@/components/APIDiscovery.vue";
 import { flash } from "@/helpers/webUSB";
-import CloudDriveHandlerComponent from "./CloudDriveHandler.vue";
 import { downloadHex, getPythonContent } from "@/helpers/download";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import { useBrowserDetect } from "vue3-detect-browser";
@@ -219,14 +219,13 @@ export default defineComponent({
         },
 
         syncedTargetName(): string {
-            const cloudDriveHandlerComponent =  ((this.$root.$children[0].$refs[getMenuLeftPaneUID()] as Vue).$refs[getCloudDriveHandlerComponentRefId()] as InstanceType<typeof CloudDriveHandlerComponent>);
+            const cloudDriveHandlerComponentAPI =  (vueComponentsAPIHandler.cloudDriveHandlerComponentAPI);
             switch(this.appStore.syncTarget){
             case StrypeSyncTarget.fs:
                 return this.$t("appMessage.targetFS") as string;
             case StrypeSyncTarget.gd:
-                return cloudDriveHandlerComponent.getDriveName();
             case StrypeSyncTarget.od:
-                return cloudDriveHandlerComponent.getDriveName();
+                return (cloudDriveHandlerComponentAPI?.getDriveName())??"";
             default:
                 return "";
             }
@@ -284,6 +283,29 @@ export default defineComponent({
     },
 
     created() {
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        vueComponentsAPIHandler.commandsComponentAPI = {
+            onCommandsSplitterResize: this.onCommandsSplitterResize,
+            resetPEACommmandsSplitterDefaultState: this.resetPEACommmandsSplitterDefaultState,
+            setCommandsSplitterPane2Size: (value: number) => {
+                this.commandsSplitterPane2Size= value;
+            },
+            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+            setPEACommandsSplitterPanesMinSize: this.setPEACommandsSplitterPanesMinSize,
+            setIsExpandedPEA: (value: boolean) => {
+                this.isExpandedPEA = value;
+            },
+            setLogicalORHasPEAExpanded: (value: boolean) => {
+                this.hasPEAExpanded ||= value;
+            },
+            setIsCommandsSplitterChanged: (value: boolean) => {
+                this.isCommandsSplitterChanged = value;
+            },
+            // #v-endif
+        };
+
         if(this.appStore.showKeystroke){
             window.addEventListener(
                 "dblclick",
@@ -436,10 +458,9 @@ export default defineComponent({
                 // #v-endif
                 if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && isTargetRefDefined) {
                     // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-                    ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).focus();
-                    ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).click();
+                    vueComponentsAPIHandler.peaComponentAPI?.focusClickRunButton();
                     // Need to unfocus to avoid keyboard focus non-obviously remaining with the run button:
-                    ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$refs.runButton as HTMLButtonElement).blur();
+                    vueComponentsAPIHandler.peaComponentAPI?.blurRunButton();
                     // #v-else
                     // If the run Python shortcut is triggered with the micro:bit version, we start/stop the simulator.                        
                     if(event.ctrlKey){
@@ -475,7 +496,7 @@ export default defineComponent({
                 // (then we just leave the PEA handling it, see at the end of these conditions for related code)
                 let extraConditionsForPEA = true;
                 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-                extraConditionsForPEA = !(isPythonExecuting && ((this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isTurtleListeningKeyEvents || (this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isRunningStrypeGraphics));
+                extraConditionsForPEA = !(isPythonExecuting && vueComponentsAPIHandler.peaComponentAPI?.getIsTurtleListeningKeyEvents() || vueComponentsAPIHandler.peaComponentAPI?.getIsRunningStrypeGraphics());
                 // #v-endif
                 if (!isDraggingFrames && !isEditing && extraConditionsForPEA && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End", "PageUp", "PageDown"].includes(event.key)) {
                     event.stopImmediatePropagation();
@@ -601,7 +622,7 @@ export default defineComponent({
                         }
                     }
                     // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-                    else if(isPythonExecuting && !(this.$refs[getPEAComponentRefId()] as InstanceType<typeof PythonExecutionArea>).$data.isRunningStrypeGraphics){
+                    else if(isPythonExecuting && !vueComponentsAPIHandler.peaComponentAPI?.getIsRunningStrypeGraphics()){
                         // The special case when the user's code is being executing, we want to handle the key events carefully.
                         // If there is a combination key (ctrl,...) we just ignore the events, otherwise, if Turtle is active we pass events to the Turtle graphics,
                         // and if it's not active AND the Python Execution console hasn't go focus, we prevents events.
@@ -841,7 +862,7 @@ export default defineComponent({
             return new Promise((resolve) => {
                 this.hasPEAExpanded = false;
                 this.isCommandsSplitterChanged = false;               
-                (this.$refs[this.peaComponentRefId] as InstanceType<typeof PythonExecutionArea>).togglePEALayout(StrypePEALayoutMode.tabsCollapsed);
+                vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(StrypePEALayoutMode.tabsCollapsed);
                 // Once we have the flags set, we set a timer to wait for the splitter to update before returning from the promise
                 setTimeout(() => {
                     resolve();

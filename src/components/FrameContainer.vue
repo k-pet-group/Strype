@@ -46,6 +46,7 @@ import { CustomEventTypes, getCaretContainerRef, getCaretUID, getFrameUID} from 
 import scssVars from "@/assets/style/_export.module.scss";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
 //////////////////////
 //     Component    //
@@ -72,7 +73,7 @@ export default defineComponent({
 
     destroyed() {
         // Remove the registration of the caret container component API related to this frame container
-        delete this.appStore.caretContainerComponentAPI?.forInstance[getCaretUID(this.caretPosition.body, this.frameId)];
+        delete vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretUID(this.caretPosition.body, this.frameId)];
     },
 
     data: function(){

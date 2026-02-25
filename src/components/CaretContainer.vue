@@ -49,11 +49,11 @@ import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/help
 import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import scssVars  from "@/assets/style/_export.module.scss";
 import {detectBrowser} from "@/helpers/browser";
+import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { getFrameDefType, SlotType, MediaDataAndDim} from "@/types/types";
 import { getFrameLabelSlotsStructureUID, getLabelSlotUID } from "@/helpers/editor";
 import { preparePasteMediaData } from "@/helpers/media";
-import LabelSlotsStructureComponent from "@/components/LabelSlotsStructure.vue";
 import { getParentOrJointParent } from "@/helpers/storeMethods";
 // #v-endif
 
@@ -66,6 +66,42 @@ export default defineComponent({
     components: {
         Caret,
         VueContext,
+    },
+
+    created(){
+        // Expose this component that other components might need.
+        // Vue 3 has deprecated direct access to components.
+        // (we don't set it in setup() because we want to have this accessible, and the component created!)
+        const apiMethods = {
+            setAreFramesDraggedOver: (value: boolean) => {
+                this.areFramesDraggedOver = value;
+            },
+            getAreDropFramesAllowed: () => {
+                return this.areDropFramesAllowed;
+            },
+            setAreDropFramesAllowed: (value: boolean) => {
+                this.areDropFramesAllowed = value;
+            },
+            setIsDuplicateDnDAction: (value: boolean) => {
+                this.isDuplicateDnDAction = value;
+            },
+            closeContextMenu: () => {
+                ((this.$refs.menu as unknown) as VueContextConstructor).close();
+            },
+            handleClick: this.handleClick,
+            doPaste: this.doPaste,
+        };
+        
+        if(vueComponentsAPIHandler.caretContainerComponentAPI == null){    
+            vueComponentsAPIHandler.caretContainerComponentAPI = {
+                forInstance: {
+                    [this.UID]: apiMethods,
+                },
+            };
+        }
+        else{
+            vueComponentsAPIHandler.caretContainerComponentAPI.forInstance[this.UID] = apiMethods;
+        }
     },
 
     props: {
@@ -171,6 +207,10 @@ export default defineComponent({
         window.removeEventListener("paste", this.pasteIfFocused);
         window.removeEventListener("keydown", this.keydownForSafariPaste);
         document.removeEventListener(CustomEventTypes.scrollCaretIntoView, this.putCaretContainerInView);
+        // Remove the component's API instance
+        if(vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[this.UID]){
+            delete vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[this.UID];
+        }
     },
 
     updated() {
@@ -250,7 +290,7 @@ export default defineComponent({
                                     // Refactor the slots, we call the refactorisation on the LabelSlotsStructure   
                                     // Since that's our last action, we can revert the flag to allow the registration of the state for undo/redo
                                     this.appStore.ignoreStateSavingActionsForUndoRedo = false;                                   
-                                    (this.slotsStructComponentsRegistry[getFrameLabelSlotsStructureUID(frameId, 0)] as InstanceType<typeof LabelSlotsStructureComponent>)
+                                    vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(frameId, 0)]
                                         .checkSlotRefactoring(getLabelSlotUID({frameId: frameId, labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code}), stateBeforeChanges, {doAfterCursorSet: () => {
                                             this.appStore.leftRightKey({key: "ArrowRight"}).then(() => this.appStore.leftRightKey({key: "ArrowRight"}));
                                         }});                                        

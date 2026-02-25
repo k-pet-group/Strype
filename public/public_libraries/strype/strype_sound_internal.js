@@ -2,11 +2,14 @@
 // These functions are not directly exposed to users, but are used by sound.py to
 // form the actual public API.
 
+// Temporary fix for using Vue 3 before getting Pyodide changes in (__vue__ is no longer exposed in Vue 3):
+// we use vuePEAComponentAPIHandler exposed by our Components API to get access to the PEA component's methods.
+
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 var $builtinmodule = function(name)  {
     var mod = {};
     mod.playAudioBuffer = new Sk.builtin.func(function(audioBuffer) {
-        peaComponent.__vue__.playAudioBuffer(audioBuffer);
+        vuePEAComponentAPIHandler.playAudioBuffer(audioBuffer);
     });
     mod.playAudioBufferAndWait = new Sk.builtin.func(function(audioBuffer) {
         let susp = new Sk.misceval.Suspension();
@@ -17,19 +20,19 @@ var $builtinmodule = function(name)  {
         };
         susp.data = {
             type: "Sk.promise",
-            promise: peaComponent.__vue__.playAudioBuffer(audioBuffer),
+            promise: vuePEAComponentAPIHandler.playAudioBuffer(audioBuffer),
         };
         return susp;
     });
     mod.stopAudioBuffer = new Sk.builtin.func(function(audioBuffer) {
-        peaComponent.__vue__.stopAudioBuffer(audioBuffer);
+        vuePEAComponentAPIHandler.stopAudioBuffer(audioBuffer);
     });
     mod.createAudioBuffer = new Sk.builtin.func(function(seconds, samplesPerSecond) {
         return new AudioBuffer({length: Math.round(seconds * samplesPerSecond), sampleRate: samplesPerSecond});
     });
     mod.loadAndWaitForAudioBuffer = new Sk.builtin.func(function(path) {
         path = Sk.ffi.remapToJs(path);
-        const audioContext = peaComponent.__vue__.getAudioContext();
+        const audioContext = vuePEAComponentAPIHandler.getAudioContext();
         let susp = new Sk.misceval.Suspension();
         susp.resume = function () {
             if (susp.data["error"]) {
@@ -55,7 +58,7 @@ var $builtinmodule = function(name)  {
                 // If it's some prefix between two colons, it's a library asset:
                 const libraryName = match[1];
                 const fileName = match[2];
-                promise = peaComponent.__vue__.loadLibraryAsset(libraryName, fileName).then(async (dataURL) => {
+                promise = vuePEAComponentAPIHandler.loadLibraryAsset(libraryName, fileName).then(async (dataURL) => {
                     return await decode(dataURL ?? path);
                 }).catch((error) => {
                     // Propagate the error to the outer promise
@@ -118,10 +121,10 @@ var $builtinmodule = function(name)  {
     });
     mod.downloadWAV = new Sk.builtin.func(function(src, filenameStem) {
         filenameStem = Sk.ffi.remapToJs(filenameStem);
-        peaComponent.__vue__.downloadWAV(src, filenameStem);
+        vuePEAComponentAPIHandler.downloadWAV(src, filenameStem);
     });
     mod.copy = new Sk.builtin.func(function(audioBuffer) {
-        const audioContext = peaComponent.__vue__.getAudioContext();
+        const audioContext = vuePEAComponentAPIHandler.getAudioContext();
         const numberOfChannels = audioBuffer.numberOfChannels;
         const copiedBuffer = audioContext.createBuffer(
             numberOfChannels,

@@ -2,6 +2,9 @@
 // These functions are not directly exposed to users, but are used by graphics.py to
 // form the actual public API.
 
+// Temporary fix for using Vue 3 before getting Pyodide changes in (__vue__ is no longer exposed in Vue 3):
+// we use vuePEAComponentAPIHandler exposed by our Components API to get access to the PEA component's methods.
+
 // From https://stackoverflow.com/questions/996505/lru-cache-implementation-in-javascript
 class LRU {
     constructor(max = 10) {
@@ -85,7 +88,7 @@ var $builtinmodule = function(name)  {
                     // If it's some other prefix between two colons, it's a library asset:
                     const libraryName = match[1];
                     const fileName = match[2];
-                    peaComponent.__vue__.loadLibraryAsset(libraryName, fileName).then((dataURL) => {
+                    vuePEAComponentAPIHandler.loadLibraryAsset(libraryName, fileName).then((dataURL) => {
                         newImg.src = dataURL ?? filename;
                     }).catch((error) => {
                         // Propagate the error to the outer promise
@@ -101,49 +104,49 @@ var $builtinmodule = function(name)  {
         return susp;
     });
     mod.setBackground = new Sk.builtin.func(function(img) {
-        peaComponent.__vue__.getPersistentImageManager().setBackground(img);
+        vuePEAComponentAPIHandler.getPersistentImageManager().setBackground(img);
     });
     // Note, assoc parameter may be missing (and thus undefined): 
     mod.addImage = new Sk.builtin.func(function(image, assoc) {
-        return peaComponent.__vue__.getPersistentImageManager().addPersistentImage(image, assoc);
+        return vuePEAComponentAPIHandler.getPersistentImageManager().addPersistentImage(image, assoc);
     });
     mod.updateImage = new Sk.builtin.func(function(id, image) {
-        return peaComponent.__vue__.getPersistentImageManager().setPersistentImageImage(id, image);
+        return vuePEAComponentAPIHandler.getPersistentImageManager().setPersistentImageImage(id, image);
     });
     mod.imageExists = new Sk.builtin.func(function(image) {
-        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().hasPersistentImage(image));
+        return Sk.ffi.remapToPy(vuePEAComponentAPIHandler.getPersistentImageManager().hasPersistentImage(image));
     });
     mod.getImageSize = new Sk.builtin.func(function (img) {
-        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().getPersistentImageSize(img));
+        return Sk.ffi.remapToPy(vuePEAComponentAPIHandler.getPersistentImageManager().getPersistentImageSize(img));
     });
     mod.setImageLocation = new Sk.builtin.func(function(img, x, y) {
-        peaComponent.__vue__.getPersistentImageManager().setPersistentImageLocation(img, x, y);
+        vuePEAComponentAPIHandler.getPersistentImageManager().setPersistentImageLocation(img, x, y);
     });
     mod.setImageRotation = new Sk.builtin.func(function(img, r) {
-        peaComponent.__vue__.getPersistentImageManager().setPersistentImageRotation(img, r);
+        vuePEAComponentAPIHandler.getPersistentImageManager().setPersistentImageRotation(img, r);
     });
     mod.setImageScale = new Sk.builtin.func(function(img, s) {
-        peaComponent.__vue__.getPersistentImageManager().setPersistentImageScale(img, s);
+        vuePEAComponentAPIHandler.getPersistentImageManager().setPersistentImageScale(img, s);
     });
     mod.getImageLocation = new Sk.builtin.func(function(img) {
-        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().getPersistentImageLocation(img));
+        return Sk.ffi.remapToPy(vuePEAComponentAPIHandler.getPersistentImageManager().getPersistentImageLocation(img));
     });
     mod.getImageRotation = new Sk.builtin.func(function(img) {
-        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().getPersistentImageRotation(img));
+        return Sk.ffi.remapToPy(vuePEAComponentAPIHandler.getPersistentImageManager().getPersistentImageRotation(img));
     });
     mod.getImageScale = new Sk.builtin.func(function(img) {
-        return Sk.ffi.remapToPy(peaComponent.__vue__.getPersistentImageManager().getPersistentImageScale(img));
+        return Sk.ffi.remapToPy(vuePEAComponentAPIHandler.getPersistentImageManager().getPersistentImageScale(img));
     });
     mod.removeImage = new Sk.builtin.func(function(img) {
-        peaComponent.__vue__.getPersistentImageManager().removePersistentImage(img);
+        vuePEAComponentAPIHandler.getPersistentImageManager().removePersistentImage(img);
     });
     // Removes an image after a timeout.  Can be cancelled with cancelRemoveImageAfter (passing same img)
     mod.removeImageAfter = new Sk.builtin.func(function(img, secs) {
-        peaComponent.__vue__.getPersistentImageManager().removePersistentImageAfter(img, secs);
+        vuePEAComponentAPIHandler.getPersistentImageManager().removePersistentImageAfter(img, secs);
     });
         
     mod.makeImageEditable = new Sk.builtin.func(function(img) {
-        return peaComponent.__vue__.getPersistentImageManager().editImage(img);
+        return vuePEAComponentAPIHandler.getPersistentImageManager().editImage(img);
     });
     
     

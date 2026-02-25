@@ -21,7 +21,7 @@ import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileShari
 import { AppEvent, Position, SaveRequestReason, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { LoadedMedia } from "@/types/types";
-import { PersistentImageManager } from "@/stryperuntime/image_and_collisions";
+import { PersistentImage, PersistentImageManager } from "@/stryperuntime/image_and_collisions";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 // #v-end-if
 
@@ -165,6 +165,17 @@ export type PEAComponentAPI = {
   downloadWAV: (src: AudioBuffer, filenameStem: string) => void,
   redrawCanvas: () => void,
   getPersistentImageManager: () => PersistentImageManager,
+  // The following methods are used TEMPORARY to be accessed by the Strype media API internal files,
+  // before we merge the Pyodide changes in the Vue 3 version.
+  // TODO : remove when no longer required.
+  loadLibraryAsset: (libraryShortName: string, fileName: string) => Promise<string | undefined>,
+  playAudioBuffer: (audioBuffer : AudioBuffer) => Promise<void> | null,
+  getAudioContext: () => AudioContext,
+  stopAudioBuffer: (audioBuffer: AudioBuffer) => void,
+  consumeLastClickedItems: () => PersistentImage[],
+  consumeLastClickDetails: () => number[] | null,
+  getMouseDetails: () => [number, number, [boolean, boolean, boolean]],
+  getPressedKeys: () => Map<string, boolean>,
 };
 
 export type MediaPreviewPopupComponentAPI = {

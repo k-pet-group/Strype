@@ -49,6 +49,7 @@ import { getCaretContainerRef, getCaretUID, getFrameBodyUID, getFrameUID } from 
 export default defineComponent({
     name: "FrameBody",
 
+
     components: {
         Frame,
         CaretContainer,
@@ -61,14 +62,10 @@ export default defineComponent({
         caretVisibility: String, //Flag indicating this caret is visible or not
     },
 
-    mounted() {
-        // Register the caret container component at the upmost level for drag and drop
-        this.$root.$refs[getCaretUID(this.caretPosition.body, this.frameId)] = this.$refs[getCaretContainerRef()];
-    },
 
     destroyed() {
-        // Remove the registration of the caret container component at the upmost level for drag and drop
-        delete this.$root.$refs[getCaretUID(this.caretPosition.body, this.frameId)];
+        // Remove the registration of the caret container component API related to this frame body
+        delete this.appStore.caretContainerComponentAPI?.forInstance[getCaretUID(this.caretPosition.body, this.frameId)];
     },
 
     computed: {

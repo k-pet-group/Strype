@@ -114,11 +114,6 @@ export default defineComponent({
         };
     },
 
-    created(){
-        // Register this component on the root, to allow external calls for refactoring the slots
-        this.$root.$refs[this.labelSlotsStructDivId] = this;
-    },
-    
     mounted() {
         this.$nextTick(() => {
             this.updatePrependText();

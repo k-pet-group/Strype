@@ -250,7 +250,7 @@ export default defineComponent({
                                     // Refactor the slots, we call the refactorisation on the LabelSlotsStructure   
                                     // Since that's our last action, we can revert the flag to allow the registration of the state for undo/redo
                                     this.appStore.ignoreStateSavingActionsForUndoRedo = false;                                   
-                                    (this.$root.$refs[getFrameLabelSlotsStructureUID(frameId, 0)] as InstanceType<typeof LabelSlotsStructureComponent>)
+                                    (this.slotsStructComponentsRegistry[getFrameLabelSlotsStructureUID(frameId, 0)] as InstanceType<typeof LabelSlotsStructureComponent>)
                                         .checkSlotRefactoring(getLabelSlotUID({frameId: frameId, labelSlotsIndex: 0, slotId: "0", slotType: SlotType.code}), stateBeforeChanges, {doAfterCursorSet: () => {
                                             this.appStore.leftRightKey({key: "ArrowRight"}).then(() => this.appStore.leftRightKey({key: "ArrowRight"}));
                                         }});                                        

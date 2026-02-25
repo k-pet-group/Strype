@@ -70,14 +70,9 @@ export default defineComponent({
         }, //Type of the Frame  
     },
 
-    mounted() {
-        // Register the caret container component at the upmost level for drag and drop
-        this.$root.$refs[getCaretUID(this.caretPosition.body, this.frameId)] = this.$refs[getCaretContainerRef()];
-    },
-
     destroyed() {
-        // Remove the registration of the caret container component at the upmost level for drag and drop
-        delete this.$root.$refs[getCaretUID(this.caretPosition.body, this.frameId)];
+        // Remove the registration of the caret container component API related to this frame container
+        delete this.appStore.caretContainerComponentAPI?.forInstance[getCaretUID(this.caretPosition.body, this.frameId)];
     },
 
     data: function(){

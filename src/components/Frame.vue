@@ -101,7 +101,7 @@ import { useStore } from "@/store/store";
 import { DefaultFramesDefinition, CaretPosition, CollapsedState, CurrentFrame, FrozenState, NavigationPosition, AllFrameTypesIdentifier, Position, PythonExecRunningState, FrameContextMenuActionName, ContainerTypesIdentifiers } from "@/types/types";
 import VueContext, {VueContextConstructor}  from "vue-context";
 import { getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent, frameOrChildHasErrors, calculateNextCollapseState } from "@/helpers/storeMethods";
-import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getCaretUID, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, getFrameLabelSlotsStructureUID } from "@/helpers/editor";
+import { CustomEventTypes, getFrameBodyUID, getFrameContextMenuUID, getFrameHeaderUID, getFrameUID, isIdAFrameId, getFrameBodyRef, getJointFramesRef, getCaretContainerRef, setContextMenuEventClientXY, adjustContextMenuPosition, getActiveContextMenu, notifyDragStarted, getHTML2CanvasFramesSelectionCropOptions, parseFrameUID, getFrameLabelSlotsStructureUID, getCaretUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { BPopover } from "bootstrap-vue";
 import html2canvas from "html2canvas";
@@ -368,9 +368,6 @@ export default defineComponent({
 
         // The frame header can listen for events from the editable slots focus to manage header level error messages
         document.getElementById(this.frameHeaderId)?.addEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
-
-        // Register the caret container component at the upmost level for drag and drop
-        this.$root.$refs[getCaretUID(this.caretPosition.below, this.frameId)] = this.$refs[getCaretContainerRef()];
     },
 
     destroyed() {
@@ -381,11 +378,14 @@ export default defineComponent({
         // however, just to keep things tidy, let's clear the frame focus event listener when the frame is destroyed
         document.getElementById(this.frameHeaderId)?.removeEventListener(CustomEventTypes.frameContentEdited, this.onFrameContentEdited);
         
-        // Remove the registration of the caret container component at the upmost level for drag and drop
+        // Remove the registration of the caret container component API related to this frame,
+        // the frame header component API related to this frame and the component API of this frame.
         // ONLY if the frame is really removed from the state (because for a very strange reason, when reloading
         // a page and overwriting the frames with a state, the initial state's frame are destroyed after registered).
         if(this.appStore.frameObjects[this.frameId] == undefined){
-            delete this.$root.$refs[getCaretUID(this.caretPosition.below, this.frameId)];
+            delete this.appStore.caretContainerComponentAPI?.forInstance[getCaretUID(this.caretPosition.below, this.frameId)];
+            delete this.appStore.frameComponentAPI?.forInstance[this.frameId];
+            delete this.appStore.frameHeaderComponentAPI?.forInstance[this.frameId];
         }
     },
 
@@ -898,7 +898,7 @@ export default defineComponent({
                 // However, since no actual slot is clicked, the change from "self" to "self," isn't triggered.
                 // We can retrieve the LabelSlotsStructure component because its ref is in the root object, and 
                 // call updatePrependText() which will now notice the right context and do its work.
-                const labelSlotsStructComponent = this.$root.$refs[getFrameLabelSlotsStructureUID(this.frameId, 1)];
+                const labelSlotsStructComponent = this.slotsStructComponentsRegistry[getFrameLabelSlotsStructureUID(this.frameId, 1)];
                 if(labelSlotsStructComponent){
                     (labelSlotsStructComponent as InstanceType<typeof LabelSlotsStructureComponent>).updatePrependText();
                 }

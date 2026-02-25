@@ -174,8 +174,8 @@ export default defineComponent({
             // We only update the specific Drive's method delegates when needed (that is when the cloudTarget changes)
             if(this.currentCloudTarget != cloudTarget){
                 const resetToDefault = (cloudTarget ==  StrypeSyncTarget.none || cloudTarget == StrypeSyncTarget.fs);
-                this.$set(this, "getDriveName", (resetToDefault) ? () => "" : () => (component as CloudDriveComponent).driveName);
-                this.$set(this, "checkIsFileLockedProp", (resetToDefault) ? () => false : () => (component as CloudDriveComponent).isFileLocked);
+                this.getDriveName = (resetToDefault) ? () => "" : () => (component as CloudDriveComponent).driveName;
+                this.checkIsFileLockedProp = (resetToDefault) ? () => false : () => (component as CloudDriveComponent).isFileLocked;
                 this.signInFn = (resetToDefault) ? () => {} : () => (component as CloudDriveComponent).signIn((cloudTarget: StrypeSyncTarget) => { 
                     if(this.currentAction == "load"){
                         this.doLoadFile(cloudTarget, this.openSharedProjectFileId, this.isSwappingCloudDriveTarget(cloudTarget));

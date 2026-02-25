@@ -78,10 +78,10 @@
         "vue": "^3.1.0",
         "vue-advanced-cropper": "^2.8.9",
         "vue-autosize-input": "^0.1.1",
-        "vue-burger-menu": "^2.0.5",
         "vue-context": "^6.0.0",
         "vue-i18n": "^11",
         "vue-input-autowidth": "^1.0.10",
+        "vue3-burger-menu": "^1.1.1",
         "vue3-detect-browser": "^0.1.2",
         "zod": "^3.25.32"
     },

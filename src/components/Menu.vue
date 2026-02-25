@@ -3,7 +3,7 @@
     <div @keydown="handleKeyEvent" @keyup="handleKeyEvent" tabindex="-1" @mousedown.self.stop.prevent>
         <CloudDriveHandler :ref="cloudDriveHandlerComponentId" :openSharedProjectFileId="openSharedProjectId" />
         <div>
-            <a href="https://strype.org/" :title="$i18n.t('appMenu.homepage')"><img class="top-left-strype-logo" src="@/assets/images/Strype-logo-128-2x.png"></a>
+            <a href="https://strype.org/" :title="$t('appMenu.homepage')"><img class="top-left-strype-logo" src="@/assets/images/Strype-logo-128-2x.png"></a>
         </div>
         <Slide 
             :isOpen="showMenu"
@@ -118,14 +118,14 @@
             <ModalDlg :dlgId="shareProjectModalDlgId" :okCustomTitle="$t('buttonLabel.copyLink')" :okDisabled="isSharingLinkGenerationPending" :useLoadingOK="isSharingLinkGenerationPending" 
                 :dlgTitle="$t('appMessage.createShareProjectLink')" :elementToFocusId="shareCloudDriveProjectPublicRadioBtnId">
                         <div>
-                            <span class="share-mode-buttons-container-title">{{$i18n.t('appMessage.shareProjectModeLabel')}}</span>
+                            <span class="share-mode-buttons-container-title">{{$t('appMessage.shareProjectModeLabel')}}</span>
                             <div class="share-mode-buttons-container">
                                 <div class="share-mode-button-group">
                                     <input type="radio" :id="shareCloudDriveProjectPublicRadioBtnId" name="shareCloudDriveModeRadioGroup"
                                         v-model="shareProjectMode" :value="shareProjectPublicModeValue" />
                                     <div>
-                                        <label :for="shareCloudDriveProjectPublicRadioBtnId" >{{$i18n.t("appMessage.shareProjectPublicMode")}}</label>
-                                        <span>{{$i18n.t("appMessage.shareProjectPublicModeDetails") + ((isSharingPublicNotDirectDownload) ? " " + shareProjectPublicCloudDriveNotDirectDownloadLabel : "")}}</span>
+                                        <label :for="shareCloudDriveProjectPublicRadioBtnId" >{{$t("appMessage.shareProjectPublicMode")}}</label>
+                                        <span>{{$t("appMessage.shareProjectPublicModeDetails") + ((isSharingPublicNotDirectDownload) ? " " + shareProjectPublicCloudDriveNotDirectDownloadLabel : "")}}</span>
                                     </div>
                                 </div>
                                 <div class="share-mode-button-group">
@@ -196,7 +196,7 @@
                     :disabled="isUndoDisabled"
                     @click="performUndoRedo(true)"
                     class="menu-icon-entry"
-                    :title="$i18n.t('contextMenu.undo')"
+                    :title="$t('contextMenu.undo')"
                 />
             </div>
             <div class="menu-icon-div">   
@@ -206,7 +206,7 @@
                     :disabled="isRedoDisabled"
                     @click="performUndoRedo(false)"
                     class="menu-icon-entry"
-                    :title="$i18n.t('contextMenu.redo')"
+                    :title="$t('contextMenu.redo')"
                 />
             </div>
         </div> 
@@ -249,6 +249,7 @@ import disabledUndoImgPath from "@/assets/images/disabledUndo.svg";
 import disabledRedoImgPath from "@/assets/images/disabledRedo.svg";
 import undoImgPath from "@/assets/images/undo.svg";
 import redoImgPath from "@/assets/images/redo.svg";
+import { useI18n } from "vue-i18n";
 
 //////////////////////
 //     Component    //
@@ -402,7 +403,7 @@ export default defineComponent({
             // as the name to avoid empty options in the select HTML tool.
             const locales: Locale[] = [];
             this.$i18n.availableLocales.forEach((i18nLocale) => {
-                locales.push({code: i18nLocale, name: this.$i18n.getLocaleMessage(i18nLocale)["localeName"] as string??i18nLocale});
+                locales.push({code: i18nLocale, name: (useI18n().messages.value[i18nLocale].localeName as string)??i18nLocale});
             });
             return locales;
         },
@@ -544,7 +545,7 @@ export default defineComponent({
         
         shareProjectWithinCloudDriveModeLabel(): string {
             if(this.isSyncingToCloud){
-                return this.$i18n.t("appMessage.shareProjectWithinCloudDriveMode", {drivename: (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).getDriveName()}) as string;
+                return this.$t("appMessage.shareProjectWithinCloudDriveMode", {drivename: (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).getDriveName()}) as string;
             }
             else{
                 return "";
@@ -553,7 +554,7 @@ export default defineComponent({
 
         shareProjectWithinCloudDriveModeDetailsLabel(): string {
             if(this.isSyncingToCloud){
-                return this.$i18n.t("appMessage.shareProjectWithinCloudDriveModeDetails", {drivename: (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).getDriveName()}) as string;
+                return this.$t("appMessage.shareProjectWithinCloudDriveModeDetails", {drivename: (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).getDriveName()}) as string;
             }
             else{
                 return "";
@@ -562,7 +563,7 @@ export default defineComponent({
 
         shareProjectPublicCloudDriveNotDirectDownloadLabel(): string {
             if(this.isSyncingToCloud){
-                return this.$i18n.t("appMessage.shareProjectPublicModeDetailsNoDirectDownload", {drivename: (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).getDriveName()}) as string;
+                return this.$t("appMessage.shareProjectPublicModeDetailsNoDirectDownload", {drivename: (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).getDriveName()}) as string;
             }
             else{
                 return "";
@@ -630,7 +631,7 @@ export default defineComponent({
         strypeProjMIMEDescArray(): MIMEDesc[]{
             return [
                 {
-                    description: this.$i18n.t("strypeFileDesc") as string,
+                    description: this.$t("strypeFileDesc") as string,
                     accept: { "application/strype": ["."+strypeFileExtension] },
                 },
             ];
@@ -639,7 +640,7 @@ export default defineComponent({
         pythonImportMIMEDescArray(): MIMEDesc[]{
             return [
                 {
-                    description: this.$i18n.t("pythonFileDesc") as string,
+                    description: this.$t("pythonFileDesc") as string,
                     accept: { "text/x-python": [".py"] },
                 },
             ];
@@ -836,7 +837,7 @@ export default defineComponent({
                     .catch((_) => {
                         // Something happened, we let the user know
                         const erroMsg = (typeof _ == "string") ? _ : JSON.stringify(_);
-                        this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.clouldFileRestoreSharingStatus", {drivename: cloudDriveHandlerComponent.getDriveName(), errordetails: erroMsg}) as string;
+                        this.appStore.simpleModalDlgMsg = this.$t("errorMessage.clouldFileRestoreSharingStatus", {drivename: cloudDriveHandlerComponent.getDriveName(), errordetails: erroMsg}) as string;
                         this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
                     });
 
@@ -917,7 +918,7 @@ export default defineComponent({
             // Note that for every call, we always also generate a timeout to make sure we never end up in "pending" situation -- that timeout is really generous to avoid unwanted behaviour for the user.
             const noShareActionTimeOut = 10*1000; 
             const noShareActionTimeOutHandle = setTimeout(()=>{
-                this.showErrorForShareProjectLink(this.$i18n.t("errorMessage.sharingLinkTimedout") as string);
+                this.showErrorForShareProjectLink(this.$t("errorMessage.sharingLinkTimedout") as string);
             }, noShareActionTimeOut);
 
             // With Cloud Drives, we allow two types of sharing: either sharing the Drive link (after setting the project readonly and totally public in the sharing settings)
@@ -945,13 +946,13 @@ export default defineComponent({
                                             }
                                             else{
                                                 // Something happened we couldn't make the link
-                                                alertMessage = this.$i18n.t("errorMessage.cloudDrivePublicShareFailed", {error: (respStatus?.toString())??"unknown"}) as string;
+                                                alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (respStatus?.toString())??"unknown"}) as string;
                                             }
                                         }
                                     })
                                     .catch((error: any) => {
                                         // Something happened when we tried to get the public URL of the Google Drive file.
-                                        alertMessage = this.$i18n.t("errorMessage.cloudDrivePublicShareFailed", {error: (error.status?.toString())??"unknown"}) as string;            
+                                        alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (error.status?.toString())??"unknown"}) as string;            
                                     })
                                     .finally(() => {
                                         if((alertMessage.length > 0) && this.areShareProjectActionStillValid(forShareMode)){
@@ -962,7 +963,7 @@ export default defineComponent({
                             else{
                                 // The project could not be made public on the Cloud Drive for some reason.
                                 if(this.areShareProjectActionStillValid(forShareMode)){
-                                    alertMessage = this.$i18n.t("errorMessage.cloudDrivePublicShareFailed", {error: (alertMessage.length > 0) ? alertMessage: "unknow"}) as string;
+                                    alertMessage = this.$t("errorMessage.cloudDrivePublicShareFailed", {error: (alertMessage.length > 0) ? alertMessage: "unknow"}) as string;
                                     this.showErrorForShareProjectLink(alertMessage);
                                 }
                             }
@@ -1057,7 +1058,7 @@ export default defineComponent({
                     // DO NOT UPDATE THE CURRENT SYNC FLAG IN THE STATE - we only do that IF loading succeed (because it can be still cancelled or impossible to achieve)
                     let saveFileName = forcedProjectName || (document.getElementById(this.saveFileNameInputId) as HTMLInputElement).value.trim();
                     if(saveFileName.length == 0){
-                        saveFileName = this.$i18n.t("defaultProjName") as string;
+                        saveFileName = this.$t("defaultProjName") as string;
                     }
                     
                     const selectValue = this.getTargetSelectVal();
@@ -1066,7 +1067,7 @@ export default defineComponent({
                     if(!isSyncTargetCloudDrive(selectValue)){
                         if(!canBrowserSaveFilePicker() && saveFileName.trim().match(fileNameRegex) == null){
                             // Show an error message and do nothing special
-                            this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.fileNameError") as string;
+                            this.appStore.simpleModalDlgMsg = this.$t("errorMessage.fileNameError") as string;
                             this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
                             this.currentModalButtonGroupIDInAction = "";
                             return;
@@ -1161,7 +1162,7 @@ export default defineComponent({
                         // We need to get the file content (hope for the best) and update the store
                         fileHandles[0].getFile().then((file: File) => {
                             const emitPayload: AppEvent = {requestAttention: true};
-                            emitPayload.message = this.$i18n.t("appMessage.editorFileUpload").toString();
+                            emitPayload.message = this.$t("appMessage.editorFileUpload").toString();
                             this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                             const reader = new FileReader();
                             reader.addEventListener("load", () => {
@@ -1197,7 +1198,7 @@ export default defineComponent({
                 //before reading the file, we check the extension is supported for the import
                 if(files[0].name.indexOf(".") > -1 && fileImportSupportedFormats.findIndex((extension) => extension === files[0].name.substring(files[0].name.lastIndexOf(".") + 1)) > -1) {
                     const emitPayload: AppEvent = {requestAttention: true};
-                    emitPayload.message = this.$i18n.t("appMessage.editorFileUpload").toString();
+                    emitPayload.message = this.$t("appMessage.editorFileUpload").toString();
                     this.$emit(CustomEventTypes.appShowProgressOverlay, emitPayload);
                     // Store the file name in a variable to use it later in the callback, for some reason using files[0].name fails in Pinia, on Safari
                     const fileName = files[0].name;

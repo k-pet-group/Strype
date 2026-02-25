@@ -6,7 +6,7 @@
 
 import { APICodedItem, APIItemTextualDescription } from "@/types/types";
 import moduleDescription from "@/autocompletion/microbit.json";
-import i18n from "@/i18n";
+import { useI18n } from "vue-i18n";
 
 const APIStuff: APIItemTextualDescription[] | undefined = undefined;
 
@@ -19,13 +19,13 @@ const compileTextualAPI = function(apiCodedItems: APICodedItem[], level?: number
         // documentation (simple and extra) is not always provided in the json files (for easier readablilty)
         // therefore, we check if the value can be found against the key for doc/extradoc and assign an empty string if not found
         // (we only need the check against the English locale as it is the reference)
-        const shortDoc = (i18n.te("apidiscovery.microbitAPI."+apiItem.name+"_doc","en")) ? i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_doc") as string : "";
-        const extraDoc = (i18n.te("apidiscovery.microbitAPI."+apiItem.name+"_extradoc","en")) ? i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_extradoc") as string : "";
+        const shortDoc = (useI18n().te("apidiscovery.microbitAPI."+apiItem.name+"_doc","en") ) ? useI18n().t("apidiscovery.microbitAPI."+apiItem.name+"_doc") as string : "";
+        const extraDoc = (useI18n().te("apidiscovery.microbitAPI."+apiItem.name+"_extradoc","en")) ? useI18n().t("apidiscovery.microbitAPI."+apiItem.name+"_extradoc") as string : "";
 
         const apiItemChildren = apiItem.children ?? [] as APICodedItem[]; 
         const version = (apiItem.version) ? apiItem.version : 1;
         apiDocumentedItems.push({name: apiItem.name,
-            label: i18n.t("apidiscovery.microbitAPI."+apiItem.name+"_label") as string,
+            label: useI18n().t("apidiscovery.microbitAPI."+apiItem.name+"_label") as string,
             doc: shortDoc,
             extradoc: extraDoc,
             version: version,

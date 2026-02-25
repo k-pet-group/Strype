@@ -64,11 +64,11 @@ export default defineComponent({
         ...mapStores(useStore),
 
         okTitle(): string {
-            return this.okCustomTitle ?? (this.$i18n.t((this.useYesNo) ? "buttonLabel.yes" : "buttonLabel.ok") as string);
+            return this.okCustomTitle ?? (this.$t((this.useYesNo) ? "buttonLabel.yes" : "buttonLabel.ok") as string);
         },
         
         cancelTitle(): string {
-            return this.cancelCustomTitle ?? (this.$i18n.t((this.useYesNo) ? "buttonLabel.no" : "buttonLabel.cancel") as string);
+            return this.cancelCustomTitle ?? (this.$t((this.useYesNo) ? "buttonLabel.no" : "buttonLabel.cancel") as string);
         },
     },
 

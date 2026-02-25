@@ -811,7 +811,7 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
         || ((frameObject.frameType.labels[slotInfos.labelSlotsIndex].optionalSlot ?? OptionalSlotType.REQUIRED) != OptionalSlotType.REQUIRED);
     if(slotInfos.code !== "") {
         //if the user entered text in a slot that was blank before the change, remove the error
-        if(currentErrorMessage === i18n.t("errorMessage.emptyEditableSlot")) {
+        if(currentErrorMessage === i18n.global.t("errorMessage.emptyEditableSlot")) {
             useStore().removePreCompileErrors(getLabelSlotUID(slotInfos));                
         }
     }
@@ -819,7 +819,7 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
         useStore().setSlotErroneous( 
             {
                 ...slotInfos,  
-                error: i18n.t("errorMessage.emptyEditableSlot") as string,
+                error: i18n.global.t("errorMessage.emptyEditableSlot") as string,
             }
         );
         useStore().addPreCompileErrors(getLabelSlotUID(slotInfos));
@@ -830,7 +830,7 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
         useStore().setSlotErroneous( 
             {
                 ...slotInfos,  
-                error: i18n.t("errorMessage.editableSlotWithHash") as string,
+                error: i18n.global.t("errorMessage.editableSlotWithHash") as string,
             }
         );
         useStore().addPreCompileErrors(getLabelSlotUID(slotInfos));

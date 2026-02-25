@@ -119,7 +119,7 @@ export default defineComponent({
         isWaitingForChildrenLookup(newValue: boolean) {
             // Trigger or stop the app progress bar.
             const emitPayload: AppEvent = {requestAttention: newValue};
-            emitPayload.message = this.$i18n.t("appMessage.cloudDriveItemPickerLoadingFolderContent").toString();
+            emitPayload.message = this.$t("appMessage.cloudDriveItemPickerLoadingFolderContent").toString();
             (this.$root.$children[0] as InstanceType<typeof AppComponent>).applyShowAppProgress(emitPayload);
             // And block or release the overlay
             document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: newValue}));

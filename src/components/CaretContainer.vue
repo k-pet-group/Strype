@@ -9,10 +9,10 @@
         <!-- Make sure the click events are stopped in the links because otherwise, events pass through and mess the toggle of the caret in the editor.
              Also, the element MUST have the hover event handled for proper styling (we want hovering and selecting to go together) -->
         <vue-context ref="menu" @open="handleContextMenuOpened" @close="handleContextMenuClosed">
-            <li :action-name="pasteMenuActionName"><a v-if="showPasteMenuItem" @click.stop="paste(); closeContextMenu()" @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.paste")}}</a></li>
+            <li :action-name="pasteMenuActionName"><a v-if="showPasteMenuItem" @click.stop="paste(); closeContextMenu()" @mouseover="handleContextMenuHover">{{$t("contextMenu.paste")}}</a></li>
             <li><hr v-if="showPasteMenuItem" /></li>
             <li class="v-context__sub">
-                <a @click.stop @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.insert")}}</a>
+                <a @click.stop @mouseover="handleContextMenuHover">{{$t("contextMenu.insert")}}</a>
                 <ul class="v-context">
                     <li v-for="menuItem, index in insertFrameMenuItems" :key="`caretContextMenuItem_${frameId}_${index}`">
                         <a @click.stop="menuItem.method();closeContextMenu();" @mouseover="handleContextMenuHover">{{menuItem.name}}</a>

@@ -396,7 +396,7 @@ export default defineComponent({
         },
 
         getShowExtraCodeLinkLabel(): string{
-            return this.$i18n.t((this.showExtraDoc) ? "buttonLabel.showLess":"buttonLabel.showMore") as string;
+            return this.$t((this.showExtraDoc) ? "buttonLabel.showLess":"buttonLabel.showMore") as string;
         },
 
         getCodeExampleDivStyle(needTopMargin: boolean){

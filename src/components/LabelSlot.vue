@@ -1343,7 +1343,7 @@ export default defineComponent({
                             // Show an error message to the user, and do nothing else.
                             const msg = cloneDeep(MessageDefinitions.InvalidPythonParsePaste);
                             const msgObj = msg.message as FormattedMessage;
-                            msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, this.$i18n.t("errorMessage.unexpectedCharsPython") as string);
+                            msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, this.$t("errorMessage.unexpectedCharsPython") as string);
 
                             //don't leave the message for ever
                             this.appStore.showMessage(msg, 5000);

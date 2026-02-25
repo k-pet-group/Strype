@@ -823,13 +823,13 @@ export function generateAllFrameCommandsDefs():void {
     allFrameCommandsDefs = {
         " ": [{
             type: getFrameDefType(AllFrameTypesIdentifier.funccall),
-            description: i18n.t("frame.funccall_desc") as string,
+            description: i18n.global.t("frame.funccall_desc") as string,
             shortcuts: [" "],
-            symbol: i18n.t("buttonLabel.spaceBar") as string,
+            symbol: i18n.global.t("buttonLabel.spaceBar") as string,
         }],
         "=": [{
             type: getFrameDefType(AllFrameTypesIdentifier.varassign),
-            description: i18n.t("frame.varassign_desc") as string,
+            description: i18n.global.t("frame.varassign_desc") as string,
             shortcuts: ["="],
         }],
         "g": [{
@@ -879,7 +879,7 @@ export function generateAllFrameCommandsDefs():void {
             },
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
-                description: i18n.t("frame.funcdef_desc") as string,
+                description: i18n.global.t("frame.funcdef_desc") as string,
                 shortcuts: ["f"],
                 index: 1,
             },
@@ -892,7 +892,7 @@ export function generateAllFrameCommandsDefs():void {
         ],
         "c": [{
             type: getFrameDefType(AllFrameTypesIdentifier.classdef),
-            description: i18n.t("frame.classdef_desc") as string,
+            description: i18n.global.t("frame.classdef_desc") as string,
             shortcuts: ["c"],
         }],
         "w": [{
@@ -917,12 +917,12 @@ export function generateAllFrameCommandsDefs():void {
         }],
         "#": [{
             type: getFrameDefType(AllFrameTypesIdentifier.comment),
-            description: i18n.t("frame.comment_desc") as string,
+            description: i18n.global.t("frame.comment_desc") as string,
             shortcuts: ["#"],
         }],
         "enter": [{
             type: getFrameDefType(AllFrameTypesIdentifier.blank),
-            description: i18n.t("frame.blank_desc") as string,
+            description: i18n.global.t("frame.blank_desc") as string,
             shortcuts: ["\x13"],
             symbol: "enter",
             isSVGIconSymbol: true,
@@ -1014,7 +1014,7 @@ export function getFunctionCallDefaultText(frameId: number): string {
     // - we have a function call frame without any brackets or operators (just a slot) --> we show "function()".
     const frameToCheck = useStore().frameObjects[frameId];
     if(frameToCheck.labelSlotsDict[0].slotStructures.operators.length == 0){
-        return i18n.t("frame.defaultText.simpleFuncCall") as string;
+        return i18n.global.t("frame.defaultText.simpleFuncCall") as string;
     }
     else if(frameToCheck.labelSlotsDict[0].slotStructures.operators[0].code == "" 
         && isFieldBracketedSlot(frameToCheck.labelSlotsDict[0].slotStructures.fields[1])){

@@ -200,16 +200,16 @@ export default defineComponent({
             const isInsideFuncCallFrameForMyCodeSection = this.appStore.frameObjects[(parseLabelSlotUID(this.slotId).frameId)].frameType.type === AllFrameTypesIdentifier.funccall && findCurrentStrypeLocation().strypeLocation == STRYPE_LOCATION.MAIN_CODE_SECTION;
             const getOrder = (cat : string) => {
                 // First is my variables, my functions and my classes (in that order, except when we are inside a function call frame AND in "my code", my variables comes last).
-                if (cat === this.$i18n.t("autoCompletion.myVariables")) {
+                if (cat === this.$t("autoCompletion.myVariables")) {
                     return (isInsideFuncCallFrameForMyCodeSection) ? 2 : 0;
                 }
-                else if (cat === this.$i18n.t("autoCompletion.myFunctions")) {
+                else if (cat === this.$t("autoCompletion.myFunctions")) {
                     return (isInsideFuncCallFrameForMyCodeSection) ? 0 : 1;
                 }
-                else if (cat === this.$i18n.t("autoCompletion.myClasses")) {
+                else if (cat === this.$t("autoCompletion.myClasses")) {
                     return (isInsideFuncCallFrameForMyCodeSection) ? 1 : 2;
                 }
-                else if (cat === this.$i18n.t("autoCompletion.importedModules")) {
+                else if (cat === this.$t("autoCompletion.importedModules")) {
                     return 3;
                 }
                 // Python in-built is after any custom imports:
@@ -398,7 +398,7 @@ export default defineComponent({
                 this.acResults["Python"] = getBuiltins().filter((ac) => !ac.acResult.startsWith("_") || token.startsWith("_"));
               
                 // Add user-defined functions except class functions (even if the user is inside the class):
-                this.acResults[this.$i18n.t("autoCompletion.myFunctions") as string] = await Promise.all(getAllEnabledUserDefinedFunctions().map(async (f) => ({
+                this.acResults[this.$t("autoCompletion.myFunctions") as string] = await Promise.all(getAllEnabledUserDefinedFunctions().map(async (f) => ({
                     acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
                     // If the function's documentation slot isn't empty, we used it as documentation
                     documentation: (f.labelSlotsDict[3].slotStructures.fields[0] as BaseSlot)?.code.trim()??"",
@@ -408,7 +408,7 @@ export default defineComponent({
                 })));
 
                 // Add user-defined classes:
-                this.acResults[this.$i18n.t("autoCompletion.myClasses") as string] = await Promise.all(getAllEnabledUserDefinedClasses().map(async (f) => ({
+                this.acResults[this.$t("autoCompletion.myClasses") as string] = await Promise.all(getAllEnabledUserDefinedClasses().map(async (f) => ({
                     acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
                     // If the class's documentation slot isn't empty, we used it as documentation
                     documentation: (f.labelSlotsDict[2].slotStructures.fields[0] as BaseSlot)?.code.trim()??"",
@@ -418,7 +418,7 @@ export default defineComponent({
                 })));
                 
                 // Add user-defined variables:
-                this.acResults[this.$i18n.t("autoCompletion.myVariables") as string] = Array.from(getAllUserDefinedVariablesUpTo(frameId)).map((f) => ({
+                this.acResults[this.$t("autoCompletion.myVariables") as string] = Array.from(getAllUserDefinedVariablesUpTo(frameId)).map((f) => ({
                     acResult: f,
                     documentation: "",
                     type: ["variable"],
@@ -596,7 +596,7 @@ export default defineComponent({
                 }
                 // &#8203; is a zero-width space that allows line breaking, for things like Actor(image_or_filename where you'd like to break after the bracket but without showing a space
                 return `<span class='ac-doc-header'>${_.escape(curAC.acResult) + (curAC.type.includes("function") ? "(&#8203;" + (curAC.signature ? paramsText(curAC.signature) : (curAC.params ?? []).filter((p) => !p.hide).map((p) => p.name + (p.defaultValue !== undefined ? " = " + p.defaultValue : "")).join(", ")) + ")" : "")}</span>`
-                    + (doc?.trimStart() || (this.$i18n.t("autoCompletion.noDocumentation") as string));
+                    + (doc?.trimStart() || (this.$t("autoCompletion.noDocumentation") as string));
             }
             else {
                 return "";

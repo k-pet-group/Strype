@@ -18,7 +18,7 @@ export function flash(callerData: Record<string, any>) : void {
     if (parserElements.hasErrors) {
         proceed = false;
         // Notify the user of any detected errors in the code
-        useStore().simpleModalDlgMsg = i18n.t("appMessage.preCompiledErrorNeedFix") as string;
+        useStore().simpleModalDlgMsg = i18n.global.t("appMessage.preCompiledErrorNeedFix") as string;
         vm.$emit("bv::show::modal", getAppSimpleMsgDlgId());
     }
                
@@ -51,7 +51,7 @@ export function flash(callerData: Record<string, any>) : void {
         }
         else {
             // Notify the user of WebUSB is not available
-            useStore().simpleModalDlgMsg = i18n.t("appMessage.noWebUSB") as string;
+            useStore().simpleModalDlgMsg = i18n.global.t("appMessage.noWebUSB") as string;
             vm.$emit("bv::show::modal", getAppSimpleMsgDlgId());
         }
     }

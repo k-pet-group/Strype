@@ -182,13 +182,13 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
         read:skulptReadPythonLib(libraryAddresses),
         fileopen: skulptOpenFileIO,
         fileclose: skulptCloseFileIO, // This is an added property in Skulpt for fileIO
-        fileNotWritableErr: i18n.t("errorMessage.fileIO.fileNotWritableErr"), // This is an added property in Skulpt for fileIO
-        fileNotReadableErr: i18n.t("errorMessage.fileIO.fileNotReadableErr"), // This is an added property in Skulpt for fileIO
-        fileClosedErr: i18n.t("errorMessage.fileIO.fileClosedErr"), // This is an added property in Skulpt for fileIO
-        fileModeErr: i18n.t("errorMessage.fileIO.fileModeErr"), // This is an added property in Skulpt for fileIO
-        fileWriteNotStrErr: i18n.t("errorMessage.fileIO.fileWriteNotStrErr"), // This is an added property in Skulpt for fileIO
-        fileWriteNotBytesErr: i18n.t("errorMessage.fileIO.fileWriteNotBytesErr"), // This is an added property in Skulpt for fileIO
-        fileWriteLinesNotArrayErr: i18n.t("errorMessage.fileIO.fileWriteLinesNotArrayErr"), // This is an added property in Skulpt for fileIO
+        fileNotWritableErr: i18n.global.t("errorMessage.fileIO.fileNotWritableErr"), // This is an added property in Skulpt for fileIO
+        fileNotReadableErr: i18n.global.t("errorMessage.fileIO.fileNotReadableErr"), // This is an added property in Skulpt for fileIO
+        fileClosedErr: i18n.global.t("errorMessage.fileIO.fileClosedErr"), // This is an added property in Skulpt for fileIO
+        fileModeErr: i18n.global.t("errorMessage.fileIO.fileModeErr"), // This is an added property in Skulpt for fileIO
+        fileWriteNotStrErr: i18n.global.t("errorMessage.fileIO.fileWriteNotStrErr"), // This is an added property in Skulpt for fileIO
+        fileWriteNotBytesErr: i18n.global.t("errorMessage.fileIO.fileWriteNotBytesErr"), // This is an added property in Skulpt for fileIO
+        fileWriteLinesNotArrayErr: i18n.global.t("errorMessage.fileIO.fileWriteLinesNotArrayErr"), // This is an added property in Skulpt for fileIO
         nonreadopen: true,
         filewrite: skulptInteralFileWrite, // see skulptFileIO.ts
         inputfun:sInput,
@@ -275,7 +275,7 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
             // We then show the error on the last frame available in the list (that is, before the EOF, 2 lines ahead)
             frameId = (locatableError) ? lineFrameMapping[errorLine - 1].frameId : lineFrameMapping[errorLine - 3].frameId;
 
-            const noLineSkulptErrStr = (locatableError) ? skulptErrStr.replaceAll(/ on line \d+/g,"") : i18n.t("errorMessage.EOFError") as string;
+            const noLineSkulptErrStr = (locatableError) ? skulptErrStr.replaceAll(/ on line \d+/g,"") : i18n.global.t("errorMessage.EOFError") as string;
             // In order to show the Skulpt error in the editor, we set an error on all the frames. That approach is the best compromise between
             // our current error related code implementation and clarity for the user.
             // Exception: if we have a "running action" message, we don't show anything (no message and no error).

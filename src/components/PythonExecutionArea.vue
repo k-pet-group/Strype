@@ -50,7 +50,7 @@
             </div>
         </div>
         <vue-context ref="menu" @open="handleContextMenuOpened" @close="handleContextMenuClosed" id="PEAcontextmenu">
-            <li><a @click.stop="screenshotGraphicsArea(); closeContextMenu()" @mouseover="handleContextMenuHover">{{$i18n.t("contextMenu.screenshotGraphics")}}</a></li>
+            <li><a @click.stop="screenshotGraphicsArea(); closeContextMenu()" @mouseover="handleContextMenuHover">{{$t("contextMenu.screenshotGraphics")}}</a></li>
         </vue-context>
     </div>
 </template>
@@ -62,7 +62,6 @@ import Parser from "@/parser/parser";
 import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
 import {adjustContextMenuPosition, checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getStrypeCommandComponentRefId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight} from "@/helpers/editor";
-import i18n from "@/i18n";
 import {defaultEmptyStrypeLayoutDividerSettings, Position, PythonExecRunningState, StrypePEALayoutData, StrypePEALayoutMode} from "@/types/types";
 import { PersistentImage, PersistentImageManager, WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import Menu from "@/components/Menu.vue";
@@ -260,7 +259,7 @@ export default defineComponent({
         this.$nextTick(() => {
             const graphicTaBElement = document.getElementById(this.graphicsTabId);
             if(graphicTaBElement){
-                graphicTaBElement.innerHTML = graphicTaBElement.innerHTML.replace("\uD83D\uDC22", `<img src="${turtleImgURL}" alt="${this.$i18n.t("PEA.Graphics")}" class="pea-turtle-img" />`);
+                graphicTaBElement.innerHTML = graphicTaBElement.innerHTML.replace("\uD83D\uDC22", `<img src="${turtleImgURL}" alt="${this.$t("PEA.Graphics")}" class="pea-turtle-img" />`);
             }
         });
        
@@ -374,11 +373,11 @@ export default defineComponent({
         runCodeButtonLabel(): string {
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
-                return " " + i18n.t("PEA.run");
+                return " " + this.$t("PEA.run");
             case PythonExecRunningState.Running:
-                return " " + i18n.t("PEA.stop");
+                return " " + this.$t("PEA.stop");
             case PythonExecRunningState.RunningAwaitingStop:
-                return i18n.t("PEA.stopping") as string;
+                return this.$t("PEA.stopping") as string;
             default: return "";
             }
         },

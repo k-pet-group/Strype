@@ -110,6 +110,7 @@
 //      Imports     //
 //////////////////////
 import Vue, { defineComponent } from "vue";
+import { useI18n } from "vue-i18n";
 import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Frame from "@/components/Frame.vue";
@@ -156,6 +157,12 @@ let projectSaveFunctionsState : ProjectSaveFunction[] = [];
 //////////////////////
 export default defineComponent({
     name: "App",
+
+    setup() {
+        // We use the Composition API style for i18n
+        const { availableLocales } = useI18n();
+        return { availableLocales };
+    },
     
     components: {
         FrameHeader,
@@ -293,7 +300,7 @@ export default defineComponent({
         },
 
         resyncToCloudDriveAtStartupDetailsMessage(): string {
-            return this.$i18n.t("appMessage.resyncToCloudDriveAtStartup", {drivename: this.cloudDriveName}) as string;
+            return this.$t("appMessage.resyncToCloudDriveAtStartup", {drivename: this.cloudDriveName}) as string;
         },
 
         confirmNewProjectModalDlgId(): string {
@@ -647,7 +654,7 @@ export default defineComponent({
                                 afterAPILoaded();
                             }
                             else{
-                                this.finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$i18n.t("errorMessage.cloudAPIFailed",{apiname: specifcDriveComponent?.driveAPIName}) as string});
+                                this.finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$t("errorMessage.cloudAPIFailed",{apiname: specifcDriveComponent?.driveAPIName}) as string});
                             }
                         });
                 }
@@ -715,7 +722,7 @@ export default defineComponent({
                         })
                         .catch((error) => {
                             alertMsgKey = "errorMessage.retrievedSharedGenericProject";
-                            alertParams = `${error?.message??error.toString()}<br/><br/><b>${this.$i18n.t("appMessage.publicSharedProjectUserDownloadAttempt")}`;
+                            alertParams = `${error?.message??error.toString()}<br/><br/><b>${this.$t("appMessage.publicSharedProjectUserDownloadAttempt")}`;
                             setTimeout(() => {
                                 window.open(shareProjectId, "_blank");
                             }, 3000);                            
@@ -744,7 +751,7 @@ export default defineComponent({
                 const binary = Base64.toUint8Array(param);
                 const spyContent = inflateRaw(binary, { to: "string" });
 
-                const loadSpy = () => this.setStateFromPythonFile(spyContent, this.$i18n.t("defaultProjName") as string, 0, false);
+                const loadSpy = () => this.setStateFromPythonFile(spyContent, this.$t("defaultProjName") as string, 0, false);
                 
                 this.checkLocalStorageHasProject().then(() => {
                     // A project exists in the local storage, we ask the user if they want to keep it (and cancel the load of the shared project)
@@ -907,7 +914,7 @@ export default defineComponent({
                 // and use it for Strype if we provide that locale
                 const foundLanguange = navigator.language?.toLowerCase();
                 const languageCode = (foundLanguange && foundLanguange.length > 1) ? foundLanguange.substring(0,2) : "en";
-                if(languageCode != "en" && this.$i18n.availableLocales.includes(languageCode)) {
+                if(languageCode != "en" && this.availableLocales.includes(languageCode)) {
                     strypeSessionLocale = languageCode;
                 }
             }
@@ -1049,7 +1056,7 @@ export default defineComponent({
         finaliseOpenShareProject(message?: {key: string, param: string}) {
             // Show a message to the user that the project has (not) been loaded, if requested
             if(message){
-                this.appStore.simpleModalDlgMsg = this.$i18n.t(message.key, {param1: message.param}) as string;
+                this.appStore.simpleModalDlgMsg = this.$t(message.key, {param1: message.param}) as string;
                 this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
             }
             // And also remove the query parameters in the URL

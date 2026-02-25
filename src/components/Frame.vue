@@ -483,24 +483,24 @@ export default defineComponent({
             // If there's a windows and Mac shortcut they are put in an array:
             this.frameContextMenuItems = [
                 // Important these first three are in the same order as the enum CollapsedState:
-                {name: this.$i18n.t("contextMenu.collapseHeader") as string, method: this.collapseToHeader, actionName: FrameContextMenuActionName.collapseToHeader},
-                {name: this.$i18n.t("contextMenu.collapseDocumentation") as string, method: this.collapseToDocumentation, actionName: FrameContextMenuActionName.collapseToDocumentation},
-                {name: this.$i18n.t("contextMenu.collapseFull") as string, method: this.collapseToFull, actionName: FrameContextMenuActionName.collapseToFull},
-                {name: this.$i18n.t("contextMenu.freeze") as string, method: this.freeze, actionName: FrameContextMenuActionName.freeze},
-                {name: this.$i18n.t("contextMenu.unfreeze") as string, method: this.unfreeze, actionName: FrameContextMenuActionName.unfreeze},
+                {name: this.$t("contextMenu.collapseHeader") as string, method: this.collapseToHeader, actionName: FrameContextMenuActionName.collapseToHeader},
+                {name: this.$t("contextMenu.collapseDocumentation") as string, method: this.collapseToDocumentation, actionName: FrameContextMenuActionName.collapseToDocumentation},
+                {name: this.$t("contextMenu.collapseFull") as string, method: this.collapseToFull, actionName: FrameContextMenuActionName.collapseToFull},
+                {name: this.$t("contextMenu.freeze") as string, method: this.freeze, actionName: FrameContextMenuActionName.freeze},
+                {name: this.$t("contextMenu.unfreeze") as string, method: this.unfreeze, actionName: FrameContextMenuActionName.unfreeze},
                 {name: "", method: () => {}, type: "divider"},
-                {name: this.$i18n.t("contextMenu.cut") as string, method: this.cut, actionName: FrameContextMenuActionName.cut, shortcut: [(this.$i18n.t("shortcut.ctrlPlus") as string) + "X", "⌘X"]},
-                {name: this.$i18n.t("contextMenu.copy") as string, method: this.copy, actionName: FrameContextMenuActionName.copy, shortcut: [(this.$i18n.t("shortcut.ctrlPlus") as string) + "C", "⌘C"]},
-                {name: this.$i18n.t("contextMenu.downloadAsImg") as string, method: this.downloadAsImg},
-                {name: this.$i18n.t("contextMenu.duplicate") as string, method: this.duplicate},
+                {name: this.$t("contextMenu.cut") as string, method: this.cut, actionName: FrameContextMenuActionName.cut, shortcut: [(this.$t("shortcut.ctrlPlus") as string) + "X", "⌘X"]},
+                {name: this.$t("contextMenu.copy") as string, method: this.copy, actionName: FrameContextMenuActionName.copy, shortcut: [(this.$t("shortcut.ctrlPlus") as string) + "C", "⌘C"]},
+                {name: this.$t("contextMenu.downloadAsImg") as string, method: this.downloadAsImg},
+                {name: this.$t("contextMenu.duplicate") as string, method: this.duplicate},
                 {name: "", method: () => {}, type: "divider"},
-                {name: this.$i18n.t("contextMenu.pasteAbove") as string, method: this.pasteAbove},
-                {name: this.$i18n.t("contextMenu.pasteBelow") as string, method: this.pasteBelow},
+                {name: this.$t("contextMenu.pasteAbove") as string, method: this.pasteAbove},
+                {name: this.$t("contextMenu.pasteBelow") as string, method: this.pasteBelow},
                 {name: "", method: () => {}, type: "divider"},
-                {name: this.$i18n.t("contextMenu.disable") as string, method: this.disable},
+                {name: this.$t("contextMenu.disable") as string, method: this.disable},
                 {name: "", method: () => {}, type: "divider"},
-                {name: this.$i18n.t("contextMenu.delete") as string, method: this.delete, actionName: FrameContextMenuActionName.delete, shortcut: this.$i18n.t("shortcut.delete") as string},
-                {name: this.$i18n.t("contextMenu.deleteOuter") as string, method: this.deleteOuter}];
+                {name: this.$t("contextMenu.delete") as string, method: this.delete, actionName: FrameContextMenuActionName.delete, shortcut: this.$t("shortcut.delete") as string},
+                {name: this.$t("contextMenu.deleteOuter") as string, method: this.deleteOuter}];
 
             // Not all frames can be collapsed; only show menu items that are possible for at least one of the frames,
             // disable the item if all frames are already in that state, and show the dot shortcut next to whatever it would do:
@@ -544,7 +544,7 @@ export default defineComponent({
                 else {
                     someCollapseShowing = true;
                     if (nextWouldBe as number === c) {
-                        this.frameContextMenuItems[c].shortcut = this.$i18n.t("shortcut.period") as string;
+                        this.frameContextMenuItems[c].shortcut = this.$t("shortcut.period") as string;
                     }
                 }
             }
@@ -562,7 +562,7 @@ export default defineComponent({
                     
                     // Check if there are precompile errors on any of our slots anywhere in the frame:
                     if (errorsInFrameOrChild) {
-                        x.name = this.$i18n.t("contextMenu.cannotFreezeErrors") as string;
+                        x.name = this.$t("contextMenu.cannotFreezeErrors") as string;
                         x.disabled = true;
                     }
                     
@@ -575,7 +575,7 @@ export default defineComponent({
                 }
                 else if (x.actionName === FrameContextMenuActionName.collapseToHeader || x.actionName === FrameContextMenuActionName.collapseToDocumentation) {
                     if (errorsInFrameOrChild) {
-                        x.name = this.$i18n.t("contextMenu.cannotCollapseErrors") as string;
+                        x.name = this.$t("contextMenu.cannotCollapseErrors") as string;
                         x.disabled = true;
                     }
                     return false;
@@ -684,7 +684,7 @@ export default defineComponent({
                 // Note: joint frames cannot be part of a selection, so we know there would only be 1 frame
                 if(canPasteBelowFrame && isCopyJointFrame && this.appStore.frameObjects[targetPasteBelow.id].jointFrameIds.length > 0){
                     // offset the index by 1: a joint frame can never be pasted above a root, we know "paste above" won't be shown...
-                    this.frameContextMenuItems[pasteBelowOptionIndex - 1].name = this.$i18n.t("contextMenu.pasteBelowJointRoot") as string;
+                    this.frameContextMenuItems[pasteBelowOptionIndex - 1].name = this.$t("contextMenu.pasteBelowJointRoot") as string;
                 }
             }
 
@@ -745,8 +745,8 @@ export default defineComponent({
             const anyCanDisable = this.isPartOfSelection ? this.appStore.selectedFrames.some(canDisable) : canDisable(this.frameId);
             
             const disableOrEnableOption = (!anyCanDisable && anyCanEnable) 
-                ?  {name: this.$i18n.t("contextMenu.enable"), method: this.enable, disabled: false}
-                :  {name: this.$i18n.t("contextMenu.disable"), method: this.disable, disabled: !anyCanDisable && !anyCanEnable};
+                ?  {name: this.$t("contextMenu.enable"), method: this.enable, disabled: false}
+                :  {name: this.$t("contextMenu.disable"), method: this.disable, disabled: !anyCanDisable && !anyCanEnable};
             const enableDisableIndex = this.frameContextMenuItems.findIndex((entry) => entry.method === this.enable || entry.method === this.disable);
             Vue.set(
                 this.frameContextMenuItems,

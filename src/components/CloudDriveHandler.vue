@@ -25,7 +25,6 @@ import Menu from "@/components/Menu.vue";
 import App from "@/App.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
-import i18n from "@/i18n";
 import { CustomEventTypes, getAppSimpleMsgDlgId, getCloudLoginErrorModalDlgId, getFrameUID, getSaveAsProjectModalDlg } from "@/helpers/editor";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { BootstrapDlgSize, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
@@ -94,7 +93,7 @@ export default defineComponent({
         },
         
         enterFileNameLabel(): string {
-            return i18n.t("appMessage.enterFileNameLabel") as string;
+            return this.$t("appMessage.enterFileNameLabel") as string;
         },
 
         saveExistingCloudProjectModalDlgId(): string {
@@ -318,7 +317,7 @@ export default defineComponent({
                             });
                     }
                     else{
-                        (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$i18n.t("errorMessage.cloudAPIFailed", {apiname: cloudDriveComponent.driveAPIName}) as string});
+                        (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject({key: "errorMessage.retrievedSharedGenericProject", param: this.$t("errorMessage.cloudAPIFailed", {apiname: cloudDriveComponent.driveAPIName}) as string});
                     }
                 });
         },
@@ -346,7 +345,7 @@ export default defineComponent({
                 ?.catch((_) => {
                     // Something happened, we let the user know
                     const erroMsg = (typeof _ == "string") ? _ : JSON.stringify(_);
-                    this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.clouldFileRestoreSharingStatus", {drivename: cloudDriveComponent.driveName, errordetails: erroMsg}) as string;
+                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.clouldFileRestoreSharingStatus", {drivename: cloudDriveComponent.driveName, errordetails: erroMsg}) as string;
                     this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
                 })
                 .finally(() => {
@@ -493,7 +492,7 @@ export default defineComponent({
                     // We assume something went wrong regarding saving against the specified file id.
                     // This can notably happen if the file has been locked in the meantime that we tried to save it.
                     // We show a modal and remove saving mechanisms.
-                    this.appStore.simpleModalDlgMsg = this.$i18n.t((this.saveReason == SaveRequestReason.reloadBrowser) ? "errorMessage.driveNoFile" :"errorMessage.driveSaveFailed", {drivename: cloudDriveComponent.driveName}) as string;
+                    this.appStore.simpleModalDlgMsg = this.$t((this.saveReason == SaveRequestReason.reloadBrowser) ? "errorMessage.driveNoFile" :"errorMessage.driveSaveFailed", {drivename: cloudDriveComponent.driveName}) as string;
                     this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
                     this.updateSignInStatus(cloudTarget,false);
                     // Reset the "Save As" flag of the Menu
@@ -518,7 +517,7 @@ export default defineComponent({
             this.getSpecificCloudDriveComponent(cloudTarget)?.resetOAuthToken(); 
             this.updateSignInStatus(cloudTarget, false);
             if(this.saveReason == SaveRequestReason.loadProject || this.saveReason == SaveRequestReason.unloadPage){
-                const modalMsg = (this.saveReason == SaveRequestReason.loadProject) ? this.$i18n.t("errorMessage.gdriveConnectionSaveToLoadProjFailed") : this.$i18n.t("errorMessage.gdriveConnectionSaveToUnloadPageFailed") ;
+                const modalMsg = (this.saveReason == SaveRequestReason.loadProject) ? this.$t("errorMessage.gdriveConnectionSaveToLoadProjFailed") : this.$t("errorMessage.gdriveConnectionSaveToUnloadPageFailed") ;
                 this.appStore.simpleModalDlgMsg = modalMsg as string;
                 this.$root.$emit("bv::show::modal", this.loginErrorModalDlgId);
                 // The signIn method will be called when the modal is dismissed
@@ -593,7 +592,7 @@ export default defineComponent({
                         }
                         // Users may have changed the file name directly on Drive, so we make sure at this stage we get the project with that same name
                         // (At this stage, we shouldn't have an undefined name, but for safety we use the default project name if so.)
-                        const fileNameNoExt = (fileName) ? fileName.substring(0, fileName.lastIndexOf(".")) : i18n.t("defaultProjName") as string;
+                        const fileNameNoExt = (fileName) ? fileName.substring(0, fileName.lastIndexOf(".")) : this.$t("defaultProjName") as string;
                         this.appStore.projectName = fileNameNoExt;
                         this.saveFileName = fileNameNoExt;
                         
@@ -611,7 +610,7 @@ export default defineComponent({
                                     (this.$root.$children[0] as InstanceType<typeof App>).finaliseOpenShareProject({key: "appMessage.retrievedSharedGenericProject", param: fileNameNoExt});
                                 }
                                 else{
-                                    this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.driveFileReadOnly", {drivename: cloudDriveComponent.driveName}) as string;
+                                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.driveFileReadOnly", {drivename: cloudDriveComponent.driveName}) as string;
                                     this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
                                 }
                             }
@@ -629,11 +628,11 @@ export default defineComponent({
                 }
             }, (errorRespStatus: number) => {
                 if(errorRespStatus == 404){
-                    this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.driveNoFile", {drivename: cloudDriveComponent.driveName}) as string;                    
+                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.driveNoFile", {drivename: cloudDriveComponent.driveName}) as string;                    
                     this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
                 }
                 else{
-                    this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.cloudDriveError", {drivename: cloudDriveComponent.driveName, error: errorRespStatus}) as string;                    
+                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.cloudDriveError", {drivename: cloudDriveComponent.driveName, error: errorRespStatus}) as string;                    
                     this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
                 }
                 // At the very end, emit event for notifying the attempt to open a shared project is finished
@@ -654,7 +653,7 @@ export default defineComponent({
 
         onUnsupportedByStrypeFilePicked(){
             // When a non-Strype file was picked to load, we notify the user on a modal dialog, and trigger the Drive picker again
-            this.appStore.simpleModalDlgMsg = this.$i18n.t("errorMessage.gdriveWrongFile") as string;
+            this.appStore.simpleModalDlgMsg = this.$t("errorMessage.gdriveWrongFile") as string;
             this.$root.$emit("bv::show::modal", this.unsupportedByStrypeFilePickedModalDlgId);
         },
 
@@ -723,7 +722,7 @@ export default defineComponent({
             // The argument "filePath" is only used for error message.
             // The nature of the answer depends on the reading mode: a string in normal text case, an array of bytes in binary mode.
             return this.getSpecificCloudDriveComponent(cloudTarget)?.readFileContentForIO(fileId, isBinaryMode, filePath).catch((errorMsg) => {
-                return Promise.reject({success: false, errorMsg: this.$i18n.t("errorMessage.fileIO.fetchFileError", {filename: filePath, error: errorMsg})});
+                return Promise.reject({success: false, errorMsg: this.$t("errorMessage.fileIO.fetchFileError", {filename: filePath, error: errorMsg})});
             })??Promise.reject("No Cloud target!"); // We should never get to the reject clause here, keep TS happy
         },
 
@@ -733,7 +732,7 @@ export default defineComponent({
             // The fileName is always set because it may be used inside the error message.
             // The method returns a string promise: the file ID on success, the error message on failure.
             return this.getSpecificCloudDriveComponent(cloudTarget)?.writeFileContentForIO(fileContent, fileInfos).catch((errorMsg) => {
-                return Promise.reject(i18n.t("errorMessage.fileIO.writingFileFailed", {filename: fileInfos.filePath, error: errorMsg}));        
+                return Promise.reject(this.$t("errorMessage.fileIO.writingFileFailed", {filename: fileInfos.filePath, error: errorMsg}));        
             })??Promise.reject("No Cloud target!"); // We should never get to the reject clause here, keep TS happy
         },
         /** end FileIO */

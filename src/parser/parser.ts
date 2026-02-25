@@ -634,7 +634,7 @@ export default class Parser {
     public getErrorsFormatted(inputCode = ""): string {
         // We don't consider an empty code as a valid code: generate an error for that and set the main frame container erroneous
         if(inputCode.trim().length == 0){
-            return i18n.t("appMessage.emptyCodeError") as string;
+            return i18n.global.t("appMessage.emptyCodeError") as string;
         }
 
         const errors = this.getErrors(inputCode);

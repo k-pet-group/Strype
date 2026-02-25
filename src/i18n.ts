@@ -1,15 +1,12 @@
 import { merge } from "lodash";
-import Vue from "vue";
-import VueI18n, { LocaleMessages } from "vue-i18n";
+import {createI18n, LocaleMessages, VueMessageType} from "vue-i18n";
 
-Vue.use(VueI18n);
-
-function loadLocaleMessages (): LocaleMessages {
+function loadLocaleMessages (): LocaleMessages<VueMessageType> {
     // Strype locale files are store in locale folders (2 letter coded name, e.g. "en")
     // that are living in ./localisation. A locale folder may contain more than 1 file
     // as we split the json files for easier work on the translations.
     const locales = import.meta.glob("./localisation/[A-Za-z][A-Za-z]/[A-Za-z][A-Za-z]_*.json", {eager: true});
-    const messages: LocaleMessages = {};
+    const messages: LocaleMessages<VueMessageType> = {};
     // We restrict the regex here against the file naming we mentioned above.
     // Since our locale files are split, we need to "combine" the json KPV in one, 
     // which can be achieved by appending the found KVP for a same locale
@@ -27,8 +24,10 @@ function loadLocaleMessages (): LocaleMessages {
     return messages;
 }
 
-export default new VueI18n({
+export default createI18n({
+    legacy: false, // We make this plugin using the CompositionAPI with the migration to Vue 3 in Strype
     locale: import.meta.env?.VITE_APP_I18N_LOCALE ?? "en",
     fallbackLocale: import.meta.env?.VITE_APP_I18N_FALLBACK_LOCALE ?? "en",
-    messages: loadLocaleMessages(),
+    warnHtmlMessage: false, // This is only used to avoid the warning messages about unsafe HTML in messages
+    messages: loadLocaleMessages() as any,
 });

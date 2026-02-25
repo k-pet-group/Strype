@@ -64,7 +64,7 @@ export default defineComponent({
                 const allStrypeDocsView = new google.picker.DocsView();
                 // The setLabel and setQuery functions are (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
                 (allStrypeDocsView as any).setQuery("title:*.spy");
-                (allStrypeDocsView as any).setLabel((this.$i18n.t("appMessage.gdriveAllStrypeFiles") as string));
+                (allStrypeDocsView as any).setLabel((this.$t("appMessage.gdriveAllStrypeFiles") as string));
                 allStrypeDocsView.setIncludeFolders(true);
                 allStrypeDocsView.setMode(google.picker.DocsViewMode.LIST);
                 docsViews.push(allStrypeDocsView);
@@ -75,7 +75,7 @@ export default defineComponent({
                 const pythonFilesDocsView = new google.picker.DocsView();
                 // The setLabel and setQuery functions are (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
                 (pythonFilesDocsView as any).setQuery("title:*.py");
-                (pythonFilesDocsView as any).setLabel((this.$i18n.t("appMessage.gdriveAllPythonFiles") as string));
+                (pythonFilesDocsView as any).setLabel((this.$t("appMessage.gdriveAllPythonFiles") as string));
                 pythonFilesDocsView.setIncludeFolders(true);
                 pythonFilesDocsView.setMode(google.picker.DocsViewMode.LIST);
                 docsViews.push(pythonFilesDocsView);
@@ -104,7 +104,7 @@ export default defineComponent({
                 rootDocsView.setMimeTypes("application/vnd.google-apps.folder");
             }    
             // The setLabel function is (no longer?) officially existing on the type DocsView -- we cast to "any" to bypass errors
-            (rootDocsView as any).setLabel((this.$i18n.t("appMessage.gdriveTab") as string));
+            (rootDocsView as any).setLabel((this.$t("appMessage.gdriveTab") as string));
 
             // Add views at 4th and 5th positions depending on the action
             docsViews.push((this.isSaveAction) ? rootDocsView : sharedDocsView);
@@ -118,7 +118,7 @@ export default defineComponent({
                 .setOAuthToken(this.oauthToken??"")
                 .setDeveloperKey(this.devKey??"")
                 .setCallback(this.pickerCallback)
-                .setTitle(this.$i18n.t((this.isSaveAction) ? "appMessage.selectFolder" : "appMessage.selectStrypeFile") as string);        
+                .setTitle(this.$t((this.isSaveAction) ? "appMessage.selectFolder" : "appMessage.selectStrypeFile") as string);        
             docsViews.forEach((view) => pickerBuilder.addView(view));  
             pickerBuilder.build().setVisible(true);
         },

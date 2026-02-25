@@ -442,7 +442,7 @@ export default defineComponent({
                         else {
                             // The micro:bit simulator do not support non-user interaction for a flash request.
                             // So we just tell the user here what to do...
-                            this.appStore.simpleModalDlgMsg = this.$i18n.t("appMessage.startMBSimulatorNeedUserAction") as string;
+                            this.appStore.simpleModalDlgMsg = this.$t("appMessage.startMBSimulatorNeedUserAction") as string;
                             this.$root.$emit("bv::show::modal", this.startMBSimulatorlDlgId);                            
                         }
                     }
@@ -692,7 +692,7 @@ export default defineComponent({
             // There shouldn't be a case when we get a date that is no set to a proper value, but to prevent
             // weird and invalid date display, we associate the default value -1 to "unknown".
             if(this.appStore.projectLastSaveDate == -1){
-                this.lastProjectSavedDateTooltip = this.$i18n.t("appMessage.lastSavedDateUnknown") as string;
+                this.lastProjectSavedDateTooltip = this.$t("appMessage.lastSavedDateUnknown") as string;
                 return;
             } 
 
@@ -703,36 +703,36 @@ export default defineComponent({
             const lastSaveDateTickDiff = Date.now() - this.appStore.projectLastSaveDate;
             if(lastSaveDateTickDiff > 604800000 ){
                 // More than a week ago (7 days * 24 h * 60 min * 60 s * 1000 ms)
-                toolTipVal = this.$i18n.t("appMessage.lastSavedOn", {lastSavedDate: new Date(this.appStore.projectLastSaveDate).toLocaleString()}) as string; 
+                toolTipVal = this.$t("appMessage.lastSavedOn", {lastSavedDate: new Date(this.appStore.projectLastSaveDate).toLocaleString()}) as string; 
             }
             else if(lastSaveDateTickDiff > 86400000){
                 // Less than a week but more than a day ago (24 h * 60 min * 60 s * 1000 ms)
                 const nbDays = lastSaveDateTickDiff / 86400000;
                 toolTipVal = (nbDays > 1)
-                    ? this.$i18n.t("appMessage.lastSavedOnNDays", {nbLastSave: Math.round(nbDays)}) as string
-                    : this.$i18n.t("appMessage.lastSavedOn1Day") as string;
+                    ? this.$t("appMessage.lastSavedOnNDays", {nbLastSave: Math.round(nbDays)}) as string
+                    : this.$t("appMessage.lastSavedOn1Day") as string;
             }
             else if(lastSaveDateTickDiff > 3600000){
                 // Less than a day but more than an hour ago (60 min * 60 s * 1000 ms)
                 const nbHours = lastSaveDateTickDiff / 3600000;
                 toolTipVal = (nbHours > 1)
-                    ? this.$i18n.t("appMessage.lastSavedOnNHours", {nbLastSave: Math.round(nbHours)}) as string
-                    : this.$i18n.t("appMessage.lastSavedOn1Hour") as string;
+                    ? this.$t("appMessage.lastSavedOnNHours", {nbLastSave: Math.round(nbHours)}) as string
+                    : this.$t("appMessage.lastSavedOn1Hour") as string;
             }
             else if(lastSaveDateTickDiff > 60000){
                 // Less than an hour but more than a minute ago (60 s * 1000 ms)
                 const nbMins = lastSaveDateTickDiff / 60000;
                 toolTipVal = (nbMins > 1)
-                    ? this.$i18n.t("appMessage.lastSavedOnNMins", {nbLastSave: Math.round(nbMins)}) as string
-                    : this.$i18n.t("appMessage.lastSavedOn1Min") as string;
+                    ? this.$t("appMessage.lastSavedOnNMins", {nbLastSave: Math.round(nbMins)}) as string
+                    : this.$t("appMessage.lastSavedOn1Min") as string;
 
             }
             else {
             // Less than a minute ago (we will use min 1 seconde even if less than a second, which is unlikely)
                 const nbSecs = lastSaveDateTickDiff / 1000;
                 toolTipVal = (nbSecs > 1)
-                    ? this.$i18n.t("appMessage.lastSavedOnNSecs", {nbLastSave: Math.round(nbSecs)}) as string
-                    : this.$i18n.t("appMessage.lastSavedOn1Sec") as string;
+                    ? this.$t("appMessage.lastSavedOnNSecs", {nbLastSave: Math.round(nbSecs)}) as string
+                    : this.$t("appMessage.lastSavedOn1Sec") as string;
             }
             this.lastProjectSavedDateTooltip = toolTipVal;
         },

@@ -562,7 +562,7 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
         if(!canPastePythonAtStrypeLocation(currentStrypeLocation)){
             useStore().copiedFrames = {};
             useStore().copiedSelectionFrameIds = [];
-            return i18n.t("messageBannerMessage.incompatiblePythonStrypeSection") as string;
+            return i18n.global.t("messageBannerMessage.incompatiblePythonStrypeSection") as string;
         }
 
         if (addedFakeJoinParent > 0) {
@@ -575,7 +575,7 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
                 // Uh-oh, they had other things after the else, etc.  We can't handle that, so abandon:
                 useStore().copiedFrames = {};
                 useStore().copiedSelectionFrameIds = [];
-                return i18n.t("messageBannerMessage.wrongPythonStructCopied") as string;
+                return i18n.global.t("messageBannerMessage.wrongPythonStructCopied") as string;
             }
         }
         return null;

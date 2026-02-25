@@ -23,7 +23,7 @@ export function downloadHex(showImagePopup?: boolean): void {
     //We show the image only if the download has succeeded, and we request one to be shown
     if(!succeeded){
         // Notify the user of any detected errors in the code
-        useStore().simpleModalDlgMsg = i18n.t("appMessage.preCompiledErrorNeedFix") as string;
+        useStore().simpleModalDlgMsg = i18n.global.t("appMessage.preCompiledErrorNeedFix") as string;
         vm.$emit("bv::show::modal", getAppSimpleMsgDlgId());
     }
     else if (showImagePopup){
@@ -35,7 +35,7 @@ export function getPythonContent(): Promise<string> {
     const parserElements = parseCodeAndGetParseElements(false, "py-export");
     if (parserElements.hasErrors) {
         // Notify the user of any detected errors in the code
-        useStore().simpleModalDlgMsg = i18n.t("appMessage.preCompiledErrorNeedFix") as string;
+        useStore().simpleModalDlgMsg = i18n.global.t("appMessage.preCompiledErrorNeedFix") as string;
         vm.$emit("bv::show::modal", getAppSimpleMsgDlgId());
         return Promise.reject("");
     }

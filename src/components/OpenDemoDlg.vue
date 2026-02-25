@@ -67,7 +67,7 @@ export default defineComponent({
     components: {ModalDlg},
     
     props: {
-        dlgId: String,
+        dlgId: {type: String, required: true},
     },
     
     data: function() {

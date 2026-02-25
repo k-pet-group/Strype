@@ -1400,7 +1400,7 @@ export const useStore = defineStore("app", {
             // Should show editing mode
             this.isEditing = false;
             if(this.focusSlotCursorInfos){
-                const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+                const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject: FrameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
                 const focusedSlot= (retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false) as BaseSlot);
                 if(focusedSlot){
                     focusedSlot.focused = false;
@@ -1450,7 +1450,7 @@ export const useStore = defineStore("app", {
             stateCopy.lastCriticalActionPositioning.lastCriticalCaretPosition = {id: 0, caretPosition: CaretPosition.none};
             stateCopy.lastCriticalActionPositioning.lastCriticalSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
             if(this.isEditing){
-                const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+                const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject: FrameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
                 const focusedSlotCopy = (retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false) as BaseSlot);
                 if(focusedSlotCopy){
                     focusedSlotCopy.focused = false;
@@ -1493,7 +1493,7 @@ export const useStore = defineStore("app", {
             }
 
             // And remove any currently focused slot
-            const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+            const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject: FrameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
             const focusedSlot = retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false);
             if(focusedSlot){
                 focusedSlot.focused = false;
@@ -1648,7 +1648,7 @@ export const useStore = defineStore("app", {
                 stateCopy.lastCriticalActionPositioning.lastCriticalCaretPosition = {id: 0, caretPosition: CaretPosition.none};
                 stateCopy.lastCriticalActionPositioning.lastCriticalSlotCursorInfos = mockAnchorFocusSlotCursorInfos;
                 if(this.isEditing){
-                    const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+                    const labelSlotStructs = Object.values(stateCopy.frameObjects).flatMap((frameObject: FrameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
                     const focusedSlotCopy = (retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false) as BaseSlot);
                     if(focusedSlotCopy){
                         focusedSlotCopy.focused = false;
@@ -1846,7 +1846,7 @@ export const useStore = defineStore("app", {
         setFocusEditableSlot(payload: {frameSlotInfos: SlotCoreInfos; caretPosition: CaretPosition}){            
             // First thing to do is checking if another slot had focus, and remove it that's the case
             // (as the selection has already been changed via the browser, we cannot use it)            
-            const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
+            const labelSlotStructs = Object.values(this.frameObjects).flatMap((frameObject: FrameObject) => Object.values(frameObject.labelSlotsDict).map((labelSlotDict) => labelSlotDict.slotStructures));
             const prevFocusedSlot = retrieveSlotByPredicate(labelSlotStructs, (slot: FieldSlot) => (slot as BaseSlot).focused??false);
             if(prevFocusedSlot){
                 (prevFocusedSlot as BaseSlot).focused = false;

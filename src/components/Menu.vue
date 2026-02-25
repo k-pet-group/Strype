@@ -238,7 +238,6 @@ import { BvModalEvent } from "bootstrap-vue";
 import { cloneDeep } from "lodash";
 import appPackageJson from "@/../package.json";
 import { getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
-import { getLocaleBuildDate } from "@/main";
 import scssVars from "@/assets/style/_export.module.scss";
 import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
 import { CloudFileSharingStatus, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
@@ -250,6 +249,7 @@ import undoImgPath from "@/assets/images/undo.svg";
 import redoImgPath from "@/assets/images/redo.svg";
 import { useI18n } from "vue-i18n";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { eventBus, getLocaleBuildDate } from "@/helpers/appContext";
 
 //////////////////////
 //     Component    //
@@ -394,14 +394,14 @@ export default defineComponent({
         );
 
         // The events from Bootstrap modal are registered to the root app element.
-        this.$root.$on("bv::modal::show", this.onStrypeMenuShownModalDlg);
-        this.$root.$on("bv::modal::hide", this.onStrypeMenuHideModalDlg);      
+        eventBus.on("bv::modal::show", this.onStrypeMenuShownModalDlg as any);
+        eventBus.on("bv::modal::hide", this.onStrypeMenuHideModalDlg as any);      
         
         // Event listener for saving project action completion
-        this.$root.$on(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
+        eventBus.on(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
 
         // Event listener for the Cloud Drive component to listen the attempt to open a shared project is done (successfully or not)
-        (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).$on(CustomEventTypes.openSharedFileDone, () => {
+        eventBus.on(CustomEventTypes.openSharedFileDone, () => {
             this.openSharedProjectId = "";
             this.openSharedProjectTarget = StrypeSyncTarget.none;
         });        
@@ -409,11 +409,11 @@ export default defineComponent({
 
     beforeDestroy(){
         // Just in case, we remove the Bootstrap modal event handler from the root app 
-        this.$root.$off("bv::modal::show", this.onStrypeMenuShownModalDlg);
-        this.$root.$off("bv::modal::hide", this.onStrypeMenuHideModalDlg);
+        eventBus.off("bv::modal::show", this.onStrypeMenuShownModalDlg as any);
+        eventBus.off("bv::modal::hide", this.onStrypeMenuHideModalDlg as any);
 
         // And for the saving project action completion too
-        this.$root.$off(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
+        eventBus.off(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
     },
 
     computed: {
@@ -714,11 +714,11 @@ export default defineComponent({
                 // Show a modal dialog to let user save/discard their changes. Saving loop is handled with saving methods.
                 // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
                 this.showDialogAfterSave = this.loadProjectModalDlgId;
-                this.$root.$emit("bv::show::modal", this.saveOnLoadModalDlgId);
+                eventBus.emit("bv::show::modal", this.saveOnLoadModalDlgId);
             }
             else if(this.openSharedProjectId.length == 0) {
                 // The normal "open target" dialog
-                this.$root.$emit("bv::show::modal", this.loadProjectModalDlgId);
+                eventBus.emit("bv::show::modal", this.loadProjectModalDlgId);
             }
             else {
                 // The case of opening a shared project: we don't need a target selection, we just try to open the project
@@ -736,10 +736,10 @@ export default defineComponent({
                 // Show a modal dialog to let user save/discard their changes. Saving loop is handled with saving methods.
                 // Note that for the File System project we cannot make Strype save the file: that will require the user explicit action.
                 this.showDialogAfterSave = this.loadDemoProjectModalDlgId;
-                this.$root.$emit("bv::show::modal", this.saveOnLoadModalDlgId);
+                eventBus.emit("bv::show::modal", this.saveOnLoadModalDlgId);
             }
             else {
-                this.$root.$emit("bv::show::modal", this.loadDemoProjectModalDlgId);
+                eventBus.emit("bv::show::modal", this.loadDemoProjectModalDlgId);
             }
         },
 
@@ -752,7 +752,7 @@ export default defineComponent({
                 this.saveCurrentProject();
             }
             else{
-                this.$root.$emit("bv::show::modal", this.saveProjectModalDlgId);
+                eventBus.emit("bv::show::modal", this.saveProjectModalDlgId);
                 // When we are saving a "browser" project (that is, not from FS or GD) we need to be able to trigger the "Open" later, so we set a flag
                 this.requestOpenProjectLater = (saveReason == SaveRequestReason.loadProject);
             }
@@ -766,7 +766,7 @@ export default defineComponent({
         openLoadProjectDlgAfterSaved(): void {
             // Reset the flag to request opening the project later (see flag definition)
             this.requestOpenProjectLater = false;
-            this.$root.$emit("bv::show::modal", (this.showDialogAfterSave.length > 0) ? this.showDialogAfterSave : this.loadProjectModalDlgId);            
+            eventBus.emit("bv::show::modal", (this.showDialogAfterSave.length > 0) ? this.showDialogAfterSave : this.loadProjectModalDlgId);            
         },
 
         changeTargetFocusOnMouseOver(event: MouseEvent) {
@@ -786,7 +786,7 @@ export default defineComponent({
             else {
                 // There is no intermediate steps when the target is selected for opening a project
                 // (we first close the target selector modal, then validate)
-                this.$root.$emit("bv::hide::modal", this.loadProjectModalDlgId);
+                eventBus.emit("bv::hide::modal", this.loadProjectModalDlgId);
                 this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.loadProjectModalDlgId);
             }
         },
@@ -823,7 +823,7 @@ export default defineComponent({
             const targetsToRemove = Object.values(StrypeSyncTarget)
                 .filter((t) => typeof t === "number") // filter out string keys from enum
                 .filter((t) => t !== target && t !== StrypeSyncTarget.ws); // Discard every other sync targets but "target" and WS
-            targetsToRemove.forEach((targetToRemove) =>  this.$root.$emit(CustomEventTypes.removeFunctionToEditorProjectSave, targetToRemove));
+            targetsToRemove.forEach((targetToRemove) =>  eventBus.emit(CustomEventTypes.removeFunctionToEditorProjectSave, targetToRemove));
         },
 
         saveCurrentProject(saveReason?: SaveRequestReason){
@@ -840,14 +840,14 @@ export default defineComponent({
             // so we have to replace them (with - and _ respectively).
             // That is specified by the true boolean parameter to the Base64 call:
             this.shareContentZippedBase64 = Base64.fromUint8Array(deflateRaw(generateSPYFileContent()), true);
-            this.$root.$emit("bv::show::modal", this.shareProjectChooseMethodDlgId);
+            eventBus.emit("bv::show::modal", this.shareProjectChooseMethodDlgId);
         },
         
         copySnapshotLink() {
             // Since we made the link content when showing the dialog, all we need to do is format it and copy it to the clipboard:
             navigator.clipboard.writeText(`${window.location}?${sharedStrypeProjectIdKey}=spy:${this.shareContentZippedBase64}`);
 
-            this.$root.$emit("bv::hide::modal", this.shareProjectChooseMethodDlgId);
+            eventBus.emit("bv::hide::modal", this.shareProjectChooseMethodDlgId);
             this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.shareProjectChooseMethodDlgId);
         },
 
@@ -862,17 +862,17 @@ export default defineComponent({
                     .then((prevCloudFileSharingStatus) => {
                         // Save the status and then open the dialog.
                         cloudDriveHandlerComponentAPI?.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, prevCloudFileSharingStatus).then(() => {
-                            this.$root.$emit("bv::show::modal", this.shareProjectModalDlgId);                             
+                            eventBus.emit("bv::show::modal", this.shareProjectModalDlgId);                             
                         });                       
                     })
                     .catch((_: any) => {
                         // Something happened, we let the user know
                         const erroMsg = (typeof _ == "string") ? _ : JSON.stringify(_);
                         this.appStore.simpleModalDlgMsg = this.$t("errorMessage.clouldFileRestoreSharingStatus", {drivename: vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getDriveName()??"", errordetails: erroMsg});
-                        this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                        eventBus.emit("bv::show::modal", getAppSimpleMsgDlgId());
                     });
 
-                this.$root.$emit("bv::hide::modal", this.shareProjectChooseMethodDlgId);
+                eventBus.emit("bv::hide::modal", this.shareProjectChooseMethodDlgId);
                 this.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.shareProjectChooseMethodDlgId);
             }
         },
@@ -1015,9 +1015,9 @@ export default defineComponent({
 		
         showErrorForShareProjectLink(alertMsg: string){
             // An error occur during the creation of the sharing link: we close the sharing mode selection popup and show an alert
-            this.$root.$emit("bv::hide::modal", this.shareProjectModalDlgId);        
+            eventBus.emit("bv::hide::modal", this.shareProjectModalDlgId);        
             this.appStore.simpleModalDlgMsg = alertMsg;
-            this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());        
+            eventBus.emit("bv::show::modal", getAppSimpleMsgDlgId());        
         },
 
         onStrypeMenuHideModalDlg(event: BvModalEvent, dlgId: string, forcedProjectName?: string, saveReason ?: SaveRequestReason) {
@@ -1063,7 +1063,7 @@ export default defineComponent({
                 if(dlgId == this.saveOnLoadModalDlgId){
                     // Case of request to save/discard the file currently opened, before loading a new file:
                     // user chose to discard the file saving: we can trigger the file opening.
-                    this.$root.$emit("bv::show::modal", this.showDialogAfterSave);
+                    eventBus.emit("bv::show::modal", this.showDialogAfterSave);
                     return;
                 }
 
@@ -1084,7 +1084,7 @@ export default defineComponent({
                 }
                 // Case of request to save/discard the file currently opened, before loading a new file.
                 else if(dlgId == this.saveOnLoadModalDlgId){
-                    this.$root.$emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.loadProject);
+                    eventBus.emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.loadProject);
                 }
                 // Case of standard "save file"
                 else if(dlgId == this.saveProjectModalDlgId){
@@ -1104,7 +1104,7 @@ export default defineComponent({
                         if(!canBrowserSaveFilePicker() && saveFileName.trim().match(fileNameRegex) == null){
                             // Show an error message and do nothing special
                             this.appStore.simpleModalDlgMsg = this.$t("errorMessage.fileNameError") as string;
-                            this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                            eventBus.emit("bv::show::modal", getAppSimpleMsgDlgId());
                             this.currentModalButtonGroupIDInAction = "";
                             return;
                         }
@@ -1118,7 +1118,7 @@ export default defineComponent({
                                 this.appStore.isEditorContentModified = false;
                                 this.saveTargetChoice(StrypeSyncTarget.fs);
                                 if(saveReason == SaveRequestReason.loadProject || this.requestOpenProjectLater) {
-                                    this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                                    eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                                 }
                             });
                         }
@@ -1131,14 +1131,14 @@ export default defineComponent({
                             this.appStore.isEditorContentModified = false;
                             this.saveTargetChoice(StrypeSyncTarget.fs);
                             if(saveReason == SaveRequestReason.loadProject || this.requestOpenProjectLater) {
-                                this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                                eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                             }
                         }
                     }
                     else {          
                         // If we were already syncing to a Drive, we save the current file now, except if "saving as"
                         if(!this.requestSaveAs && isSyncTargetCloudDrive(this.appStore.syncTarget)){
-                            this.$root.$emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.autosave);
+                            eventBus.emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.autosave);
                         }
                         
                         // We postpone saving slight to make sure all autosaving have completed
@@ -1177,7 +1177,7 @@ export default defineComponent({
         onSaveDiffLocationClick(){
             // When the button to save at a different location is called, we trigger the hiding of the modal dialog and and set the right flag about saving
             this.saveAtOtherLocation = true;
-            this.$root.$emit("bv::hide::modal", this.saveProjectModalDlgId);
+            eventBus.emit("bv::hide::modal", this.saveProjectModalDlgId);
         },
 
         loadProject(){
@@ -1282,7 +1282,7 @@ export default defineComponent({
 
         onFileLoaded(fileName: string, lastSaveDate: number, fileLocation?: FileSystemFileHandle):void {
             this.saveTargetChoice(StrypeSyncTarget.fs);
-            this.$root.$emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: StrypeSyncTarget.fs, function: (saveReason: SaveRequestReason) => this.saveCurrentProject(saveReason)});
+            eventBus.emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: StrypeSyncTarget.fs, function: (saveReason: SaveRequestReason) => this.saveCurrentProject(saveReason)});
 
             // Strip the extension from the file, if it was left in. Then we can update the file name and location (if avaiable)
             const noExtFileName = (fileName.includes(".")) ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;

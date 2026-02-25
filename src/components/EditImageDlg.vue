@@ -59,6 +59,7 @@ import { mapStores } from "pinia";
 import { BvModalEvent } from "bootstrap-vue";
 import {debounce} from "lodash";
 import {isMacOSPlatform} from "@/helpers/common";
+import { eventBus } from "@/helpers/appContext";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
 const picaInstance = pica();
@@ -99,13 +100,13 @@ export default defineComponent({
         };
 
         // Register the event listener for the dialog here
-        this.$root.$on("bv::modal::hide", this.onHideModalDlg);
+        eventBus.on("bv::modal::hide", this.onHideModalDlg as any);
         this.updatePreview = debounce(this.updatePreview, 500);
     },
 
     beforeDestroy(){
         // Remove the event listener for the dialog here, just in case...
-        this.$root.$off("bv::modal::hide", this.onHideModalDlg);
+        eventBus.off("bv::modal::hide", this.onHideModalDlg as any);
     },
     
     mounted() {

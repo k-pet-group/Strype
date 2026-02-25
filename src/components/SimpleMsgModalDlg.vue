@@ -10,6 +10,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import { BvModalEvent } from "bootstrap-vue";
+import { eventBus } from "@/helpers/appContext";
 
 export default defineComponent({
     name: "SimpleMsgModalDlg",
@@ -26,12 +27,12 @@ export default defineComponent({
 
     created() {        
         // Register the event listener for the dialog here
-        this.$root.$on("bv::modal::hide", this.onHideModalDlg);  
+        eventBus.on("bv::modal::hide", this.onHideModalDlg as any);  
     },
 
     beforeDestroy(){
         // Remove the event listener for the dialog here, just in case...
-        this.$root.$off("bv::modal::hide", this.onHideModalDlg);
+        eventBus.off("bv::modal::hide", this.onHideModalDlg as any);
     },
 
     computed:{

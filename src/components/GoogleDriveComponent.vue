@@ -19,9 +19,9 @@ import { defineComponent, PropType } from "vue";
 import { MessageDefinitions, StrypeSyncTarget } from "@/types/types";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker.vue";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
-import { AppSPYFullPrefix } from "@/main";
 import { getCloudLoginErrorModalDlgId } from "@/helpers/editor";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { AppSPYFullPrefix, eventBus } from "@/helpers/appContext";
 
 //////////////////////
 //     Component    //
@@ -606,7 +606,7 @@ export default defineComponent({
                     if(!google.accounts.oauth2.hasGrantedAllScopes(response, this.googleDriveScope)) {
                         this.oauthToken = null;
                         this.appStore.simpleModalDlgMsg = this.$t("errorMessage.gdrivePermissionsNotMet") as string;
-                        this.$root.$emit("bv::show::modal", this.loginErrorModalDlgId);
+                        eventBus.emit("bv::show::modal", this.loginErrorModalDlgId);
                     }                   
                              
                     if (response && response.error == undefined) {

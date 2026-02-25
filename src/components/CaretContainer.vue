@@ -50,6 +50,7 @@ import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import scssVars  from "@/assets/style/_export.module.scss";
 import {detectBrowser} from "@/helpers/browser";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { eventBus } from "@/helpers/appContext";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { getFrameDefType, SlotType, MediaDataAndDim} from "@/types/types";
 import { getFrameLabelSlotsStructureUID, getLabelSlotUID } from "@/helpers/editor";
@@ -374,7 +375,7 @@ export default defineComponent({
         },
 
         handleContextMenuHover(event: MouseEvent) {
-            this.$root.$emit(CustomEventTypes.contextMenuHovered, event.target as HTMLElement);
+            eventBus.emit(CustomEventTypes.contextMenuHovered, event.target as HTMLElement);
         },
 
         toggleCaret(): void {
@@ -461,7 +462,7 @@ export default defineComponent({
             const framesAdded = frameIdsAfterPaste.filter((frameId) => !frameIdsBeforePaste.has(frameId));
             // Then after nextTick tell all the new frames to update their prompts:
             Vue.nextTick(() => {
-                this.$root.$emit(CustomEventTypes.updateParamPrompts, framesAdded);
+                eventBus.emit(CustomEventTypes.updateParamPrompts, framesAdded);
             });
         },
     

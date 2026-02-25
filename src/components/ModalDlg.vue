@@ -25,6 +25,7 @@ import { mapStores } from "pinia";
 import { useStore } from "@/store/store";
 import { BvModalEvent } from "bootstrap-vue";
 import { BootstrapDlgAutoFocusButton, BootstrapDlgSize } from "@/types/types";
+import { eventBus } from "@/helpers/appContext";
 
 export default defineComponent({
     name: "ModalDlg",
@@ -55,8 +56,8 @@ export default defineComponent({
     mounted(){
         // The events from Bootstrap modal are registered to the root app element.
         // For a given dialog we need to register a generic listener for the shown even
-        this.$root.$on("bv::modal::shown", this.onModalDlgShown);
-        this.$root.$on("bv::modal::hidden", this.onModalDlgHidden);
+        eventBus.on("bv::modal::shown", this.onModalDlgShown as any);
+        eventBus.on("bv::modal::hidden", this.onModalDlgHidden as any);
         window.addEventListener("keydown", this.validateOnEnterKeyDown);
     },
 
@@ -93,15 +94,15 @@ export default defineComponent({
             // Hitting "enter" on the dialog triggers its validation (the trigger property of the BvModalEvent sent by Bootstrap will be "event" in that case)
             // Only if there is not focus on a button already (then it show leave the action on that button to be performed)
             if((document.activeElement?.tagName.toLocaleLowerCase()??"") != "button" && event.code.toLowerCase() == "enter" && this.appStore.isModalDlgShown && this.dlgId == this.appStore.currentModalDlgId){
-                this.$root.$emit("bv::hide::modal", this.dlgId);
+                eventBus.emit("bv::hide::modal", this.dlgId);
             }
         },
     },
 
     beforeDestroy(){
         // Just in case, we remove event listeners 
-        this.$root.$off("bv::modal::shown", this.onModalDlgShown);
-        this.$root.$off("bv::modal::hidden", this.onModalDlgHidden);
+        eventBus.off("bv::modal::shown", this.onModalDlgShown as any);
+        eventBus.off("bv::modal::hidden", this.onModalDlgHidden as any);
         window.removeEventListener("keydown", this.validateOnEnterKeyDown);
     },
 });

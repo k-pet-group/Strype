@@ -38,6 +38,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import { BvModalEvent } from "bootstrap-vue";
 import { CustomEventTypes } from "@/helpers/editor";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { eventBus } from "@/helpers/appContext";
 
 //////////////////////
 //     Component    //
@@ -66,7 +67,7 @@ export default defineComponent({
         window.addEventListener("message", this.onPickerMsg);
 
         // The events from Bootstrap modal are registered to the root app element.
-        this.$root.$on("bv::modal::hide", this.onFolderPickerForWSAccountHideModalDlg); 
+        eventBus.on("bv::modal::hide", this.onFolderPickerForWSAccountHideModalDlg as any); 
     },
 
 
@@ -399,7 +400,7 @@ export default defineComponent({
                 const itemsForPicker = this.transformOneDriveItemsToCloudDriveItemPickerItems(rootLevelDriveItems as DriveItem[]);
                 this.folderPickerForWSAccountRawData = itemsForPicker;
                 if(!doNotOpenPickerModalDlg){              
-                    this.$root.$emit("bv::show::modal", this.folderPickerForWSAccountDlgId);
+                    eventBus.emit("bv::show::modal", this.folderPickerForWSAccountDlgId);
                 }
             }
             else{

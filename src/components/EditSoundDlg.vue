@@ -59,6 +59,7 @@ import { BvModalEvent } from "bootstrap-vue";
 import {drawSoundOnCanvas, getRMS, audioBufferToDataURL} from "@/helpers/media";
 import {TranslateResult} from "vue-i18n";
 import {isMacOSPlatform} from "@/helpers/common";
+import { eventBus } from "@/helpers/appContext";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
 const previewImageWidth = 300;
@@ -103,12 +104,12 @@ export default defineComponent({
         };
 
         // Register the event listener for the dialog here
-        this.$root.$on("bv::modal::hide", this.onHideModalDlg);
+        eventBus.on("bv::modal::hide", this.onHideModalDlg as any);
     },
 
     beforeDestroy(){
         // Remove the event listener for the dialog here, just in case...
-        this.$root.$off("bv::modal::hide", this.onHideModalDlg);
+        eventBus.off("bv::modal::hide", this.onHideModalDlg as any);
     },
 
     mounted() {

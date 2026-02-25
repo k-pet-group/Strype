@@ -40,6 +40,7 @@
         "@types/sortablejs": "^1.10.6",
         "@types/splitpanes": "^2.2.6",
         "@vitejs/plugin-vue": "^6",
+        "@vue/compat": "^3.1.0",
         "@wsfe/ctree": "^2.4.1",
         "audiobuffer-to-wav": "^1.0.0",
         "axios": "^0.30.2",
@@ -55,6 +56,7 @@
         "js-base64": "^3.7.8",
         "lodash": "^4.17.20",
         "lz-string": "^1.4.4",
+        "mitt": "^3.0.1",
         "object-hash": "^3.0.0",
         "pako": "^2.1.0",
         "path-browserify": "^1.0.1",
@@ -74,14 +76,13 @@
         "velocity": "^0.7.3",
         "vite-plugin-conditional-compiler": "^0.4.0",
         "vue": "^3.1.0",
-        "@vue/compat": "^3.1.0",
         "vue-advanced-cropper": "^2.8.9",
         "vue-autosize-input": "^0.1.1",
-        "vue3-detect-browser": "^0.1.2",
         "vue-burger-menu": "^2.0.5",
         "vue-context": "^6.0.0",
         "vue-i18n": "^11",
         "vue-input-autowidth": "^1.0.10",
+        "vue3-detect-browser": "^0.1.2",
         "zod": "^3.25.32"
     },
     "devDependencies": {
@@ -107,6 +108,7 @@
         "@types/w3c-web-usb": "^1.0.6",
         "@typescript-eslint/eslint-plugin": "^8.53.0",
         "@typescript-eslint/parser": "^8.53.0",
+        "@vue/compiler-sfc": "^3.1.0",
         "@vue/eslint-config-standard": "^9.0.1",
         "arkit": "^1.6.4",
         "chai": "^4.1.2",
@@ -133,8 +135,7 @@
         "serve": "^14.2.4",
         "start-server-and-test": "^1.15.4",
         "typescript": "^4.9.5",
-        "vue-eslint-parser": "^10.2.0",
-        "@vue/compiler-sfc": "^3.1.0"
+        "vue-eslint-parser": "^10.2.0"
     },
     "husky": {
         "hooks": {

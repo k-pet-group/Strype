@@ -3,7 +3,7 @@ import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, 
 import { getObjectPropertiesDifferences, getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, cloneFrameAndChildren, evaluateSlotType, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isContainedInFrame, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
-import { AppPlatform, AppVersion, projectDocumentationFrameId } from "@/main";
+import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
 import { CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getEditorMiddleUID, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, isCaretContainerElement, AutoSaveKeyNames } from "@/helpers/editor";
@@ -2573,7 +2573,7 @@ export const useStore = defineStore("app", {
                                 const execSetStateFunction = (event: BvModalEvent, dlgId: string) => {
                                     if((event.trigger == "ok" || event.trigger=="event") && dlgId == getImportDiffVersionModalDlgId()){
                                         this.doSetStateFromJSONStr(newStateStr).then(() => {
-                                            vm.$root.$off("bv::modal::hide", execSetStateFunction); 
+                                            eventBus.off("bv::modal::hide", execSetStateFunction as any); 
                                             resolve();          
                                         });                          
                                     }
@@ -2582,8 +2582,8 @@ export const useStore = defineStore("app", {
                                         reject(errorDetailMessage);
                                     }
                                 };
-                                vm.$root.$on("bv::modal::hide", execSetStateFunction); 
-                                vm.$root.$emit("bv::show::modal", getImportDiffVersionModalDlgId());
+                                eventBus.on("bv::modal::hide", execSetStateFunction as any); 
+                                eventBus.emit("bv::show::modal", getImportDiffVersionModalDlgId());
                             //
                             }
                             else{

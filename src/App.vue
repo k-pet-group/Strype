@@ -142,7 +142,7 @@ import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
 import {loadDivider} from "@/helpers/load-save";
 import FrameHeader from "@/components/FrameHeader.vue";
-import { projectDocumentationFrameId } from "./main";
+import { eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import {inflateRaw} from "pako";
 import { Base64 } from "js-base64";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
@@ -486,7 +486,7 @@ export default defineComponent({
             if(!this.appStore.isEditing && !this.isPythonExecuting && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x")) {
                 // We emit an event to be picked up by the first frame in the current selection:
                 // The frames themselves decide whether to act based on whether they are the first frame in the selection:
-                this.$root.$emit(event.key.toLowerCase() === "c" ? CustomEventTypes.copyFrameSelection : CustomEventTypes.cutFrameSelection);
+                eventBus.emit(event.key.toLowerCase() === "c" ? CustomEventTypes.copyFrameSelection : CustomEventTypes.cutFrameSelection);
                 event.preventDefault();
                 event.stopImmediatePropagation();
                 event.stopPropagation();
@@ -621,7 +621,7 @@ export default defineComponent({
         });
 
         // The events from Bootstrap modal are registered to the root app element.
-        this.$root.$on("bv::modal::hide", this.onHideModalDlg);  
+        eventBus.on("bv::modal::hide", this.onHideModalDlg as any);  
     },
 
     destroyed() {
@@ -629,7 +629,7 @@ export default defineComponent({
         document.removeEventListener("selectionchange", this.handleDocumentSelectionChange);
         document.removeEventListener("mouseup", this.checkMouseSelection);
         document.removeEventListener("wheel", this.blockScrollOnContextMenu);
-        this.$root.$off("bv::modal::hide", this.onHideModalDlg);  
+        eventBus.off("bv::modal::hide", this.onHideModalDlg as any);  
     },
 
     mounted() {
@@ -783,16 +783,16 @@ export default defineComponent({
         }
 
         // Register a listener to handle the context menu hovers (cf onContextMenuHover())
-        this.$root.$on(CustomEventTypes.contextMenuHovered, (menuElement: HTMLElement) => this.onContextMenuHover(menuElement));
+        eventBus.on(CustomEventTypes.contextMenuHovered, (menuElement: HTMLElement) => this.onContextMenuHover(menuElement));
 
         // Register a listener for a request to close a caret context menu (used by Frame.vue)
-        this.$root.$on(CustomEventTypes.requestCaretContextMenuClose, () => {
+        eventBus.on(CustomEventTypes.requestCaretContextMenuClose, () => {
             // We find the CaretContainer component currently active to properly close the menu using the component close() method.
             vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(this.appStore.currentFrame.caretPosition, this.appStore.currentFrame.id)]
                 .closeContextMenu();            
         });
 
-        this.$root.$on(CustomEventTypes.addFunctionToEditorProjectSave, (psf: ProjectSaveFunction) => {
+        eventBus.on(CustomEventTypes.addFunctionToEditorProjectSave, (psf: ProjectSaveFunction) => {
             // Before adding a new function to execute in the autosave mechanism, we stop the current time, and will restart it again once the function is added.
             // That is because, if the new function is added just before the next tick of the timer is due, we don't want to excecuted actions just yet to give
             // time to the user to sign in to Google Drive first, then load a potential project without saving the project that is in the editor in between.
@@ -809,7 +809,7 @@ export default defineComponent({
             this.setAutoSaveState();
         });
 
-        this.$root.$on(CustomEventTypes.removeFunctionToEditorProjectSave, (psfSyncTarget: StrypeSyncTarget) => {
+        eventBus.on(CustomEventTypes.removeFunctionToEditorProjectSave, (psfSyncTarget: StrypeSyncTarget) => {
             const toDeleteIndex = projectSaveFunctionsState.findIndex((psf) => psf.syncTarget == psfSyncTarget);
             if(toDeleteIndex > -1){
                 window.clearInterval(autoSaveTimerId);
@@ -819,7 +819,7 @@ export default defineComponent({
         });
 
         // Listen to event for requesting the project save now
-        this.$root.$on(CustomEventTypes.requestEditorProjectSaveNow, (saveReason: SaveRequestReason) => {
+        eventBus.on(CustomEventTypes.requestEditorProjectSaveNow, (saveReason: SaveRequestReason) => {
             // The usual behaviour is to trigger the saving functions for localStorage + any potential target (FS or GD).
             // However, if we are in a situation of requesting a save to open a new project, AND the project wasn't coming
             // from any source (FS or GD) we need to let the user perform a standard save.
@@ -863,7 +863,7 @@ export default defineComponent({
                         localStorage.setItem(this.localStorageAutosaveEditorKey, stateJSONStrWithCheckpoint);
                         // If that's the only element of the auto save functions, then we can notify we're done when we save for loading
                         if(reason==SaveRequestReason.loadProject && projectSaveFunctionsState.length == 1){
-                            this.$root.$emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
+                            eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                         }
                     });
                 }
@@ -959,7 +959,7 @@ export default defineComponent({
                     resolve((event as CustomEvent).detail as boolean);
                 };
                 document.addEventListener(CustomEventTypes.resetLSOnShareProjectLoadConfirmed, handleConfirmationFromDlg);
-                this.$root.$emit("bv::show::modal", this.confirmResetLSOnShareProjectLoadDlgId);
+                eventBus.emit("bv::show::modal", this.confirmResetLSOnShareProjectLoadDlgId);
             });
         },
 
@@ -1010,7 +1010,7 @@ export default defineComponent({
                                 if(event.trigger == "ok" || event.trigger=="event"){
                                     // Initiate a connection to the Cloud Drive (for updating the Cloud Drive with local changes)
                                     cloudHandlerComponentAPI?.signInFn();                                
-                                    this.$root.$off("bv::modal::hide", execGetCloudDriveFileFunction); 
+                                    eventBus.off("bv::modal::hide", execGetCloudDriveFileFunction as any); 
                                 }
                                 else{
                                     // We make sure we do not keep a wrong sync target!
@@ -1018,8 +1018,8 @@ export default defineComponent({
                                 }
                             }
                         };
-                        this.$root.$on("bv::modal::hide", execGetCloudDriveFileFunction);   
-                        this.$root.$emit("bv::show::modal", this.resyncToCloudDriveAtStartupModalDlgId);
+                        eventBus.on("bv::modal::hide", execGetCloudDriveFileFunction as any);   
+                        eventBus.emit("bv::show::modal", this.resyncToCloudDriveAtStartupModalDlgId);
                     }
                     // When a file has been reloaded and it was previously saved the File System, we want to clear off any references to that file
                     else if(this.appStore.syncTarget == StrypeSyncTarget.fs){
@@ -1058,7 +1058,7 @@ export default defineComponent({
                 this.onHideModalDlg({trigger: "ok"} as BvModalEvent, this.confirmNewProjectModalDlgId);
             }
             else {
-                this.$root.$emit("bv::show::modal", this.confirmNewProjectModalDlgId);
+                eventBus.emit("bv::show::modal", this.confirmNewProjectModalDlgId);
             }            
         },
 
@@ -1066,7 +1066,7 @@ export default defineComponent({
             // Show a message to the user that the project has (not) been loaded, if requested
             if(message){
                 this.appStore.simpleModalDlgMsg = this.$t(message.key, {param1: message.param}) as string;
-                this.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                eventBus.emit("bv::show::modal", getAppSimpleMsgDlgId());
             }
             // And also remove the query parameters in the URL
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -1550,12 +1550,12 @@ export default defineComponent({
                     //Call the callback:
                     editImageDlgComponentAPI?.getUpdatedMedia().then(callback);
 
-                    this.$root.$off("bv::modal::hide", editedImage);
+                    eventBus.off("bv::modal::hide", editedImage as any);
                 }
             };
-            this.$root.$on("bv::modal::hide", editedImage);
+            eventBus.on("bv::modal::hide", editedImage as any);
 
-            this.$root.$emit("bv::show::modal", "editImageDlg");
+            eventBus.emit("bv::show::modal", "editImageDlg");
         },
         editSoundInDialog(audioBuffer: AudioBuffer, callback: (replacement: {code: string, mediaType: string}) => void) {
             const editSoundDlgComponentAPI = vueComponentsAPIHandler.editSoundDlgComponentAPI;
@@ -1566,12 +1566,12 @@ export default defineComponent({
                     //Call the callback:
                     editSoundDlgComponentAPI?.getUpdatedMedia().then(callback);
 
-                    this.$root.$off("bv::modal::hide", editedSound);
+                    eventBus.off("bv::modal::hide", editedSound as any);
                 }
             };
-            this.$root.$on("bv::modal::hide", editedSound);
+            eventBus.on("bv::modal::hide", editedSound as any);
 
-            this.$root.$emit("bv::show::modal", "editSoundDlg");
+            eventBus.emit("bv::show::modal", "editSoundDlg");
         },
     },
 

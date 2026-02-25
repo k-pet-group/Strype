@@ -115,6 +115,7 @@ import odIcon from "@/assets/images/logoOneDrive.svg";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 import { clamp } from "lodash";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { eventBus } from "@/helpers/appContext";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
@@ -471,7 +472,7 @@ export default defineComponent({
                             // The micro:bit simulator do not support non-user interaction for a flash request.
                             // So we just tell the user here what to do...
                             this.appStore.simpleModalDlgMsg = this.$t("appMessage.startMBSimulatorNeedUserAction") as string;
-                            this.$root.$emit("bv::show::modal", this.startMBSimulatorlDlgId);                            
+                            eventBus.emit("bv::show::modal", this.startMBSimulatorlDlgId);                            
                         }
                     }
                     // #v-endif

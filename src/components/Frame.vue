@@ -108,6 +108,7 @@ import { saveAs } from "file-saver";
 import scssVars from "@/assets/style/_export.module.scss";
 import {getDateTimeFormatted, isMacOSPlatform, removeIf} from "@/helpers/common";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { eventBus } from "@/helpers/appContext";
 
 //////////////////////
 //     Component    //
@@ -369,8 +370,8 @@ export default defineComponent({
     },
 
     mounted() {
-        this.$root.$on(CustomEventTypes.cutFrameSelection, this.cutIfFirstInSelection);
-        this.$root.$on(CustomEventTypes.copyFrameSelection, this.copyIfFirstInSelection);
+        eventBus.on(CustomEventTypes.cutFrameSelection, this.cutIfFirstInSelection);
+        eventBus.on(CustomEventTypes.copyFrameSelection, this.copyIfFirstInSelection);
 
         // Observe when the context menu when the context menu is closed
         // in order to reset the enforced selection flag
@@ -468,7 +469,7 @@ export default defineComponent({
         },
 
         handleContextMenuHover(event: MouseEvent) {
-            this.$root.$emit(CustomEventTypes.contextMenuHovered, event.target as HTMLElement);
+            eventBus.emit(CustomEventTypes.contextMenuHovered, event.target as HTMLElement);
         },
 
         closeContextMenu(){
@@ -788,7 +789,7 @@ export default defineComponent({
             // (there is a context menu if there is an active context menu and it is not a frame context menu)
             const activeContextMenu = getActiveContextMenu();
             if(activeContextMenu && activeContextMenu.id == ""){
-                this.$root.$emit(CustomEventTypes.requestCaretContextMenuClose);
+                eventBus.emit(CustomEventTypes.requestCaretContextMenuClose);
             }
 
             // When a frame context menu is opened by click, we also move the frame cursor below, if the current frame cursor isn't 

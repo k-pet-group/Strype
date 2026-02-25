@@ -57,10 +57,10 @@ import Vue, { defineComponent } from "vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import {Demo, DemoGroup, getBuiltinDemos, getThirdPartyLibraryDemos} from "@/helpers/demos";
 import Parser from "@/parser/parser";
-import {AppSPYPrefix} from "@/main";
 import {escapeRegExp} from "lodash";
 import { BvModalEvent } from "bootstrap-vue";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { AppSPYPrefix, eventBus } from "@/helpers/appContext";
 
 export default defineComponent({
     components: {ModalDlg},
@@ -169,7 +169,7 @@ export default defineComponent({
             // Triggers the modal's OK event to load the selected example. The click event is fired before the double-click event:
             // selectedDemoItemIndex is already set to the right value.
             // We first close the dialog, than simulate a "close with action" in the Menu (since we can't close with "OK" status.)
-            this.$root.$emit("bv::hide::modal", this.dlgId);
+            eventBus.emit("bv::hide::modal", this.dlgId);
             vueComponentsAPIHandler.menuComponentAPI?.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.dlgId);
         },
 

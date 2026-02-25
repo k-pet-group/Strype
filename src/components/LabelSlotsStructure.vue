@@ -54,6 +54,7 @@ import { handleVerticalCaretMove } from "@/helpers/spans";
 import { preparePasteMediaData } from "@/helpers/media";
 import { useAsyncComputed } from "@/helpers/vue3composables";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { eventBus } from "@/helpers/appContext";
 
 export default defineComponent({
     name: "LabelSlotsStructure",
@@ -140,7 +141,7 @@ export default defineComponent({
         this.$nextTick(() => {
             this.updatePrependText();
         });
-        this.$root.$on(CustomEventTypes.updateParamPrompts, this.updateParamPromptsIfInList);
+        eventBus.on(CustomEventTypes.updateParamPrompts, this.updateParamPromptsIfInList);
     },
 
     computed:{

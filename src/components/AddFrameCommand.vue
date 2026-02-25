@@ -11,7 +11,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue from "vue";
+import { defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import { findAddCommandFrameType } from "@/helpers/editor";
@@ -21,7 +21,7 @@ import SVGIcon from "@/components/SVGIcon.vue";
 //////////////////////
 //     Component    //
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "AddFrameCommand",
 
     components: {
@@ -30,8 +30,8 @@ export default Vue.extend({
 
     props: {
         type: String, //Type of the Frame Command
-        shortcut: String, //the keyboard shortcut to add the frame 
-        symbol: String, //the displayed shortcut in the UI, it can be a symbolic representation or (if specified) a SVGIcon name
+        shortcut: {type: String, required: true}, //the keyboard shortcut to add the frame 
+        symbol: {type: String, required: true}, //the displayed shortcut in the UI, it can be a symbolic representation or (if specified) a SVGIcon name
         isSVGIconSymbol: Boolean, // if true, the symbol property is the name of a SVGIcon
         description: String, //the description of the frame
         index: Number, //when more than 1 frame is assigned to a shortcut, the index tells which frame definition should be used

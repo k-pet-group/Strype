@@ -47,7 +47,12 @@
                                                     "
                                                 />
                                             </p>
+                                        <!-- this conditional rendering is only used for our code editor to see the closing <div> right -->
+                                        <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
                                         </div>
+                                        <!-- #v-else-->
+                                        </div>
+                                        <!-- #v-endif-->
                                     </div>
                                 </div>
                             <!-- #v-ifdef MODE == VITE_MICROBIT_MODE -->
@@ -99,7 +104,7 @@ import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContext
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesAction, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
-import Vue from "vue";
+import { defineComponent } from "vue";
 import browserDetect from "vue-browser-detect-plugin";
 import { mapStores } from "pinia";
 import { getAvailableNavigationPositions, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
@@ -127,7 +132,7 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 let mbSimulator: Window | null = null;
 // #v-endif
 
-export default Vue.extend({
+export default defineComponent({
     name: "Commands",
 
     components: {

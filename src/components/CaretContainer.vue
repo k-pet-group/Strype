@@ -37,7 +37,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue, { PropType } from "vue";
+import Vue, { defineComponent, PropType } from "vue";
 import VueContext, { VueContextConstructor } from "vue-context";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
@@ -60,7 +60,7 @@ import { getParentOrJointParent } from "@/helpers/storeMethods";
 //////////////////////
 //     Component    //
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "CaretContainer",
 
     components: {
@@ -69,10 +69,11 @@ export default Vue.extend({
     },
 
     props: {
-        frameId: Number,
+        frameId: {type: Number, required: true},
         caretVisibility: String, //Flag indicating this caret is visible or not
         caretAssignedPosition: {
             type: String as PropType<CaretPosition>,
+            required: true,
         },
         isFrameDisabled: Boolean,
     },

@@ -6,7 +6,7 @@
  */
 <template>
     <GoogleDriveFilePicker :ref="googleDriveFilePickerComponentId" @picked-file="onLoadPickedFile" @picked-folder="savePickedFolder"
-        :pick-folder-cancelled="onPickFolderCancelled" @unsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" :dev-key="devKey" :oauth-token="oauthToken"/>
+        :pick-folder-cancelled="onPickFolderCancelled" @unsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" :dev-key="devKey" :oauth-token="oauthToken??''"/>
 </template>
 <script lang="ts">
 //////////////////////
@@ -15,7 +15,7 @@
 import { useStore } from "@/store/store";
 import { CloudDriveAPIState, CloudDriveFile, CloudFileSharingStatus, GDFile } from "@/types/cloud-drive-types";
 import { mapStores } from "pinia";
-import Vue from "vue";
+import { defineComponent, PropType } from "vue";
 import CloudDriveHandlerComponent from "@/components/CloudDriveHandler.vue";
 import { MessageDefinitions, StrypeSyncTarget } from "@/types/types";
 import GoogleDriveFilePicker from "@/components/GoogleDriveFilePicker.vue";
@@ -26,7 +26,7 @@ import { getCloudLoginErrorModalDlgId } from "@/helpers/editor";
 //////////////////////
 //     Component    //
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "GoogleDriveComponent",
 
     components:{
@@ -557,7 +557,7 @@ export default Vue.extend({
             // Construct the multipart body
             const body = `--${boundary}\nContent-Type: application/json; charset=UTF-8\n\n${JSON.stringify(bodyReqParams)}\n--${boundary}\n\n`;
             // Convert binary data to Blob
-            const blob = new Blob([body, fileContent, `\n--${boundary}--`], { type: "multipart/related; boundary=" + boundary });
+            const blob = new Blob([body, fileContent as BlobPart, `\n--${boundary}--`], { type: "multipart/related; boundary=" + boundary });
             return new Promise<string>((resolve, reject) => {
                 fetch(`https://www.googleapis.com/upload/drive/v3/files${(isCreatingFile) ? "" : "/" + (fileInfos.fileId??"")}?uploadType=multipart`, {
                     method: isCreatingFile ?  "POST" : "PATCH",

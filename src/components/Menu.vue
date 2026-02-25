@@ -222,7 +222,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue, { getCurrentInstance, watch } from "vue";
+import { defineComponent, getCurrentInstance, watch } from "vue";
 import { useStore, settingsStore } from "@/store/store";
 import {saveContentToFile, readFileContent, fileNameRegex, strypeFileExtension, isMacOSPlatform} from "@/helpers/common";
 import { AppEvent, CaretPosition, CollapsedState, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, Locale, MessageDefinitions, MIMEDesc, PythonExecRunningState, SaveRequestReason, ShareProjectMode, SlotCoreInfos, SlotCursorInfos, SlotType, StrypeSyncTarget } from "@/types/types";
@@ -254,16 +254,9 @@ import redoImgPath from "@/assets/images/redo.svg";
 //     Component    //
 //////////////////////
 const defaultSharingProjectMode = ShareProjectMode.public;
-export default Vue.extend({
+export default defineComponent({
     name: "Menu",
-
-    components: {
-        OpenDemoDlg,
-        Slide,
-        CloudDriveHandler,
-        ModalDlg,
-    },
-
+    
     setup() {
         const instance = getCurrentInstance() as any;
         const vm = instance.proxy;
@@ -283,6 +276,14 @@ export default Vue.extend({
         return {};
     },
 
+    components: {
+        OpenDemoDlg,
+        Slide,
+        CloudDriveHandler,
+        ModalDlg,
+    },
+
+   
     data: function() {
         return {
             scssVars, // just to be able to use in template
@@ -710,7 +711,9 @@ export default Vue.extend({
             }
         },
 
-        handleSaveMenuClick(saveReason?: SaveRequestReason): void {
+        handleSaveMenuClick(event: MouseEvent | undefined, saveReason?: SaveRequestReason): void {
+            // event here is only kept to keep TS happy
+
             // Some problem, like for the load project menu, happens because of changing v-if to v-show (it works first time, but not second time).
             // So again, we handle things manually for the menu entry click
             if(this.isSynced){

@@ -6,7 +6,7 @@
 
 <script lang="ts">
 
-import Vue, { PropType } from "vue";
+import { defineComponent, PropType } from "vue";
 
 /**
  * This SVGIcon component is a helper component to use in place
@@ -17,7 +17,7 @@ import Vue, { PropType } from "vue";
  * than App.vue because we need it to be loaded ASAP).
  */
 
-export default Vue.extend({
+export default defineComponent({
     name: "SVGIcon",
 
     props: {

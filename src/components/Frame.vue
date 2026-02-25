@@ -93,7 +93,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue from "vue";
+import Vue, { defineComponent } from "vue";
 import FrameHeader from "@/components/FrameHeader.vue";
 import LabelSlotsStructureComponent from "@/components/LabelSlotsStructure.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
@@ -112,7 +112,7 @@ import {getDateTimeFormatted, isMacOSPlatform, removeIf} from "@/helpers/common"
 //////////////////////
 //     Component    //
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "Frame",
 
     components: {
@@ -126,7 +126,7 @@ export default Vue.extend({
 
     props: {
         // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
-        frameId: Number, // Unique Indentifier for each Frame
+        frameId: {type: Number, required: true}, // Unique Indentifier for each Frame
         isDisabled: Boolean,
         isBeingDragged: Boolean,
         frameType: {
@@ -525,7 +525,7 @@ export default Vue.extend({
             let nextWouldBe;
             // Important to do this before next step as we might then remove some:
             if (combinedCollapse.states.size === 1) {
-                const commonState : CollapsedState = combinedCollapse.states.keys().next().value;
+                const commonState = combinedCollapse.states.keys().next().value as CollapsedState;
                 this.frameContextMenuItems[commonState as number].disabled = true;
                 nextWouldBe = calculateNextCollapseState(collapseFrames, parentIsFrozen, "dryrun").overall;
             }

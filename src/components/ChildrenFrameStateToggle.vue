@@ -10,18 +10,18 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from "vue";
 import {CollapsedState, FrameObject} from "@/types/types";
 import {mapStores} from "pinia";
 import {useStore} from "@/store/store";
 import {calculateNextCollapseState} from "@/helpers/storeMethods";
 
 
-export default Vue.extend({
+export default defineComponent({
     name: "ChildrenFrameStateToggle",
     
     props: {
-        frames: Array,
+        frames: {type: Array, required: true},
         isContainer: Boolean,
         parentIsFrozen: Boolean,
     },

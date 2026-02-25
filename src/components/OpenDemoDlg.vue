@@ -53,7 +53,7 @@
 </template>
 <script lang="ts">
 
-import Vue from "vue";
+import Vue, { defineComponent } from "vue";
 import MenuComponent from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import {Demo, DemoGroup, getBuiltinDemos, getThirdPartyLibraryDemos} from "@/helpers/demos";
@@ -63,7 +63,7 @@ import {escapeRegExp} from "lodash";
 import { BvModalEvent } from "bootstrap-vue";
 import { getMenuLeftPaneUID } from "@/helpers/editor";
 
-export default Vue.extend({
+export default defineComponent({
     components: {ModalDlg},
     
     props: {
@@ -246,6 +246,7 @@ span.open-demo-dlg-description {
     overflow: hidden;
     text-overflow: ellipsis;
     display: -webkit-box;
+    line-clamp: 2;
     -webkit-line-clamp: 2; /* 2 lines of text at most */
     -webkit-box-orient: vertical;
 }

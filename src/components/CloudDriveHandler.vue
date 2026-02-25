@@ -18,7 +18,7 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from "vue";
 import {mapStores} from "pinia";
 import {useStore} from "@/store/store";
 import Menu from "@/components/Menu.vue";
@@ -43,7 +43,7 @@ enum Actions{
     cancel
 }
 
-export default Vue.extend({
+export default defineComponent({
     name: "CloudDriveHandler",
     
     components: {
@@ -54,7 +54,7 @@ export default Vue.extend({
     },
 
     props: {
-        openSharedProjectFileId: String,
+        openSharedProjectFileId: {type: String, required: true},
     },
 
     data: function(){

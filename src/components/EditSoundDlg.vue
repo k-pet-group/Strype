@@ -49,7 +49,7 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import Vue, { defineComponent } from "vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { Cropper } from "vue-advanced-cropper";
 import "vue-advanced-cropper/dist/style.css";
@@ -63,7 +63,7 @@ import {isMacOSPlatform} from "@/helpers/common";
 const previewImageWidth = 300;
 const previewImageHeight = 100;
 
-export default Vue.extend({
+export default defineComponent({
     name: "EditSoundDlg",
 
     components:{
@@ -74,7 +74,7 @@ export default Vue.extend({
     props:{
         dlgId: String,
         dlgTitle: String,
-        soundToEdit: AudioBuffer,
+        soundToEdit: {type: AudioBuffer, required: true},
     },
     
     data: function() {
@@ -231,7 +231,7 @@ export default Vue.extend({
             });
         },
         handleMouseMove(event: MouseEvent) {
-            const cropper = this.$refs.cropper as Cropper;
+            const cropper = this.$refs.cropper as InstanceType<typeof Cropper>;
             const imageElement = cropper?.$el.querySelector("img");
 
             if (cropper && imageElement && imageElement.complete) {
@@ -284,7 +284,7 @@ export default Vue.extend({
             this.volumeRMS = getRMS(this.soundToEdit, volumeFactor, this.crop.firstSampleIncl, this.crop.lastSampleExcl);
             // But retain same crop (have to do this after cropper has updated the image):
             Vue.nextTick(() => {
-                (this.$refs.cropper as Cropper).setCoordinates({
+                (this.$refs.cropper as InstanceType<typeof Cropper>).setCoordinates({
                     left: this.crop.leftPixel,
                     width: this.crop.widthPixels,
                     top: 0,

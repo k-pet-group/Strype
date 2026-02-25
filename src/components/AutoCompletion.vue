@@ -73,7 +73,7 @@
 
 <script lang="ts">
 //////////////////////
-import Vue from "vue";
+import { defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import PopUpItem from "@/components/PopUpItem.vue";
 import {IndexedAcResultWithCategory, IndexedAcResult, AcResultType, AcResultsWithCategory, BaseSlot, AllFrameTypesIdentifier, AcMicrobitResultType} from "@/types/types";
@@ -92,7 +92,7 @@ import microbitAPI from "@/autocompletion/microbit-api.json";
 // #v-endif
 
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "AutoCompletion",
 
     components: {
@@ -101,7 +101,7 @@ export default Vue.extend({
 
     props: {
         list: [String],
-        slotId: String,
+        slotId: {type: String, required: true},
     },
 
     data: function() {

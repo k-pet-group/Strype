@@ -31,13 +31,13 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import { MessageDefinedActions, MessageDefinitions, MessageDefinition, MessageTypes, VoidFunction} from "@/types/types";
 import { mapStores } from "pinia";
 import scssVars from "@/assets/style/_export.module.scss";
 
-export default Vue.extend({
+export default defineComponent({
     name: "MessageBanner",
 
     data: function() {

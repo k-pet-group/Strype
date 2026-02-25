@@ -25,7 +25,7 @@
 import { useStore } from "@/store/store";
 import { StrypeSyncTarget } from "@/types/types";
 import { mapStores } from "pinia";
-import Vue, { PropType } from "vue";
+import { defineComponent, PropType } from "vue";
 import { AccountInfo, Configuration, PublicClientApplication  } from "@azure/msal-browser";
 import { CloudDriveItemPickerFolderPathResolutionMode, CloudDriveItemPickerItem, CloudDriveItemPickerMode, CloudFileSharingStatus, OneDrivePickConfigurationOptions, OneDriveTokenPurpose } from "@/types/cloud-drive-types";
 import { uniqueId } from "lodash";
@@ -46,7 +46,7 @@ import { CustomEventTypes } from "@/helpers/editor";
 // This variable is moved to at the module level rather than in data because having a Window as a reactive property doesn't work with Vue 2.7 (and Vue 3)
 let pickerPopup: Window | null = null;
 
-export default Vue.extend({
+export default defineComponent({
     name: "OneDriveComponent",
 
     components: {
@@ -834,7 +834,7 @@ export default Vue.extend({
                     const resp = await fetch(uploadSessionURL as string, {
                         method: "PUT", 
                         headers: {"Content-Length": chunk.length.toString(), "Content-Range": `bytes ${offset}-${offset + chunk.length - 1}/${rawFileContent.length}`},
-                        body: chunk,
+                        body: chunk as BodyInit,
                     });
                     const jsonProps = await resp.json() as BaseItem;
                     // On the last chunk, Graph should return the meta data about the created file, so we can get the ID from there.

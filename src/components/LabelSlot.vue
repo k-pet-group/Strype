@@ -70,7 +70,7 @@
 </template>
 
 <script lang="ts">
-import Vue, { PropType } from "vue";
+import Vue, { defineComponent, PropType } from "vue";
 import Cache from "timed-cache";
 import { useStore } from "@/store/store";
 import AutoCompletion from "@/components/AutoCompletion.vue";
@@ -93,7 +93,7 @@ import { projectDocumentationFrameId } from "@/main";
 // Default time to keep in cache: 5 minutes.
 const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
 
-export default Vue.extend({
+export default defineComponent({
     name: "LabelSlot",
 
     components: {
@@ -102,13 +102,14 @@ export default Vue.extend({
 
     props: {
         defaultText: String,
-        code: String,
-        labelSlotsIndex: Number,
-        slotId: String,
+        code: {type: String, required: true},
+        labelSlotsIndex: {type: Number, required: true},
+        slotId: {type: String, required: true},
         slotType: {
             type: Number as PropType<SlotType>,
+            required: true,
         },
-        frameId: Number,
+        frameId: {type: Number, required: true},
         isDisabled: Boolean,
         isEditableSlot: Boolean,
         isEmphasised: Boolean,

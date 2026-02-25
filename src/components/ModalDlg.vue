@@ -20,13 +20,13 @@
     </b-modal>
 </template>
 <script lang="ts">
-import Vue, { PropType } from "vue";
+import { defineComponent, PropType } from "vue";
 import { mapStores } from "pinia";
 import { useStore } from "@/store/store";
 import { BvModalEvent } from "bootstrap-vue";
 import { BootstrapDlgAutoFocusButton, BootstrapDlgSize } from "@/types/types";
 
-export default Vue.extend({
+export default defineComponent({
     name: "ModalDlg",
 
     props:{
@@ -78,7 +78,9 @@ export default Vue.extend({
             this.appStore.isModalDlgShown = true;
             this.appStore.currentModalDlgId = modalDlgId;
             // If an element is request to show focus we try to set it here
-            document.getElementById(this.elementToFocusId)?.focus();
+            if(this.elementToFocusId){
+                document.getElementById(this.elementToFocusId)?.focus();
+            }
         },
 
         onModalDlgHidden(event: BvModalEvent, modalDlgId: string){

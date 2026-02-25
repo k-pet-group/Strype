@@ -90,7 +90,7 @@
         </ModalDlg>
         <MediaPreviewPopup ref="mediaPreviewPopup" />
         <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" />
-        <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog" />
+        <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog as AudioBuffer" />
         <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
         <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
         <ModalDlg :dlgId="confirmResetLSOnShareProjectLoadDlgId" :autoFocusButton="'ok'" :okCustomTitle="$t('buttonLabel.continue')" :cancelCustomTitle="$t('buttonLabel.cancelLoadSharedProject')" >
@@ -109,7 +109,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue from "vue";
+import Vue, { defineComponent } from "vue";
 import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Frame from "@/components/Frame.vue";
@@ -154,7 +154,7 @@ let projectSaveFunctionsState : ProjectSaveFunction[] = [];
 //////////////////////
 //     Component    //
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "App",
     
     components: {
@@ -808,7 +808,7 @@ export default Vue.extend({
             // However, if we are in a situation of requesting a save to open a new project, AND the project wasn't coming
             // from any source (FS or GD) we need to let the user perform a standard save.
             if(saveReason == SaveRequestReason.loadProject && this.appStore.syncTarget == StrypeSyncTarget.none){
-                (this.$refs[this.menuUID] as InstanceType<typeof Menu>).handleSaveMenuClick(saveReason);
+                (this.$refs[this.menuUID] as InstanceType<typeof Menu>).handleSaveMenuClick(undefined, saveReason);
             }
             else {
                 projectSaveFunctionsState.forEach((psf) => psf.function(saveReason));

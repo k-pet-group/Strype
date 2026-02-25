@@ -19,11 +19,11 @@
 <script lang="ts">
 //////////////////////
 import { CustomEventTypes } from "@/helpers/editor";
-import Vue from "vue";
+import { defineComponent } from "vue";
 import scssVars from "@/assets/style/_export.module.scss";
 //////////////////////
 
-export default Vue.extend({
+export default defineComponent({
     name: "PopUpItem",
 
     props: {
@@ -37,7 +37,7 @@ export default Vue.extend({
         selected: Boolean,
         isSelectable: Boolean,
         indentWrapped: Boolean,
-        version: Number,
+        version: {type: Number, required: true},
     },
 
     data: function () {

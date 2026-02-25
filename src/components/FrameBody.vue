@@ -35,7 +35,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue from "vue";
+import { defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
@@ -46,7 +46,7 @@ import { getCaretContainerRef, getCaretUID, getFrameBodyUID, getFrameUID } from 
 //////////////////////
 //     Component    //
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "FrameBody",
 
     components: {
@@ -55,7 +55,7 @@ export default Vue.extend({
     },
     
     props: {
-        frameId: Number,
+        frameId: {type: Number, required: true},
         isDisabled: Boolean,
         isBeingDragged: Boolean,
         caretVisibility: String, //Flag indicating this caret is visible or not

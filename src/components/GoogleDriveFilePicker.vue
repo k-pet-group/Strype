@@ -2,7 +2,7 @@
     <div/>
 </template>
 <script lang="ts">
-import Vue, { PropType } from "vue";
+import { defineComponent, PropType } from "vue";
 import {useStore, settingsStore} from "@/store/store";
 import { mapStores } from "pinia";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
@@ -10,7 +10,7 @@ import { CustomEventTypes } from "@/helpers/editor";
 
 // Derived from https://medium.com/timeless/google-picker-with-vue-2a39de7f36e
 
-export default Vue.extend({
+export default defineComponent({
     name: "GoogleDriveFilePicker",
     
     props: {
@@ -115,8 +115,8 @@ export default Vue.extend({
                 .disableFeature(google.picker.Feature.MULTISELECT_ENABLED)
                 .disableFeature(google.picker.Feature.NAV_HIDDEN)
                 .setLocale(this.settingsStore.locale??"en")
-                .setOAuthToken(this.oauthToken)
-                .setDeveloperKey(this.devKey)
+                .setOAuthToken(this.oauthToken??"")
+                .setDeveloperKey(this.devKey??"")
                 .setCallback(this.pickerCallback)
                 .setTitle(this.$i18n.t((this.isSaveAction) ? "appMessage.selectFolder" : "appMessage.selectStrypeFile") as string);        
             docsViews.forEach((view) => pickerBuilder.addView(view));  

@@ -20,7 +20,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue from "vue";
+import { defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import Frame from "@/components/Frame.vue";
 import { FrameObject, PythonExecRunningState } from "@/types/types";
@@ -31,7 +31,7 @@ import { getFrameUID } from "@/helpers/editor";
 //////////////////////
 //     Component    //
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "JointFrames",
 
     components: {
@@ -40,7 +40,7 @@ export default Vue.extend({
 
     props: {
         // NOTE that type declarations here start with a Capital Letter!!! (different to types.ts!)
-        jointParentId: Number, // Unique Indentifier for each Frame
+        jointParentId: {type: Number, required: true}, // Unique Indentifier for each Frame
         isDisabled: Boolean,
         isBeingDragged: Boolean,
         isParentSelected: Boolean,

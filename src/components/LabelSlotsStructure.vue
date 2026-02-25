@@ -39,7 +39,7 @@
 
 <script lang="ts">
 import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FlatSlotBase, getFrameDefType, isSlotBracketType, isSlotQuoteType, LabelSlotsContent, MediaDataAndDim, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType } from "@/types/types";
-import Vue, { getCurrentInstance } from "vue";
+import Vue, { defineComponent, getCurrentInstance } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import FrameHeaderComponent from "@/components/FrameHeader.vue";
@@ -55,13 +55,9 @@ import { handleVerticalCaretMove } from "@/helpers/spans";
 import { preparePasteMediaData } from "@/helpers/media";
 import { useAsyncComputed } from "@/helpers/vue3composables";
 
-export default Vue.extend({
+export default defineComponent({
     name: "LabelSlotsStructure",
-
-    components:{
-        LabelSlot,
-    },
-
+    
     setup(){
         const instance = getCurrentInstance() as any;
         const vm = instance.proxy;
@@ -81,7 +77,7 @@ export default Vue.extend({
                 return Promise.resolve([(isFuncCallFrame) ? getFunctionCallDefaultText(vm.frameId) : vm.defaultText]);
             }
             else {
-                return Promise.all(vm.subSlots.map((slotItem, index) => slotItem.placeholderSource !== undefined 
+                return Promise.all((vm.subSlots as FlatSlotBase[]).map((slotItem, index) => slotItem.placeholderSource !== undefined 
                     ? calculateParamPrompt(vm.frameId, slotItem.placeholderSource, slotItem.focused ?? false) 
                     : Promise.resolve((useStore().frameObjects[vm.frameId].frameType.type == AllFrameTypesIdentifier.funccall && index == 0) 
                         ? getFunctionCallDefaultText(vm.frameId)
@@ -92,9 +88,13 @@ export default Vue.extend({
         return { placeholderText };
     },
 
+    components:{
+        LabelSlot,
+    },
+
     props: {
-        frameId: Number,
-        labelIndex: Number,
+        frameId: {type: Number, required: true},
+        labelIndex: {type: Number, required: true},
         defaultText: String,
         isDisabled: Boolean,
         isFrozen: Boolean,
@@ -810,7 +810,7 @@ export default Vue.extend({
             }
             
             this.appStore.isEditing = false;
-            this.blurEditableSlot(true);
+            this.blurEditableSlot(undefined, true);
             document.getSelection()?.removeAllRanges();
             
             //If the up arrow is pressed you need to move the caret as well.
@@ -1002,7 +1002,9 @@ export default Vue.extend({
             this.appStore.ignoreFocusRequest = false;
         },
 
-        blurEditableSlot(force?: boolean){
+        blurEditableSlot(event: FocusEvent | undefined, force?: boolean){
+            // event here is only kept for keeping TS happy
+
             // If a request to ignore the loss of focus has been made, we return right away but reset the flag
             if(this.appStore.ignoreBlurEditableSlot) {
                 this.appStore.ignoreBlurEditableSlot = false;

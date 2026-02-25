@@ -3,7 +3,7 @@
         <div class="frame-container-header" @click.self="onOuterContainerClick">
             <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
             <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
-            <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="this.frames" :parentIsFrozen="false"/>
+            <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="frames" :parentIsFrozen="false"/>
         </div>
 
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
@@ -36,7 +36,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue from "vue";
+import { defineComponent } from "vue";
 import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
@@ -50,7 +50,7 @@ import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue"
 //////////////////////
 //     Component    //
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "FrameContainer",
 
     components: {
@@ -61,7 +61,7 @@ export default Vue.extend({
 
 
     props: {
-        frameId: Number,
+        frameId: {type: Number, required: true},
         caretVisibility: String,
         containerLabel: String,
         frameType: {

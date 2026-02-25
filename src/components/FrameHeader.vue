@@ -56,7 +56,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import Vue, { PropType } from "vue";
+import { defineComponent, PropType } from "vue";
 import LabelSlotsStructure from "@/components/LabelSlotsStructure.vue";
 import {useStore} from "@/store/store";
 import {AllFrameTypesIdentifier, CollapsedState, FrameLabel, FrameObject, FrozenState} from "@/types/types";
@@ -93,7 +93,7 @@ function splitAtNewLines(labels : FrameLabel[], state: CollapsedState) : {item: 
 //////////////////////
 //     Component    //
 //////////////////////
-export default Vue.extend({
+export default defineComponent({
     name: "FrameHeader",
 
     components: {
@@ -108,17 +108,17 @@ export default Vue.extend({
             type: Array as PropType<FrameLabel[]>,
             required: true,
         },
-        frameId: Number,
-        frameType: String,
+        frameId: {type: Number, required: true},
+        frameType: {type: String, required: true},
         isDisabled: Boolean,
         frameAllowChildren: Boolean,
         frameCollapsedState: Number, // Index in the enum CollapsedState
         frameFrozenState: Number,  // Index in the enum FrozenState
-        frameAllowedCollapsedStates: {type: Array as PropType<CollapsedState[]>},
+        frameAllowedCollapsedStates: {type: Array as PropType<CollapsedState[]>, required: true},
         frameAllowedFrozenStates: {type: Array as PropType<FrozenState[]>},
         erroneous: Boolean,
         wasLastRuntimeError: Boolean,
-        onFocus: Function, // Handler for focus/blur the header (see Frame.vue)
+        onFocus: {type: Function, required: true}, // Handler for focus/blur the header (see Frame.vue)
     },
 
     computed:{

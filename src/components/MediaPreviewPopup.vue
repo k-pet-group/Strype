@@ -25,7 +25,7 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from "vue";
 import {EditImageInDialogFunction, EditSoundInDialogFunction, LoadedMedia} from "@/types/types";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import {PersistentImageManager} from "@/stryperuntime/image_and_collisions";
@@ -36,7 +36,7 @@ import {saveAs} from "file-saver";
 const HTMLImageClass = "<a href='https://strype.org/doc/library/#strype.graphics.Image' target='_blank'>Image</a>";
 const HTMLSoundClass = "<a href='https://strype.org/doc/library/#strype.sound.Sound' target='_blank'>Sound</a>";
 
-export default Vue.extend({
+export default defineComponent({
     name: "MediaPreviewPopup",
     data() {
         return {
@@ -95,7 +95,7 @@ export default Vue.extend({
         },
         doPreviewImage(imgDataURL: string) {
             document.getElementById("strypeGraphicsPEATab")?.click();
-            Vue.nextTick(() => {
+            this.$nextTick(() => {
                 const imgManager: PersistentImageManager | undefined = this.peaComponentRef?.getPersistentImageManager();
                 imgManager?.clear();
                 // null is passed to clear the preview when the edit dialog is closed:

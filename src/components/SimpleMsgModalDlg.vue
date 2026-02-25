@@ -5,13 +5,13 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from "vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import { BvModalEvent } from "bootstrap-vue";
 
-export default Vue.extend({
+export default defineComponent({
     name: "SimpleMsgModalDlg",
 
     components:{

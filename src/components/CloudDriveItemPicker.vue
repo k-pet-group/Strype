@@ -22,13 +22,13 @@
  */
 import { CustomEventTypes } from "@/helpers/editor";
 import { CloudDriveItemPickerFolderPathResolutionMode, CloudDriveItemPickerItem, CloudDriveItemPickerMode, CTreeItemPickerItem } from "@/types/cloud-drive-types";
-import Vue, { PropType } from "vue";
+import { defineComponent, PropType } from "vue";
 import CTree from "@wsfe/ctree";
 import type { TreeNode } from "@wsfe/ctree/types/src/store";
 import AppComponent from "@/App.vue";
 import { AppEvent } from "@/types/types";
 
-export default Vue.extend({
+export default defineComponent({
     name: "CloudDriveItemPicker",
 
     components: {
@@ -249,7 +249,7 @@ export default Vue.extend({
                     if(index > 0 && !(cTreeComponent.getNode(parentNode?.id??"") as CTreeItemPickerItem|null)?.hasVisitedFolder){
                         let gotChildren = false;
                         await new Promise<void>((resolve) => {
-                            this.$el.addEventListener(this.internalChildrenRetrievedNotificationEvent, (event) => {
+                            this.$el.addEventListener(this.internalChildrenRetrievedNotificationEvent, (event: any) => {
                                 gotChildren = (event as CustomEvent<boolean>).detail;
                                 resolve();
                             }, {once: true});

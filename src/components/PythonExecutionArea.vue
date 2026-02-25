@@ -56,7 +56,7 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { execPythonCode } from "@/helpers/execPythonCode";
@@ -112,7 +112,7 @@ async function getAssetFileFromLibrary(fullLibraryAddress: string, fileName: str
     return  await getRawFileFromLibraries([fullLibraryAddress], "assets/" + fileName);
 }
 
-export default Vue.extend({
+export default defineComponent({
     name: "PythonExecutionArea",
 
     components: {
@@ -885,7 +885,7 @@ export default Vue.extend({
             }
             // It's not an error if source is null, it either means the sound hasn't been playing, or it already finished
         },
-        getLogicalMouseCoords(event: PointerEvent) {
+        getLogicalMouseCoords(event: MouseEvent) {
             const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
             // We use the centres to align real bounding box and scaled:
             const scaledWidth = graphicsCanvasLogicalWidth * this.scaleToFit;
@@ -901,7 +901,7 @@ export default Vue.extend({
             const adjustedY = (offsetY / scaledHeight) * graphicsCanvasLogicalHeight;
             return {adjustedX, adjustedY};
         },
-        graphicsCanvasMouseDown(event: PointerEvent) {
+        graphicsCanvasMouseDown(event: MouseEvent) {
             const {adjustedX, adjustedY} = this.getLogicalMouseCoords(event);
 
             if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
@@ -918,7 +918,7 @@ export default Vue.extend({
                 event.stopImmediatePropagation();
             }
         },
-        graphicsCanvasMouseMove(event: PointerEvent) {
+        graphicsCanvasMouseMove(event: MouseEvent) {
             const {adjustedX, adjustedY} = this.getLogicalMouseCoords(event);
             if (adjustedX >= -graphicsCanvasLogicalWidth / 2 && adjustedX <= graphicsCanvasLogicalWidth / 2 - 1 &&
                 adjustedY >= -graphicsCanvasLogicalHeight / 2 && adjustedY <= graphicsCanvasLogicalHeight / 2 - 1) {
@@ -926,7 +926,7 @@ export default Vue.extend({
                 mostRecentMouseDetails[1] = adjustedY;
             }
         },
-        graphicsCanvasMouseUp(event: PointerEvent) {
+        graphicsCanvasMouseUp(event: MouseEvent) {
             mostRecentMouseDetails[2][event.button] = false;
         },
         consumeLastClickedItems() : PersistentImage[] {

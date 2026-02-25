@@ -9,7 +9,7 @@
 
 <script lang="ts">
 
-import Vue from "vue";
+import { defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import { PythonExecRunningState } from "@/types/types";
@@ -21,7 +21,7 @@ import scssVars from "@/assets/style/_export.module.scss";
  * a frame will be droped when dragged.
  */
 
-export default Vue.extend({
+export default defineComponent({
     name: "Caret",
 
     props: {

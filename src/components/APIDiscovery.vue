@@ -70,7 +70,7 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from "vue";
 import {AllFrameTypesIdentifier, APIItemTextualDescription, getFrameDefType, PythonExecRunningState, SlotCursorInfos, SlotType} from "@/types/types";
 import { useStore } from "@/store/store";
 import { getFocusedEditableSlotTextSelectionStartEnd, getFrameLabelSlotsStructureUID, getLabelSlotUID, setDocumentSelection } from "@/helpers/editor";
@@ -79,7 +79,7 @@ import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 import LabelSlotsStructures from "@/components/LabelSlotsStructure.vue";
 import { cloneDeep } from "lodash";
 
-export default Vue.extend({
+export default defineComponent({
     name: "APIDiscovery",
 
     data: function () {

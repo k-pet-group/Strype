@@ -49,7 +49,7 @@
 </template>
 
 <script lang="ts">
-import Vue from "vue";
+import { defineComponent } from "vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { Cropper } from "vue-advanced-cropper";
 import "vue-advanced-cropper/dist/style.css";
@@ -62,7 +62,7 @@ import {isMacOSPlatform} from "@/helpers/common";
 
 const picaInstance = pica();
 
-export default Vue.extend({
+export default defineComponent({
     name: "EditImageDlg",
 
     components:{
@@ -74,7 +74,7 @@ export default Vue.extend({
         dlgId: String,
         dlgTitle: String,
         imgToEdit: String, /* Base 64 string */
-        showImgPreview:{type: Function}, /* Takes new base64 string as input, null to cancel preview */
+        showImgPreview:{type: Function, required: true}, /* Takes new base64 string as input, null to cancel preview */
     },
     
     data: function() {
@@ -162,7 +162,7 @@ export default Vue.extend({
             this.updatePreview();
         },
         getUpdatedMedia() : Promise<{code: string, mediaType: string}> {
-            const { canvas } = (this.$refs.cropper as Cropper).getResult();
+            const { canvas } = (this.$refs.cropper as InstanceType<typeof Cropper>).getResult();
             if (!canvas) {
                 return Promise.reject("Loading");
             }
@@ -184,7 +184,7 @@ export default Vue.extend({
             });
         },
         handleMouseMove(event: MouseEvent) {
-            const cropper = this.$refs.cropper as Cropper;
+            const cropper = this.$refs.cropper as InstanceType<typeof Cropper>;
             const imageElement = cropper?.$el.querySelector("img");
 
             if (cropper && imageElement && imageElement.complete) {
@@ -243,13 +243,13 @@ export default Vue.extend({
         },
 
         doFlipHorizontal() {
-            (this.$refs.cropper as Cropper).flip(true, false);
+            (this.$refs.cropper as InstanceType<typeof Cropper>).flip(true, false);
         },
         doFlipVertical() {
-            (this.$refs.cropper as Cropper).flip(false, true);
+            (this.$refs.cropper as InstanceType<typeof Cropper>).flip(false, true);
         },
         doRotate90() {
-            (this.$refs.cropper as Cropper).rotate(90);
+            (this.$refs.cropper as InstanceType<typeof Cropper>).rotate(90);
         },
     },
     watch: {

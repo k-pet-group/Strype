@@ -3,7 +3,7 @@ import {useStore} from "@/store/store";
 import {getCaretContainerUID, operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
-import {AppName, AppSPYFullPrefix, projectDocumentationFrameId} from "@/main";
+import {AppName, AppSPYFullPrefix, projectDocumentationFrameId} from "@/helpers/appContext";
 import {toUnicodeEscapes, stringToCollapsed, stringToFrozen} from "@/parser/parser";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 

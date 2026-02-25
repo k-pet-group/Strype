@@ -1,7 +1,7 @@
-import { AppName, AppPlatform, AppSPYFullPrefix, AppSPYSaveVersion } from "@/main";
 import { parseCodeAndGetParseElements } from "@/parser/parser";
 import { useStore } from "@/store/store";
 import {StrypeLayoutDividerSettings, StrypePEALayoutMode} from "@/types/types";
+import { AppName, AppPlatform, AppSPYFullPrefix, AppSPYSaveVersion } from "./appContext";
 
 export function saveDivider(divider: StrypeLayoutDividerSettings | undefined) : string | undefined {
     if (divider === undefined) {

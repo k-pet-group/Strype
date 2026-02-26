@@ -17,31 +17,34 @@
         </div>
         <div :id="tabContentContainerDivId" :class="{'pea-tab-content-container': true, 'flex-padding': true, 'pea-43-ratio': hasDefault43Ratio}">
             <!-- the SplitPanes is used in all layout configurations: for tabs, we only show 1 of the panes and disable moving the divider, and for stacked window it acts as normal -->
-            <Splitpanes :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}" :horizontal="!isExpandedPEA" @resize="onSplitterPane1Resize">
-                <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
-                    <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}" @contextmenu="showContextMenu($event)">
-                        <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @mousedown.stop="graphicsCanvasMouseDown" @mouseup.stop="graphicsCanvasMouseUp" @mousemove="graphicsCanvasMouseMove"></canvas>
-                        <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
-                            <div :id="graphicsDivId" ref="pythonTurtleDiv" class="pea-graphics-div"></div>
-                        </div> 
-                    </div>
-                </pane>
-                <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5">
-                    <textarea 
-                        :id="pythonConsoleId"
-                        ref="pythonConsole"
-                        class="pea-console"
-                        @focus="onFocus()"
-                        @change="onChange"
-                        @wheel.stop
-                        @keydown.self.stop="handleKeyEvent"
-                        @keyup.self="handleKeyEvent"
-                        disabled
-                        spellcheck="false"
-                    >    
-                    </textarea>
-                </pane>
-            </Splitpanes>
+            <!-- the container div is only here because the new version of Splitpanes doesn't get the classes -->
+            <div :class="{'strype-PEA-split-theme': true, 'with-expanded-PEA': isExpandedPEA, 'tabs-PEA': isTabsLayout}">
+                <Splitpanes :horizontal="!isExpandedPEA" @resize="onSplitterPane1Resize">
+                    <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
+                        <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}" @contextmenu="showContextMenu($event)">
+                            <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @mousedown.stop="graphicsCanvasMouseDown" @mouseup.stop="graphicsCanvasMouseUp" @mousemove="graphicsCanvasMouseMove"></canvas>
+                            <div><!-- this div is a flex wrapper just to get scrolling right, see https://stackoverflow.com/questions/49942002/flex-in-scrollable-div-wrong-height-->
+                                <div :id="graphicsDivId" ref="pythonTurtleDiv" class="pea-graphics-div"></div>
+                            </div> 
+                        </div>
+                    </pane>
+                    <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5">
+                        <textarea 
+                            :id="pythonConsoleId"
+                            ref="pythonConsole"
+                            class="pea-console"
+                            @focus="onFocus()"
+                            @change="onChange"
+                            @wheel.stop
+                            @keydown.self.stop="handleKeyEvent"
+                            @keyup.self="handleKeyEvent"
+                            disabled
+                            spellcheck="false"
+                        >    
+                        </textarea>
+                    </pane>
+                </Splitpanes>
+            </div>
             <div :class="{[scssVars.peaToggleLayoutButtonsContainerClassName]: true, hidden: (!isTabContentHovered || isPythonExecuting)}">
                 <div v-for="(layoutData, index) in PEALayoutsData" :key="'strype-PEA-Layout-'+index" 
                     @click="togglePEALayout(layoutData.mode, true)" :title="$t('PEA.'+layoutData.iconName)">
@@ -450,11 +453,11 @@ export default defineComponent({
             if(!this.isTabsLayout){
                 // Save the PEA splitter's pane 1 size with the project (it will update currentSplitterPane1Size by reactivity)
                 if(this.appStore.peaSplitViewSplitterPane1Size != undefined){
-                    this.appStore.peaSplitViewSplitterPane1Size[this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed] = event[0].size;
+                    this.appStore.peaSplitViewSplitterPane1Size[this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed] = event.panes[0].size;
                 }
                 else {
                     // The tricky case of when the state property has never been set
-                    this.appStore.peaSplitViewSplitterPane1Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: event[0].size};
+                    this.appStore.peaSplitViewSplitterPane1Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: event.panes[0].size};
                 }
             }
 
@@ -1290,26 +1293,26 @@ export default defineComponent({
     /**
      * The following CSS classes are for the Splitter component in use here
      */
-    .splitpanes.strype-PEA-split-theme.with-expanded-PEA {
+    .strype-PEA-split-theme {
+        height: 100%;
+    }
+
+    .strype-PEA-split-theme.with-expanded-PEA .splitpanes {
         background-color: $pea-outer-background-color;
     }
     
-    .strype-PEA-split-theme.splitpanes--horizontal>.splitpanes__splitter,
     .strype-PEA-split-theme .splitpanes--horizontal>.splitpanes__splitter {
         height: 8px !important;
     }
 
-    .strype-PEA-split-theme.tabs-PEA.splitpanes--horizontal>.splitpanes__splitter,
     .strype-PEA-split-theme.tabs-PEA .splitpanes--horizontal>.splitpanes__splitter {
         display: none;
     }
 
-    .strype-PEA-split-theme.tabs-PEA.splitpanes--vertical>.splitpanes__splitter,
     .strype-PEA-split-theme.tabs-PEA .splitpanes--vertical>.splitpanes__splitter {
         display: none;
     }
 
-    .strype-PEA-split-theme.splitpanes--vertical > .splitpanes__splitter:before,
     .strype-PEA-split-theme > .splitpanes--vertical > .splitpanes__splitter:before {
         content: "";
         position: absolute;

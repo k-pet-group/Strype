@@ -105,8 +105,8 @@ async function getSelectedMode(page: Page) : Promise<StrypePEALayoutMode | undef
 }
 
 const CODE_VS_SIDEBAR = ".strype-split-theme.splitpanes.splitpanes--vertical > .splitpanes__splitter";
-const COMMANDS_VS_PEA = ".splitpanes.splitpanes--horizontal.strype-commands-pea-splitter-theme > .splitpanes__splitter";
-const TOP_VS_EXPANDED_BOTTOM = ".expanded-PEA-splitter-overlay.strype-split-theme.splitpanes.splitpanes--horizontal > .splitpanes__splitter";
+const COMMANDS_VS_PEA = ".strype-commands-pea-splitter-theme .splitpanes.splitpanes--horizontal > .splitpanes__splitter";
+const TOP_VS_EXPANDED_BOTTOM = ".expanded-PEA-splitter-overlay.strype-split-theme .splitpanes.splitpanes--horizontal > .splitpanes__splitter";
 
 test.describe("Saves divider states", () => {
     test("Saves main divider state", async ({page}) => {

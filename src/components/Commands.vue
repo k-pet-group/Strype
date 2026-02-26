@@ -1,77 +1,80 @@
 <template>
     <div class="commands">
         <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
-        <Splitpanes horizontal :class="{[scssVars.commandsPEASplitterThemeClassName]: true, [scssVars.expandedPEAClassName]: isExpandedPEA}" @resize="onCommandsSplitterResize">
-            <pane key="1" ref="peaCommandsSplitterPane1Ref" :size="100 - commandsSplitterPane2Size" :min-size="commandSplitterPane1MinSize">
+        <!-- the container div is only here because the new version of Splitpanes doesn't get the classes -->
+        <div :class="{[scssVars.commandsPEASplitterThemeClassName]: true, [scssVars.expandedPEAClassName]: isExpandedPEA}">
+            <Splitpanes horizontal @resize="onCommandsSplitterResize">
+                <pane key="1" :size="100 - commandsSplitterPane2Size" :min-size="commandSplitterPane1MinSize">
         <!-- #v-endif-->
-                <div :class="scssVars.noPEACommandsClassName" @wheel.stop>
-                    <div :class="scssVars.strypeProjectNameContainerClassName">
-                        <span class="project-name">{{projectName}}</span>
-                        <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
-                            <img v-if="isProjectFromCloudDrive" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
-                            <img v-else-if="isProjectFromFS" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
-                            <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag" v-t="'appMessage.savedCloudFile'" />
-                            <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifCloudFile'" :class="{'modifed-label-span': isProjectNotSourced}" />                     
-                        </div>
-                    </div>     
-                    <div @mousedown.prevent.stop @mouseup.prevent.stop>
-                        <!-- #v-ifdef MODE == VITE_MICROBIT_MODE -->
-                        <BTabs id="commandsTabs" content-class="mt-2" v-model:index="tabIndex">
-                            <BTab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
-                        <!-- #v-endif-->
-                                <div :id="commandsContainerUID" class="command-tab-content" >
-                                    <div id="addFramePanel">
-                                        <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
-                                        <div :class="{[scssVars.addFrameCommandsContainerClassName]: true, 'with-expanded-PEA': isExpandedPEA}">
-                                        <!-- #v-else-->
-                                        <div :class="scssVars.addFrameCommandsContainerClassName">
-                                        <!-- #v-endif-->
-                                            <p>
-                                                <AddFrameCommand
-                                                    v-for="addFrameCommand in addFrameCommands"
-                                                    :id="addFrameCommandUID(addFrameCommand[0].type.type)"
-                                                    :key="addFrameCommand[0].type.type"
-                                                    :type="addFrameCommand[0].type.type"
-                                                    :shortcut="addFrameCommand[0].shortcuts[0]"
-                                                    :symbol="
-                                                        addFrameCommand[0].symbol !== undefined
-                                                            ? addFrameCommand[0].symbol
-                                                            : addFrameCommand[0].shortcuts[0]
-                                                    "
-                                                    :isSVGIconSymbol="addFrameCommand[0].isSVGIconSymbol"
-                                                    :description="addFrameCommand[0].description"
-                                                    :index="
-                                                        addFrameCommand[0].index!==undefined
-                                                        ? addFrameCommand[0].index
-                                                        : 0
-                                                    "
-                                                />
-                                            </p>
-                                        <!-- this conditional rendering is only used for our code editor to see the closing <div> right -->
-                                        <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
-                                        </div>
-                                        <!-- #v-else-->
-                                        </div>
-                                        <!-- #v-endif-->
-                                    </div>
-                                </div>
+                    <div :class="scssVars.noPEACommandsClassName" @wheel.stop>
+                        <div :class="scssVars.strypeProjectNameContainerClassName">
+                            <span class="project-name">{{projectName}}</span>
+                            <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
+                                <img v-if="isProjectFromCloudDrive" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
+                                <img v-else-if="isProjectFromFS" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
+                                <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag" v-t="'appMessage.savedCloudFile'" />
+                                <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifCloudFile'" :class="{'modifed-label-span': isProjectNotSourced}" />                     
+                            </div>
+                        </div>     
+                        <div @mousedown.prevent.stop @mouseup.prevent.stop>
                             <!-- #v-ifdef MODE == VITE_MICROBIT_MODE -->
-                            </BTab>
-                                <BTab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
-                                    <APIDiscovery  class="command-tab-content"/>
-                                </BTab>                       
-                        </BTabs>
-                        <!-- #v-endif-->
+                            <BTabs id="commandsTabs" content-class="mt-2" v-model:index="tabIndex">
+                                <BTab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
+                            <!-- #v-endif-->
+                                    <div :id="commandsContainerUID" class="command-tab-content" >
+                                        <div id="addFramePanel">
+                                            <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
+                                            <div :class="{[scssVars.addFrameCommandsContainerClassName]: true, 'with-expanded-PEA': isExpandedPEA}">
+                                            <!-- #v-else-->
+                                            <div :class="scssVars.addFrameCommandsContainerClassName">
+                                            <!-- #v-endif-->
+                                                <p>
+                                                    <AddFrameCommand
+                                                        v-for="addFrameCommand in addFrameCommands"
+                                                        :id="addFrameCommandUID(addFrameCommand[0].type.type)"
+                                                        :key="addFrameCommand[0].type.type"
+                                                        :type="addFrameCommand[0].type.type"
+                                                        :shortcut="addFrameCommand[0].shortcuts[0]"
+                                                        :symbol="
+                                                            addFrameCommand[0].symbol !== undefined
+                                                                ? addFrameCommand[0].symbol
+                                                                : addFrameCommand[0].shortcuts[0]
+                                                        "
+                                                        :isSVGIconSymbol="addFrameCommand[0].isSVGIconSymbol"
+                                                        :description="addFrameCommand[0].description"
+                                                        :index="
+                                                            addFrameCommand[0].index!==undefined
+                                                            ? addFrameCommand[0].index
+                                                            : 0
+                                                        "
+                                                    />
+                                                </p>
+                                            <!-- this conditional rendering is only used for our code editor to see the closing <div> right -->
+                                            <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
+                                            </div>
+                                            <!-- #v-else-->
+                                            </div>
+                                            <!-- #v-endif-->
+                                        </div>
+                                    </div>
+                                <!-- #v-ifdef MODE == VITE_MICROBIT_MODE -->
+                                </BTab>
+                                    <BTab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
+                                        <APIDiscovery  class="command-tab-content"/>
+                                    </BTab>                       
+                            </BTabs>
+                            <!-- #v-endif-->
+                        </div>
+                        <text id="userCode"></text>
+                        <span id="keystrokeSpan"></span>
                     </div>
-                    <text id="userCode"></text>
-                    <span id="keystrokeSpan"></span>
-                </div>
         <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
-            </pane>
-            <pane key="2" ref="peaCommandsSplitterPane2Ref" :size="commandsSplitterPane2Size" :min-size="commandSplitterPane2MinSize" :class="{'collapsed-pea-splitter-pane': !isExpandedPEA}">
-                <python-execution-area :class="scssVars.peaContainerClassName" :ref="peaComponentRefId" v-on:[peaMountedEventName]="onPEAMounted" :hasDefault43Ratio="!isCommandsSplitterChanged && !hasPEAExpanded"/>
-            </pane>
-        </Splitpanes>
+                </pane>
+                <pane key="2" :size="commandsSplitterPane2Size" :min-size="commandSplitterPane2MinSize" :class="{'collapsed-pea-splitter-pane': !isExpandedPEA}">
+                    <python-execution-area :class="scssVars.peaContainerClassName" :ref="peaComponentRefId" v-on:[peaMountedEventName]="onPEAMounted" :hasDefault43Ratio="!isCommandsSplitterChanged && !hasPEAExpanded"/>
+                </pane>
+            </Splitpanes>
+        </div>
         <!-- #v-else -->
         <div :class="scssVars.peaContainerClassName">  
             <div v-if="showProgress" class="progress cmd-progress-container">
@@ -117,7 +120,7 @@ import { clamp } from "lodash";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-import {Splitpanes, Pane, PaneData} from "splitpanes";
+import {Splitpanes, Pane} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import {getPEAConsoleId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getPEAComponentRefId, getPEAControlsDivId} from "@/helpers/editor";
 // #v-else
@@ -878,7 +881,7 @@ export default defineComponent({
             // and the PEA (will take the full space in its pane, breaking the initial 4:3 ratio)
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
             this.isCommandsSplitterChanged = true;
-            this.commandsSplitterPane2Size = event[1].size;
+            this.commandsSplitterPane2Size = event.panes[1].size;
             // We also save the value in the store. We do not want to set commandsSplitterPane2Size as get/set computed property
             // (and call the appStore change in set()) because we set the value based on other settings (the 4:3 ratio) when PEA is mounted,
             // that value then shouldn't be saved in the store.
@@ -887,12 +890,12 @@ export default defineComponent({
             }
             else {
                 // The tricky case of when the state property has never been set
-                this.appStore.peaCommandsSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: event[1].size};
+                this.appStore.peaCommandsSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed]: event.panes[1].size};
             }
 
             // A change of divider position triggers a modification notification only when the user actively moves the divider,
             // we can distinguish between a sitation when the divider is position is loaded and user event by the content of the event
-            if(event.length > 1){
+            if(event.panes.length > 1){
                 this.appStore.isEditorContentModified = true;
             }
         }, 
@@ -917,20 +920,7 @@ export default defineComponent({
                 const frameCommandsScrollBarH = frameCommandsContainer.offsetHeight - frameCommandsContainer.clientHeight;
                 if(projectNameContainerDiv && firstAddCommandDiv){
                     const firstAddCommandDivFullHeight = firstAddCommandDiv.getBoundingClientRect().height + parseInt(window.getComputedStyle(firstAddCommandDiv).marginTop.replace("px","")) + parseInt(window.getComputedStyle(firstAddCommandDiv).marginBottom.replace("px",""));                    
-                    this.commandSplitterPane1MinSize = ((projectNameContainerDiv.getBoundingClientRect().height + firstAddCommandDivFullHeight + frameCommandsScrollBarH) * 100) / (viewPortH - commandsSplitterHeight);
-                    const currentPane1Size = parseFloat(((this.$refs.peaCommandsSplitterPane1Ref as InstanceType<typeof Pane>).$data as PaneData).style.height.replace("%",""));
-                    if(currentPane1Size < this.commandSplitterPane1MinSize){
-                        // Setting the min size doesn't mean that the current size will update to be valid. 
-                        // So we do it ourselves. The reactivity doesn't seem to always work (some timing issue?)
-                        // so we change the data of the Panes directly
-                        setTimeout(() => {
-                            this.commandsSplitterPane2Size = (100 - this.commandSplitterPane1MinSize);      
-                            (this.$refs.peaCommandsSplitterPane1Ref as InstanceType<typeof Pane>).$data.style.height = this.commandSplitterPane1MinSize + "%";
-                            (this.$refs.peaCommandsSplitterPane2Ref as InstanceType<typeof Pane>).$data.style.height = this.commandsSplitterPane2Size + "%";
-                            // And trigger the Graphics to resize properly
-                            document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged, {detail: onlyResizePEA}));
-                        }, 200);                        
-                    }     
+                    this.commandSplitterPane1MinSize = ((projectNameContainerDiv.getBoundingClientRect().height + firstAddCommandDivFullHeight + frameCommandsScrollBarH) * 100) / (viewPortH - commandsSplitterHeight);                    
                 }    
             
                 // Pane 2:
@@ -938,18 +928,7 @@ export default defineComponent({
                 const peaConsoleElement = document.getElementById(getPEAConsoleId());
                 if(peaConsoleElement){               
                     const peaConsoleLineH = parseFloat(window.getComputedStyle(peaConsoleElement).lineHeight.replace("px",""));
-                    this.commandSplitterPane2MinSize = ((peaHeaderHeight + 3 * peaConsoleLineH) * 100) / (viewPortH - commandsSplitterHeight);
-                    const currentPane2Size = parseFloat(((this.$refs.peaCommandsSplitterPane2Ref as InstanceType<typeof Pane>).$data as PaneData).style.height.replace("%",""));
-                    if(currentPane2Size < this.commandSplitterPane2MinSize){
-                        // Setting the min size doesn't mean that the current size will update to be valid. 
-                        // So we do it ourselves. The reactivity doesn't seem to always work (some timing issue?)
-                        // so we change the data of the Panes directly
-                        setTimeout(() => {
-                            this.commandsSplitterPane2Size = (this.commandSplitterPane2MinSize);      
-                            (this.$refs.peaCommandsSplitterPane1Ref as InstanceType<typeof Pane>).$data.style.height = (100 - this.commandsSplitterPane2Size) + "%";
-                            (this.$refs.peaCommandsSplitterPane2Ref as InstanceType<typeof Pane>).$data.style.height = this.commandsSplitterPane2Size + "%";
-                        }, 200);                        
-                    }     
+                    this.commandSplitterPane2MinSize = ((peaHeaderHeight + 3 * peaConsoleLineH) * 100) / (viewPortH - commandsSplitterHeight);    
                 }
             }
         },
@@ -1002,19 +981,19 @@ export default defineComponent({
  * for the splitter in use in this component.
  */
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
-.#{$strype-classname-commands-pea-splitter-theme}.splitpanes--horizontal>.splitpanes__splitter,
-.#{$strype-classname-commands-pea-splitter-theme} > .splitpanes--horizontal>.splitpanes__splitter {
-    height: 1px !important;
-    background-color: black;
-    position: relative;
+.#{$strype-classname-commands-pea-splitter-theme} {
+    height: 100%;
 }
 
-.#{$strype-classname-commands-pea-splitter-theme}.#{$strype-classname-expanded-pea}.splitpanes--horizontal>.splitpanes__splitter,
+.#{$strype-classname-commands-pea-splitter-theme} > .splitpanes--horizontal>.splitpanes__splitter {
+    height: 1px !important;
+    background-color: black !important;
+}
+
 .#{$strype-classname-commands-pea-splitter-theme}.#{$strype-classname-expanded-pea} > .splitpanes--horizontal>.splitpanes__splitter {
     background-color: transparent !important;    
 }
 
-.#{$strype-classname-commands-pea-splitter-theme}.splitpanes--horizontal>.splitpanes__splitter:before,
 .#{$strype-classname-commands-pea-splitter-theme} > .splitpanes--horizontal>.splitpanes__splitter:before {
     content: "";
     position: absolute;
@@ -1027,7 +1006,7 @@ export default defineComponent({
 }
 
 .collapsed-pea-splitter-pane {
-    background-color: $pea-outer-background-color;
+    background-color: $pea-outer-background-color !important;
 }
 // #v-endif
 /** End splitter classes */

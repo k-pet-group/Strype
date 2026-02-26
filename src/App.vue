@@ -19,69 +19,75 @@
                 </div>
             </div>
             <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
-            <Splitpanes class="expanded-PEA-splitter-overlay strype-split-theme" v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
-                <pane key="1" :size="100 - expandedPEAOverlaySplitterPane2Size">
-                </pane>
-                <pane ref="overlayExpandedPEAPane2Ref" key="2" :size="expandedPEAOverlaySplitterPane2Size" :min-size="peaOverlayPane2MinSize" :max-size="peaOverlayPane2MaxSize">
-                </pane>
-            </Splitpanes>
+            <!-- the container div is only here because the new version of Splitpanes doesn't get the classes -->
+            <div class="expanded-PEA-splitter-overlay strype-split-theme">
+                <Splitpanes v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
+                    <pane key="1" :size="100 - expandedPEAOverlaySplitterPane2Size">
+                    </pane>
+                    <pane id="overlayExpandedPEASplitterPane2" key="2" :size="expandedPEAOverlaySplitterPane2Size" :min-size="peaOverlayPane2MinSize" :max-size="peaOverlayPane2MaxSize">
+                    </pane>
+                </Splitpanes>
+            </div>
             <!-- #v-endif-->
             <!-- Keep the style position of the row div to get proper z order layout of the app -->
             <div class="row g-0" style="position: relative;">
-                <Splitpanes class="strype-split-theme" @resize=onStrypeCommandsSplitPaneResize>
-                    <Pane key="1" :size="100 - editorCommandsSplitterPane2Size" min-size="33" max-size="90">
-                        <!-- These data items are to enable testing: -->
-                        <div :id="editorId" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" class="print-full-height">
-                            <div class="top no-print">
-                                <MessageBanner 
-                                    v-if="showMessage"
-                                />
-                            </div>
-                            <div class="row g-0" >
-                                <Menu 
-                                    :id="menuUID" 
-                                    :ref="menuUID"
-                                    v-on:[CustomEventTypes.appShowProgressOverlay]="applyShowAppProgress"
-                                    v-on:[CustomEventTypes.appResetProject]="resetStrypeProject"
-                                    class="noselect no-print col flex-grow-0"
-                                />
-                                <div class="col">
-                                    <div 
-                                        :id="editorUID" 
-                                        :class="{'editor-code-div noselect print-full-height':true, ...layoutClassesForStandardVersion}"
-                                        @mousedown="handleWholeEditorMouseDown"
-                                    >
-                                        <FrameHeader
-                                            :id="getFrameHeaderUID(-10)"
-                                            :labels="projectDocLabels"
-                                            :frameId="-10"
-                                            :frameType="projectDocFrameType"
-                                            :isDisabled="false"
-                                            :frameAllowChildren="false"
-                                            :erroneous="false"
-                                            :wasLastRuntimeError="false"
-                                            :frameAllowedCollapsedStates="[]"
-                                            :frameAllowedFrozenStates="[]"
-                                            :onFocus="() => {}"/>
-                                        <FrameContainer
-                                            v-for="container in containerFrames"
-                                            :key="container.frameType.type + '-id:' + container.id"
-                                            :id="getFrameContainerUID(container.id)"
-                                            :ref="getFrameContainerUID(container.id)"
-                                            :frameId="container.id"
-                                            :containerLabel="container.frameType.labels[0].label"
-                                            :caretVisibility="container.caretVisibility"
-                                            :frameType="container.frameType"
-                                        />
+                <!-- the container div is only here because the new version of Splitpanes doesn't get the classes -->
+                <div class="strype-split-theme">
+                    <Splitpanes @resize=onStrypeCommandsSplitPaneResize>
+                        <Pane key="1" :size="100 - editorCommandsSplitterPane2Size" min-size="33" max-size="90">
+                            <!-- These data items are to enable testing: -->
+                            <div :id="editorId" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" class="print-full-height">
+                                <div class="top no-print">
+                                    <MessageBanner 
+                                        v-if="showMessage"
+                                    />
+                                </div>
+                                <div class="row g-0" >
+                                    <Menu 
+                                        :id="menuUID" 
+                                        :ref="menuUID"
+                                        v-on:[CustomEventTypes.appShowProgressOverlay]="applyShowAppProgress"
+                                        v-on:[CustomEventTypes.appResetProject]="resetStrypeProject"
+                                        class="noselect no-print col flex-grow-0"
+                                    />
+                                    <div class="col">
+                                        <div 
+                                            :id="editorUID" 
+                                            :class="{'editor-code-div noselect print-full-height':true, ...layoutClassesForStandardVersion}"
+                                            @mousedown="handleWholeEditorMouseDown"
+                                        >
+                                            <FrameHeader
+                                                :id="getFrameHeaderUID(-10)"
+                                                :labels="projectDocLabels"
+                                                :frameId="-10"
+                                                :frameType="projectDocFrameType"
+                                                :isDisabled="false"
+                                                :frameAllowChildren="false"
+                                                :erroneous="false"
+                                                :wasLastRuntimeError="false"
+                                                :frameAllowedCollapsedStates="[]"
+                                                :frameAllowedFrozenStates="[]"
+                                                :onFocus="() => {}"/>
+                                            <FrameContainer
+                                                v-for="container in containerFrames"
+                                                :key="container.frameType.type + '-id:' + container.id"
+                                                :id="getFrameContainerUID(container.id)"
+                                                :ref="getFrameContainerUID(container.id)"
+                                                :frameId="container.id"
+                                                :containerLabel="container.frameType.labels[0].label"
+                                                :caretVisibility="container.caretVisibility"
+                                                :frameType="container.frameType"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </Pane>
-                    <Pane key="2" ref="editorCommandsSplitterPane2" :size="editorCommandsSplitterPane2Size" class="no-print">
-                        <Commands :id="commandsContainerId" class="noselect" :ref="strypeCommandsRefId" />
-                    </Pane>
-                </SplitPanes>
+                        </Pane>
+                        <Pane id="strypeEditorCommandsSplitPane2" key="2" :size="editorCommandsSplitterPane2Size" class="no-print">
+                            <Commands :id="commandsContainerId" class="noselect" :ref="strypeCommandsRefId" />
+                        </Pane>
+                    </SplitPanes>
+                </div>
             </div>
             <SimpleMsgModalDlg :dlgId="simpleMsgModalDlgId"/>
             <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
@@ -121,7 +127,7 @@ import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
-import {Splitpanes, Pane, PaneData} from "splitpanes";
+import {Splitpanes, Pane} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
@@ -261,16 +267,16 @@ export default defineComponent({
                 value = (this.appStore.peaLayoutMode != undefined && this.appStore.editorCommandsSplitterPane2Size != undefined && this.appStore.editorCommandsSplitterPane2Size[this.appStore.peaLayoutMode] != undefined) 
                     ? this.appStore.editorCommandsSplitterPane2Size[this.appStore.peaLayoutMode] as number
                     // When there is no set value for a given layout mode,
-                    // whe check that any change in another layout has ever been made: if yes we just keep the divider as it is, if not, we use the default value.
+                    // we check that any change in another layout has ever been made: if yes we just keep the divider as it is, if not, we use the default value.
                     : ((this.appStore.editorCommandsSplitterPane2Size != undefined)
-                        ? parseFloat(((this.$refs.editorCommandsSplitterPane2 as InstanceType<typeof Pane>).$data as PaneData).style.width.replace("%",""))
+                        ? parseFloat((document.querySelector("#strypeEditorCommandsSplitPane2") as HTMLDivElement).style.width.replace("%",""))
                         : parseFloat(scssVars.editorCommandsSplitterPane2SizePercentValue));
                 // #v-endif
                 return value;
                 
             },
             set(value: number) {
-                this.onStrypeCommandsSplitPaneResize({1: {size: value}});
+                this.onStrypeCommandsSplitPaneResize({panes: [{}, {size: value}]});
             },
         },
 
@@ -326,16 +332,16 @@ export default defineComponent({
                     // When there is no set value for a given layout mode,
                     // whe check that any change in another layout has ever been made: if yes we just keep the divider as it is, if not, we use the default value.
                     : ((this.appStore.peaExpandedSplitterPane2Size != undefined)
-                        ? parseFloat(((this.$refs.overlayExpandedPEAPane2Ref as InstanceType<typeof Pane>).$data as PaneData).style.height.replace("%",""))
+                        ? parseFloat((document.getElementById("overlayExpandedPEASplitterPane2") as HTMLElement).style.height.replace("%",""))
                         :  parseFloat(scssVars.peaExpandedOverlaySplitterPane2SizePercentValue));
                 // The PEA needs to react to the change of value when we are in an expanded mode
                 if(this.appStore.peaLayoutMode == StrypePEALayoutMode.tabsExpanded || this.appStore.peaLayoutMode == StrypePEALayoutMode.splitExpanded){
-                    this.$nextTick(() => this.onExpandedPythonExecAreaSplitPaneResize({1: {size: value}}));
+                    this.$nextTick(() => this.onExpandedPythonExecAreaSplitPaneResize({panes: [{}, {size: value}]}));
                 }
                 return value;
             },
             set(value: number) {
-                this.onExpandedPythonExecAreaSplitPaneResize({1: {size: value}});                    
+                this.onExpandedPythonExecAreaSplitPaneResize({panes: [{}, {size: value}]});                    
             },
         },
 
@@ -562,7 +568,7 @@ export default defineComponent({
             setTimeout(() => {
                 debounceComputeAddFrameCommandContainerSize((event as CustomEvent).detail);
                 if((event as CustomEvent).detail){
-                    this.onExpandedPythonExecAreaSplitPaneResize({1: {size: this.expandedPEAOverlaySplitterPane2Size}});
+                    this.onExpandedPythonExecAreaSplitPaneResize({panes: [{}, {size: this.expandedPEAOverlaySplitterPane2Size}]});
                 }
                 else{
                     const croppedEditor = document.getElementsByClassName(scssVars.croppedEditorDivClassName);
@@ -606,7 +612,7 @@ export default defineComponent({
             // When the window is resized, the overlay expanded PEA splitter is properly updated. However, the underlying UI is not updated
             // properly (because it isn't inside that splitter) so we need to manually update things.
             if(this.isExpandedPythonExecArea) {
-                this.onExpandedPythonExecAreaSplitPaneResize({1: {size: ((this.$refs.overlayExpandedPEAPane2Ref as InstanceType<typeof Pane>).$data as PaneData).style.height.replace("%","")}}, true);
+                this.onExpandedPythonExecAreaSplitPaneResize({panes: [{}, {size: (document.getElementById("overlayExpandedPEASplitterPane2") as HTMLElement).style.height.replace("%","")}]}, true);
             }
 
             // Re-scale the Turtle canvas.
@@ -1433,7 +1439,7 @@ export default defineComponent({
         onExpandedPythonExecAreaSplitPaneResize(event: any, calledForResize?: boolean){
             // We want to know the size of the second pane (https://antoniandre.github.io/splitpanes/#emitted-events).
             // It will dictate the size of the Python execution area (expanded, with a range between 20% and 80% of the vh)
-            const lowerPanelSize = event[1].size as number;
+            const lowerPanelSize = event.panes[1].size as number;
             if(!calledForResize){
                 // If the call isn't trigger by a window resize, we save the panel 1 size in the project
                 if(this.appStore.peaExpandedSplitterPane2Size != undefined) {
@@ -1447,7 +1453,7 @@ export default defineComponent({
 
                 // A change of divider position triggers a modification notification only when the user actively moves the divider,
                 // we can distinguish between a sitation when the divider is position is loaded and user event by the content of the event
-                if((event?.length??0) > 1){
+                if((event?.panes?.length??0) > 1){
                     this.appStore.isEditorContentModified = true;
                 }
             }
@@ -1487,11 +1493,11 @@ export default defineComponent({
         onStrypeCommandsSplitPaneResize(event: any, useSpecificPEALayout?: StrypePEALayoutMode){
             // Save the new size of the RHS pane of the editor/commands splitter
             if(this.appStore.editorCommandsSplitterPane2Size != undefined) {
-                Vue.set(this.appStore.editorCommandsSplitterPane2Size, useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed), event[1].size);
+                Vue.set(this.appStore.editorCommandsSplitterPane2Size, useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed), event.panes[1].size);
             }
             else {
                 // The tricky case of when the state property has never been set
-                this.appStore.editorCommandsSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed)]: event[1].size};
+                this.appStore.editorCommandsSplitterPane2Size = {...defaultEmptyStrypeLayoutDividerSettings, [useSpecificPEALayout??(this.appStore.peaLayoutMode??StrypePEALayoutMode.tabsCollapsed)]: event.panes[1].size};
             }
 
             // A change of divider position triggers a modification notification only when the user actively moves the divider,
@@ -1890,11 +1896,11 @@ $divider-grey: darken($background-grey, 15%);
 	cursor: row-resize
 }
 
-.splitpanes.strype-split-theme > .splitpanes__pane {
+.strype-split-theme .splitpanes .splitpanes__pane {
 	background-color: transparent;
 }
 
-.splitpanes.strype-split-theme > .splitpanes__splitter {
+.strype-split-theme .splitpanes > .splitpanes__splitter {
     background-color: transparent;
 	-webkit-box-sizing: border-box;
 	box-sizing: border-box;
@@ -1903,15 +1909,14 @@ $divider-grey: darken($background-grey, 15%);
 	flex-shrink: 0
 }
 
-.splitpanes.strype-split-theme > .splitpanes__splitter:first-child {
+.strype-split-theme .splitpanes > .splitpanes__splitter:first-child {
 	cursor: auto
 }
 
-.strype-split-theme.splitpanes > .splitpanes .splitpanes__splitter {
+.strype-split-theme .splitpanes > .splitpanes .splitpanes__splitter {
 	z-index: 1
 }
 
-.strype-split-theme.splitpanes--vertical>.splitpanes__splitter,
 .strype-split-theme .splitpanes--vertical>.splitpanes__splitter {
 	width: 2px;
 	//border-left: 1px solid #eee;
@@ -1919,8 +1924,6 @@ $divider-grey: darken($background-grey, 15%);
 	margin-left: -1px
 }
 
-.strype-split-theme.splitpanes--vertical>.splitpanes__splitter:before,
-.strype-split-theme.splitpanes--vertical>.splitpanes__splitter:after,
 .strype-split-theme .splitpanes--vertical>.splitpanes__splitter:before,
 .strype-split-theme .splitpanes--vertical>.splitpanes__splitter:after {
 	-webkit-transform: translateY(-50%);
@@ -1930,25 +1933,20 @@ $divider-grey: darken($background-grey, 15%);
 	height: 30px
 }
 
-.strype-split-theme.splitpanes--vertical>.splitpanes__splitter:before,
 .strype-split-theme .splitpanes--vertical>.splitpanes__splitter:before {
 	margin-left: -2px
 }
 
-.strype-split-theme.splitpanes--vertical>.splitpanes__splitter:after,
 .strype-split-theme .splitpanes--vertical>.splitpanes__splitter:after {
 	margin-left: 1px
 }
 
-.strype-split-theme.splitpanes--horizontal>.splitpanes__splitter,
 .strype-split-theme .splitpanes--horizontal>.splitpanes__splitter {
 	height: 14px;
 	border-top: 1px solid transparent;
 	margin-top: -1px
 }
 
-.strype-split-theme.splitpanes--horizontal>.splitpanes__splitter:before,
-.strype-split-theme.splitpanes--horizontal>.splitpanes__splitter:after,
 .strype-split-theme .splitpanes--horizontal>.splitpanes__splitter:before,
 .strype-split-theme .splitpanes--horizontal>.splitpanes__splitter:after {
 	-webkit-transform: translateX(-50%);
@@ -1958,12 +1956,10 @@ $divider-grey: darken($background-grey, 15%);
 	height: 1px
 }
 
-.strype-split-theme.splitpanes--horizontal>.splitpanes__splitter:before,
 .strype-split-theme .splitpanes--horizontal>.splitpanes__splitter:before {
 	margin-top: -2px
 }
 
-.strype-split-theme.splitpanes--horizontal>.splitpanes__splitter:after,
 .strype-split-theme .splitpanes--horizontal>.splitpanes__splitter:after {
 	margin-top: 1px
 }

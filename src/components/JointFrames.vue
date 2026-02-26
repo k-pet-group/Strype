@@ -20,9 +20,8 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import { defineComponent } from "vue";
+import { defineAsyncComponent, defineComponent } from "vue";
 import { useStore } from "@/store/store";
-import Frame from "@/components/Frame.vue";
 import { FrameObject, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
 import { getFrameUID } from "@/helpers/editor";
@@ -35,7 +34,7 @@ export default defineComponent({
     name: "JointFrames",
 
     components: {
-        Frame,
+        Frame: defineAsyncComponent(() => import("@/components/Frame.vue")), // lazy umport as we have a circular reference with this component.
     },
 
     props: {

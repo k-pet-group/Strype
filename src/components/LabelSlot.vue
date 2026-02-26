@@ -43,18 +43,21 @@
             @mouseleave="startHideMediaPreviewPopup"
             :data-code="code"
             :data-mediaType="getMediaType()">
-               
-        <b-popover
-            v-if="erroneous()"
-            ref="errorPopover"
-            :target="UID"
-            :title="errorHeader"
-            triggers="hover"
-            :content="errorMessage"
-            custom-class="error-popover modified-title-popover"
-            placement="bottom"
-        >
-        </b-popover>
+        
+        <teleport to="body">    
+            <BPopover
+                v-if="erroneous()"
+                :id="errorPopoverUID"
+                :target="UID"
+                :title="errorHeader"
+                hover
+                :content="errorMessage"
+                title-class="title-popover modified-title-popover"
+                body-class="error-popover"
+                placement="bottom"
+            >
+            </BPopover>
+        </teleport>
 
         <AutoCompletion
             v-show="focused && showAC"
@@ -82,7 +85,7 @@ import { mapStores } from "pinia";
 import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
 import { cloneDeep } from "lodash";
-import { BPopover } from "bootstrap-vue";
+import { BPopover, useToggle } from "bootstrap-vue-next";
 import scssVars from "@/assets/style/_export.module.scss";
 import {drawSoundOnCanvas} from "@/helpers/media";
 import { isMacOSPlatform } from "@/helpers/common";
@@ -94,6 +97,15 @@ const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 })
 
 export default defineComponent({
     name: "LabelSlot",
+
+    setup(componentInstance){
+        // Move the Composition API style computed properties here if we need them setup:
+        const errorPopoverUID = `errorPopover_labelSlot_${componentInstance.frameId}_${componentInstance.labelSlotsIndex}_${componentInstance.slotId}`;
+
+        // Expose useToogle() of Bootstrap Vue Next inside setup (otherwise we get an error, even if it works)
+        const toggleErrorPopover = useToggle(errorPopoverUID);
+        return { errorPopoverUID, toggleErrorPopover };
+    },
 
     created() {
         // Expose this component that other components might need.
@@ -117,6 +129,7 @@ export default defineComponent({
 
     components: {
         AutoCompletion,
+        BPopover,
     },
 
     props: {
@@ -559,7 +572,7 @@ export default defineComponent({
 
                 // As we receive focus, we show the error popover if required. Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
                 if(this.erroneous()){
-                    (this.$refs.errorPopover as InstanceType<typeof BPopover>).$emit("open");
+                    this.toggleErrorPopover.show();
                 }
             }, waitFor);           
         },
@@ -680,9 +693,10 @@ export default defineComponent({
                     this.appStore.ignoreKeyEvent = false;
                 }
 
-                // And we hide the error popover. Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
-                (this.$refs.errorPopover as InstanceType<typeof BPopover>)?.$emit("close");
-            
+                // And we hide the error popover (if still showing). Note that we do it programmatically as it seems the focus trigger on popover isn't working in our configuration
+                if(document.getElementById(this.errorPopoverUID)?.classList.contains("show")){
+                    this.toggleErrorPopover.hide();
+                }
             }
         },
         
@@ -1810,6 +1824,8 @@ export default defineComponent({
     // Nedded for the code to understand the formated errors which split multiple
     // errors with \n
     white-space: pre-line !important;
+    --bs-popover-body-padding-x: 0.75rem;
+    --bs-popover-body-padding-y: 0.5rem;
 }
 
 .ac {

@@ -2,14 +2,14 @@
 <template>
     <div :id="peaComponentId" :class="{'pea-component': true, [scssVars.expandedPEAClassName]: isExpandedPEA, 'no-43-ratio-collapsed-PEA': !hasDefault43Ratio && !isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
         <div :id="controlsDivId" :class="{'pea-controls-div': true, 'expanded-PEA-controls': isExpandedPEA}">           
-            <b-tabs v-show="isTabsLayout" v-model="peaDisplayTabIndex" no-key-nav>
-                <b-tab v-show="isTabsLayout" :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></b-tab>
-                <b-tab v-show="isTabsLayout" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab" active></b-tab>
-            </b-tabs>
+            <BTabs v-show="isTabsLayout" v-model:index="peaDisplayTabIndex" no-key-nav>
+                <BTab v-show="isTabsLayout" :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" title-link-class="pea-display-tab"></BTab>
+                <BTab v-show="isTabsLayout" :title="'\u2771\u23BD '+$t('PEA.console')" title-link-class="pea-display-tab"></BTab>
+            </BTabs>
             <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the tabs -->
             <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
             <div class="flex-padding"/>            
-            <button id="runButton" ref="runButton" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}">
+            <button id="runButton" ref="runButton" class="pea-controls-button" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}">
                 <img v-if="!isPythonExecuting" :src="faviconURL" class="pea-play-img">
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
                 <span>{{runCodeButtonLabel}}</span>
@@ -77,6 +77,7 @@ import {bufferToBase64} from "@/helpers/media";
 import turtleImgURL from "@/assets/images/turtle.png" ;
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
+import { BTab, BTabs } from "bootstrap-vue-next";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -119,6 +120,7 @@ export default defineComponent({
         Pane,
         SVGIcon,
         VueContext,
+        BTabs, BTab,
     },
 
     props:{
@@ -162,7 +164,7 @@ export default defineComponent({
             isTabsLayout: true, // flag to indicate the PEA's layout - tabs by default
             graphicsTemporaryHidden: false, //flag to use when we need to temporary hide the graphics for UI reasons (like before a layout of the PEA is performed, so we can compute things right)
             turtleGraphicsImported: false, // by default, Turtle isn't imported - this flag is updated when we detect the import (see event registration in mounted())
-            peaDisplayTabIndex: PEATabIndexes.console, // the index of the PEA tab (graphics/console), we use it equally as a flag to indicate if we are on one or other tab
+            peaDisplayTabIndex: PEATabIndexes.console, // (see mounted() for details) - flag of the tab index, used equally as a flag to indicate if we are on one or other tab
             interruptedTurtle: false,
             isTabContentHovered: false,
             isTurtleListeningKeyEvents: false, // flag to indicate whether an execution of Turtle resulted in listen for key events on Turtle
@@ -183,6 +185,15 @@ export default defineComponent({
     },
     
     mounted(){
+        this.$nextTick(() => {
+            // The default index of the PEA tab (graphics/console) we want to show.
+            // The value set in the data by default is not "meaningful", because for
+            // some reason with the BTabs internals, the index is set back to -1, then 0.
+            // So we give our wanted default index immediatly here so in the end the UI
+            // looks like initially having the right tab opened.
+            this.peaDisplayTabIndex = PEATabIndexes.console;
+        });
+    
         // Just to prevent any inconsistency with a uncompatible state, set a state value here and we'll know we won't get in some error
         useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
         
@@ -1108,7 +1119,7 @@ export default defineComponent({
         align-items: center;
     }
 
-    .pea-controls-div button {
+    .pea-controls-button {
         z-index: 10;
         border-radius: 10px;
         border: 1px solid transparent;
@@ -1178,11 +1189,13 @@ export default defineComponent({
     }
 
     .pea-display-tab {
-        color: black;
+        --bs-nav-link-color: black;
+        --bs-nav-link-hover-color: black;
+        --bs-nav-tabs-border-radius: 0.25rem;
+
     }
 
     .pea-display-tab:hover {
-        color: black;
         background-color: lightgray !important;
     }
 

@@ -840,8 +840,6 @@ export const EmptyFrameObject: FrameObject = {
  **/
 export type BootstrapDlgSize = ("sm" | "lg" | "xl");
 
-export type BootstrapDlgAutoFocusButton = ("ok" | "cancel");
-
 /**
  *  Types for the messages banner
  **/

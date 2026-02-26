@@ -17,12 +17,12 @@
  * (The APIs are accessible via the store, see in store why.)
  **/
 
-import { BvModalEvent } from "bootstrap-vue";
 import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
 import { AppEvent, Position, SaveRequestReason, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { LoadedMedia } from "@/types/types";
 import { PersistentImageManager } from "@/stryperuntime/image_and_collisions";
+import { BvTriggerableEvent } from "bootstrap-vue-next";
 // #v-end-if
 
 export type AppComponentAPI = {
@@ -46,7 +46,7 @@ export type CommandsComponentAPI = {
 };
 
 export type MenuComponentAPI = {
-  onStrypeMenuHideModalDlg: (event: BvModalEvent, dlgId: string, forcedProjectName?: string, saveReason ?: SaveRequestReason) => void,
+  onStrypeMenuHideModalDlg: (event: BvTriggerableEvent, forcedProjectName?: string, saveReason ?: SaveRequestReason) => void,
   toggleMenuOnOff: (e: Event | null) => void,
   setCurrentErrorNavIndex: (v: number) => void, 
   goToError: (event: MouseEvent | null, toNext: boolean) => void,

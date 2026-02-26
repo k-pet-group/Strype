@@ -3,29 +3,28 @@
             :dlgId="dlgId"
             :dlg-title="$t('demos.dialogTitle')"
             showCloseBtn
-            :autoFocusButton="'ok'"
             css-class="open-demo-dlg"
             :ok-disabled="!(selectedDemoCategoryIndex >= 0 && selectedDemoCategoryIndex < availableDemos.length && selectedDemoItemIndex >= 0 && selectedDemoItemIndex < demosInCurrentCategory.length)" >
         <div class="d-flex" style="height: 400px;">
             <!-- Left Pane: List Group -->
-            <b-list-group class="flex-column" style="width: 30% !important;">
-                <b-list-group-item
+            <BListGroup class="flex-column" style="width: 30% !important;">
+                <BListGroupItem
                     v-for="(item, index) in availableDemos"
                     :key="index"
                     :active="selectedDemoCategoryIndex === index && availableDemos.length > 1"
-                    @click="changeDemoDialogCategory(index, item.demos)"
                     button
+                    class="open-demo-dlg-demo-group-item"
                 >
                     <span class="open-demo-dlg-demo-group-type" v-if="item.type">{{item.type}}</span>
                     {{ item.name }}
-                </b-list-group-item>
+                </BListGroupItem>
                 
                 <div class="open-demo-dlg-add-library-panel">
                     <span>{{$t('demos.addLibrary')}}</span>
                     <input ref="newLibraryAddress" :placeholder="$t('demos.libraryAddrPlaceholder')" type="text" autocomplete="off" class="cell" />
-                    <b-button @click="addSpecifiedLibrary">{{ $t('demos.add') }}</b-button>
+                    <BButton @click="addSpecifiedLibrary">{{ $t('demos.add') }}</BButton>
                 </div>
-            </b-list-group>
+            </BListGroup>
 
             <!-- Right Pane: Dynamic Grid -->
             <div class="flex-grow-1 p-3 overflow-auto">
@@ -58,12 +57,13 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import {Demo, DemoGroup, getBuiltinDemos, getThirdPartyLibraryDemos} from "@/helpers/demos";
 import Parser from "@/parser/parser";
 import {escapeRegExp} from "lodash";
-import { BvModalEvent } from "bootstrap-vue";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { BButton, BListGroup, BListGroupItem } from "bootstrap-vue-next";
 import { AppSPYPrefix, eventBus } from "@/helpers/appContext";
+import { CustomEventTypes } from "@/helpers/editor";
 
 export default defineComponent({
-    components: {ModalDlg},
+    components: {ModalDlg, BButton, BListGroup, BListGroupItem},
     
     props: {
         dlgId: {type: String, required: true},
@@ -118,6 +118,12 @@ export default defineComponent({
             for (const library of [...new Set([...extraLibraries, ...p.getLibraries()])]) {
                 this.availableDemos.push(getThirdPartyLibraryDemos(library));
             }
+
+            // It seems that Vue Bootstrap Next do not exposes @click on BListGroupItem therefore we cannot register anything on our items' click event, it will be ignored.
+            // Instead, once this component is mounted we manually register the click events here.
+            this.$nextTick(() => document.querySelectorAll(".open-demo-dlg-demo-group-item").forEach((el, index) => {
+                el.addEventListener("click", () => this.changeDemoDialogCategory(index, this.availableDemos[index].demos));
+            }));
         },
 
         async changeDemoDialogCategory(index: number, itemPromise: Promise<Demo[]>) {
@@ -169,8 +175,7 @@ export default defineComponent({
             // Triggers the modal's OK event to load the selected example. The click event is fired before the double-click event:
             // selectedDemoItemIndex is already set to the right value.
             // We first close the dialog, than simulate a "close with action" in the Menu (since we can't close with "OK" status.)
-            eventBus.emit("bv::hide::modal", this.dlgId);
-            vueComponentsAPIHandler.menuComponentAPI?.onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.dlgId);
+            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "ok", componentId: this.dlgId});
         },
 
         addSpecifiedLibrary() {
@@ -208,13 +213,18 @@ export default defineComponent({
                     address = protocol + address;
                 }
                 this.availableDemos.push(getThirdPartyLibraryDemos(address));
+                // Also add the click event listener (see updateAvailableDemos() why we do so)
+                this.$nextTick(() => {
+                    const indexOfLastGroupItem = this.availableDemos.length - 1;
+                    document.querySelectorAll(".open-demo-dlg-demo-group-item")[this.availableDemos.length - 1]?.addEventListener("click", () => this.changeDemoDialogCategory(indexOfLastGroupItem, this.availableDemos[indexOfLastGroupItem].demos));                    
+                });
             }
         },
     },
 });
 </script>
 <style>
-.open-demo-dlg > .modal-md {
+.open-demo-dlg > .modal-dialog {
   width: auto; /* important to let content control size */
   min-width: min(800px, 80vw);
 }
@@ -267,6 +277,11 @@ span.open-demo-dlg-description {
 
 .open-demo-dlg-selected-demo-item span.open-demo-dlg-description a {
     color: white;
+}
+
+.open-demo-dlg-demo-group-item {
+    --bs-list-group-item-padding-x:1.25rem;
+    --bs-list-group-item-padding-y:0.75rem;
 }
 
 .open-demo-dlg-demo-group-type {

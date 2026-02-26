@@ -35,9 +35,8 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import { defineComponent } from "vue";
+import { defineAsyncComponent, defineComponent } from "vue";
 import { useStore } from "@/store/store";
-import Frame from "@/components/Frame.vue";
 import CaretContainer from "@/components/CaretContainer.vue";
 import { AllFrameTypesIdentifier, CaretPosition, FrameObject, PythonExecRunningState } from "@/types/types";
 import { mapStores } from "pinia";
@@ -52,7 +51,7 @@ export default defineComponent({
 
 
     components: {
-        Frame,
+        Frame: defineAsyncComponent(() => import("@/components/Frame.vue")), // lazy import as we have a circular reference with this component.
         CaretContainer,
     },
     

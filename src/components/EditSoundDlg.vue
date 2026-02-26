@@ -17,17 +17,15 @@
             @mousemove.native="handleMouseMove"
         ></cropper>
         <div class="EditSoundDlg-button-wrapper">
-            <b-button class="EditSoundDlg-play-button" :variant="playStopVariant" @click="doPlayStopPreview">{{playStopLabel}}</b-button>
+            <BButton class="EditSoundDlg-play-button" :variant="playStopVariant" @click="doPlayStopPreview">{{playStopLabel}}</BButton>
         </div>
-        <div class="d-flex justify-content-center mt" style="margin-top: 10px;">
+        <div class="d-flex justify-content-center" style="margin-top: 10px;">
             <div class="d-flex position-relative" style="font-size: 80%;">
-                <div class="d-flex flex-column text-right me-4" style="min-width: 250px; padding-right: 5px;">
+                <div class="d-flex flex-column text-end" style="min-width: 250px; padding-right: 5px;">
                     <div>{{$t(isMacOSPlatform() ? "media.cursorTimeMac" : "media.cursorTimeWin")}}</div>
                     <div>{{$t(isMacOSPlatform() ? "media.cursorHeightMac" : "media.cursorHeightWin")}}</div>
                 </div>
-                <!-- Divider -->
-                <div class="position-absolute top-0 bottom-0 start-50 translate-middle-x bg-secondary" style="width: 1px;"></div>
-                <div class="d-flex flex-column text-left ms-4" style="min-width: 250px; padding-left: 5px;">
+                <div class="d-flex flex-column text-start" style="min-width: 250px; padding-left: 5px;">
                     <div>{{cursorTime || "-"}}</div>
                     <div>{{cursorHeight || "-"}}</div>
                 </div>
@@ -43,7 +41,7 @@
         <span class="EditSoundDlg-sizeInfo">{{$t("media.soundChangedLength")}} {{currentSoundLength}} {{$t("media.soundSeconds")}}</span>
         <span class="EditSoundDlg-sizeInfo">{{$t("media.soundAverageVolume")}} {{Math.round(volumeRMS * 10 * 100)}}%</span>
         <div class="EditSoundDlg-button-wrapper">
-            <b-button class="EditSoundDlg-normalise-button" variant="info" @click="doNormaliseVolume">{{$t("media.soundNormaliseVolume")}}</b-button>
+            <BButton class="EditSoundDlg-normalise-button EditSoundImageDlg-info-btn" @click="doNormaliseVolume">{{$t("media.soundNormaliseVolume")}}</BButton>
         </div>
     </ModalDlg>
 </template>
@@ -55,12 +53,13 @@ import { Cropper } from "vue-advanced-cropper";
 import "vue-advanced-cropper/dist/style.css";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
-import { BvModalEvent } from "bootstrap-vue";
 import {drawSoundOnCanvas, getRMS, audioBufferToDataURL} from "@/helpers/media";
 import {TranslateResult} from "vue-i18n";
 import {isMacOSPlatform} from "@/helpers/common";
-import { eventBus } from "@/helpers/appContext";
+import { BButton, BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { eventBus } from "@/helpers/appContext";
+import { CustomEventTypes } from "@/helpers/editor";
 
 const previewImageWidth = 300;
 const previewImageHeight = 100;
@@ -71,6 +70,7 @@ export default defineComponent({
     components:{
         Cropper,
         ModalDlg,
+        BButton,
     },
 
     props:{
@@ -104,12 +104,12 @@ export default defineComponent({
         };
 
         // Register the event listener for the dialog here
-        eventBus.on("bv::modal::hide", this.onHideModalDlg as any);
+        eventBus.on(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);
     },
 
     beforeDestroy(){
         // Remove the event listener for the dialog here, just in case...
-        eventBus.off("bv::modal::hide", this.onHideModalDlg as any);
+        eventBus.off(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);
     },
 
     mounted() {
@@ -136,7 +136,7 @@ export default defineComponent({
 
     methods:{
         isMacOSPlatform,
-        onHideModalDlg(event: BvModalEvent, id: string){
+        onHideModalDlg(event: BvTriggerableEvent){
             if (this.stopPreview != null) {
                 this.stopPreview();
             }
@@ -311,7 +311,7 @@ export default defineComponent({
                 this.volumeScaleLogPercent = 0;
                 this.crop = {firstSampleIncl: 0, lastSampleExcl: this.soundToEdit.length, leftPixel: 0, widthPixels: previewImageWidth};
                 this.currentSoundLength = this.soundToEdit.duration.toFixed(3); 
-            }
+            }           
         },
     },
 });

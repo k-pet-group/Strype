@@ -10,9 +10,9 @@
             <span class="MediaPreviewPopup-header-text" v-html="mediaInfo"></span>
         </div>
         <div class="MediaPreviewPopup-controls">
-            <b-button size="sm" variant="outline-success" class="MediaPreviewPopup-header-preview-button" @click="doPreview">{{$t("media.preview")}}</b-button>
-            <b-button size="sm" variant="outline-success" class="MediaPreviewPopup-header-download-button" @click="doDownload"><i class="fa fa-download"></i></b-button>
-            <b-button size="sm" variant="outline-danger" class="MediaPreviewPopup-header-edit-button" @click="doEdit">{{$t("media.edit")}}</b-button>
+            <BButton size="sm" variant="outline-success" class="MediaPreviewPopup-header-preview-button" @click="doPreview">{{$t("media.preview")}}</BButton>
+            <BButton size="sm" variant="outline-success" class="MediaPreviewPopup-header-download-button" @click="doDownload"><i class="fa fa-download"></i></BButton>
+            <BButton size="sm" variant="outline-danger" class="MediaPreviewPopup-header-edit-button" @click="doEdit">{{$t("media.edit")}}</BButton>
         </div>
         <div class="MediaPreviewPopup-img-container-wrapper">
             <div class="MediaPreviewPopup-img-container">
@@ -31,6 +31,7 @@ import {PersistentImageManager} from "@/stryperuntime/image_and_collisions";
 import {getDateTimeFormatted} from "@/helpers/common";
 import {saveAs} from "file-saver";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { BButton } from "bootstrap-vue-next";
 
 // These bits of text are not translated because they are class names:
 const HTMLImageClass = "<a href='https://strype.org/doc/library/#strype.graphics.Image' target='_blank'>Image</a>";
@@ -47,6 +48,10 @@ export default defineComponent({
             showPopup: this.showPopup,
             startHidePopup: this.startHidePopup,
         };    
+    },
+
+    components: {
+        BButton,
     },
 
     data() {

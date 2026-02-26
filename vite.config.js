@@ -4,6 +4,8 @@ import path from "path";
 import ConditionalCompile from "vite-plugin-conditional-compiler";
 import fs from "fs";
 import vue from "@vitejs/plugin-vue";
+import Components from "unplugin-vue-components/vite";
+import { BootstrapVueNextResolver } from "bootstrap-vue-next/resolvers";
 
 function removeFilesPlugin(isStandardPython) {
     // The  library files we ship in the website depending on the platform we're on (standard Python or micro;bit).
@@ -50,6 +52,9 @@ export default defineConfig(({mode}) => {
                         },
                     },
                 },
+            }),
+            Components({
+                resolvers: [BootstrapVueNextResolver()],
             }),
             removeFilesPlugin(isStandardPython),
         ],

@@ -3,7 +3,7 @@ import { compileBlob } from "./compile";
 import { parseCodeAndGetParseElements } from "@/parser/parser";
 import { useStore } from "@/store/store";
 import { MessageDefinitions } from "@/types/types";
-import { getAppSimpleMsgDlgId } from "./editor";
+import { CustomEventTypes, getAppSimpleMsgDlgId } from "./editor";
 import i18n from "@/i18n";
 import { eventBus } from "./appContext";
 
@@ -24,7 +24,7 @@ export function downloadHex(showImagePopup?: boolean): void {
     if(!succeeded){
         // Notify the user of any detected errors in the code
         useStore().simpleModalDlgMsg = i18n.global.t("appMessage.preCompiledErrorNeedFix") as string;
-        eventBus.emit("bv::show::modal", getAppSimpleMsgDlgId());
+        eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
     }
     else if (showImagePopup){
         useStore().showMessage(MessageDefinitions.DownloadHex, null);
@@ -36,7 +36,7 @@ export function getPythonContent(): Promise<string> {
     if (parserElements.hasErrors) {
         // Notify the user of any detected errors in the code
         useStore().simpleModalDlgMsg = i18n.global.t("appMessage.preCompiledErrorNeedFix") as string;
-        eventBus.emit("bv::show::modal", getAppSimpleMsgDlgId());
+        eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
         return Promise.reject("");
     }
     return Promise.resolve(parserElements.parsedOutput);

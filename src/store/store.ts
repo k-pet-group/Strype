@@ -11,11 +11,11 @@ import { DAPWrapper } from "@/helpers/partial-flashing";
 import LZString from "lz-string";
 import { getAPIItemTextualDescriptions } from "@/helpers/microbitAPIDiscovery";
 import {cloneDeep, isEqual} from "lodash";
-import $ from "jquery";
-import { BvModalEvent } from "bootstrap-vue";
 import { TPyParser } from "tigerpython-parser";
 import emptyState from "@/store/initial-states/empty-state";
+import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import $ from "jquery";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { actOnTurtleImport } from "@/helpers/editor";
 // #v-endif
@@ -2570,10 +2570,10 @@ export const useStore = defineStore("app", {
                             if(!isVersionCorrect) {
                                 // If the version isn't correct, we ask confirmation to the user before continuing 
                                 // for ease of coding, we register a "one time" event listener on the modal
-                                const execSetStateFunction = (event: BvModalEvent, dlgId: string) => {
-                                    if((event.trigger == "ok" || event.trigger=="event") && dlgId == getImportDiffVersionModalDlgId()){
+                                const execSetStateFunction = (event: BvTriggerableEvent) => {
+                                    if((event.trigger == "ok" || event.trigger=="event") && event.componentId == getImportDiffVersionModalDlgId()){
                                         this.doSetStateFromJSONStr(newStateStr).then(() => {
-                                            eventBus.off("bv::modal::hide", execSetStateFunction as any); 
+                                            eventBus.off(CustomEventTypes.strypeModalHidden, execSetStateFunction); 
                                             resolve();          
                                         });                          
                                     }
@@ -2582,8 +2582,8 @@ export const useStore = defineStore("app", {
                                         reject(errorDetailMessage);
                                     }
                                 };
-                                eventBus.on("bv::modal::hide", execSetStateFunction as any); 
-                                eventBus.emit("bv::show::modal", getImportDiffVersionModalDlgId());
+                                eventBus.on(CustomEventTypes.strypeModalHidden, execSetStateFunction); 
+                                eventBus.emit(CustomEventTypes.showStrypeModal, getImportDiffVersionModalDlgId());
                             //
                             }
                             else{

@@ -1,108 +1,111 @@
 <template>
-    <div>
-        <div v-if="showAppProgress || setAppNotOnTop" :class="{'app-overlay-pane': true, 'app-progress-pane': showAppProgress}" @contextmenu="handleOverlayRightClick">
-            <div v-if="showAppProgress" class="app-progress-container">
-                <div class="progress">
-                    <div 
-                        class="progress-bar progress-bar-striped bg-info progress-bar-animated" 
-                        role="progressbar"
-                        style="width: 100%"
-                        aria-valuenow="100"
-                        aria-valuemin="0"
-                        aria-valuemax="100"
-                        >
-                        <span class="progress-bar-text">{{progressbarMessage}}</span>
+    <!-- With the new package for Bootstrap (for Vue 3), BApp must wrap the application content -->
+    <BApp>
+        <div>
+            <div v-if="showAppProgress || setAppNotOnTop" :class="{'app-overlay-pane': true, 'app-progress-pane': showAppProgress}" @contextmenu="handleOverlayRightClick">
+                <div v-if="showAppProgress" class="app-progress-container">
+                    <div class="progress">
+                        <div 
+                            class="progress-bar progress-bar-striped bg-info progress-bar-animated" 
+                            role="progressbar"
+                            style="width: 100%"
+                            aria-valuenow="100"
+                            aria-valuemin="0"
+                            aria-valuemax="100"
+                            >
+                            <span class="progress-bar-text">{{progressbarMessage}}</span>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
-        <Splitpanes class="expanded-PEA-splitter-overlay strype-split-theme" v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
-            <pane key="1" :size="100 - expandedPEAOverlaySplitterPane2Size">
-            </pane>
-            <pane ref="overlayExpandedPEAPane2Ref" key="2" :size="expandedPEAOverlaySplitterPane2Size" :min-size="peaOverlayPane2MinSize" :max-size="peaOverlayPane2MaxSize">
-            </pane>
-        </Splitpanes>
-        <!-- #v-endif-->
-        <!-- Keep the style position of the row div to get proper z order layout of the app -->
-        <div class="row" style="position: relative;">
-            <Splitpanes class="strype-split-theme" @resize=onStrypeCommandsSplitPaneResize>
-                <Pane key="1" :size="100 - editorCommandsSplitterPane2Size" min-size="33" max-size="90">
-                    <!-- These data items are to enable testing: -->
-                    <div :id="editorId" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" class="print-full-height">
-                        <div class="top no-print">
-                            <MessageBanner 
-                                v-if="showMessage"
-                            />
-                        </div>
-                        <div class="row no-gutters" >
-                            <Menu 
-                                :id="menuUID" 
-                                :ref="menuUID"
-                                v-on:[CustomEventTypes.appShowProgressOverlay]="applyShowAppProgress"
-                                v-on:[CustomEventTypes.appResetProject]="resetStrypeProject"
-                                class="noselect no-print"
-                            />
-                            <div class="col">
-                                <div 
-                                    :id="editorUID" 
-                                    :class="{'editor-code-div noselect print-full-height':true, ...layoutClassesForStandardVersion}"
-                                    @mousedown="handleWholeEditorMouseDown"
-                                >
-                                    <FrameHeader
-                                        :id="getFrameHeaderUID(-10)"
-                                        :labels="projectDocLabels"
-                                        :frameId="-10"
-                                        :frameType="projectDocFrameType"
-                                        :isDisabled="false"
-                                        :frameAllowChildren="false"
-                                        :erroneous="false"
-                                        :wasLastRuntimeError="false"
-                                        :frameAllowedCollapsedStates="[]"
-                                        :frameAllowedFrozenStates="[]"
-                                        :onFocus="() => {}"/>
-                                    <FrameContainer
-                                        v-for="container in containerFrames"
-                                        :key="container.frameType.type + '-id:' + container.id"
-                                        :id="getFrameContainerUID(container.id)"
-                                        :ref="getFrameContainerUID(container.id)"
-                                        :frameId="container.id"
-                                        :containerLabel="container.frameType.labels[0].label"
-                                        :caretVisibility="container.caretVisibility"
-                                        :frameType="container.frameType"
-                                    />
+            <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
+            <Splitpanes class="expanded-PEA-splitter-overlay strype-split-theme" v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
+                <pane key="1" :size="100 - expandedPEAOverlaySplitterPane2Size">
+                </pane>
+                <pane ref="overlayExpandedPEAPane2Ref" key="2" :size="expandedPEAOverlaySplitterPane2Size" :min-size="peaOverlayPane2MinSize" :max-size="peaOverlayPane2MaxSize">
+                </pane>
+            </Splitpanes>
+            <!-- #v-endif-->
+            <!-- Keep the style position of the row div to get proper z order layout of the app -->
+            <div class="row g-0" style="position: relative;">
+                <Splitpanes class="strype-split-theme" @resize=onStrypeCommandsSplitPaneResize>
+                    <Pane key="1" :size="100 - editorCommandsSplitterPane2Size" min-size="33" max-size="90">
+                        <!-- These data items are to enable testing: -->
+                        <div :id="editorId" :data-slot-focus-id="slotFocusId" :data-slot-cursor="slotCursorPos" class="print-full-height">
+                            <div class="top no-print">
+                                <MessageBanner 
+                                    v-if="showMessage"
+                                />
+                            </div>
+                            <div class="row g-0" >
+                                <Menu 
+                                    :id="menuUID" 
+                                    :ref="menuUID"
+                                    v-on:[CustomEventTypes.appShowProgressOverlay]="applyShowAppProgress"
+                                    v-on:[CustomEventTypes.appResetProject]="resetStrypeProject"
+                                    class="noselect no-print col flex-grow-0"
+                                />
+                                <div class="col">
+                                    <div 
+                                        :id="editorUID" 
+                                        :class="{'editor-code-div noselect print-full-height':true, ...layoutClassesForStandardVersion}"
+                                        @mousedown="handleWholeEditorMouseDown"
+                                    >
+                                        <FrameHeader
+                                            :id="getFrameHeaderUID(-10)"
+                                            :labels="projectDocLabels"
+                                            :frameId="-10"
+                                            :frameType="projectDocFrameType"
+                                            :isDisabled="false"
+                                            :frameAllowChildren="false"
+                                            :erroneous="false"
+                                            :wasLastRuntimeError="false"
+                                            :frameAllowedCollapsedStates="[]"
+                                            :frameAllowedFrozenStates="[]"
+                                            :onFocus="() => {}"/>
+                                        <FrameContainer
+                                            v-for="container in containerFrames"
+                                            :key="container.frameType.type + '-id:' + container.id"
+                                            :id="getFrameContainerUID(container.id)"
+                                            :ref="getFrameContainerUID(container.id)"
+                                            :frameId="container.id"
+                                            :containerLabel="container.frameType.labels[0].label"
+                                            :caretVisibility="container.caretVisibility"
+                                            :frameType="container.frameType"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </Pane>
-                <Pane key="2" ref="editorCommandsSplitterPane2" :size="editorCommandsSplitterPane2Size" class="no-print">
-                    <Commands :id="commandsContainerId" class="noselect" :ref="strypeCommandsRefId" />
-                </Pane>
-            </SplitPanes>
-        </div>
-        <SimpleMsgModalDlg :dlgId="simpleMsgModalDlgId"/>
-        <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
-            <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
-        </ModalDlg>
-        <ModalDlg :dlgId="resyncToCloudDriveAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
-            <span style="white-space:pre-wrap" v-html="resyncToCloudDriveAtStartupDetailsMessage"></span>
-        </ModalDlg>
-        <MediaPreviewPopup ref="mediaPreviewPopup" />
-        <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" />
-        <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog as AudioBuffer" />
-        <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
-        <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
-        <ModalDlg :dlgId="confirmResetLSOnShareProjectLoadDlgId" :autoFocusButton="'ok'" :okCustomTitle="$t('buttonLabel.continue')" :cancelCustomTitle="$t('buttonLabel.cancelLoadSharedProject')" >
-            <div>
-                <span v-html="$t('appMessage.LSOnShareProjectLoad')"/>
-                <br/>
+                    </Pane>
+                    <Pane key="2" ref="editorCommandsSplitterPane2" :size="editorCommandsSplitterPane2Size" class="no-print">
+                        <Commands :id="commandsContainerId" class="noselect" :ref="strypeCommandsRefId" />
+                    </Pane>
+                </SplitPanes>
             </div>
-        </ModalDlg>
-        <ModalDlg :dlgId="confirmNewProjectModalDlgId" :useYesNo="true">
-            <span style="white-space:pre-wrap" v-html="$t('appMessage.newProjectConfirmation')"></span>
-        </ModalDlg>
-    </div>
+            <SimpleMsgModalDlg :dlgId="simpleMsgModalDlgId"/>
+            <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
+                <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
+            </ModalDlg>
+            <ModalDlg :dlgId="resyncToCloudDriveAtStartupModalDlgId" :useYesNo="true" :okCustomTitle="$t('buttonLabel.yesSign')" :cancelCustomTitle="$t('buttonLabel.noContinueWithout')">
+                <span style="white-space:pre-wrap" v-html="resyncToCloudDriveAtStartupDetailsMessage"></span>
+            </ModalDlg>
+            <MediaPreviewPopup ref="mediaPreviewPopup" />
+            <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" />
+            <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog as AudioBuffer" />
+            <div :id="getSkulptBackendTurtleDivId" class="hidden"></div>
+            <canvas v-show="appStore.isDraggingFrame" :id="getCompanionDndCanvasId" class="companion-canvas-dnd"/>
+            <ModalDlg :dlgId="confirmResetLSOnShareProjectLoadDlgId" :okCustomTitle="$t('buttonLabel.continue')" :cancelCustomTitle="$t('buttonLabel.cancelLoadSharedProject')" >
+                <div>
+                    <span v-html="$t('appMessage.LSOnShareProjectLoad')"/>
+                    <br/>
+                </div>
+            </ModalDlg>
+            <ModalDlg :dlgId="confirmNewProjectModalDlgId" :useYesNo="true">
+                <span style="white-space:pre-wrap" v-html="$t('appMessage.newProjectConfirmation')"></span>
+            </ModalDlg>
+        </div>
+    </BApp>
 </template>
 
 <script lang="ts">
@@ -111,6 +114,7 @@
 //////////////////////
 import Vue, { defineComponent } from "vue";
 import { useI18n } from "vue-i18n";
+import { BApp } from "bootstrap-vue-next";
 import MessageBanner from "@/components/MessageBanner.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
 import Commands from "@/components/Commands.vue";
@@ -134,7 +138,6 @@ import { getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, get
 import { cloneDeep } from "lodash";
 import { BACKEND_SKULPT_DIV_ID } from "@/autocompletion/ac-skulpt";
 import {pasteMixedPython} from "@/helpers/pythonToFrames";
-import { BvEvent, BvModalEvent } from "bootstrap-vue";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 import EditImageDlg from "@/components/EditImageDlg.vue";
 import EditSoundDlg from "@/components/EditSoundDlg.vue";
@@ -145,6 +148,7 @@ import FrameHeader from "@/components/FrameHeader.vue";
 import { eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import {inflateRaw} from "pako";
 import { Base64 } from "js-base64";
+import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
 let autoSaveTimerId = -1;
@@ -163,6 +167,7 @@ export default defineComponent({
     },
     
     components: {
+        BApp,
         FrameHeader,
         MessageBanner,
         FrameContainer,
@@ -543,7 +548,7 @@ export default defineComponent({
 
             // Handle "escape" on error popover: if an error popover is showing, escape should discard the popup.
             if(event.key == "Escape" && !this.appStore.isAppMenuOpened && !this.isPythonExecuting && !this.appStore.isDraggingFrame){
-                [...document.getElementsByClassName("popover b-popover error-popover")].forEach((popup) => (popup as HTMLDivElement).style.display = "none");
+                [...document.querySelectorAll(".popover.b-popover:has(.error-popover)")].forEach((popup) => (popup as HTMLDivElement).style.display = "none");
             }
         });
 
@@ -620,8 +625,8 @@ export default defineComponent({
             this.setAppNotOnTop = (event as CustomEvent).detail;
         });
 
-        // The events from Bootstrap modal are registered to the root app element.
-        eventBus.on("bv::modal::hide", this.onHideModalDlg as any);  
+        // The events from Bootstrap modal are registered on the eventBus
+        eventBus.on(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);  
     },
 
     destroyed() {
@@ -629,7 +634,7 @@ export default defineComponent({
         document.removeEventListener("selectionchange", this.handleDocumentSelectionChange);
         document.removeEventListener("mouseup", this.checkMouseSelection);
         document.removeEventListener("wheel", this.blockScrollOnContextMenu);
-        eventBus.off("bv::modal::hide", this.onHideModalDlg as any);  
+        eventBus.off(CustomEventTypes.strypeModalHidden, this.onHideModalDlg);  
     },
 
     mounted() {
@@ -959,11 +964,12 @@ export default defineComponent({
                     resolve((event as CustomEvent).detail as boolean);
                 };
                 document.addEventListener(CustomEventTypes.resetLSOnShareProjectLoadConfirmed, handleConfirmationFromDlg);
-                eventBus.emit("bv::show::modal", this.confirmResetLSOnShareProjectLoadDlgId);
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.confirmResetLSOnShareProjectLoadDlgId);                
             });
         },
 
-        onHideModalDlg(event: BvEvent, dlgId: string) {
+        onHideModalDlg(event: BvTriggerableEvent) {
+            const dlgId = event.componentId;
             if(dlgId == this.confirmResetLSOnShareProjectLoadDlgId) {
                 document.dispatchEvent(new CustomEvent(CustomEventTypes.resetLSOnShareProjectLoadConfirmed, {detail: (event.trigger == "ok")}));
             }
@@ -1005,12 +1011,13 @@ export default defineComponent({
                         const cloudHandlerComponentAPI = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI;
                         cloudHandlerComponentAPI?.setGenericSignInCallBack(this.appStore.syncTarget, () => vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.saveFile(this.appStore.syncTarget, SaveRequestReason.reloadBrowser));
                         this.cloudDriveName = cloudHandlerComponentAPI?.getDriveName()??"";
-                        const execGetCloudDriveFileFunction = (event: BvModalEvent, dlgId: string) => {
+                        const execGetCloudDriveFileFunction = (event: BvTriggerableEvent) => {
+                            const dlgId = event.componentId;
                             if(dlgId == this.resyncToCloudDriveAtStartupModalDlgId){
                                 if(event.trigger == "ok" || event.trigger=="event"){
                                     // Initiate a connection to the Cloud Drive (for updating the Cloud Drive with local changes)
                                     cloudHandlerComponentAPI?.signInFn();                                
-                                    eventBus.off("bv::modal::hide", execGetCloudDriveFileFunction as any); 
+                                    eventBus.off(CustomEventTypes.strypeModalHidden, execGetCloudDriveFileFunction); 
                                 }
                                 else{
                                     // We make sure we do not keep a wrong sync target!
@@ -1018,8 +1025,8 @@ export default defineComponent({
                                 }
                             }
                         };
-                        eventBus.on("bv::modal::hide", execGetCloudDriveFileFunction as any);   
-                        eventBus.emit("bv::show::modal", this.resyncToCloudDriveAtStartupModalDlgId);
+                        eventBus.on(CustomEventTypes.strypeModalHidden, execGetCloudDriveFileFunction);   
+                        eventBus.emit(CustomEventTypes.showStrypeModal, this.resyncToCloudDriveAtStartupModalDlgId);
                     }
                     // When a file has been reloaded and it was previously saved the File System, we want to clear off any references to that file
                     else if(this.appStore.syncTarget == StrypeSyncTarget.fs){
@@ -1055,10 +1062,10 @@ export default defineComponent({
             const isSavedProject = this.appStore.syncTarget != StrypeSyncTarget.none && !this.appStore.isEditorContentModified;
             if(isSavedProject){
                 // (*) project is saved (to the cloud or FS) without modifications
-                this.onHideModalDlg({trigger: "ok"} as BvModalEvent, this.confirmNewProjectModalDlgId);
+                this.onHideModalDlg({trigger: "ok", componentId: this.confirmNewProjectModalDlgId } as BvTriggerableEvent);
             }
             else {
-                eventBus.emit("bv::show::modal", this.confirmNewProjectModalDlgId);
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.confirmNewProjectModalDlgId);
             }            
         },
 
@@ -1066,7 +1073,7 @@ export default defineComponent({
             // Show a message to the user that the project has (not) been loaded, if requested
             if(message){
                 this.appStore.simpleModalDlgMsg = this.$t(message.key, {param1: message.param}) as string;
-                eventBus.emit("bv::show::modal", getAppSimpleMsgDlgId());
+                eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
             }
             // And also remove the query parameters in the URL
             window.history.replaceState({}, document.title, window.location.pathname);
@@ -1545,33 +1552,35 @@ export default defineComponent({
             this.imgToEditInDialog = imageDataURL;
             this.showImgPreview = showPreview;
 
-            const editedImage = (event: BvModalEvent, dlgId: string) => {
+            const editedImage = (event: BvTriggerableEvent) => {
+                const dlgId = event.componentId;
                 if((event.trigger == "ok" || event.trigger=="event") && dlgId == "editImageDlg"){
                     //Call the callback:
                     editImageDlgComponentAPI?.getUpdatedMedia().then(callback);
 
-                    eventBus.off("bv::modal::hide", editedImage as any);
+                    eventBus.off(CustomEventTypes.strypeModalHidden, editedImage);
                 }
             };
-            eventBus.on("bv::modal::hide", editedImage as any);
+            eventBus.on(CustomEventTypes.strypeModalHidden, editedImage);
 
-            eventBus.emit("bv::show::modal", "editImageDlg");
+            eventBus.emit(CustomEventTypes.showStrypeModal, "editImageDlg");
         },
         editSoundInDialog(audioBuffer: AudioBuffer, callback: (replacement: {code: string, mediaType: string}) => void) {
             const editSoundDlgComponentAPI = vueComponentsAPIHandler.editSoundDlgComponentAPI;
             this.soundToEditInDialog = audioBuffer;
 
-            const editedSound = (event: BvModalEvent, dlgId: string) => {
+            const editedSound = (event: BvTriggerableEvent) => {
+                const dlgId = event.componentId;
                 if((event.trigger == "ok" || event.trigger=="event") && dlgId == "editSoundDlg"){
                     //Call the callback:
                     editSoundDlgComponentAPI?.getUpdatedMedia().then(callback);
 
-                    eventBus.off("bv::modal::hide", editedSound as any);
+                    eventBus.off(CustomEventTypes.strypeModalHidden, editedSound);
                 }
             };
-            eventBus.on("bv::modal::hide", editedSound as any);
+            eventBus.on(CustomEventTypes.strypeModalHidden, editedSound);
 
-            eventBus.emit("bv::show::modal", "editSoundDlg");
+            eventBus.emit(CustomEventTypes.showStrypeModal, "editSoundDlg");
         },
     },
 

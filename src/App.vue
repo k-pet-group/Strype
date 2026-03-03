@@ -56,7 +56,7 @@
                                     </div>
                                     <FrameHeader
                                         :labels="projectDocLabels"
-                                        :frameId="-9"
+                                        :frameId="-10"
                                         :frameType="projectDocFrameType"
                                         :isDisabled="false"
                                         :frameAllowChildren="false"

@@ -1,5 +1,5 @@
 <template>
-    <div v-if="steps && steps.length" class="container-fluid tutorial-steps-panel rounded p-4 shadow gap-2">
+    <div :id="tutorialPanelUID" v-if="steps && steps.length" class="tutorial-steps-panel container-fluid rounded p-4 shadow gap-2">
         <div class="tutorial-steps-header">
             <div class="tutorial-steps-progress">
                 <span>{{ currentIndex + 1 }} / {{ steps.length }}</span>
@@ -30,6 +30,7 @@ import Vue from "vue";
 import { mapStores } from "pinia";
 import { useStore } from "@/store/store";
 import * as yaml from "js-yaml";
+import { getTutorialPanelUID } from "@/helpers/editor";
 
 type TutorialStep = {
     title: string;
@@ -69,6 +70,10 @@ export default Vue.extend({
 
         currentStep(): TutorialStep {
             return this.steps[this.currentIndex] ?? { title: "", description: "" };
+        },
+        
+        tutorialPanelUID(): string {
+            return getTutorialPanelUID();
         },
     },
 

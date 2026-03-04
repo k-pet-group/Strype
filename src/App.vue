@@ -56,7 +56,8 @@
                                     </div>
                                     <FrameHeader
                                         :labels="projectDocLabels"
-                                        :frameId="-10"
+                                        :id="getFrameHeaderUID(projectDocumentationFrameId)"
+                                        :frameId="projectDocumentationFrameId"
                                         :frameType="projectDocFrameType"
                                         :isDisabled="false"
                                         :frameAllowChildren="false"
@@ -125,7 +126,7 @@ import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
-import { getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames } from "./helpers/editor";
+import { getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getCodeEditorUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getTutorialPanelUID, getFrameHeaderUID } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
 /* IFTRUE_isPython */
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
@@ -237,6 +238,10 @@ export default Vue.extend({
             return getStrypeCommandComponentRefId();
         },
         
+        projectDocumentationFrameId(): number {
+            return projectDocumentationFrameId;
+        },
+
         projectDocLabels() {
             return ProjectDocumentationDefinition.labels;
         },
@@ -1064,6 +1069,10 @@ export default Vue.extend({
             return getFrameContainerUID(frameId);
         },
 
+        getFrameHeaderUID(frameId: number){
+            return getFrameHeaderUID(frameId);
+        },
+
         messageTop(): boolean {
             return this.appStore.currentMessage.type !== MessageTypes.imageDisplay;
         },
@@ -1555,6 +1564,28 @@ export default Vue.extend({
             this.$root.$on("bv::modal::hide", editedSound);
 
             this.$root.$emit("bv::show::modal", "editSoundDlg");
+        },
+        /**  Applies a stencil effect to highlight the supplied UI component, dimming all other parts of the user interface */
+        applyStencil(uiComponent: string): void{
+
+            // Map all UI components to corresponding HTML elements
+            let allUIComponents = new Map();
+            allUIComponents.set("menu", document.getElementById(getMenuLeftPaneUID()));
+            allUIComponents.set("tutorial", document.getElementById(getTutorialPanelUID()));
+            allUIComponents.set("documentation", document.getElementById(getFrameHeaderUID(projectDocumentationFrameId)));
+            allUIComponents.set("imports", document.getElementById(getFrameContainerUID(this.appStore.getImportsFrameContainerId)));
+            allUIComponents.set("definitions", document.getElementById(getFrameContainerUID(this.appStore.getDefsFrameContainerId)));
+            allUIComponents.set("mainCode", document.getElementById(getCodeEditorUID()));
+            allUIComponents.set("commands", document.getElementById(getCommandsRightPaneContainerId()));
+            allUIComponents.set("pea", document.getElementById(getPEAComponentRefId()));
+
+            // Find matching HTML component
+            var component = allUIComponents.get(uiComponent);
+            if (component) {
+                // Dim all other components and highlight the target component by applying CSS classes
+            }
+
+
         },
     },
 

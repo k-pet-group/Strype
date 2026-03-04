@@ -480,6 +480,11 @@ export function getMenuLeftPaneUID(): string {
     return "menu-bar";
 }
 
+export function getTutorialPanelUID(): string {
+    return "tutorialStepsPanel";
+}
+
+
 export function getNewProjectLinkId(): string {
     return "newProjectLink";
 }

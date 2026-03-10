@@ -7,7 +7,7 @@ import {getContentForACPrefix} from "@/autocompletion/acManager";
 import scssVars  from "@/assets/style/_export.module.scss";
 import html2canvas, { Options } from "html2canvas";
 import CaretContainer from "@/components/CaretContainer.vue";
-import { vm } from "@/main";
+import { projectDocumentationFrameId, vm } from "@/main";
 import Vue from "vue";
 import Frame from "@/components/Frame.vue";
 import FrameContainer from "@/components/FrameContainer.vue";
@@ -484,6 +484,9 @@ export function getTutorialPanelUID(): string {
     return "tutorialStepsPanel";
 }
 
+export function getStencilOverlayUID(): string {
+    return "strypeStencilOverlay";
+}
 
 export function getNewProjectLinkId(): string {
     return "newProjectLink";
@@ -515,6 +518,24 @@ export function getLoadFromFSStrypeButtonId(): string {
 
 export function getStrypeCommandComponentRefId(): string {
     return "strypeCommands";
+}
+
+/** Returns a map of all main UI elements */
+export function getMainUIElements(): Map<string, HTMLElement> {
+    // Map defines what stencil attribute maps to which HTML element of the U.I.
+    // This allows users to specify in a .spy file which UI element they want to point at for a given step using a simpler
+    // stencil name, without having to know the exact IDs of each HTML element.
+    const allUIComponents = new Map<string, HTMLElement>([
+        ["menu",document.getElementById(getMenuLeftPaneUID()) as HTMLElement],
+        ["tutorial", document.getElementById(getTutorialPanelUID()) as HTMLElement],
+        ["documentation", document.getElementById(getFrameHeaderUID(projectDocumentationFrameId)) as HTMLElement],
+        ["imports", document.getElementById(getFrameContainerUID(useStore().getImportsFrameContainerId)) as HTMLElement],
+        ["definitions", document.getElementById(getFrameContainerUID(useStore().getDefsFrameContainerId)) as HTMLElement],
+        ["mainCode", document.getElementById(getCodeEditorUID()) as HTMLElement],
+        ["commands", document.getElementById(getCommandsRightPaneContainerId()) as HTMLElement],
+        ["pea", document.getElementById(getPEAComponentRefId()) as HTMLElement],
+    ]);
+    return allUIComponents;
 }
 
 // The following helpers traverse the component refs to retrieve the desired component

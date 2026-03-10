@@ -126,7 +126,7 @@ import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
-import { getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getCodeEditorUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getTutorialPanelUID, getFrameHeaderUID } from "./helpers/editor";
+import { getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getMainUIElements, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getStencilOverlayUID, getFrameHeaderUID } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
 /* IFTRUE_isPython */
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
@@ -1565,27 +1565,51 @@ export default Vue.extend({
 
             this.$root.$emit("bv::show::modal", "editSoundDlg");
         },
+
         /**  Applies a stencil effect to highlight the supplied UI component, dimming all other parts of the user interface */
         applyStencil(uiComponent: string): void{
 
-            // Map all UI components to corresponding HTML elements
-            let allUIComponents = new Map();
-            allUIComponents.set("menu", document.getElementById(getMenuLeftPaneUID()));
-            allUIComponents.set("tutorial", document.getElementById(getTutorialPanelUID()));
-            allUIComponents.set("documentation", document.getElementById(getFrameHeaderUID(projectDocumentationFrameId)));
-            allUIComponents.set("imports", document.getElementById(getFrameContainerUID(this.appStore.getImportsFrameContainerId)));
-            allUIComponents.set("definitions", document.getElementById(getFrameContainerUID(this.appStore.getDefsFrameContainerId)));
-            allUIComponents.set("mainCode", document.getElementById(getCodeEditorUID()));
-            allUIComponents.set("commands", document.getElementById(getCommandsRightPaneContainerId()));
-            allUIComponents.set("pea", document.getElementById(getPEAComponentRefId()));
-
             // Find matching HTML component
-            var component = allUIComponents.get(uiComponent);
+            const components = getMainUIElements() as Map<string, HTMLElement>;
+            const component = components.get(uiComponent) as HTMLElement;
             if (component) {
-                // Dim all other components and highlight the target component by applying CSS classes
+
+                // Add overlay adds a dim affect on whole UI
+                const overlay = document.createElement("div");
+                overlay.id = getStencilOverlayUID();
+                overlay.className = "stencil-overlay";
+                document.body.appendChild(overlay);
+
+                // Add event listener on the overlay itself clears the stencil when clicked on
+                overlay.addEventListener("click", () => {
+                    this.clearStencil();
+                });
+    
+                // Highlight components above the overlay
+                const highlightedElements: HTMLElement[] = [];
+                highlightedElements.push(component);
+                const tutorialEl = components.get("tutorial"); // we include the tutorial panel, so this is always visible
+                if (tutorialEl) {
+                    highlightedElements.push(tutorialEl);
+                }
+
+                for (var el of highlightedElements) {
+                    el.classList.add("stencil-highlight");
+                    el.scrollIntoView({behavior: "smooth", block: "center", inline: "center"});
+                }
             }
 
 
+        },
+
+        /**  Clears any existing stencils so that all U.I. elements are visible*/
+        clearStencil(): void {
+            const overlay = document.getElementById(getStencilOverlayUID());
+            if (overlay) {
+                overlay.remove();
+            }
+            const highlighted = document.querySelectorAll(".stencil-highlight");
+            highlighted.forEach((el) => el.classList.remove("stencil-highlight"));
         },
     },
 
@@ -1644,6 +1668,25 @@ body.#{$strype-classname-dragging-frame} {
     position: absolute;
     left: 0px;
     z-index: 500;
+}
+
+.stencil-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    z-index: 1000;
+}
+
+.stencil-highlight {
+    position: relative;
+    z-index: 1100 !important;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.5) !important;
+    border-radius: 4px;
+    transition: box-shadow 0.20s ease, transform 0.20s ease;
+    pointer-events: auto !important;
 }
 
 .app-progress-pane {

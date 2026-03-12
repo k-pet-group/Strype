@@ -14,7 +14,7 @@
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
                 <span>{{runCodeButtonLabel}}</span>
             </button>
-            <button id="helpButton btn-outline" @click="onHelpClick">?</button>
+            <button id="PEAhelpButton" class="btn-outline" @click="onPEAHelpClick">?</button>
         </div>
         <div :id="tabContentContainerDivId" :class="{'pea-tab-content-container': true, 'flex-padding': true, 'pea-43-ratio': hasDefault43Ratio}">
             <!-- the SplitPanes is used in all layout configurations: for tabs, we only show 1 of the panes and disable moving the divider, and for stacked window it acts as normal -->
@@ -455,7 +455,7 @@ export default Vue.extend({
             }
         },
         
-        onHelpClick(): void{
+        onPEAHelpClick(): void{
             // Show modal to explain what the Python Execution Area is with accomonying GIF.
             this.appStore.contextualModalDlgTitle = "Python Execution Area";
             this.appStore.contextualModalDlgMsg = `

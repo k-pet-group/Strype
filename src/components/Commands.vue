@@ -13,7 +13,8 @@
                             <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag" v-t="'appMessage.savedCloudFile'" />
                             <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" v-t="'appMessage.modifCloudFile'" :class="{'modifed-label-span': isProjectNotSourced}" />                     
                         </div>
-                    </div>     
+                        <button id="commandsHelpButton" @click="onCommandsHelpClick">?</button>
+                    </div>
                     <div @mousedown.prevent.stop @mouseup.prevent.stop>
                         /* IFTRUE_isMicrobit
                         <b-tabs id="commandsTabs" content-class="mt-2" v-model="tabIndex">
@@ -92,7 +93,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCloudDriveHandlerComponentRefId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCloudDriveHandlerComponentRefId, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, handleContextMenuKBInteraction, hiddenShorthandFrames, notifyDragEnded, getContextualMsgModalDlgId } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesAction, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -767,6 +768,8 @@ export default Vue.extend({
             }
         },
 
+
+
         handleMBSimulatorTakesFocus(){
             // Importantly, interactions with the simulator will give it focus.
             // We need to make sure the focus gets back to Strype so we can still have control...
@@ -795,6 +798,20 @@ export default Vue.extend({
         /*FITRUE_isMicrobit */
 
         /* IFTRUE_isPython */
+
+        onCommandsHelpClick(): void{
+            // Show modal to explain what the the commands are with accomonying GIF.
+            this.appStore.contextualModalDlgTitle = "Strype Commands";
+            this.appStore.contextualModalDlgMsg = `
+            <p>Use keys to create code!</p>
+            <p>Each key corresponds to a specific command to insert the corresponding frame.</p>
+            <p>To delete a frame, press the delete key while the frame is selected.</p>
+            `;
+            this.appStore.contextualModalDlgGIF = "graphics_images/commands_demo.gif";
+            this.$root.$emit("bv::show::modal", getContextualMsgModalDlgId());
+        },
+
+
         onPEAMounted(){
             // Once the PEA is ready, we need to fix the splitter's position between the frame commands area and the PEA,
             // so that the PEA stays at the bottom of the viewport as intially intented (in its initial 4:3 ratio).
@@ -916,6 +933,23 @@ export default Vue.extend({
     display: flex;
     align-items: center;
     justify-content: center;
+    position: relative;
+}
+
+#commandsHelpButton {
+    position: absolute;
+    margin-top: 10px;
+    margin-right: 10px;
+    right: 0;
+    z-index: 10;
+    border-radius: 10px;
+    border: 1px solid transparent;
+    outline: none;
+    background: transparent;
+}
+
+#commandsHelpButton:hover {
+    border-color: lightgray !important;
 }
 
 .modifed-label-span {

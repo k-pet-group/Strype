@@ -228,6 +228,8 @@ export const useStore = defineStore("app", {
             
             simpleModalDlgMsg: "",
 
+            contextualModalDlgTitle: "",
+
             contextualModalDlgMsg: "",
 
             contextualModalDlgGIF: "",

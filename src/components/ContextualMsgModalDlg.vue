@@ -1,5 +1,5 @@
 <template>
-    <ModalDlg :dlgId="dlgId" :dlgTitle="dlgTitle" :okOnly="true">
+    <ModalDlg :dlgId="dlgId" :dlgTitle="prefixedDlgTitle" :okOnly="true">
         <span v-html="dlgMsg"/>
         <img v-if="dlgGIF" :src="dlgGIF" style="max-width: 100%; max-height: 300px; margin-top: 10px;"/>
     </ModalDlg>
@@ -44,6 +44,10 @@ export default Vue.extend({
         
         dlgGIF(): string{
             return this.appStore.contextualModalDlgGIF; 
+        },
+
+        prefixedDlgTitle(): string {
+            return `Help: ${this.appStore.contextualModalDlgTitle ?? ""}`;
         },
     },
 

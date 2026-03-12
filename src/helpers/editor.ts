@@ -126,6 +126,10 @@ export function getAppSimpleMsgDlgId(): string {
     return "appSimpleMsgModalDlg";
 }
 
+export function getContextualMsgModalDlgId(): string {
+    return "contextualMsgModalDlg";
+}
+
 export function getImportDiffVersionModalDlgId(): string {
     return "importDiffVersionModalDlg";
 }

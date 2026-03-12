@@ -87,6 +87,7 @@
             </SplitPanes>
         </div>
         <SimpleMsgModalDlg :dlgId="simpleMsgModalDlgId"/>
+        <ContextualMsgModalDlg :dlgId="contextualMsgModalDlgId"/>
         <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
             <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
         </ModalDlg>
@@ -122,11 +123,12 @@ import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
+import ContextualMsgModalDlg from "@/components/ContextualMsgModalDlg.vue";
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
-import { getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getMainUIElements, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getStencilOverlayUID, getFrameHeaderUID } from "./helpers/editor";
+import { getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getMainUIElements, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getContextualMsgModalDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getStencilOverlayUID, getFrameHeaderUID } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
 /* IFTRUE_isPython */
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
@@ -176,6 +178,7 @@ export default Vue.extend({
         Menu,
         ModalDlg,
         SimpleMsgModalDlg,
+        ContextualMsgModalDlg,
         Splitpanes,
         Pane,
     },
@@ -290,6 +293,10 @@ export default Vue.extend({
 
         simpleMsgModalDlgId(): string{
             return getAppSimpleMsgDlgId();
+        },
+
+        contextualMsgModalDlgId(): string{
+            return getContextualMsgModalDlgId();
         },
 
         importDiffVersionModalDlgId(): string {

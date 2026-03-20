@@ -294,7 +294,7 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
     const importedModulesCategory = i18n.global.t("autoCompletion.importedModules");
     if (!isSimpleImport && frame.labelSlotsDict[1].slotStructures.fields.length == 1 && (frame.labelSlotsDict[1].slotStructures.fields[0] as BaseSlot).code === "*") {
                 
-        // Depending on whether we are microbit or Skulpt, access the appropriate JSON file and retrieve
+        // Depending on whether we are microbit or Pyodide, access the appropriate JSON file and retrieve
         // the contents of the specific module:
         
         // #v-ifdef MODE == VITE_MICROBIT_MODE
@@ -309,9 +309,9 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
             }
         }
         // #v-else
-        const allSkulptItems : AcResultType[] = pythonAPI[module as keyof typeof pythonAPI] as AcResultType[];
-        if (allSkulptItems) {
-            soFar[module] = [...allSkulptItems.filter((x) => !x.acResult.startsWith("_"))];
+        const allPyodideItems : AcResultType[] = pythonAPI[module as keyof typeof pythonAPI] as AcResultType[];
+        if (allPyodideItems) {
+            soFar[module] = [...allPyodideItems.filter((x) => !x.acResult.startsWith("_"))];
         }
         else if (module in availableLibraries) {
             soFar[module] = [...availableLibraries[module].filter((x) => !x.acResult.startsWith("_"))];

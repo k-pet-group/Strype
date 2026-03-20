@@ -1,6 +1,6 @@
 /**
- * This helper file contains the handling of file IO to be used by Skulpt
- * on user code specified files (in Python: open()).
+ * This helper file contains the handling of file IO to be used by Pyodide
+ * on user code specified files (in Python: open(), read(), write(), etc).
  * At the moment, we only support file IO in the cloud (due to restrictions on 
  * the browser's access to the host file system).
  */

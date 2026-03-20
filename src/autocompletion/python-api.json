@@ -13272,7 +13272,7 @@
             "type": [
                 "function"
             ],
-            "errors": "Fellback through everything and parse_arguments failed on Python Library Documentation: _lru_cache_wrapper in re\n\nr\bre\be.\b._\b_c\bco\bom\bmp\bpi\bil\ble\be_\b_t\bte\bem\bmp\bpl\bla\bat\bte\be = _compile_template(pattern, repl)\n earlier errs: unsupported callableTraceback (most recent call last):\n  File \"/lib/python313.zip/inspect.py\", line 1362, in getfullargspec\n    sig = _signature_from_callable(func,\n                                   follow_wrapper_chains=False,\n                                   skip_bound_arg=False,\n                                   sigcls=Signature,\n                                   eval_str=False)\n  File \"/lib/python313.zip/inspect.py\", line 2582, in _signature_from_callable\n    return _signature_from_builtin(sigcls, obj,\n                                   skip_bound_arg=skip_bound_arg)\n  File \"/lib/python313.zip/inspect.py\", line 2368, in _signature_from_builtin\n    raise ValueError(\"no signature found for builtin {!r}\".format(func))\nValueError: no signature found for builtin <functools._lru_cache_wrapper object at 0x9d1690>\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 236, in ac_for\n  File \"<exec>\", line 138, in get_class_and_func\n  File \"/lib/python313.zip/inspect.py\", line 1372, in getfullargspec\n    raise TypeError('unsupported callable') from ex\nTypeError: unsupported callable\n're._compile_template' is not a callable objectTraceback (most recent call last):\n  File \"/lib/python313.zip/inspect.py\", line 1362, in getfullargspec\n    sig = _signature_from_callable(func,\n                                   follow_wrapper_chains=False,\n                                   skip_bound_arg=False,\n                                   sigcls=Signature,\n                                   eval_str=False)\n  File \"/lib/python313.zip/inspect.py\", line 2582, in _signature_from_callable\n    return _signature_from_builtin(sigcls, obj,\n                                   skip_bound_arg=skip_bound_arg)\n  File \"/lib/python313.zip/inspect.py\", line 2368, in _signature_from_builtin\n    raise ValueError(\"no signature found for builtin {!r}\".format(func))\nValueError: no signature found for builtin <functools._lru_cache_wrapper object at 0x9d1690>\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 236, in ac_for\n  File \"<exec>\", line 138, in get_class_and_func\n  File \"/lib/python313.zip/inspect.py\", line 1372, in getfullargspec\n    raise TypeError('unsupported callable') from ex\nTypeError: unsupported callable\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 250, in ac_for\n  File \"/lib/python313.zip/inspect.py\", line 3344, in signature\n    return Signature.from_callable(obj, follow_wrapped=follow_wrapped,\n           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                                   globals=globals, locals=locals, eval_str=eval_str)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/lib/python313.zip/inspect.py\", line 3070, in from_callable\n    return _signature_from_callable(obj, sigcls=cls,\n                                    follow_wrapper_chains=follow_wrapped,\n                                    globals=globals, locals=locals, eval_str=eval_str)\n  File \"/lib/python313.zip/inspect.py\", line 2498, in _signature_from_callable\n    raise TypeError('{!r} is not a callable object'.format(obj))\nTypeError: 're._compile_template' is not a callable object\n",
+            "errors": "Fellback through everything and parse_arguments failed on Python Library Documentation: _lru_cache_wrapper in re\n\nr\bre\be.\b._\b_c\bco\bom\bmp\bpi\bil\ble\be_\b_t\bte\bem\bmp\bpl\bla\bat\bte\be = _compile_template(pattern, repl)\n earlier errs: unsupported callableTraceback (most recent call last):\n  File \"/lib/python313.zip/inspect.py\", line 1362, in getfullargspec\n    sig = _signature_from_callable(func,\n                                   follow_wrapper_chains=False,\n                                   skip_bound_arg=False,\n                                   sigcls=Signature,\n                                   eval_str=False)\n  File \"/lib/python313.zip/inspect.py\", line 2582, in _signature_from_callable\n    return _signature_from_builtin(sigcls, obj,\n                                   skip_bound_arg=skip_bound_arg)\n  File \"/lib/python313.zip/inspect.py\", line 2368, in _signature_from_builtin\n    raise ValueError(\"no signature found for builtin {!r}\".format(func))\nValueError: no signature found for builtin <functools._lru_cache_wrapper object at 0xb0ada0>\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 236, in ac_for\n  File \"<exec>\", line 138, in get_class_and_func\n  File \"/lib/python313.zip/inspect.py\", line 1372, in getfullargspec\n    raise TypeError('unsupported callable') from ex\nTypeError: unsupported callable\n're._compile_template' is not a callable objectTraceback (most recent call last):\n  File \"/lib/python313.zip/inspect.py\", line 1362, in getfullargspec\n    sig = _signature_from_callable(func,\n                                   follow_wrapper_chains=False,\n                                   skip_bound_arg=False,\n                                   sigcls=Signature,\n                                   eval_str=False)\n  File \"/lib/python313.zip/inspect.py\", line 2582, in _signature_from_callable\n    return _signature_from_builtin(sigcls, obj,\n                                   skip_bound_arg=skip_bound_arg)\n  File \"/lib/python313.zip/inspect.py\", line 2368, in _signature_from_builtin\n    raise ValueError(\"no signature found for builtin {!r}\".format(func))\nValueError: no signature found for builtin <functools._lru_cache_wrapper object at 0xb0ada0>\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 236, in ac_for\n  File \"<exec>\", line 138, in get_class_and_func\n  File \"/lib/python313.zip/inspect.py\", line 1372, in getfullargspec\n    raise TypeError('unsupported callable') from ex\nTypeError: unsupported callable\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 250, in ac_for\n  File \"/lib/python313.zip/inspect.py\", line 3344, in signature\n    return Signature.from_callable(obj, follow_wrapped=follow_wrapped,\n           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                                   globals=globals, locals=locals, eval_str=eval_str)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/lib/python313.zip/inspect.py\", line 3070, in from_callable\n    return _signature_from_callable(obj, sigcls=cls,\n                                    follow_wrapper_chains=follow_wrapped,\n                                    globals=globals, locals=locals, eval_str=eval_str)\n  File \"/lib/python313.zip/inspect.py\", line 2498, in _signature_from_callable\n    raise TypeError('{!r} is not a callable object'.format(obj))\nTypeError: 're._compile_template' is not a callable object\n",
             "version": 0
         },
         {
@@ -18162,7 +18162,7 @@
             "type": [
                 "function"
             ],
-            "errors": "Fellback through everything and parse_arguments failed on Python Library Documentation: _lru_cache_wrapper in tokenize\n\nt\bto\bok\bke\ben\bni\biz\bze\be.\b._\b_c\bco\bom\bmp\bpi\bil\ble\be = _compile(expr)\n earlier errs: unsupported callableTraceback (most recent call last):\n  File \"/lib/python313.zip/inspect.py\", line 1362, in getfullargspec\n    sig = _signature_from_callable(func,\n                                   follow_wrapper_chains=False,\n                                   skip_bound_arg=False,\n                                   sigcls=Signature,\n                                   eval_str=False)\n  File \"/lib/python313.zip/inspect.py\", line 2582, in _signature_from_callable\n    return _signature_from_builtin(sigcls, obj,\n                                   skip_bound_arg=skip_bound_arg)\n  File \"/lib/python313.zip/inspect.py\", line 2368, in _signature_from_builtin\n    raise ValueError(\"no signature found for builtin {!r}\".format(func))\nValueError: no signature found for builtin <functools._lru_cache_wrapper object at 0x977ca0>\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 236, in ac_for\n  File \"<exec>\", line 138, in get_class_and_func\n  File \"/lib/python313.zip/inspect.py\", line 1372, in getfullargspec\n    raise TypeError('unsupported callable') from ex\nTypeError: unsupported callable\n'tokenize._compile' is not a callable objectTraceback (most recent call last):\n  File \"/lib/python313.zip/inspect.py\", line 1362, in getfullargspec\n    sig = _signature_from_callable(func,\n                                   follow_wrapper_chains=False,\n                                   skip_bound_arg=False,\n                                   sigcls=Signature,\n                                   eval_str=False)\n  File \"/lib/python313.zip/inspect.py\", line 2582, in _signature_from_callable\n    return _signature_from_builtin(sigcls, obj,\n                                   skip_bound_arg=skip_bound_arg)\n  File \"/lib/python313.zip/inspect.py\", line 2368, in _signature_from_builtin\n    raise ValueError(\"no signature found for builtin {!r}\".format(func))\nValueError: no signature found for builtin <functools._lru_cache_wrapper object at 0x977ca0>\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 236, in ac_for\n  File \"<exec>\", line 138, in get_class_and_func\n  File \"/lib/python313.zip/inspect.py\", line 1372, in getfullargspec\n    raise TypeError('unsupported callable') from ex\nTypeError: unsupported callable\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 250, in ac_for\n  File \"/lib/python313.zip/inspect.py\", line 3344, in signature\n    return Signature.from_callable(obj, follow_wrapped=follow_wrapped,\n           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                                   globals=globals, locals=locals, eval_str=eval_str)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/lib/python313.zip/inspect.py\", line 3070, in from_callable\n    return _signature_from_callable(obj, sigcls=cls,\n                                    follow_wrapper_chains=follow_wrapped,\n                                    globals=globals, locals=locals, eval_str=eval_str)\n  File \"/lib/python313.zip/inspect.py\", line 2498, in _signature_from_callable\n    raise TypeError('{!r} is not a callable object'.format(obj))\nTypeError: 'tokenize._compile' is not a callable object\n",
+            "errors": "Fellback through everything and parse_arguments failed on Python Library Documentation: _lru_cache_wrapper in tokenize\n\nt\bto\bok\bke\ben\bni\biz\bze\be.\b._\b_c\bco\bom\bmp\bpi\bil\ble\be = _compile(expr)\n earlier errs: unsupported callableTraceback (most recent call last):\n  File \"/lib/python313.zip/inspect.py\", line 1362, in getfullargspec\n    sig = _signature_from_callable(func,\n                                   follow_wrapper_chains=False,\n                                   skip_bound_arg=False,\n                                   sigcls=Signature,\n                                   eval_str=False)\n  File \"/lib/python313.zip/inspect.py\", line 2582, in _signature_from_callable\n    return _signature_from_builtin(sigcls, obj,\n                                   skip_bound_arg=skip_bound_arg)\n  File \"/lib/python313.zip/inspect.py\", line 2368, in _signature_from_builtin\n    raise ValueError(\"no signature found for builtin {!r}\".format(func))\nValueError: no signature found for builtin <functools._lru_cache_wrapper object at 0xad6368>\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 236, in ac_for\n  File \"<exec>\", line 138, in get_class_and_func\n  File \"/lib/python313.zip/inspect.py\", line 1372, in getfullargspec\n    raise TypeError('unsupported callable') from ex\nTypeError: unsupported callable\n'tokenize._compile' is not a callable objectTraceback (most recent call last):\n  File \"/lib/python313.zip/inspect.py\", line 1362, in getfullargspec\n    sig = _signature_from_callable(func,\n                                   follow_wrapper_chains=False,\n                                   skip_bound_arg=False,\n                                   sigcls=Signature,\n                                   eval_str=False)\n  File \"/lib/python313.zip/inspect.py\", line 2582, in _signature_from_callable\n    return _signature_from_builtin(sigcls, obj,\n                                   skip_bound_arg=skip_bound_arg)\n  File \"/lib/python313.zip/inspect.py\", line 2368, in _signature_from_builtin\n    raise ValueError(\"no signature found for builtin {!r}\".format(func))\nValueError: no signature found for builtin <functools._lru_cache_wrapper object at 0xad6368>\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 236, in ac_for\n  File \"<exec>\", line 138, in get_class_and_func\n  File \"/lib/python313.zip/inspect.py\", line 1372, in getfullargspec\n    raise TypeError('unsupported callable') from ex\nTypeError: unsupported callable\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 250, in ac_for\n  File \"/lib/python313.zip/inspect.py\", line 3344, in signature\n    return Signature.from_callable(obj, follow_wrapped=follow_wrapped,\n           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                                   globals=globals, locals=locals, eval_str=eval_str)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/lib/python313.zip/inspect.py\", line 3070, in from_callable\n    return _signature_from_callable(obj, sigcls=cls,\n                                    follow_wrapper_chains=follow_wrapped,\n                                    globals=globals, locals=locals, eval_str=eval_str)\n  File \"/lib/python313.zip/inspect.py\", line 2498, in _signature_from_callable\n    raise TypeError('{!r} is not a callable object'.format(obj))\nTypeError: 'tokenize._compile' is not a callable object\n",
             "version": 0
         },
         {
@@ -18493,6 +18493,2108 @@
                 "varKwargs": null,
                 "firstParamIsSelfOrCls": false
             },
+            "version": 0
+        }
+    ],
+    "turtle": [
+        {
+            "acResult": "Color",
+            "documentation": "A Color class with red, green, blue components, and an optional alpha value.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [
+                    {
+                        "name": "self",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "red",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "green",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "blue",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "alpha",
+                        "defaultValue": "255",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": true
+            },
+            "version": 0
+        },
+        {
+            "acResult": "Pen",
+            "documentation": "",
+            "type": [
+                "function",
+                "type"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [
+                    {
+                        "name": "self",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "shape",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    },
+                    {
+                        "name": "undobuffersize",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    },
+                    {
+                        "name": "isvisible",
+                        "defaultValue": "True",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": true
+            },
+            "version": 0
+        },
+        {
+            "acResult": "Screen",
+            "documentation": "Return the singleton screen object.\nIf none exists at the moment, create a new one and return it,\nelse return the existing one.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "Shape",
+            "documentation": "Data structure modeling shapes.\n\nattribute _type is one of \"polygon\", \"image\", \"compound\"\nattribute _data is - depending on _type a poygon-tuple,\nan image or a list constructed using the addcomponent method.",
+            "type": [
+                "function",
+                "type"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [
+                    {
+                        "name": "self",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "type_",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "data",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": true
+            },
+            "version": 0
+        },
+        {
+            "acResult": "Turtle",
+            "documentation": "",
+            "type": [
+                "function",
+                "type"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [
+                    {
+                        "name": "self",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "shape",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    },
+                    {
+                        "name": "undobuffersize",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    },
+                    {
+                        "name": "isvisible",
+                        "defaultValue": "True",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": true
+            },
+            "version": 0
+        },
+        {
+            "acResult": "__builtins__",
+            "documentation": "dict() -> new empty dictionary\ndict(mapping) -> new dictionary initialized from a mapping object's\n    (key, value) pairs\ndict(iterable) -> new dictionary initialized as if via:\n    d = {}\n    for k, v in iterable:\n        d[k] = v\ndict(**kwargs) -> new dictionary initialized with the name=value pairs\n    in the keyword argument list.  For example:  dict(one=1, two=2)",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__cached__",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to 'utf-8'.\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__doc__",
+            "documentation": "The type of the None singleton.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__file__",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to 'utf-8'.\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__loader__",
+            "documentation": "Concrete implementation of SourceLoader using the file system.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__name__",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to 'utf-8'.\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__package__",
+            "documentation": "Create a new string object from the given object. If encoding or\nerrors is specified, then the object must expose a data buffer\nthat will be decoded using the given encoding and error handler.\nOtherwise, returns the result of object.__str__() (if defined)\nor repr(object).\nencoding defaults to 'utf-8'.\nerrors defaults to 'strict'.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__path__",
+            "documentation": "Built-in mutable sequence.\n\nIf no argument is given, the constructor creates a new empty list.\nThe argument must be an iterable if specified.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "__spec__",
+            "documentation": "The specification for a module, used for loading.\n\nA module's spec is the source for information about the module.  For\ndata associated with the module, including source, use the spec's\nloader.\n\n`name` is the absolute name of the module.  `loader` is the loader\nto use when loading the module.  `parent` is the name of the\npackage the module is in.  The parent is derived from the name.\n\n`is_package` determines if the module is considered a package or\nnot.  On modules this is reflected by the `__path__` attribute.\n\n`origin` is the specific location used by the loader from which to\nload the module, if that information is available.  When filename is\nset, origin will match.\n\n`has_location` indicates that a spec's \"origin\" reflects a location.\nWhen this is True, `__file__` attribute of the module is set.\n\n`cached` is the location of the cached bytecode file, if any.  It\ncorresponds to the `__cached__` attribute.\n\n`submodule_search_locations` is the sequence of path entries to\nsearch when importing submodules.  If set, is_package should be\nTrue--and False otherwise.\n\nPackages are simply modules that (may) have submodules.  If a spec\nhas a non-None value in `submodule_search_locations`, the import\nsystem will consider modules loaded from the spec as packages.\n\nOnly finders (see importlib.abc.MetaPathFinder and\nimportlib.abc.PathEntryFinder) should modify ModuleSpec instances.",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "addshape",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "back",
+            "documentation": "move turtle steps pixels back",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "steps",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "backward",
+            "documentation": "move turtle steps pixels back",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "steps",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "begin_fill",
+            "documentation": "start recording all drawing-functions to be filled",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "begin_poly",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "bgcolor",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "bgpic",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "bk",
+            "documentation": "move turtle steps pixels back",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "steps",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "bye",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "circle",
+            "documentation": "draws an arc to the left with the given radius, angle and in the given steps",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "radius",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "extent",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    },
+                    {
+                        "name": "steps",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "clean",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "color",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "clear",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "color",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "clearscreen",
+            "documentation": "erases the traces and sets turtle back to starting position",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "clearstamp",
+            "documentation": "delete stamp with given stampid",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "stamp_id",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "clearstamps",
+            "documentation": "delete all stamps if no args given \n-2 deletes the last two stamps\n2 deletes the first two stamps",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "stamp_ids",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "clone",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "color",
+            "documentation": "Set and get fill and pencolor.\nIf called with 0 arguments: returns a tuple with pencolor and fillcolor.\nIf called with 1 arguments: Sets fill and pencolor to specified color.\nIf called with 2 arguments: Sets pencolor to first argument and second color to second argument.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "colormode",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "defaultrunner",
+            "documentation": "",
+            "type": [],
+            "version": 0
+        },
+        {
+            "acResult": "degrees",
+            "documentation": "Set angle measurement units, i.e. set number of “degrees” for a full circle. Default value is 360 degrees.",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "fullcircle",
+                        "defaultValue": "360",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "delay",
+            "documentation": "delay turtle by duration seconds",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "duration",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "distance",
+            "documentation": "returns the distance from turtle to (x,y)",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "x",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "y",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "done",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "dot",
+            "documentation": "draws a filled circle",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "diameter",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "down",
+            "documentation": "pull the pen down - drawing when moving",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "end_fill",
+            "documentation": "fill the shape drawn after the last call to begin_fill",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "end_poly",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "exitonclick",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "fd",
+            "documentation": "move turtle steps pixels forward",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "steps",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "fillcolor",
+            "documentation": "change the color when filling\n:param color: can either be the color as a string e.g 'black' or its hex code or \"rgb(r, g, b)\"",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "filling",
+            "documentation": "check if begin_fill was called",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "forward",
+            "documentation": "move turtle steps pixels forward",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "steps",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "get_event_log",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "blocking",
+                        "defaultValue": "True",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "get_key",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "get_key_code",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "get_key_code_wait",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "get_key_wait",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "get_pixel_color",
+            "documentation": "return the color the turtle is standing on",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "get_pixel_color_str",
+            "documentation": "return the color string of the color the turtle is standing on",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "get_poly",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "get_shapepoly",
+            "documentation": "Return the current shape polygon as tuple of coordinate pairs.\n\nNo argument.\n\nExamples:\n>>> shape(\"square\")\n>>> shapetransform(4, -1, 0, 2)\n>>> get_shapepoly()\n((50, -20), (30, 20), (-50, 20), (-30, -20))",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "getcanvas",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "getmethparlist",
+            "documentation": "Get strings describing the arguments for the given object\nReturns a pair of strings representing function parameter lists\nincluding parenthesis.  The first string is suitable for use in\nfunction definition and the second is suitable for use in function\ncall.  The \"self\" parameter is not included.",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "ob",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "getpen",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "getscreen",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "getshapes",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "getturtle",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "goto",
+            "documentation": "Set the absolute position of the turtle manually.",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "x",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "y",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "heading",
+            "documentation": "return the current heading of the turtle\nthe turtle's heading is zero at the start",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "hideturtle",
+            "documentation": "Makes the turtle invisible. Sets speed to -1.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "home",
+            "documentation": "return to the center and set the heading of the turtle to 0 so it's facing up",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "ht",
+            "documentation": "Makes the turtle invisible. Sets speed to -1.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "is_key_code_pressed",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "key",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "is_key_pressed",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "key",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "isdown",
+            "documentation": "return a boolean which tells if the turtle is drawing",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "isvisible",
+            "documentation": "return True if the turtle is shown, False if it’s hidden",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "left",
+            "documentation": "rotate Turtle by deg to the left",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "deg",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "listen",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "lt",
+            "documentation": "rotate Turtle by deg to the left",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "deg",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "mainloop",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "make_color",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "mode",
+            "documentation": "Select turtle mode. Valid modes are \"standard\" and \"logo\".",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "mode",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "numinput",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "title",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "prompt",
+                        "defaultValue": "''",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "onclick",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "fun",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "btn",
+                        "defaultValue": "1",
+                        "argType": "None"
+                    },
+                    {
+                        "name": "add",
+                        "defaultValue": "False",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "ondrag",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "fun",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "btn",
+                        "defaultValue": "1",
+                        "argType": "None"
+                    },
+                    {
+                        "name": "add",
+                        "defaultValue": "False",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "onkey",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "fun",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "key",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "onkeypress",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "fun",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "key",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "onkeyrelease",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "fun",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "key",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "onmove",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "fun",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "add",
+                        "defaultValue": "False",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "onscreenclick",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "fun",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "btn",
+                        "defaultValue": "1",
+                        "argType": "None"
+                    },
+                    {
+                        "name": "add",
+                        "defaultValue": "False",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "ontimer",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "pd",
+            "documentation": "pull the pen down - drawing when moving",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "pencolor",
+            "documentation": "Change color of the pen\n:param color: can either be the color as a string e.g 'black' or its hex code or \"rgb(r, g, b)\"",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "pendown",
+            "documentation": "pull the pen down - drawing when moving",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "pensize",
+            "documentation": "change the width of the pen",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "width",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "penup",
+            "documentation": "pull the pen up - no drawing when moving",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "pos",
+            "documentation": "returns the coordinates of the current turtle position",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "position",
+            "documentation": "returns the coordinates of the current turtle position",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "pu",
+            "documentation": "pull the pen up - no drawing when moving",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "radians",
+            "documentation": "Set the angle measurement units to radians. Equivalent to degrees(2*_math.pi).",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "register_shape",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "reset",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "dispatch",
+                        "defaultValue": "True",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "resetscreen",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "resizemode",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "rmode",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "right",
+            "documentation": "rotate Turtle by deg to the right",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "deg",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "rt",
+            "documentation": "rotate Turtle by deg to the right",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "deg",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "screensize",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "set_event_mode",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "state",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "seth",
+            "documentation": "set the absolute heading of the turtle",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "deg",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "setheading",
+            "documentation": "set the absolute heading of the turtle",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "deg",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "setpos",
+            "documentation": "Set the absolute position of the turtle manually.",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "x",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "y",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "setposition",
+            "documentation": "Set the absolute position of the turtle manually.",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "x",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "y",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "settiltangle",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "setundobuffer",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "setup",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "setworldcoordinates",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "setx",
+            "documentation": "set the absolute position of the x-coordinate of the turtle",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "x",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "sety",
+            "documentation": "set the absolute position of the x-coordinate of the turtle",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "y",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "shape",
+            "documentation": "Set turtle shape to shape with given name / return current shapename.\n\nOptional argument:\nname -- a string, which is a valid shapename\n\nSet turtle shape to shape with given name or, if name is not given,\nreturn name of current shape.\nShape with name must exist in the TurtleScreen's shape dictionary.\nInitially there are the following polygon shapes:\n'arrow', 'turtle', 'circle', 'square', 'triangle', 'classic'.\nTo learn about how to deal with shapes see Screen-method register_shape.\n\nExample:\n>>> shape()\n'arrow'\n>>> shape(\"turtle\")\n>>> shape()\n'turtle'",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "shape",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "shapesize",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "shapetransform",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "shearfactor",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "showturtle",
+            "documentation": "Makes the turtle visible. Sets speed to 20.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "speed",
+            "documentation": "sets the speed of the turtle movement \n:param newSpeed: (1 to 1000, default 500) With speed (-1) the turtle moves the fastest (without animation)",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "newSpeed",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "st",
+            "documentation": "Makes the turtle visible. Sets speed to 20.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "stamp",
+            "documentation": "stamp a copy of the turtle shape onto the canvas at the current position. return a stamp_id for that stamp",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "teleport",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "x",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "y",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    },
+                    {
+                        "name": "fill_gap",
+                        "defaultValue": "False",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "textinput",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "title",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "prompt",
+                        "defaultValue": "''",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "tilt",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "tiltangle",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "title",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "title",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "towards",
+            "documentation": "returns the angle between the line from turtle position to position specified by (x,y)",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "x",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "y",
+                        "defaultValue": "None",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "tracer",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "n",
+                        "defaultValue": "0",
+                        "argType": "None"
+                    },
+                    {
+                        "name": "delay",
+                        "defaultValue": "0",
+                        "argType": "None"
+                    },
+                    {
+                        "name": "hideturtle",
+                        "defaultValue": "False",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "turtle",
+            "documentation": "",
+            "type": [
+                "module"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "turtles",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "turtlesize",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "undo",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "undobufferentries",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "up",
+            "documentation": "pull the pen up - no drawing when moving",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "update",
+            "documentation": "rendert den Bildschirm (nach dem Ausschalten des automatischen Rendering)",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "update_func",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "funcstr",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "fun",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "add",
+                        "defaultValue": "False",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "width",
+            "documentation": "change the width of the pen",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "width",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "window_height",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "window_width",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "write",
+            "documentation": "writes text on the canvas at the turtle position.",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "text",
+                        "defaultValue": null,
+                        "argType": "None"
+                    },
+                    {
+                        "name": "move",
+                        "defaultValue": "False",
+                        "argType": "None"
+                    },
+                    {
+                        "name": "align",
+                        "defaultValue": "'left'",
+                        "argType": "None"
+                    },
+                    {
+                        "name": "font",
+                        "defaultValue": "('arial', 8, 'normal')",
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "xcor",
+            "documentation": "return the global x-coordinate",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "ycor",
+            "documentation": "return the global y-coordinate",
+            "type": [
+                "function"
+            ],
             "version": 0
         }
     ],
@@ -22640,7 +24742,7 @@
             "type": [
                 "function"
             ],
-            "errors": "Fellback through everything and parse_arguments failed on Python Library Documentation: _lru_cache_wrapper in urllib.request\n\nu\bur\brl\bll\bli\bib\bb.\b.r\bre\beq\bqu\bue\bes\bst\bt.\b.u\bur\brl\bls\bsp\bpl\bli\bit\bt = urlsplit(url, scheme='', allow_fragments=True)\n    Parse a URL into 5 components:\n    <scheme>://<netloc>/<path>?<query>#<fragment>\n\n    The result is a named 5-tuple with fields corresponding to the\n    above. It is either a SplitResult or SplitResultBytes object,\n    depending on the type of the url parameter.\n\n    The username, password, hostname, and port sub-components of netloc\n    can also be accessed as attributes of the returned object.\n\n    The scheme argument provides the default value of the scheme\n    component when no scheme is found in url.\n\n    If allow_fragments is False, no attempt is made to separate the\n    fragment component from the previous component, which can be either\n    path or query.\n\n    Note that % escapes are not expanded.\n earlier errs: unsupported callableTraceback (most recent call last):\n  File \"/lib/python313.zip/inspect.py\", line 1362, in getfullargspec\n    sig = _signature_from_callable(func,\n                                   follow_wrapper_chains=False,\n                                   skip_bound_arg=False,\n                                   sigcls=Signature,\n                                   eval_str=False)\n  File \"/lib/python313.zip/inspect.py\", line 2582, in _signature_from_callable\n    return _signature_from_builtin(sigcls, obj,\n                                   skip_bound_arg=skip_bound_arg)\n  File \"/lib/python313.zip/inspect.py\", line 2368, in _signature_from_builtin\n    raise ValueError(\"no signature found for builtin {!r}\".format(func))\nValueError: no signature found for builtin <functools._lru_cache_wrapper object at 0x1193150>\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 236, in ac_for\n  File \"<exec>\", line 138, in get_class_and_func\n  File \"/lib/python313.zip/inspect.py\", line 1372, in getfullargspec\n    raise TypeError('unsupported callable') from ex\nTypeError: unsupported callable\n'urllib.request.urlsplit' is not a callable objectTraceback (most recent call last):\n  File \"/lib/python313.zip/inspect.py\", line 1362, in getfullargspec\n    sig = _signature_from_callable(func,\n                                   follow_wrapper_chains=False,\n                                   skip_bound_arg=False,\n                                   sigcls=Signature,\n                                   eval_str=False)\n  File \"/lib/python313.zip/inspect.py\", line 2582, in _signature_from_callable\n    return _signature_from_builtin(sigcls, obj,\n                                   skip_bound_arg=skip_bound_arg)\n  File \"/lib/python313.zip/inspect.py\", line 2368, in _signature_from_builtin\n    raise ValueError(\"no signature found for builtin {!r}\".format(func))\nValueError: no signature found for builtin <functools._lru_cache_wrapper object at 0x1193150>\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 236, in ac_for\n  File \"<exec>\", line 138, in get_class_and_func\n  File \"/lib/python313.zip/inspect.py\", line 1372, in getfullargspec\n    raise TypeError('unsupported callable') from ex\nTypeError: unsupported callable\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 250, in ac_for\n  File \"/lib/python313.zip/inspect.py\", line 3344, in signature\n    return Signature.from_callable(obj, follow_wrapped=follow_wrapped,\n           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                                   globals=globals, locals=locals, eval_str=eval_str)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/lib/python313.zip/inspect.py\", line 3070, in from_callable\n    return _signature_from_callable(obj, sigcls=cls,\n                                    follow_wrapper_chains=follow_wrapped,\n                                    globals=globals, locals=locals, eval_str=eval_str)\n  File \"/lib/python313.zip/inspect.py\", line 2498, in _signature_from_callable\n    raise TypeError('{!r} is not a callable object'.format(obj))\nTypeError: 'urllib.request.urlsplit' is not a callable object\n",
+            "errors": "Fellback through everything and parse_arguments failed on Python Library Documentation: _lru_cache_wrapper in urllib.request\n\nu\bur\brl\bll\bli\bib\bb.\b.r\bre\beq\bqu\bue\bes\bst\bt.\b.u\bur\brl\bls\bsp\bpl\bli\bit\bt = urlsplit(url, scheme='', allow_fragments=True)\n    Parse a URL into 5 components:\n    <scheme>://<netloc>/<path>?<query>#<fragment>\n\n    The result is a named 5-tuple with fields corresponding to the\n    above. It is either a SplitResult or SplitResultBytes object,\n    depending on the type of the url parameter.\n\n    The username, password, hostname, and port sub-components of netloc\n    can also be accessed as attributes of the returned object.\n\n    The scheme argument provides the default value of the scheme\n    component when no scheme is found in url.\n\n    If allow_fragments is False, no attempt is made to separate the\n    fragment component from the previous component, which can be either\n    path or query.\n\n    Note that % escapes are not expanded.\n earlier errs: unsupported callableTraceback (most recent call last):\n  File \"/lib/python313.zip/inspect.py\", line 1362, in getfullargspec\n    sig = _signature_from_callable(func,\n                                   follow_wrapper_chains=False,\n                                   skip_bound_arg=False,\n                                   sigcls=Signature,\n                                   eval_str=False)\n  File \"/lib/python313.zip/inspect.py\", line 2582, in _signature_from_callable\n    return _signature_from_builtin(sigcls, obj,\n                                   skip_bound_arg=skip_bound_arg)\n  File \"/lib/python313.zip/inspect.py\", line 2368, in _signature_from_builtin\n    raise ValueError(\"no signature found for builtin {!r}\".format(func))\nValueError: no signature found for builtin <functools._lru_cache_wrapper object at 0xdd1530>\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 236, in ac_for\n  File \"<exec>\", line 138, in get_class_and_func\n  File \"/lib/python313.zip/inspect.py\", line 1372, in getfullargspec\n    raise TypeError('unsupported callable') from ex\nTypeError: unsupported callable\n'urllib.request.urlsplit' is not a callable objectTraceback (most recent call last):\n  File \"/lib/python313.zip/inspect.py\", line 1362, in getfullargspec\n    sig = _signature_from_callable(func,\n                                   follow_wrapper_chains=False,\n                                   skip_bound_arg=False,\n                                   sigcls=Signature,\n                                   eval_str=False)\n  File \"/lib/python313.zip/inspect.py\", line 2582, in _signature_from_callable\n    return _signature_from_builtin(sigcls, obj,\n                                   skip_bound_arg=skip_bound_arg)\n  File \"/lib/python313.zip/inspect.py\", line 2368, in _signature_from_builtin\n    raise ValueError(\"no signature found for builtin {!r}\".format(func))\nValueError: no signature found for builtin <functools._lru_cache_wrapper object at 0xdd1530>\n\nThe above exception was the direct cause of the following exception:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 236, in ac_for\n  File \"<exec>\", line 138, in get_class_and_func\n  File \"/lib/python313.zip/inspect.py\", line 1372, in getfullargspec\n    raise TypeError('unsupported callable') from ex\nTypeError: unsupported callable\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 250, in ac_for\n  File \"/lib/python313.zip/inspect.py\", line 3344, in signature\n    return Signature.from_callable(obj, follow_wrapped=follow_wrapped,\n           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                                   globals=globals, locals=locals, eval_str=eval_str)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/lib/python313.zip/inspect.py\", line 3070, in from_callable\n    return _signature_from_callable(obj, sigcls=cls,\n                                    follow_wrapper_chains=follow_wrapped,\n                                    globals=globals, locals=locals, eval_str=eval_str)\n  File \"/lib/python313.zip/inspect.py\", line 2498, in _signature_from_callable\n    raise TypeError('{!r} is not a callable object'.format(obj))\nTypeError: 'urllib.request.urlsplit' is not a callable object\n",
             "version": 0
         },
         {

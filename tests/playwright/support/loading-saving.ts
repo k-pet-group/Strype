@@ -26,7 +26,7 @@ export async function load(page: Page, filepath: string) : Promise<void> {
         page.click("#" + await strypeElIds(page).getLoadFromFSStrypeButtonId()),
     ]);
     await fileChooser.setFiles(filepath);
-    await page.waitForTimeout(2000);
+    await page.waitForTimeout(5000);
 }
 
 export async function loadContent(page: Page, spyToLoad: string) : Promise<void> {

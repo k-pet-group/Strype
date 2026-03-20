@@ -357,7 +357,7 @@
 
 /* eslint @typescript-eslint/explicit-module-boundary-types: off */
 /* eslint @typescript-eslint/no-non-null-assertion: off */
-import * as PIXI from "pixi.js";
+import * as PIXI from "pixi.js-legacy"; // Changed to Pixi JS legacy to avoid needing WebGL
 import * as Tess2 from "tess2-ts";
 
 // NCCB: Pasted from keyBoardState in WebTiger Python:

@@ -64,6 +64,7 @@
         "pica": "^9.0.1",
         "pinia": "^3.0.4",
         "pixi.js": "^7.4.2",
+        "pixi.js-legacy": "^7.4.3",
         "pyodide-worker-runner": "^1.4.0",
         "python-shell": "^2.0.3",
         "remove-files-webpack-plugin": "^1.5.0",

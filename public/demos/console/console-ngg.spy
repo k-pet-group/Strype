@@ -16,16 +16,15 @@ number  = random.randint(0,100)
 numGuesses  = 0 
 guessed  = False 
 print("Guess a number between 0 and 100") 
-guess  = getGuess() 
 while not gameOver()  :
+    guess  = getGuess()
     if guess==number  :
         print("You got it!") 
         guessed  = True 
     elif guess<number  :
         print("You're too low...  Try again.") 
     else :
-        print("You're too high. Try again.") 
-    guess  = getGuess() 
+        print("You're too high. Try again.")  
 
 if guessed  :
     print(___strype_opsinvalid(f,___strype_operator_,"Well done - you won. You needed {numGuesses} guesses",___strype_operator_,___strype_blank)) 

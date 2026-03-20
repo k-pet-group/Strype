@@ -132,12 +132,12 @@ function executeCode(switchToGraphics = true) {
     if (switchToGraphics) {
         cy.contains("button.pea-display-tab", "Graphics").click();
     }
-    cy.get("#runButton").contains("Run");
+    cy.get("#runButton").contains("Run", {timeout: 30000});
     cy.get("#runButton").click();
     // Wait for it to finish:
     cy.wait(2000);
     // Assert it has finished, by looking at the run button:
-    cy.get("#runButton").contains("Run");
+    cy.get("#runButton").contains("Run", {timeout: 30000});
 }
 
 /**

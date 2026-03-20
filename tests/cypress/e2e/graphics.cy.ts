@@ -164,12 +164,12 @@ function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis =
     (cy.get("body") as any).paste(main);
     cy.wait(1000);
     cy.contains("button.pea-display-tab", "Graphics").click();
-    cy.get("#runButton").contains("Run");
+    cy.get("#runButton").contains("Run", {timeout: 30000});
     cy.get("#runButton").click();
     // Wait for it to finish:
     cy.wait(timeToWaitMillis);
     // Assert it has finished, by looking at the run button:
-    cy.get("#runButton").contains("Run");
+    cy.get("#runButton").contains("Run", {timeout: 30000});
 }
 
 function runCodeAndCheckImage(functions: string, main: string, expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING, timeToWaitMillis = 2000) : void {

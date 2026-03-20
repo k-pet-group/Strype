@@ -27,7 +27,7 @@ interface SyncRequestCallbacks {
 export const handleSyncRequests : (
     renderer : Renderer,
     soundManager : SoundManager,
-    turtle: TurtlePixiHandler,
+    turtle: TurtlePixiHandler | null, // Can be null if PixiJS couldn't initialise
     callbacks : SyncRequestCallbacks,
 ) => SyncPromiseStrypePyodideHandlerFunction = (renderer, soundManager, turtle, callbacks) => (req) => {
     switch (req.request) {
@@ -158,8 +158,14 @@ export const handleSyncRequests : (
     }
     case "turtle": {
         // Assume all turtle interactions require a redraw:
-        callbacks.markTurtleDirty();
-        return {request: req.request, response: handleTurtle(turtle, req.buffer).then(() => true)};
+        if (turtle != null) {
+            callbacks.markTurtleDirty();
+            return {request: req.request, response: handleTurtle(turtle, req.buffer).then(() => true)};
+        }
+        else {
+            // PixiJS failed to initialise, so give an error saying that:
+            return {request: req.request, response: Promise.reject("The turtle rendering failed to initialise.  Try refreshing the page or using a different browser.")};
+        }
     }
     default:
         // Trick to give a compile-time error if a case is missing above:

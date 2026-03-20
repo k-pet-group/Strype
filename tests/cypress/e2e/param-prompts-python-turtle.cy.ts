@@ -10,8 +10,7 @@ describe("Parameter prompts Python only", () => {
     // Each item is a triple: the module, the function name within the module, the list of param names
     const rawFuncs : [string | null | [string, string], string, string[]][] = [];
     if (Cypress.env("mode") !== "microbit") {
-        rawFuncs.push(["strype.graphics", "load_image", ["name"]]);
-        rawFuncs.push(["strype.graphics", "Actor", ["image", "x=0", "y=0", "tag=None"]]);
+        rawFuncs.push(["turtle", "Turtle", ["shape=None", "undobuffersize=None", "isvisible=True"]]);
     }
     testRawFuncs(rawFuncs);
 });

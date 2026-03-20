@@ -735,7 +735,7 @@ class Actor:
             _strype_graphics_internal.updateImage(self.__id, image._Image__image)
             self.__editable_image = image
         elif isinstance(image, str):
-            _strype_graphics_internal.updateImage(self.__id, _strype_graphics_internal.loadAndWaitForImage(image))
+            _strype_graphics_internal.updateImage(self.__id, _load_image_bitmap(image))
             self.__editable_image = None
         else:
             raise TypeError("Actor image parameter must be Image")

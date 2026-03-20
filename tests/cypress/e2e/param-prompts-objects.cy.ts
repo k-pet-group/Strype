@@ -12,7 +12,7 @@ describe("Parameter prompts objects", () => {
     const rawFuncs : [string | null | [string, string], string, string[]][] = [];
     rawFuncs.push([null, "str(8).center", ["width"]]);
     if (Cypress.env("mode") !== "microbit") {
-        rawFuncs.push(["turtle", "Turtle().write", ["arg", "move=False", "align='left'", "font=('Arial', 8, 'normal')"]]);
+        rawFuncs.push(["turtle", "Turtle().write", ["text", "move=False", "align='left'", "font=('arial', 8, 'normal')"]]);
         rawFuncs.push([["http://localhost:8089/test-library/", "mediacomp"], "Pixel(‘’,1,2,3).set_color", ["color"]]);
     }
     // TODO remove the true param once we've investigated fully qualified imports

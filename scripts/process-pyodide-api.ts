@@ -78,7 +78,7 @@ const strype_bridge = {
     strype_graphics_input_internal: {},
     strype_graphics_internal: {},
     strype_sound_internal: {},
-    // Note we don't need turtle_internal because we get the types from turtle.pyi, not from our own turtle module
+    strype_turtle_internal: {},
 };
 
 async function loadPyodideAndPackage(

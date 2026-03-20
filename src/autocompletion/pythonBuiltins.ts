@@ -26,7 +26,7 @@ export const pythonBuiltins : Record<string, { type: "module", documentation?: s
     "token": {type: "module", documentation: "Constants used with Python parse trees.", version: 0},
     "tokenize": {type: "module", documentation: "Tokenizer for Python source.", version: 0},
     "types": {type: "module", documentation: "Dynamic type creation and names for built-in types.", version: 0},
-    //"turtle": {type: "module", documentation: "Implementation of the Turtle graphics.", version: 0},
+    "turtle": {type: "module", documentation: "Implementation of the Turtle graphics.", version: 0},
 };
 
 export const OUR_PUBLIC_LIBRARY_MODULES = [

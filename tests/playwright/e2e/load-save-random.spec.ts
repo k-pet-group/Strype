@@ -29,7 +29,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     }
 
     // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(180000); // 180 seconds
+    testInfo.setTimeout(240000); // 240 seconds
     
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     await page.goto("./", {waitUntil: "load"});

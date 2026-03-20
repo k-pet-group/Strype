@@ -14,7 +14,7 @@ await build({
     build: {
         outDir: TMP,
         emptyOutDir: true,
-        minify: true,
+        minify: false,
         rollupOptions: {
             input: path.join(ROOT, 'src/workers/service-worker.ts'),
             output: {

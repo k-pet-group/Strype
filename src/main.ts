@@ -9,12 +9,12 @@ import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from 
 import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getFrameContainerUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getImportFileInputId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNewProjectLinkId, getSaveProjectLinkId, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, getShareProjectLinkId} from "./helpers/editor";
 import "@imengyu/vue3-context-menu/lib/vue3-context-menu.css";
 import ContextMenu from "@imengyu/vue3-context-menu";
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 /* IFTRUE_isPython */
 import {getPEATabContentContainerDivId} from "./helpers/editor";
 // #v-endif
 
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 // We have to register the service worker ourselves so that it works in dev.
 // (If we used the Vite PWA auto-register it would only work in production.)
 if ("serviceWorker" in navigator) {
@@ -56,7 +56,7 @@ else {
     getFrameLabelSlotId: getLabelSlotUID,
     getStrypeSaveProjectNameInputId: getStrypeSaveProjectNameInputId,
     getSaveStrypeProjectToFSButtonId: getSaveStrypeProjectToFSButtonId,
-    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     getPEATabContentContainerDivId: getPEATabContentContainerDivId,
     // #v-endif
 };

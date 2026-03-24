@@ -19,7 +19,7 @@
 
 import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
 import { AppEvent, LoadRequestReason, Position, SaveRequestReason, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { LoadedMedia } from "@/types/types";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 // #v-end-if
@@ -36,7 +36,7 @@ export type CommandsComponentAPI = {
   onCommandsSplitterResize: (event: any) => void,
   resetPEACommmandsSplitterDefaultState: () => Promise<void>,
   setCommandsSplitterPane2Size: (v: number) => void,
-  // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+  // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
   setPEACommandsSplitterPanesMinSize: (onlyResizePEA?: boolean) => void,
   setIsExpandedPEA: (v: boolean) => void,
   setLogicalORHasPEAExpanded: (v: boolean) => void,
@@ -152,7 +152,7 @@ export type AutoCompletionComponentAPI = {
   },
 }
 
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 export type PEAComponentAPI = {
   togglePEALayout:(layoutMode: StrypePEALayoutMode, userTriggeredAction?: boolean) => void,
   clear: () => void,

@@ -16,7 +16,7 @@ import emptyState from "@/store/initial-states/empty-state";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import $ from "jquery";
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { actOnTurtleImport } from "@/helpers/editor";
 // #v-endif
 
@@ -28,7 +28,7 @@ function getState(): StateAppObject {
     let returnedState;
     if(typeof(Storage) !== "undefined") {
         let storageString = AutoSaveKeyNames.pythonEditorState;
-        // #v-ifdef MODE == VITE_MICROBIT_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
         storageString = AutoSaveKeyNames.mbEditor;
         // #v-endif
         const savedState = localStorage.getItem(storageString);
@@ -39,7 +39,7 @@ function getState(): StateAppObject {
     }
     
     if(!isExistingStateLocated) {
-        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
         returnedState = initialStates["initialPythonState"];
         // #v-else
         returnedState = initialStates["initialMicrobitState"];
@@ -108,7 +108,7 @@ export const useStore = defineStore("app", {
              ***/ 
             editorCommandsSplitterPane2Size: undefined as StrypeLayoutDividerSettings | undefined, // same as above for the divider between the editor and the commands (pane 2), default is 34%
             
-            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+            // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
             peaLayoutMode:  undefined as StrypePEALayoutMode | undefined, // the project layout view is saved with the store
             
             // The size of the commands/PEA splitter pane 2 size is saved with the store.
@@ -2567,7 +2567,7 @@ export const useStore = defineStore("app", {
                 if (this.peaLayoutMode != newPEALayout) {
                     setTimeout(() => {
                         this.peaLayoutMode = newPEALayout;
-                        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                         vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(newPEALayout);
                         // #v-endif
                     }, chainedTimeOuts += 200);
@@ -2611,7 +2611,7 @@ export const useStore = defineStore("app", {
         
         doSetStateFromJSONStr(stateJSONStr: string): Promise<void>{
             return new Promise((resolve) => {
-                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                 // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
                 actOnTurtleImport();
 
@@ -3086,7 +3086,7 @@ export const settingsStore = defineStore("settings", {
             // Change the frame command labels / details 
             generateAllFrameCommandsDefs();
 
-            // #v-ifdef MODE == VITE_MICROBIT_MODE
+            // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
             //change the API description content here, as we don't want to construct the textual API description every time we need it
             getAPIItemTextualDescriptions(true);
             // #v-endif

@@ -22,7 +22,7 @@ export const vueComponentsAPIHandler = {
     frameComponentAPI: null as null | FrameComponentAPI,
     frameHeaderComponentAPI: null as null | FrameHeaderComponentAPI,
     autoCompletionComponentAPI: null as null | AutoCompletionComponentAPI,
-    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     peaComponentAPI: null as null | PEAComponentAPI,
     mediaPreviewPopupComponentAPI:null as null | MediaPreviewPopupComponentAPI,
     editImageDlgComponentAPI: null as null | EditImageDlgComponentAPI,

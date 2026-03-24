@@ -10,7 +10,7 @@ import Parser from "@/parser/parser";
 import {extractPYI} from "@/helpers/python-pyi";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 import {AcResultsWithCategorySchema} from "@/types/ac-types-zod";
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import {OUR_PUBLIC_LIBRARY_MODULES, pythonBuiltins} from "@/autocompletion/pythonBuiltins";
 import pythonAPI from "@/autocompletion/python-api.json";
 import graphicsMod from "@/../pysrc/strype/graphics.py?raw";
@@ -297,7 +297,7 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
         // Depending on whether we are microbit or Pyodide, access the appropriate JSON file and retrieve
         // the contents of the specific module:
         
-        // #v-ifdef MODE == VITE_MICROBIT_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
         const allMicrobitItems : AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
         if (allMicrobitItems) {
             soFar[module] = [...allMicrobitItems.filter((x) => !x.acResult.startsWith("_"))];
@@ -324,7 +324,7 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
         if(isSimpleImport && context != module) {
             if (soFar[importedModulesCategory] == undefined || !soFar[importedModulesCategory].some((acRes) => acRes.acResult.localeCompare(realModule) == 0)) {
                 // In the case of an import frame, we can add the module in the a/c as such in the imported module modules section (if non-present)
-                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                 if (pythonBuiltins[realModule]) {
                     const moduleDoc = (pythonBuiltins[realModule].documentation ?? "");
                     const imports = soFar[importedModulesCategory] ?? [];
@@ -352,7 +352,7 @@ function doGetAllExplicitlyImportedItems(frame: FrameObject, module: string, isS
         
             let allItems : AcResultType[] = [];
 
-            // #v-ifdef MODE == VITE_MICROBIT_MODE
+            // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
             const allMicrobitItems : AcResultType[] = microbitPythonAPI[realModule as keyof typeof microbitPythonAPI] as AcResultType[];
             if (allMicrobitItems) {
                 allItems = [...allMicrobitItems.filter((x) => !x.acResult.startsWith("_"))];
@@ -405,7 +405,7 @@ export async function getAvailableModulesForImport() : Promise<AcResultsWithCate
     }
 
     let isMicrobit = false;
-    // #v-ifdef MODE == VITE_MICROBIT_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
     isMicrobit = true;
     // #v-endif
     const apiModules = (isMicrobit) ? (microbitDescriptions.modules as any as Record<string, {type: "module", documentation?: string, version: number}>) : pythonBuiltins;   
@@ -414,7 +414,7 @@ export async function getAvailableModulesForImport() : Promise<AcResultsWithCate
         .filter((k) => apiModules[k]?.type === "module" && !k.startsWith("_"))
         .map((k) => ({acResult: k, documentation: apiModules[k].documentation||"", type: [apiModules[k].type], version: apiModules[k].version}))
         .concat(fromLibraries.map((m) => ({acResult: m, documentation: "", type: ["module"], version: 0})));
-    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     updatedAPIModules = updatedAPIModules.concat(OUR_PUBLIC_LIBRARY_MODULES.map((m) => ({acResult: m, documentation: "", type: ["module"], version: 0})));
     // #v-endif
     return {[""]: updatedAPIModules};
@@ -423,7 +423,7 @@ export async function getAvailableModulesForImport() : Promise<AcResultsWithCate
 
 export async function getAvailableItemsForImportFromModule(module: string) : Promise<AcResultType[]> {
     const star : AcResultType = {"acResult": "*", "documentation": "All items from module", "version": 0, "type": []};
-    // #v-ifdef MODE == VITE_MICROBIT_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
     const allMicrobitItems: AcResultType[] = microbitPythonAPI[module as keyof typeof microbitPythonAPI] as AcResultType[];
     if (allMicrobitItems) {
         return [...allMicrobitItems, star];
@@ -459,7 +459,7 @@ export async function getAvailableItemsForImportFromModule(module: string) : Pro
 }
 
 export function getBuiltins() : AcResultType[] {
-    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     // Must return a clone as caller may later modify the list:
     return [...pythonAPI[""] as AcResultType[]];
     // #v-else

@@ -37,7 +37,7 @@ export function generateSPYFileContent(): string {
     const headers = new Map<string, string | undefined>();
     headers.set(AppName, AppSPYSaveVersion + ":" + AppPlatform);
     headers.set("editorCommandsSplitterPane2Size", saveDivider(useStore().editorCommandsSplitterPane2Size));
-    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     const peaLayoutMode = useStore().peaLayoutMode;
     headers.set("peaLayoutMode", (peaLayoutMode === undefined || peaLayoutMode == StrypePEALayoutMode.tabsCollapsed) ? undefined : StrypePEALayoutMode[peaLayoutMode]);
     headers.set("peaCommandsSplitterPane2Size", saveDivider(useStore().peaCommandsSplitterPane2Size));

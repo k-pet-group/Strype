@@ -109,10 +109,10 @@ function removeFilesPlugin(isStandardPython) {
 }
 
 export default defineConfig(({mode}) => {
-    // Mode for the Strype "platform" (standard Python or for micro:bit)
-    // We use environment variables for the possible values (only exception is in the serve/build scripts...)
+    // The environment variable for the Strype "platform" (standard Python or for micro:bit) is set in the scripts (STRYPE_PLATFORM)
+    // We use environment variables for listing the possible values (for the code, the literal values are used only in the serve/build scripts...).
     const viteEnv = loadEnv(mode, process.cwd(), "VITE_");
-    const isStandardPython = mode === viteEnv.VITE_STANDARD_PYTHON_MODE;
+    const isStandardPython = process.env.STRYPE_PLATFORM === viteEnv.VITE_STANDARD_PYTHON_MODE;
   
     return {       
         plugins: [

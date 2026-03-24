@@ -18,7 +18,7 @@
                     </div>
                 </div>
             </div>
-            <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
+            <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
             <!-- the container div is only here because the new version of Splitpanes doesn't get the classes -->
             <div class="expanded-PEA-splitter-overlay strype-split-theme">
                 <Splitpanes v-show="isExpandedPythonExecArea" horizontal @resize=onExpandedPythonExecAreaSplitPaneResize>
@@ -139,7 +139,7 @@ import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, Fr
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import {getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
 // #v-else
 import { getAPIItemTextualDescriptions } from "./helpers/microbitAPIDiscovery";
@@ -201,7 +201,7 @@ export default defineComponent({
             setAppNotOnTop: false,
             progressbarMessage: "",
             cloudDriveName: "",
-            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+            // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
             isExpandedPythonExecArea: false,
             // #v-endif
             imgToEditInDialog: "",
@@ -219,7 +219,7 @@ export default defineComponent({
 
         layoutClassesForStandardVersion(){
             let classes = {};
-            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+            // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
             classes = {"full-height-editor-code-div":!this.isExpandedPythonExecArea, [scssVars.croppedEditorDivClassName]: this.isExpandedPythonExecArea};            
             // #v-endif
             return classes;
@@ -276,7 +276,7 @@ export default defineComponent({
                 let value = (this.appStore.editorCommandsSplitterPane2Size != undefined && this.appStore.editorCommandsSplitterPane2Size[StrypePEALayoutMode.tabsCollapsed] != undefined) 
                     ? this.appStore.editorCommandsSplitterPane2Size[StrypePEALayoutMode.tabsCollapsed] 
                     : parseFloat(scssVars.editorCommandsSplitterPane2SizePercentValue);
-                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                 value = (this.appStore.peaLayoutMode != undefined && this.appStore.editorCommandsSplitterPane2Size != undefined && this.appStore.editorCommandsSplitterPane2Size[this.appStore.peaLayoutMode] != undefined) 
                     ? this.appStore.editorCommandsSplitterPane2Size[this.appStore.peaLayoutMode] as number
                     // When there is no set value for a given layout mode,
@@ -303,7 +303,7 @@ export default defineComponent({
 
         localStorageAutosaveEditorKey(): string {
             let storageString = AutoSaveKeyNames.pythonEditorState;
-            // #v-ifdef MODE == VITE_MICROBIT_MODE
+            // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
             storageString = AutoSaveKeyNames.mbEditor;
             // #v-endif
             return storageString;
@@ -353,7 +353,7 @@ export default defineComponent({
             return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
         },
         
-        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
         expandedPEAOverlaySplitterPane2Size: {
             get(): number {
                 const value = (this.appStore.peaExpandedSplitterPane2Size != undefined && this.appStore.peaLayoutMode != undefined && this.appStore.peaExpandedSplitterPane2Size[this.appStore.peaLayoutMode] != undefined)
@@ -603,7 +603,7 @@ export default defineComponent({
             }
         });
 
-        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
         // Listen to the Python execution area size change events (as the editor needs to be resized too)
         document.addEventListener(CustomEventTypes.pythonExecAreaExpandCollapseChanged, (event) => {
             const expandedPEAValue = (event as CustomEvent<boolean>).detail;
@@ -651,7 +651,7 @@ export default defineComponent({
         // Add a listener for the mouse scroll events. We do not want to allow scrolling when the context menu is shown
         document.addEventListener("wheel", this.blockScrollOnContextMenu, {passive:false});
 
-        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
         // Add a listener for the whole window resize.
         window.addEventListener("resize",() => {
             // When the window is resized, the overlay expanded PEA splitter is properly updated. However, the underlying UI is not updated
@@ -884,7 +884,7 @@ export default defineComponent({
             }
         });
 
-        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
         // This case may not happen, but if we had a Strype version that contains a default initial state working with Turtle,
         // the UI should reflect it (showing the Turtle tab) so we look for Turtle in any case.
         actOnTurtleImport();
@@ -1532,7 +1532,7 @@ export default defineComponent({
             }
         },
 
-        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
         onExpandedPythonExecAreaSplitPaneResize(event: any, calledForResize?: boolean){
             // We want to know the size of the second pane (https://antoniandre.github.io/splitpanes/#emitted-events).
             // It will dictate the size of the Python execution area (expanded, with a range between 20% and 80% of the vh)
@@ -1603,7 +1603,7 @@ export default defineComponent({
                 this.appStore.isEditorContentModified = true;
             }
 
-            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+            // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
             // When the rightmost panel (with Strype commands) is resized, we need to also update the Turtle canvas and break the natural 4:3 ratio of the PEA
             vueComponentsAPIHandler.commandsComponentAPI?.setIsCommandsSplitterChanged(true);
             document.getElementById(getPEATabContentContainerDivId())?.dispatchEvent(new CustomEvent(CustomEventTypes.pythonExecAreaSizeChanged));
@@ -1618,7 +1618,7 @@ export default defineComponent({
                     // Now we can clear other non-frame related elements
                     this.appStore.clearNoneFrameRelatedState();
                 
-                    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                     // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
                     actOnTurtleImport();
 

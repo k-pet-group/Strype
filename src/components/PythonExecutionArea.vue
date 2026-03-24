@@ -163,7 +163,7 @@ export default defineComponent({
         hasDefault43Ratio: Boolean,
     },
 
-    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     created() {
         // Expose this component that other components might need.
         // Vue 3 has deprecated direct access to components.

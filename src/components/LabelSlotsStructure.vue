@@ -662,7 +662,7 @@ export default defineComponent({
             if (event.clipboardData && focusSlotCursorInfos) {
                 // First we need to check if it's a media item on the clipboard, because that needs
                 // to become a media literal rather than plain text:
-                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                 if (preparePasteMediaData(event, (code: string, dataAndDim : MediaDataAndDim) => {
                     // The code is the code to load the literal from its base64 string representation:                    
                     document.getElementById(getLabelSlotUID(focusSlotCursorInfos.slotInfos))

@@ -6,7 +6,7 @@ import { useStore } from "@/store/store";
 import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, FrozenState, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
 import { ErrorInfo, TPyParser } from "tigerpython-parser";
 import {AppSPYFullPrefix} from "@/helpers/appContext";
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { actOnTurtleImport } from "@/helpers/editor";
 // #v-endif
 import {STRYPE_DUMMY_FIELD, STRYPE_EXPRESSION_BLANK, STRYPE_INVALID_OP, STRYPE_INVALID_OPS_WRAPPER, STRYPE_INVALID_SLOT} from "@/helpers/pythonToFrames";
@@ -580,7 +580,7 @@ export default class Parser {
             this.ignoreSpecificFrameId = ignoreSpecificFrameId;
         }
 
-        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
         // We look if Turtle has been imported to notify the editor UI
         actOnTurtleImport();
         // #v-endif

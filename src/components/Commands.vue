@@ -1,6 +1,6 @@
 <template>
     <div class="commands">
-        <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
+        <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
         <!-- the container div is only here because the new version of Splitpanes doesn't get the classes -->
         <div :class="{[scssVars.commandsPEASplitterThemeClassName]: true, [scssVars.expandedPEAClassName]: isExpandedPEA}">
             <Splitpanes horizontal @resize="onCommandsSplitterResize">
@@ -17,13 +17,13 @@
                             </div>
                         </div>     
                         <div @mousedown.prevent.stop @mouseup.prevent.stop>
-                            <!-- #v-ifdef MODE == VITE_MICROBIT_MODE -->
+                            <!-- #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE -->
                             <BTabs id="commandsTabs" content-class="mt-2" v-model:index="tabIndex">
                                 <BTab :title="$t('commandTabs.0')" active :title-link-class="getTabClasses(0)" :disabled="isEditing">
                             <!-- #v-endif-->
                                     <div :id="commandsContainerUID" class="command-tab-content" >
                                         <div id="addFramePanel">
-                                            <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
+                                            <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
                                             <div :class="{[scssVars.addFrameCommandsContainerClassName]: true, 'with-expanded-PEA': isExpandedPEA}">
                                             <!-- #v-else-->
                                             <div :class="scssVars.addFrameCommandsContainerClassName">
@@ -50,14 +50,14 @@
                                                     />
                                                 </p>
                                             <!-- this conditional rendering is only used for our code editor to see the closing <div> right -->
-                                            <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
+                                            <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
                                             </div>
                                             <!-- #v-else-->
                                             </div>
                                             <!-- #v-endif-->
                                         </div>
                                     </div>
-                                <!-- #v-ifdef MODE == VITE_MICROBIT_MODE -->
+                                <!-- #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE -->
                                 </BTab>
                                     <BTab :title="$t('commandTabs.1')" :title-link-class="getTabClasses(1)">
                                         <APIDiscovery  class="command-tab-content"/>
@@ -68,7 +68,7 @@
                         <text id="userCode"></text>
                         <span id="keystrokeSpan"></span>
                     </div>
-        <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
+        <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
                 </pane>
                 <pane key="2" :size="commandsSplitterPane2Size" :min-size="commandSplitterPane2MinSize" :class="{'collapsed-pea-splitter-pane': !isExpandedPEA}">
                     <python-execution-area :class="scssVars.peaContainerClassName" :ref="peaComponentRefId" v-on:[peaMountedEventName]="onPEAMounted" :hasDefault43Ratio="!isCommandsSplitterChanged && !hasPEAExpanded"/>
@@ -119,7 +119,7 @@ import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFr
 import { clamp } from "lodash";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import {Splitpanes, Pane} from "splitpanes";
 import PythonExecutionArea from "@/components/PythonExecutionArea.vue";
 import {getPEAConsoleId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getPEAComponentRefId, getPEAControlsDivId} from "@/helpers/editor";
@@ -132,7 +132,7 @@ import { useBrowserDetect } from "vue3-detect-browser";
 import { BTab, BTabs } from "bootstrap-vue-next";
 // #v-endif
 
-// #v-ifdef MODE == VITE_MICROBIT_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
 // This variable is moved to at the module level rather than in data because having a Window as a reactive property doesn't work with Vue 2.7 (and Vue 3)
 let mbSimulator: Window | null = null;
 // #v-endif
@@ -141,7 +141,7 @@ export default defineComponent({
     name: "Commands",
 
     setup(){
-        // #v-ifdef MODE == VITE_MICROBIT_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
         // Get the detectBrowser function from the (replaced for Vue 3) browser detection package
         const detectBrowser = useBrowserDetect;
         return { detectBrowser };
@@ -150,7 +150,7 @@ export default defineComponent({
 
     components: {
         AddFrameCommand,
-        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
         Splitpanes, Pane,
         PythonExecutionArea, 
         // #v-else
@@ -168,7 +168,7 @@ export default defineComponent({
             uploadThroughUSB: false,
             frameCommandsReactiveFlag: false, // this flag is only use to allow a reactive binding when the add frame commands are updated (language),
             lastProjectSavedDateTooltip: "", // update on a mouse over event (in getLastProjectSavedDateTooltip)
-            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+            // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
             isExpandedPEA: false, // flag indicating whether the Python Execution Area is expanded (to update the UI parts accordingly)
             hasPEAExpanded: false, // flag indicating whether the Python Execution Area *has ever been* expanded
             peaMountedEventName: CustomEventTypes.pythonExecAreaMounted,
@@ -180,7 +180,7 @@ export default defineComponent({
         };
     },
 
-    // #v-ifdef MODE == VITE_MICROBIT_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
     beforeMount() {
         this.uploadThroughUSB = (this.detectBrowser().isChrome || this.detectBrowser().isOpera || this.detectBrowser().isEdge);
     },
@@ -237,7 +237,7 @@ export default defineComponent({
             }
         },
         
-        // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
         peaComponentRefId(): string {
             return getPEAComponentRefId();
         },
@@ -298,7 +298,7 @@ export default defineComponent({
             setCommandsSplitterPane2Size: (value: number) => {
                 this.commandsSplitterPane2Size= value;
             },
-            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+            // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
             setPEACommandsSplitterPanesMinSize: this.setPEACommandsSplitterPanesMinSize,
             setIsExpandedPEA: (value: boolean) => {
                 this.isExpandedPEA = value;
@@ -457,13 +457,13 @@ export default defineComponent({
                 
                 // If ctrl-enter/cmd-enter is pressed, make sure we quit the editing (if that's the case) and run the code
                 let isTargetRefDefined = false;
-                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                 isTargetRefDefined = !!this.$refs[getPEAComponentRefId()];
                 // #v-else
                 isTargetRefDefined = (mbSimulator != null);
                 // #v-endif
                 if((event.ctrlKey || event.metaKey) && eventKeyLowCase === "enter" && isTargetRefDefined) {
-                    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                     vueComponentsAPIHandler.peaComponentAPI?.focusClickRunButton();
                     // Need to unfocus to avoid keyboard focus non-obviously remaining with the run button:
                     vueComponentsAPIHandler.peaComponentAPI?.blurRunButton();
@@ -500,7 +500,7 @@ export default defineComponent({
                 // Prevent default scrolling and navigation in the editor, except if Turtle is currently running and listening for key events
                 // (then we just leave the PEA handling it, see at the end of these conditions for related code)
                 let extraConditionsForPEA = true;
-                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                 extraConditionsForPEA = !(isPythonExecuting && vueComponentsAPIHandler.peaComponentAPI?.getIsTurtleListeningKeyEvents() || vueComponentsAPIHandler.peaComponentAPI?.getIsRunningStrypeGraphics());
                 // #v-endif
                 if (!isDraggingFrames && !isEditing && extraConditionsForPEA && ["ArrowDown", "ArrowUp", "ArrowLeft", "ArrowRight", "Tab", "Home", "End", "PageUp", "PageDown"].includes(event.key)) {
@@ -626,7 +626,7 @@ export default defineComponent({
                             }
                         }
                     }
-                    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                     else if(isPythonExecuting && !vueComponentsAPIHandler.peaComponentAPI?.getIsRunningStrypeGraphics()){
                         // The special case when the user's code is being executing, we want to handle the key events carefully.
                         // If there is a combination key (ctrl,...) we just ignore the events, otherwise, if Turtle is active we pass events to the Turtle graphics,
@@ -696,7 +696,7 @@ export default defineComponent({
             false
         );
         
-        // #v-ifdef MODE == VITE_MICROBIT_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
         mbSimulator = (document.querySelector("#mbSimulatorIframe") as HTMLIFrameElement)?.contentWindow;
         window.addEventListener("blur", this.handleMBSimulatorTakesFocus);        
         window.addEventListener("message", this.onMicrobitSimulatorMsgReceived);
@@ -770,7 +770,7 @@ export default defineComponent({
             this.lastProjectSavedDateTooltip = toolTipVal;
         },
 
-        // #v-ifdef MODE == VITE_MICROBIT_MODE
+        // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
         runToMicrobit() {
             // If we can directly upload on microbit, we run the method flash().
             // If we cannot, we run downloadHex(), it already contains code to show a message to the user.
@@ -968,7 +968,7 @@ export default defineComponent({
     color: #252323;
     background-color: #E2E7E0;
     height: 100vh;
-    // #v-ifdef MODE == VITE_MICROBIT_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
     display: flex;
     flex-direction: column;
     padding:0px 15px;
@@ -979,7 +979,7 @@ export default defineComponent({
  * The following classes overwrite the spitter's style
  * for the splitter in use in this component.
  */
-// #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 .#{$strype-classname-commands-pea-splitter-theme} {
     height: 100%;
 }
@@ -1024,7 +1024,7 @@ export default defineComponent({
 }
 
 .#{$strype-classname-no-pea-commands} {
-    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     overflow-y: hidden;
     display: flex;
     flex-direction: column;
@@ -1063,7 +1063,7 @@ export default defineComponent({
 }
 
 .#{$strype-classname-pea-container} {
-    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     margin: 0px $strype-python-exec-area-margin $strype-python-exec-area-margin $strype-python-exec-area-margin;
     // #v-else
     margin-bottom: 40px;
@@ -1103,7 +1103,7 @@ export default defineComponent({
 }
 //ends bootstrap overriding
 
-// #v-ifdef MODE == VITE_MICROBIT_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
 .commands-container {
     display: inline-block;
 }

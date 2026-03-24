@@ -789,7 +789,7 @@ export const checkPrecompiledErrorsForSlot = (slotInfos: SlotInfos): void => {
     );
     delete (slot as BaseSlot).errorTitle;
 
-    // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+    // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     // If the frame of this slot has a runtime error, we also clear it
     delete useStore().frameObjects[slotInfos.frameId].runTimeError;
     // #v-endif

@@ -95,7 +95,7 @@ export default defineComponent({
             // We must update the available demos based on the code.
             // Our built-in demos are always available:
             this.availableDemos = [
-                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                 {name: this.$t("demos.builtinGraphics"), demos: getBuiltinDemos("graphics")},
                 {name: this.$t("demos.builtinTurtle"), demos: getBuiltinDemos("turtle")},
                 {name: this.$t("demos.builtinConsole"), demos: getBuiltinDemos("console")},
@@ -113,7 +113,7 @@ export default defineComponent({
             // Then we can get the libraries and look for demos:
             // Don't show mediacomp-strype in the micro:bit verison, nor when testing mode because it can get us temporarily banned by Github:
             let extraLibraries = [];            
-            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+            // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
             extraLibraries = (window.Cypress || (window as any).Playwright) ? [] :["github:k-pet-group/mediacomp-strype"];
             // #v-endif
             for (const library of [...new Set([...extraLibraries, ...p.getLibraries()])]) {

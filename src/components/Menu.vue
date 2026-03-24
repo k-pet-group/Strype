@@ -89,7 +89,7 @@
             <div class="menu-separator-div"></div>           
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLoadDemoProjectModal">{{$t('appMenu.loadDemoProject')}}</a>
             <OpenDemoDlg ref="openDemoDlg" :dlg-id="loadDemoProjectModalDlgId"/>
-            <!-- #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE -->
+            <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
             <a v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="openLibraryDoc">{{$t('appMenu.apiDocumentation')}}</a>
             <!-- #v-endif-->
             <!-- category: export -->
@@ -141,7 +141,7 @@
                         </div>
                     </ModalDlg>
             <!-- download python/hex project -->
-            <!-- #v-ifdef MODE == VITE_MICROBIT_MODE-->
+            <!-- #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE-->
             <a v-if="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="downloadHex();showMenu=false;">{{ $t("appMenu.downloadHex") }}</a>
             <!-- #v-endif-->
             <a v-if="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="downloadPython();showMenu=false;">{{ $t("appMenu.downloadPython") }}</a>
@@ -1310,7 +1310,7 @@ export default defineComponent({
         toggleMenuOnOff(e: Event | null): void {
             if(e && this.isPythonRunning){
                 // When the project runs, we can't open the menu, but we show some "notification" in the PEA
-                // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+                // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                 document.dispatchEvent(new Event(CustomEventTypes.highlightPythonRunningState));
                 // #v-endif
                 return;

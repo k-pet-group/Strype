@@ -1185,7 +1185,7 @@ export interface VoidFunction {
 }
 
 //Representation of an item of the (microbit) API using a coded identifier with its potential children
-// #v-ifdef MODE == VITE_MICROBIT_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
 export interface APICodedItem {
     name: string, //a UUID coded name that represent a single item of the API description (** do not use "." in the coded names, it messes i18n **)
     codePortion: string, //the code portion that will builds an example use in the editor (code builder)

@@ -127,7 +127,7 @@ export default defineComponent({
 
         redirectURI(): string {
             let redirectServerEditorPath = ""; 
-            // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
+            // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
             redirectServerEditorPath = "editor";
             // #v-else
             redirectServerEditorPath = "microbit";

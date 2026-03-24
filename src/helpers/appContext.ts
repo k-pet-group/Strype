@@ -22,7 +22,7 @@ export const AppName = "Strype";
 export const AppSPYPrefix = "(=>";
 export const AppSPYFullPrefix = "#" + AppSPYPrefix;
 let appPlatform = StrypePlatform.standard;
-// #v-ifdef MODE == VITE_MICROBIT_MODE
+// #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
 appPlatform = StrypePlatform.microbit;
 // #v-endif
 export const AppPlatform = appPlatform;

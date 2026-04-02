@@ -108,6 +108,7 @@
         <ModalDlg :dlgId="confirmNewProjectModalDlgId" :useYesNo="true">
             <span style="white-space:pre-wrap" v-html="$t('appMessage.newProjectConfirmation')"></span>
         </ModalDlg>
+        <button class="editor-help-button no-print" @click="onHelpClick" aria-label="Help">Need Help?</button>
     </div>
 </template>
 
@@ -984,6 +985,18 @@ export default Vue.extend({
             }
         },
 
+        onHelpClick(): void {
+            // Show modal to explain the main editor area and how to use frames.
+            this.appStore.contextualModalDlgTitle = "Strype Editor";
+            this.appStore.contextualModalDlgMsg = `
+            <p>Use frames to organize your code into sections.</p>
+            <p>Frames contain lines of code separating them from other frames, and can be collapsed to hide their content.</p>
+            <p>There are 3 main sections, imports, functions and the main section. The main section is where the execution starts.</p>
+            `;
+            this.appStore.contextualModalDlgGIF = "graphics_images/editor.gif";
+            this.$root.$emit("bv::show::modal", getContextualMsgModalDlgId());
+        },
+
         loadLocalStorageProjectOnStart() {
             // Check the local storage (WebStorage) to see if there is a saved project from the previous time the user entered the system
             // if browser supports localstorage
@@ -1727,6 +1740,30 @@ body.#{$strype-classname-dragging-frame} {
 
 .editor-code-div {
     overflow-y: auto;
+}
+
+/* Floating help button shown at bottom-right of the editor area */
+.editor-help-button {
+    position: fixed;
+    bottom: 20px;
+    left: 20px;
+    z-index: 400;
+    height: 44px;
+    border-radius: 22px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #006600;
+    color: white;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    font-size: 16px;
+}
+.editor-help-button:focus {
+    outline: none;
+}
+.editor-help-button:hover {
+    background-color: #005200;
 }
 
 .top {

@@ -1,7 +1,7 @@
 <template>
     <ModalDlg :dlgId="dlgId" :dlgTitle="prefixedDlgTitle" :okOnly="true">
         <span v-html="dlgMsg"/>
-        <img v-if="dlgGIF" :src="dlgGIF" style="max-width: 100%; max-height: 300px; margin-top: 10px;"/>
+        <img v-if="dlgGIF" :src="dlgGIF" style="max-width: 100%; margin-top: 10px;"/>
     </ModalDlg>
 </template>
 

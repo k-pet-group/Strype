@@ -14,7 +14,6 @@
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
                 <span>{{runCodeButtonLabel}}</span>
             </button>
-            <button id="PEAhelpButton" class="btn-outline" @click="onPEAHelpClick">?</button>
         </div>
         <div :id="tabContentContainerDivId" :class="{'pea-tab-content-container': true, 'flex-padding': true, 'pea-43-ratio': hasDefault43Ratio}">
             <!-- the SplitPanes is used in all layout configurations: for tabs, we only show 1 of the panes and disable moving the divider, and for stacked window it acts as normal -->
@@ -62,7 +61,7 @@ import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { execPythonCode } from "@/helpers/execPythonCode";
 import { mapStores } from "pinia";
-import {adjustContextMenuPosition, checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getStrypeCommandComponentRefId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight, getContextualMsgModalDlgId } from "@/helpers/editor";
+import {adjustContextMenuPosition, checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getMenuLeftPaneUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEAGraphicsDivId, getPEATabContentContainerDivId, getStrypeCommandComponentRefId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import i18n from "@/i18n";
 import {defaultEmptyStrypeLayoutDividerSettings, Position, PythonExecRunningState, StrypePEALayoutData, StrypePEALayoutMode} from "@/types/types";
 import { PersistentImage, PersistentImageManager, WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
@@ -455,19 +454,6 @@ export default Vue.extend({
             }
         },
         
-        onPEAHelpClick(): void{
-            // Show modal to explain what the Python Execution Area is with accomonying GIF.
-            this.appStore.contextualModalDlgTitle = "Python Execution Area";
-            this.appStore.contextualModalDlgMsg = `
-            <p>This is where your program runs.</p>
-            <p>Use <strong>Run</strong> to begin execution and <strong>Stop</strong> to stop.</p>
-            <p>The <strong>Console</strong> shows input prompts, printed output and runtime errors.  
-            The <strong>Graphics</strong> view shows Turtle/graphics output from Turtle-based code</p>
-            <p>If execution fails, check your code for any highlighted errors.</p>
-            `;
-            this.appStore.contextualModalDlgGIF = "graphics_images/pea_graphics.gif";
-            this.$root.$emit("bv::show::modal", getContextualMsgModalDlgId());
-        },
 
         updateTurtleListeningEvents(): void {
             // We should check if we are still in need to maintain the running state as "Running" (just for listening the events)

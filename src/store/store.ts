@@ -228,11 +228,13 @@ export const useStore = defineStore("app", {
             
             simpleModalDlgMsg: "",
 
-            contextualModalDlgTitle: "",
+            helpModalDlgTitle: "",
 
-            contextualModalDlgMsg: "",
+            helpModalDlgMsg: "",
 
-            contextualModalDlgGIF: "",
+            helpModalDlgGIF: "",
+            helpModalDlgEntries: [] as { title: string; msg: string; gif: string }[],
+            helpModalDlgIndex: 0,
             
             groupToggleMemory: {} as Record<string, { lastStates: Record<number, CollapsedState>; overallState: CollapsedState;}> | undefined, // Undefined if missing in old store
 

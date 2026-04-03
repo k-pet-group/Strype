@@ -87,7 +87,7 @@
             </SplitPanes>
         </div>
         <SimpleMsgModalDlg :dlgId="simpleMsgModalDlgId"/>
-        <ContextualMsgModalDlg :dlgId="contextualMsgModalDlgId"/>
+        <HelpModalDlg :dlgId="helpModalDlgId"/>
         <ModalDlg :dlgId="importDiffVersionModalDlgId" :useYesNo="true">
             <span v-t="'appMessage.editorFileUploadWrongVersion'" />                
         </ModalDlg>
@@ -124,12 +124,12 @@ import Commands from "@/components/Commands.vue";
 import Menu from "@/components/Menu.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
-import ContextualMsgModalDlg from "@/components/ContextualMsgModalDlg.vue";
+import HelpModalDlg from "@/components/HelpModalDlg.vue";
 import {Splitpanes, Pane, PaneData} from "splitpanes";
 import { useStore, settingsStore } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
-import { getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getMainUIElements, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getContextualMsgModalDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getStencilOverlayUID, getFrameHeaderUID } from "./helpers/editor";
+import { getFrameContainerUID, getCloudDriveHandlerComponentRefId, getMenuLeftPaneUID, getMainUIElements, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getHelpModalDlgId, getFrameContextMenuUID, getActiveContextMenu, actOnTurtleImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, isContextMenuItemSelected, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, getFrameComponent, getCaretContainerComponent, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getStencilOverlayUID, getFrameHeaderUID } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
 /* IFTRUE_isPython */
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
@@ -179,7 +179,7 @@ export default Vue.extend({
         Menu,
         ModalDlg,
         SimpleMsgModalDlg,
-        ContextualMsgModalDlg,
+        HelpModalDlg,
         Splitpanes,
         Pane,
     },
@@ -296,8 +296,8 @@ export default Vue.extend({
             return getAppSimpleMsgDlgId();
         },
 
-        contextualMsgModalDlgId(): string{
-            return getContextualMsgModalDlgId();
+        helpModalDlgId(): string{
+            return getHelpModalDlgId();
         },
 
         importDiffVersionModalDlgId(): string {
@@ -987,14 +987,14 @@ export default Vue.extend({
 
         onHelpClick(): void {
             // Show modal to explain the main editor area and how to use frames.
-            this.appStore.contextualModalDlgTitle = "Strype Editor";
-            this.appStore.contextualModalDlgMsg = `
+            this.appStore.helpModalDlgTitle = "Strype Editor";
+            this.appStore.helpModalDlgMsg = `
             <p>Use frames to organize your code into sections.</p>
             <p>Frames contain lines of code separating them from other frames, and can be collapsed to hide their content.</p>
             <p>There are 3 main sections, imports, functions and the main section. The main section is where the execution starts.</p>
             `;
-            this.appStore.contextualModalDlgGIF = "graphics_images/editor.gif";
-            this.$root.$emit("bv::show::modal", getContextualMsgModalDlgId());
+            this.appStore.helpModalDlgGIF = "graphics_images/editor.gif";
+            this.$root.$emit("bv::show::modal", getHelpModalDlgId());
         },
 
         loadLocalStorageProjectOnStart() {

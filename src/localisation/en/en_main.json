@@ -288,5 +288,19 @@
     "delete": "Delete",
     "ctrlPlus": "Ctrl+",
     "period": "Dot"
+  },
+  "help":{
+    "editor": {
+      "title": "Editor overview",
+      "content": "The editor is composed of frames, which are blocks of code representing a specific instruction or structure.\nFrames can be nested inside each other to represent the structure of the code."
+    },
+    "commands": {
+      "title": "Strype Commands",
+      "content": "Use keys to create code!\nEach key corresponds to a specific command to insert the corresponding frame.\nTo delete a frame, press the delete key while the frame is selected."
+    },
+    "pea": {
+      "title": "Python Execution Area",
+      "content": "The PEA (Python Execution Area) is where your program runs.\nUse Run to begin execution and Stop to stop.\nThe Console shows input prompts, printed output and runtime errors.\nThe Graphics view shows Turtle/graphics output from Turtle-based code\nIf execution fails, check your code for any highlighted errors.</p>"
+    }
   }
 }

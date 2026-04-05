@@ -7,3 +7,8 @@
   description: A rock-paper-scissors game
   image: console-rps.png
   file: console-rps.spy
+
+- name: Hello World!
+  description: A simple hello world program
+  image: console-hello.png
+  file: console-hello.spy

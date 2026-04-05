@@ -6,6 +6,8 @@ import { skulptReadPythonLib } from "@/autocompletion/ac-skulpt";
 import i18n from "@/i18n";
 import Vue from "vue";
 import { CustomEventTypes, setPythonExecAreaLayoutButtonPos } from "./editor";
+import { vm } from "@/main";
+import { getAppSimpleMsgDlgId } from "./editor";
 import { clearFileIOCaches, skulptCloseFileIO, skulptInteralFileWrite, skulptOpenFileIO } from "./skulptFileIO";
 
 const STRYPE_RUN_ACTION_MSG = "StrypeRunActionCalled";
@@ -172,6 +174,32 @@ export function execPythonCode(aConsoleTextArea: HTMLTextAreaElement, aTurtleDiv
 
         // Other actions requested by the caller of the execPythonCode function
         executionFinished(finishedWithError, isTurtleListeningKB, isTurtleListeningMouse, isTurtleListeningTimer, stopTurtleListeners);
+
+        // If the tutorial defined an expected output, check it now and show success modal if matched
+        try {
+            const expected = useStore().expectedOutput;
+            if (!finishedWithError && expected) {
+                const actual = consoleTextArea.value ?? "";
+                // Trim whitespace/newlines when comparing; allow exact match or endsWith match
+                const a = actual.trim();
+                const e = expected.trim();
+                if ((e.length > 0) && (a === e || a.endsWith(e))) {
+                    // mark reached and show modal
+                    useStore().expectedOutcomeReached = true;
+                    useStore().simpleModalDlgMsg = useStore().expectedOutputMessage ?? (i18n.t("tutorials.successReached") as string) ?? "Success!";
+                    // Show application simple modal dialog
+                    try {
+                        vm.$root.$emit("bv::show::modal", getAppSimpleMsgDlgId());
+                    }
+                    catch (e) {
+                        console.log("Error when showing expected output reached modal: " + e);
+                    }
+                }
+            }
+        }
+        catch (e) {
+            console.log("Error when checking expected output after execution finished: " + e);  
+        }
     }
     
     // Clear the cloud FileIO map and directories references before running anything

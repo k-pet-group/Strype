@@ -199,6 +199,9 @@ export const useStore = defineStore("app", {
 
             // Raw tutorial YAML/text loaded with the project
             tutorialRaw: "",
+            expectedOutput: "",
+            expectedOutputMessage: "",
+            expectedOutcomeReached: false,
 
             isEditorContentModified: false,
 

@@ -96,8 +96,27 @@ export default Vue.extend({
     },
 
     mounted() {
-        // Apply stencil for the initial step when initially loading tutorial
-        this.applyStencilForCurrentStep();
+        try {
+            const parsed: any = yaml.load(this.tutorialRaw) as any;
+            console.log("Parsed tutorial YAML:", parsed);
+            if (parsed && parsed.expectedOutput) {
+                this.appStore.expectedOutput = String(parsed.expectedOutput || "");
+                this.appStore.expectedOutputMessage = parsed.expectedOutputMessage ?? null;
+                this.appStore.expectedOutcomeReached = false;
+            }
+            else {
+                // Clear any previous expected output when absent
+                this.appStore.expectedOutput = "";
+                this.appStore.expectedOutputMessage = "";
+                this.appStore.expectedOutcomeReached = false;
+            }
+            // Apply stencil for the initial step when initially loading tutorial
+            this.applyStencilForCurrentStep();
+            
+        }
+        catch (e) {
+            console.log("Error loading tutorial:", e);
+        }
     },
 
     methods: {

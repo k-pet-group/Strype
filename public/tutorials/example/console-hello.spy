@@ -1,0 +1,13 @@
+#(=> Strype:1:std
+'''A hello world tutorial'''
+#(=> Section:Tutorial
+expectedOutput: "Hello, world!"
+expectedOutputMessage: "Great start! Output matches the expected result!"
+steps:
+- title: "Hello"
+  description: "Print Hello, world! to the console."
+  stencil: mainCode
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+#(=> Section:End

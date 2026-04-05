@@ -97,7 +97,7 @@ export default Vue.extend({
 
     mounted() {
         try {
-            const parsed: any = yaml.load(this.tutorialRaw) as any;
+            const parsed: any = yaml.load(this.tutorialRaw.replaceAll("\t","  ")) as any;
             console.log("Parsed tutorial YAML:", parsed);
             if (parsed && parsed.expectedOutput) {
                 this.appStore.expectedOutput = String(parsed.expectedOutput || "");

@@ -284,15 +284,15 @@ const countFunccallsInSlots = (slot: SlotsStructure): number => {
                 const previous = slot.fields[index - 1];               
                 if (!isFieldBracketedSlot(previous) && !isFieldStringSlot(previous)) {
                     const code = (previous as BaseSlot).code?.trim() ?? "";
-                    const identifierRegex = /^[A-Za-z_][A-Za-z0-9_]*$/;
+                    const regex = /^[A-Za-z_][A-Za-z0-9_]*$/;
                     // Matching code could be a function name, so counted as a probable function call
-                    if (identifierRegex.test(code)) {
+                    if (regex.test(code)) {
                         count += 1;
                     }
                 }
 
             }
-            // recurse into nested bracket content
+            // recurse into nested brackets
             count += countFunccallsInSlots(field as SlotsStructure);
         }
     });

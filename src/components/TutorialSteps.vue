@@ -164,8 +164,14 @@ export default Vue.extend({
         buildrequiredComponentsList(details: Record<string, {required:number; actual:number}>){
             const allCommandDefs = Object.values(getAddCommandsDefs()).flat();
             return Object.entries(details).map(([type,entry]) => {
-                const cmd = allCommandDefs.find((x: any) => x && x.type && x.type.type === type);
-                return { type, description: cmd?.description || type, required: entry.required, actual: entry.actual, met: entry.actual >= entry.required };
+                const command = allCommandDefs.find((element: any) => element && element.type && element.type.type === type);
+                return {
+                    type,
+                    description: command?.description || type,
+                    required: entry.required,
+                    actual: entry.actual,
+                    met: entry.actual >= entry.required,
+                };
             });
         },
         /**
@@ -183,10 +189,10 @@ export default Vue.extend({
 
             const actualCounts = componentCounts();
             this.requiredComponentsReached = true; // assume reached until we find any that aren't
-            for (const [k, v] of Object.entries(this.currentStep.requiredComponents)) {
-                const actual = actualCounts[k] ?? 0;
-                details[k] = { required: v, actual };
-                if (actual < v) {
+            for (const [component, count] of Object.entries(this.currentStep.requiredComponents)) {
+                const actual = actualCounts[component] ?? 0;
+                details[component] = { required: count, actual };
+                if (actual < count ) {
                     this.componentMessage = this.$t("tutorials.missingComponents") as string;
                     this.requiredComponentsReached = false;
                 }

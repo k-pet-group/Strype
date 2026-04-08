@@ -349,6 +349,9 @@ export default Vue.extend({
         // Event listener for saving project action completion
         this.$root.$on(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
 
+        // Listen for external requests to open the Load Tutorial dialog
+        this.$root.$on("open-load-tutorial", this.openLoadTutorialModal);
+
         // Event listener for the Cloud Drive component to listen the attempt to open a shared project is done (successfully or not)
         (this.$refs[this.cloudDriveHandlerComponentId] as InstanceType<typeof CloudDriveHandler>).$on(CustomEventTypes.openSharedFileDone, () => {
             this.openSharedProjectId = "";
@@ -374,6 +377,8 @@ export default Vue.extend({
 
         // And for the saving project action completion too
         this.$root.$off(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
+        // Remove listener for external requests to open the Load Tutorial dialog
+        this.$root.$off("open-load-tutorial", this.openLoadTutorialModal);
     },
 
     computed: {
@@ -708,6 +713,17 @@ export default Vue.extend({
         },
 
         openLoadTutorialModal(): void {
+            try {
+                // Ensure any existing stencils are cleared before showing the tutorial dialog
+                const rootApp = (this.$root.$children[0] as any);
+                if (rootApp && typeof rootApp.clearStencil === "function") {
+                    rootApp.clearStencil();
+                }
+            }
+            catch (e) {
+                // ignore if root/app not available
+                console.warn("Could not clear stencil before opening tutorial dialog", e);
+            }
             (this.$refs.openTutorialDlg as InstanceType<typeof OpenTutorialDlg>).updateAvailableTutorials();
             // For a very strange reason, Bootstrap doesn't link the menu link to the dialog any longer 
             // after changing "v-if" to "v-show" on the link (to be able to have the keyboard shortcut working).

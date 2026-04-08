@@ -35,7 +35,9 @@
         </div>
         <div class="tutorial-nav">
             <button type="button" class="btn btn-secondary" @click="prevStep" :disabled="currentIndex <= 0">Prev</button>
-            <button type="button" class="btn btn-primary ml-2" @click="nextStep" :disabled="currentIndex >= steps.length - 1 || !requiredComponentsReached">Next</button>
+            <button type="button" class="btn btn-primary ml-2" @click="nextStep" :disabled="(currentIndex < steps.length - 1 && !requiredComponentsReached)">
+                {{ currentIndex === steps.length - 1 ? 'Finish' : 'Next' }}
+            </button>
         </div>
     </div>
 </template>
@@ -201,6 +203,13 @@ export default Vue.extend({
         },
 
         nextStep(): void {
+            // On final step, load open tutorial dialog
+            if (this.currentIndex === this.steps.length - 1) {
+                // Emit an event to request opening the Load Tutorial dialog from the Menu component
+                this.$root.$emit("open-load-tutorial");
+                return;
+            }
+
             if (this.currentIndex < this.steps.length - 1) {
                 this.currentIndex += 1;
             }

@@ -16,6 +16,7 @@ import emptyState from "@/store/initial-states/empty-state";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import $ from "jquery";
+import { fetchUserCountry, type UserCountry } from "@/helpers/analyticsCountry";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 import { actOnTurtleImport } from "@/helpers/editor";
 // #v-endif
@@ -234,6 +235,10 @@ export const useStore = defineStore("app", {
             DAPWrapper: {} as DAPWrapper,
 
             previousDAPWrapper: {} as DAPWrapper,
+
+            analyticsCountryCode: null as string | null,
+
+            analyticsCountryName: null as string | null,
         };
     },
 
@@ -729,6 +734,17 @@ export const useStore = defineStore("app", {
                     }
                 }, timeoutMillis);
             }
+        },
+
+        setAnalyticsCountry(country: UserCountry) {
+            this.analyticsCountryCode = country.countryCode;
+            this.analyticsCountryName = country.countryName;
+        },
+
+        async initAnalyticsCountry() {
+            const country = await fetchUserCountry();
+            this.setAnalyticsCountry(country);
+            console.log("User country:", country.countryCode, "Country name:", country.countryName);
         },
 
         updateKeyModifiers(e: KeyboardEvent | MouseEvent) {

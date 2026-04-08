@@ -9,6 +9,7 @@ import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from 
 import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getFrameContainerUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getImportFileInputId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNewProjectLinkId, getSaveProjectLinkId, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, getShareProjectLinkId} from "./helpers/editor";
 import "@imengyu/vue3-context-menu/lib/vue3-context-menu.css";
 import ContextMenu from "@imengyu/vue3-context-menu";
+import { bootstrapApp } from "./helpers/bootstrapApp";
 // #v-ifdef MODE == VITE_STANDARD_PYTHON_MODE
 /* IFTRUE_isPython */
 import {getPEATabContentContainerDivId} from "./helpers/editor";
@@ -68,8 +69,9 @@ const app = createApp(App);
 app.use(i18n);
 
 // Store package (Pinia is the default store management library for Vue 3)
-app.use(createPinia());
-
+const pinia = createPinia();
+app.use(pinia);
+void bootstrapApp(pinia);
 // Create a directive "blur" to replace the package v-blur, only compatible with Vue 2
 const applyBlur = (el: HTMLElement, isBlurred: Boolean) => {
     el.style.filter = (isBlurred) ? "blur(1.5px)" : "none";

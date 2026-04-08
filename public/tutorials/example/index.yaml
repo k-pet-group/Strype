@@ -12,3 +12,8 @@
   description: A simple hello world program
   image: console-hello.png
   file: console-hello.spy
+
+- name: Structure Test
+  description: Structure Test
+  image: console-hello.png
+  file: components-example.spy

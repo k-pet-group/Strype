@@ -6,10 +6,11 @@
             </div>
         </div>
         <div class="tutorial-step-list">
-            <button class="tutorial-steps-list-btn rounded-circle d-inline-flex align-items-center justify-content-center p-0 m-1 w-4 h-4"
+            <button class="tutorial-steps-list-btn btn btn-outline-secondary rounded-circle d-inline-flex align-items-center justify-content-center p-0 m-1"
                 v-for="(s, i) in steps"
                 :key="i"
                 :class="{ active: i === currentIndex }"
+                :disabled="(i > currentIndex + 1) || (i === currentIndex + 1 && !requiredComponentsReached)"
                 @click="goTo(i)">
                 {{ i + 1 }}
             </button>
@@ -18,9 +19,23 @@
             <div class="tutorial-step-title bold">{{ currentStep.title }}</div>
             <div class="tutorial-step-desc" v-html="currentStep.description"></div>
         </div>
+        <div class="tutorial-step-counts mb-2" v-if="requiredComponentsList && requiredComponentsList.length">
+            <div class="counts-title bold mb-2">{{ $t("tutorials.requiredComponentsTitle") }}</div>
+            <ul class="list-group">
+                <li v-for="component in requiredComponentsList" :key="component.type" :class="['list-group-item', { 'list-group-item-success': component.met }]" class="d-flex justify-content-between p-2 align-items-center">
+                    <div>
+                        <div class="component-description">{{ component.description || component.type }}</div>
+                    </div>
+                    <span class="badge badge-primary badge-pill">{{ component.actual }} / {{ component.required }}</span>
+                </li>
+            </ul>
+        </div>
+        <div class="tutorial-step-message alert alert-warning p-2 mb-2" role="alert" v-if="componentMessage">
+            {{ componentMessage }}
+        </div>
         <div class="tutorial-nav">
-            <button type="button" @click="prevStep" :disabled="currentIndex <= 0">Prev</button>
-            <button type="button" @click="nextStep" :disabled="currentIndex >= steps.length - 1">Next</button>
+            <button type="button" class="btn btn-secondary" @click="prevStep" :disabled="currentIndex <= 0">Prev</button>
+            <button type="button" class="btn btn-primary ml-2" @click="nextStep" :disabled="currentIndex >= steps.length - 1 || !requiredComponentsReached">Next</button>
         </div>
     </div>
 </template>
@@ -31,12 +46,14 @@ import Vue from "vue";
 import { mapStores } from "pinia";
 import { useStore } from "@/store/store";
 import * as yaml from "js-yaml";
-import { getTutorialPanelUID } from "@/helpers/editor";
+import { getTutorialPanelUID, getAddCommandsDefs } from "@/helpers/editor";
+import { componentCounts } from "@/helpers/storeMethods";
 
 type TutorialStep = {
     title: string;
     description: string;
     stencil: string;
+    requiredComponents?: Record<string, number>;
 };
 export default Vue.extend({
     name: "TutorialSteps",
@@ -80,8 +97,11 @@ export default Vue.extend({
 
     data() {
         return {
-            currentIndex: 0,
-        } as { currentIndex: number };
+            currentIndex: 0 as number,
+            componentMessage: "" as string,
+            requiredComponentsList: [] as { type: string; description?: string; required: number; actual: number; met: boolean }[] ,
+            requiredComponentsReached: false as boolean,
+        };
     },
 
 
@@ -89,29 +109,39 @@ export default Vue.extend({
         steps(): void {
             this.currentIndex = 0;
         },
+
         currentIndex(): void {
-            // Apply stencil when curent step index has changed
+            // When step index has changed, reapply stencil and re-evaluate required components for the new step.
             this.applyStencilForCurrentStep();
+            this.evaluaterequiredComponents();
+        },
+
+        "appStore.frameObjects": {
+            // When frame objects changes (insertion or deletion), re-evaluate count for required components.
+            handler(): void {
+                this.evaluaterequiredComponents();
+            },
+            deep: true,
         },
     },
 
     mounted() {
         try {
             const parsed: any = yaml.load(this.tutorialRaw.replaceAll("\t","  ")) as any;
-            console.log("Parsed tutorial YAML:", parsed);
             if (parsed && parsed.expectedOutput) {
                 this.appStore.expectedOutput = String(parsed.expectedOutput || "");
-                this.appStore.expectedOutputMessage = parsed.expectedOutputMessage ?? null;
-                this.appStore.expectedOutcomeReached = false;
+                this.appStore.expectedOutputMessage = parsed.expectedOutputMessage ?? null;   
             }
             else {
                 // Clear any previous expected output when absent
                 this.appStore.expectedOutput = "";
                 this.appStore.expectedOutputMessage = "";
-                this.appStore.expectedOutcomeReached = false;
             }
+            this.appStore.expectedOutcomeReached = false;
             // Apply stencil for the initial step when initially loading tutorial
             this.applyStencilForCurrentStep();
+            // Evaluate required components for initial step
+            this.evaluaterequiredComponents();
             
         }
         catch (e) {
@@ -126,6 +156,50 @@ export default Vue.extend({
             }
         },
 
+        /**
+         * Builds a list of required components with descriptions for display.
+         */
+        buildrequiredComponentsList(details: Record<string, {required:number; actual:number}>){
+            const allCommandDefs = Object.values(getAddCommandsDefs()).flat();
+            return Object.entries(details).map(([type,entry]) => {
+                const cmd = allCommandDefs.find((x: any) => x && x.type && x.type.type === type);
+                return { type, description: cmd?.description || type, required: entry.required, actual: entry.actual, met: entry.actual >= entry.required };
+            });
+        },
+        /**
+         * Evaluates whether the required components for the current step are reached, updating messages and lists.
+         */
+        evaluaterequiredComponents(): void {
+            const details: Record<string, { required: number; actual: number }> = {};
+            // No required components, immediately mark as reached
+            if (!this.currentStep.requiredComponents || Object.keys(this.currentStep.requiredComponents).length === 0) {
+                this.requiredComponentsReached = true;
+                this.requiredComponentsList = [];
+                this.componentMessage = "";
+                return;
+            }
+
+            const actualCounts = componentCounts();
+            this.requiredComponentsReached = true; // assume reached until we find any that aren't
+            for (const [k, v] of Object.entries(this.currentStep.requiredComponents)) {
+                const actual = actualCounts[k] ?? 0;
+                details[k] = { required: v, actual };
+                if (actual < v) {
+                    this.componentMessage = this.$t("tutorials.missingComponents") as string;
+                    this.requiredComponentsReached = false;
+                }
+            }
+
+            // Build list of required components to render to user
+            this.requiredComponentsList = this.buildrequiredComponentsList(details);
+
+            // When all required components are met, set message to empty and mark as reached to enable next step
+            if (this.requiredComponentsReached) {
+                this.componentMessage = "";
+                this.requiredComponentsReached = true;
+            }  
+        },
+
         nextStep(): void {
             if (this.currentIndex < this.steps.length - 1) {
                 this.currentIndex += 1;
@@ -133,6 +207,16 @@ export default Vue.extend({
         },
 
         goTo(i: number): void {
+            // Prevent jumping more than one step ahead
+            if (i > this.currentIndex + 1) {
+                return;
+            }
+
+            // If attempting to advance forward by one step, ensure requirements are met.
+            if (i > this.currentIndex && !this.requiredComponentsReached) {
+                return;
+            }
+
             this.currentIndex = i;
         },
         

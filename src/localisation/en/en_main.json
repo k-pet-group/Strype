@@ -282,7 +282,10 @@
   "tutorials": {
     "dialogTitle": "Choose a tutorial to load",
     "builtinOnboarding": "Onboarding",
-    "builtinExample": "Examples"
+    "builtinExample": "Examples",
+    "requiredComponentsTitle": "Required components:",
+    "missingComponents": "You are missing some components. See the list above for what is left to do.",
+    "nextStepError": "You must code the required components before moving to the next step."
   },
   "shortcut": {
     "delete": "Delete",

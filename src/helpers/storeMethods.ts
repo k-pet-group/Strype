@@ -211,6 +211,93 @@ export const getFrameParentSlotsLength = (slotInfos: SlotCoreInfos): number => {
         return useStore().frameObjects[slotInfos.frameId].labelSlotsDict[slotInfos.labelSlotsIndex].slotStructures.fields.length;
     }
 };
+/**
+ * Counts the number of components of each frame type currently present in the editor, excluding container frames and disabled frames.
+ * @returns A record mapping frame types to their respective counts in the editor.
+ */
+export const componentCounts = (): Record<string, number> => {
+    const counts: Record<string, number> = {};
+    const visited = new Set<number>();
+
+    // Recursive method to visit frames and inner frames, keeping count.
+    const visit = (frameId: number) => {
+
+        if (visited.has(frameId)) {
+            // Already visited, exit.
+            return;
+        }
+        visited.add(frameId);
+        const frame = useStore().frameObjects[frameId];
+        if (!frame) {
+            // Empty frame, exit.
+            return;
+        }
+
+        const type = frame.frameType.type;
+        // Do not count containers but traverse into their children
+        const isContainer = (frameType: string) => (frameType === "root" || frameType === "importsContainer" || frameType === "defsContainer" || frameType === "mainContainer");
+        if (!isContainer(type) && !frame.isDisabled) {
+            counts[type] = (counts[type] ?? 0) + 1;
+
+            // For variable assignments,detect function like structures inside the slots
+            if (type === AllFrameTypesIdentifier.varassign) {
+                const rhs = frame.labelSlotsDict?.[1]?.slotStructures;
+                if (rhs) {
+                    const funcCalls = countFunccallsInSlots(rhs);
+                    if (funcCalls > 0) {
+                        counts[AllFrameTypesIdentifier.funccall] = (counts[AllFrameTypesIdentifier.funccall] ?? 0) + funcCalls;
+                    }
+                }
+            }
+        }
+
+        // Recurse into children and joint frames to include nested frames
+        (frame.childrenIds || []).forEach((childId: number) => visit(childId));
+        (frame.jointFrameIds || []).forEach((jointId: number) => visit(jointId));
+    };
+
+    Object.keys(useStore().frameObjects).forEach((idStr) => {
+        // IDs in the store are strings, parse them to integers.
+        const id = parseInt(idStr, 10);
+        // Only visit valid numeric IDs to avoid any potential issues with non-numeric keys in frameObjects.
+        if (!isNaN(id)) {
+            visit(id);
+        }
+    });
+
+    return counts;
+};
+
+
+/**
+ * Counts probable function calls inside a slot structure.
+ */
+const countFunccallsInSlots = (slot: SlotsStructure): number => {
+    let count = 0;
+    slot.fields.forEach((field, index) => {
+        if (isFieldBracketedSlot(field)) {
+            // A bracketed field could be a function call if it's preceded by an identifier field
+            const openingBracket = (field as SlotsStructure).openingBracketValue;
+            if (index > 0 && openingBracket === "(") {
+                // Check previous field. If it's an identifier (not bracketed and not string), consider it as a probable function call.
+                // This is a heuristic and might not be 100% accurate, but it's a common pattern for function calls.
+                const previous = slot.fields[index - 1];               
+                if (!isFieldBracketedSlot(previous) && !isFieldStringSlot(previous)) {
+                    const code = (previous as BaseSlot).code?.trim() ?? "";
+                    const identifierRegex = /^[A-Za-z_][A-Za-z0-9_]*$/;
+                    // Matching code could be a function name, so counted as a probable function call
+                    if (identifierRegex.test(code)) {
+                        count += 1;
+                    }
+                }
+
+            }
+            // recurse into nested bracket content
+            count += countFunccallsInSlots(field as SlotsStructure);
+        }
+    });
+    return count;
+};
 
 export function isFrameLabelSlotStructWithCodeContent(slotsStruct: SlotsStructure, frameType: string): boolean {
     // A label slots structure isn't considered empty if we are in comments that contains spaces or string literal values with spaces.

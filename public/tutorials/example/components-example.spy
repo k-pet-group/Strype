@@ -1,0 +1,52 @@
+#(=> Strype:1:std
+'''Components tutorial example'''
+#(=> Section:Tutorial
+expectedOutput: ""
+expectedOutputMessage: "Great — components counted!"
+steps:
+- title: "Add an import"
+  description: "Add a top-level `import` (example: `import math`). This demonstrates the `import` frame in the Imports container."
+  stencil: imports
+  requiredComponents:
+    import: 1
+- title: "Define a function"
+  description: "Create a top-level function (for example `def greet():`). The editor will add a `funcdef` frame under Definitions."
+  stencil: definitions
+  requiredComponents:
+    funcdef: 1
+- title: "Function body and return"
+  description: "Add a `return` inside your `greet` function (for example `return 'Hello'`). This demonstrates a `return` statement inside a `funcdef`."
+  stencil: definitions
+  requiredComponents:
+    return: 1
+- title: "Call the function and assign"
+  description: "In the main area, call `greet()` and assign the result to a variable (a `funccall` and a `varassign`)."
+  stencil: mainCode
+  requiredComponents:
+    funccall: 1
+    varassign: 1
+- title: "Add a conditional"
+  description: "Add an `if` statement that checks the assigned value. This demonstrates the `if` frame and nested structure."
+  stencil: mainCode
+  requiredComponents:
+    if: 1
+- title: "Create a loop"
+  description: "Add a `for` loop (e.g., `for i in range(3):`) in the main area or inside a function to demonstrate the `for` frame."
+  stencil: mainCode
+  requiredComponents:
+    for: 1
+- title: "Define a class with a method"
+  description: "Add a `class` definition with at least one method. The editor will produce a `classdef` and `funcdef` for the method."
+  stencil: definitions
+  requiredComponents:
+    classdef: 1
+    funcdef: 1
+- title: "Add documentation/comment"
+  description: "Add a brief comment or documentation frame to describe your project (a `comment` or `projectDocumentation` frame)."
+  stencil: mainCode
+  requiredComponents:
+    comment: 1
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+#(=> Section:End

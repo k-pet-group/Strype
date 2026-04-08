@@ -1600,19 +1600,28 @@ export default Vue.extend({
                 overlay.className = "stencil-overlay";
                 document.body.appendChild(overlay);
 
-                // Add event listener on the overlay itself clears the stencil when clicked on
-                overlay.addEventListener("click", () => {
-                    this.clearStencil();
-                });
+                // Add a click handler on the document to clear the stencil when clicking outside of the highlighted component
+                (this as any)._stencilDocClickHandler = (event: MouseEvent) => {
+                    const target =  event.target as HTMLElement | null;
+                    if (!target) {
+                        return;
+                    }
+                    // If the click wasn't inside any highlighted element, clear the stencil
+                    if (!target.closest || !target.closest(".stencil-highlight")) {
+                        this.clearStencil();
+                    }
+                };
+
+                document.addEventListener("click", (this as any)._stencilDocClickHandler, true);
     
                 // Highlight components above the overlay
                 const highlightedElements: HTMLElement[] = [];
-                highlightedElements.push(component);
+                highlightedElements.push(component);          
+
                 const tutorialEl = components.get("tutorial"); // we include the tutorial panel, so this is always visible
                 if (tutorialEl) {
-                    highlightedElements.push(tutorialEl);
+                    highlightedElements.push(tutorialEl);               
                 }
-
                 for (var el of highlightedElements) {
                     el.classList.add("stencil-highlight");
                     el.scrollIntoView({behavior: "smooth", block: "center", inline: "center"});
@@ -1627,6 +1636,11 @@ export default Vue.extend({
             const overlay = document.getElementById(getStencilOverlayUID());
             if (overlay) {
                 overlay.remove();
+            }
+            // Remove the document click handler if present
+            if ((this as any)._stencilDocClickHandler) {
+                document.removeEventListener("click", (this as any)._stencilDocClickHandler, true);
+                (this as any)._stencilDocClickHandler = undefined;
             }
             const highlighted = document.querySelectorAll(".stencil-highlight");
             highlighted.forEach((el) => el.classList.remove("stencil-highlight"));
@@ -1698,6 +1712,7 @@ body.#{$strype-classname-dragging-frame} {
     bottom: 0;
     background: rgba(0,0,0,0.5);
     z-index: 1000;
+    pointer-events: none; // allow mouse wheel and pointer events to pass through
 }
 
 .stencil-highlight {

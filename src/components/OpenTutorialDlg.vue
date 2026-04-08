@@ -19,8 +19,8 @@
                     <span class="tutorial-dlg-tutorial-group-type" v-if="item.type">{{item.type}}</span>
                     {{ item.name }}
                 </b-list-group-item>
+                <b-list-group-item @click="openLoadProjectModal" button> {{$t('tutorials.openProject')}} </b-list-group-item>
             </b-list-group>
-
             <!-- Right Pane: Dynamic Grid -->
             <div class="flex-grow-1 p-3 overflow-auto">
                 <div class="d-flex flex-column">
@@ -130,6 +130,13 @@ export default Vue.extend({
             // We first close the dialog, than simulate a "close with action" in the Menu (since we can't close with "OK" status.)
             this.$root.$emit("bv::hide::modal", this.dlgId);
             (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).onStrypeMenuHideModalDlg({trigger: "ok"} as BvModalEvent, this.dlgId);
+        },
+
+        openLoadProjectModal() {
+            // Close this dialog first
+            this.$root.$emit("bv::hide::modal", this.dlgId);
+            // Then open the Load Project dialog via the Menu component
+            (this.$root.$children[0].$refs[getMenuLeftPaneUID()] as InstanceType<typeof MenuComponent>).openLoadProjectModal();
         },
     },
 });

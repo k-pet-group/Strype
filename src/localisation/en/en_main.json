@@ -285,7 +285,8 @@
     "builtinExample": "Examples",
     "requiredComponentsTitle": "Required components:",
     "missingComponents": "You are missing some components. See the list above for what is left to do.",
-    "nextStepError": "You must code the required components before moving to the next step."
+    "nextStepError": "You must code the required components before moving to the next step.",
+    "openProject" : "Open project"
   },
   "shortcut": {
     "delete": "Delete",

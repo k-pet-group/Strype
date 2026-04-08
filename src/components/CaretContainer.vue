@@ -185,7 +185,7 @@ export default Vue.extend({
                 const caretContainerElement = document.getElementById(getCaretContainerUID(this.caretAssignedPosition, this.frameId));
                 const caretContainerEltRect = caretContainerElement?.getBoundingClientRect();
                 //is caret outside the viewport? if so, scroll into view (we need to wait a bit for the UI to be ready before we can perform the scroll)
-                if(caretContainerEltRect && (caretContainerEltRect.bottom + caretContainerEltRect.height < 0 || caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight)){
+                if(!this.appStore.isTutorialStepsOn && caretContainerEltRect && (caretContainerEltRect.bottom + caretContainerEltRect.height < 0 || caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight)){
                     setTimeout(() => caretContainerElement?.scrollIntoView({block:"nearest"}), 100);
                 }
             }  

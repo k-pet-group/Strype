@@ -144,6 +144,10 @@ export default Vue.extend({
             this.applyStencilForCurrentStep();
             // Evaluate required components for initial step
             this.evaluaterequiredComponents();
+            // Ensure tutorial panel is scrolled into view once the component is mounted and DOM updated
+            this.$nextTick(() => {
+                setTimeout(() => document.getElementById(this.tutorialPanelUID)?.scrollIntoView({"behavior": "smooth"}), 200);
+            });
             
         }
         catch (e) {

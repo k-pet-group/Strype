@@ -44,6 +44,25 @@ export function generateSPYFileContent(): string {
     headers.set("peaSplitViewSplitterPane1Size", saveDivider(useStore().peaSplitViewSplitterPane1Size));
     headers.set("peaExpandedSplitterPane2Size", saveDivider(useStore().peaExpandedSplitterPane2Size));
     /* FITRUE_isPython */
-    saveContent = Array.from(headers.entries()).filter(([k, v]) => v !== undefined).map((e) => AppSPYFullPrefix + " " + e[0] + ":" + e[1] + "\n").join("") + saveContent;
+    const headersStr = Array.from(headers.entries()).filter(([k, v]) => v !== undefined).map((e) => AppSPYFullPrefix + " " + e[0] + ":" + e[1] + "\n").join("");
+    // If a tutorial is active in the store, include it as a Tutorial section in the saved .spy
+    const tutorialRaw = useStore().tutorialRaw ?? "";
+    const tutorialSection = (tutorialRaw && tutorialRaw.length > 0) ? (AppSPYFullPrefix + " Section:Tutorial\n" + tutorialRaw + "\n") : "";
+
+    // Extract any triple-quoted project documentation (''' or """) so we can place these before the tutorial section.
+    let projectDoc = "";
+    let restContent = saveContent;
+    const singleQuotes = saveContent.match(/^('{3}[\s\S]*?'{3}\n?)/);
+    const doubleQuotes = saveContent.match(/^("""[\s\S]*?"""\n?)/);
+    if (singleQuotes) {
+        projectDoc = singleQuotes[1];
+        restContent = saveContent.slice(singleQuotes[1].length);
+    }
+    else if (doubleQuotes) {
+        projectDoc   = doubleQuotes[1];
+        restContent = saveContent.slice(doubleQuotes[1].length);
+    }
+
+    saveContent = headersStr + projectDoc + tutorialSection + restContent;
     return saveContent;
 }

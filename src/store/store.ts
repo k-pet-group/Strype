@@ -245,6 +245,8 @@ export const useStore = defineStore("app", {
             analyticsSessionStartTime: 0 as number,
 
             analyticsActiveSessionTime: 0 as number,
+
+            analyticsFrameCount: 0 as number,
         };
     },
 

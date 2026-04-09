@@ -31,6 +31,8 @@ export function startSessionTracking(store: ReturnType<typeof useStore>): void {
 
     window.addEventListener("beforeunload", () => {
         tick();
+        store.analyticsFrameCount = Object.values(store.frameObjects).filter((f) => f.id > 0).length;
         console.log("Session active time:", Math.round(store.analyticsActiveSessionTime / 1000), "seconds");
+        console.log("Frame count:", store.analyticsFrameCount);
     });
 }

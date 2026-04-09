@@ -239,6 +239,8 @@ export const useStore = defineStore("app", {
             analyticsCountryCode: null as string | null,
 
             analyticsCountryName: null as string | null,
+
+            analyticsUserId: "" as string,
         };
     },
 
@@ -734,6 +736,16 @@ export const useStore = defineStore("app", {
                     }
                 }, timeoutMillis);
             }
+        },
+
+        initAnalyticsUserId() {
+            const storageKey = "StrypeAnalyticsUserId";
+            let userId = localStorage.getItem(storageKey);
+            if (!userId) {
+                userId = crypto.randomUUID();
+                localStorage.setItem(storageKey, userId);
+            }
+            this.analyticsUserId = userId;
         },
 
         setAnalyticsCountry(country: UserCountry) {

@@ -241,6 +241,10 @@ export const useStore = defineStore("app", {
             analyticsCountryName: null as string | null,
 
             analyticsUserId: "" as string,
+
+            analyticsSessionStartTime: 0 as number,
+
+            analyticsActiveSessionTime: 0 as number,
         };
     },
 

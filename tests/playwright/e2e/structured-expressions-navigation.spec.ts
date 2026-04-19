@@ -4,6 +4,7 @@ import {assertStateOfIfFrame, checkFrameXorTextCursor, checkTextSlotCursorPos, d
 import fs from "fs";
 import {readFileSync} from "node:fs";
 import {save} from "../support/loading-saving";
+import { skipPyodideLoading } from "../support/general";
 
 let scssVars: {[varName: string]: string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
@@ -11,15 +12,16 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         // On Windows+Webkit it just can't seem to load the page for some reason:
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
     }
+    // Make browser's console.log output visible in our logs (useful for debugging):
+    page.on("console", (msg) => {
+        console.log("Browser log:", msg.text());
+    });
+    await skipPyodideLoading(page);
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
     await page.evaluate(() => {
         (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
     });
 });
 

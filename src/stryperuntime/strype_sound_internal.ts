@@ -15,9 +15,14 @@ export function stopAudioBuffer(sound : RemoteSound) : void {
     asyncBridge({request: "stopSound", sound});
 }
 export function createAudioBuffer(seconds : number, sampleRate : number) : RemoteSound {
-    return syncBridge(({request: "createEmptyMonoSound", numSamples: Math.round(seconds * sampleRate), sampleRate}));
+    // Note that creating zero length sounds is undefined behaviour, so must have at least one sample:
+    return syncBridge(({request: "createEmptyMonoSound", numSamples: Math.max(1, Math.round(seconds * sampleRate)), sampleRate}));
 }
 export function createAudioBufferFromSamples(samples: number[], sampleRate: number) : RemoteSound {
+    // Note that creating zero length sounds is undefined behaviour, so must have at least one sample:
+    if (samples.length == 0) {
+        samples = [0];
+    }
     // Serialising an array of floats to/from string is slow, so we go via bytes and direct string encoding:
     const f32 = new Float32Array(samples);
     const bytes = new Uint8Array(f32.buffer);

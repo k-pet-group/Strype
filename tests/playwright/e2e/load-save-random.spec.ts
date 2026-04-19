@@ -13,6 +13,7 @@ import {checkFrameXorTextCursor, typeIndividually} from "../support/editor";
 import {readFileSync} from "node:fs";
 import {createBrowserProxy} from "../support/proxy";
 import {load, save} from "../support/loading-saving";
+import { skipPyodideLoading } from "../support/general";
 
 let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
@@ -32,16 +33,17 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     testInfo.setTimeout(240000); // 240 seconds
     
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
+    // Make browser's console.log output visible in our logs (useful for debugging):
+    page.on("console", (msg) => {
+        console.log("Browser log:", msg.text());
+    });
+    await skipPyodideLoading(page);
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
     //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
     await page.evaluate(() => {
         (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
     });
 });
 

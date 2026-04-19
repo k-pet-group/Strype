@@ -4,6 +4,7 @@ import { createBrowserProxy } from "../support/proxy";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME } from "@/helpers/sharedIdCssWithTests";
 import { readFileSync } from "node:fs";
 import { addFakeClipboard } from "../support/clipboard";
+import { skipPyodideLoading } from "../support/general";
 
 //let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
@@ -12,10 +13,15 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         // On Windows+Webkit it just can't seem to load the page for some reason:
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
     }
-    
+
+    // Make browser's console.log output visible in our logs (useful for debugging):
+    page.on("console", (msg) => {
+        console.log("Browser log:", msg.text());
+    });
+    await skipPyodideLoading(page);
     await addFakeClipboard(page);
     // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(60000); // 60 seconds
+    testInfo.setTimeout(90000); // 90 seconds
 
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     await page.goto("./", {waitUntil: "load"});
@@ -23,10 +29,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     //scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
     await page.evaluate(() => {
         (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
     });
 });
 

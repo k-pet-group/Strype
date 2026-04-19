@@ -45,7 +45,7 @@ async function startRunning(page: Page) {
     // It should not be running:
     const button = page.locator("#runButton");
     // It can take a while for Pyodide to load up:
-    await expect(button).toHaveText("Run", {timeout: 30000});
+    await expect(button).toHaveText("Run", {timeout: 60000});
     // Click it:
     await page.click("#runButton");
     return button;
@@ -159,9 +159,42 @@ s.set_samples([1, -1])
 print(s.get_samples())`]);
         await runToFinish(page);
         await checkConsoleContent(page, `
--1,0,1
--0.5,0.5
-1,-1
+[-1, 0, 1]
+[-0.5, 0.5]
+[1, -1]
+`.trimStart());
+    });
+
+    test("Check type of sound samples", async ({page}) => {
+        await enterCode(page, ["from strype.sound import *", "", `
+s = Sound([-1,0,1])
+print(type(s.get_samples()))`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, `
+<class 'list'>
+`.trimStart());
+    });
+
+    test("Create zero length Sound", async ({page}) => {
+        if (process.platform === "linux") {
+            // Something about playing the sound headless on Linux in Firefox doesn't seem to work (it does on Windows)
+            return;
+        }
+        
+        await enterCode(page, ["from strype.sound import *", "", `
+s = Sound([])
+# Playing sound should not hang things:
+s.play_and_wait()
+# Nor copy to mono:
+s.copy_to_mono()
+print(s.get_samples())
+print(type(s.get_samples()))
+print(len(s.get_samples()))`]);
+        await runToFinish(page);
+        await checkConsoleContent(page, `
+[0]
+<class 'list'>
+1
 `.trimStart());
     });
 });

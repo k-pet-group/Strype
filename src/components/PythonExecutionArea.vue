@@ -78,7 +78,7 @@ import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { BTab, BTabs } from "bootstrap-vue-next";
 import * as Comlink from "comlink";
 import {handleErrorTrace, setSInputConsole, sInput} from "@/helpers/execPythonCode";
-import {ErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/python-execution";
+import {PyodideErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/shared_helpers";
 import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
@@ -262,7 +262,7 @@ export default defineComponent({
 
             // Register an event listener on this component for the notification of the turtle library import usage
             (this.$refs.peaComponent as HTMLDivElement).addEventListener(CustomEventTypes.notifyTurtleUsage, (event) => {
-                this.graphicsImported = (event as CustomEvent).detail as any;
+                this.graphicsImported = (event as CustomEvent<"turtle" | "strype" | "none">).detail;
                 this.redrawImportMessage();
             });
             
@@ -568,6 +568,9 @@ export default defineComponent({
                 // getPythonClient() can change value if restarted so important we take one
                 // const reference to it for the duration of a Python run: 
                 const client = getPythonClient();
+                if (client == null) {
+                    return;
+                }
                 
                 const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, turtlePixiHandler, {
                     getPressedKeys: () => pressedKeys,
@@ -642,7 +645,7 @@ export default defineComponent({
                             });
                         }
                     }))
-                ) as Promise<ErrorDetails | null>).then((possibleError) => {
+                ) as Promise<PyodideErrorDetails | null>).then((possibleError) => {
                     if (possibleError != null) {
                         handleErrorTrace(possibleError.text, possibleError.traceback, () => {}, parser.getFramePositionMap());
                     }

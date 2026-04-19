@@ -2,6 +2,7 @@ import {test, expect} from "@playwright/test";
 import { typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame, checkFrameXorTextCursor } from "../support/editor";
 import fs from "fs";
 import {addFakeClipboard} from "../support/clipboard";
+import { skipPyodideLoading } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (process.platform === "win32" && browserName === "webkit") {
@@ -14,17 +15,18 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         // Chromium prevents writing non-text to clipboard during headless mode so we can't test image copying:
         testInfo.skip(true, "Skipping on Chromium due to clipboard permissions");
     }
-    addFakeClipboard(page);
+    // Make browser's console.log output visible in our logs (useful for debugging):
+    page.on("console", (msg) => {
+        console.log("Browser log:", msg.text());
+    });
+    await skipPyodideLoading(page);
+    await addFakeClipboard(page);
     
     await page.goto("./", {waitUntil: "domcontentloaded"});
     await page.waitForSelector("body");
     //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
     await page.evaluate(() => {
         (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
     });
 });
 

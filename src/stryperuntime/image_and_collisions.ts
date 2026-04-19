@@ -75,6 +75,8 @@ export class SpriteManager {
 
     public addSprite(imageOrCanvas : RemoteImage | RemoteCanvas, collidable: boolean, forceId?: number): number {
         // We don't mark dirty for adding the background:
+        // Note: undefined (didn't force an ID, auto-numbered) or non-zero (forced to non-background ID) marks as dirty
+        // This is NOT the same as if (forceId) because undefined should go in:
         if (forceId == undefined || forceId != 0) {
             this.dirty = true;
         }

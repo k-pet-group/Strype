@@ -16,10 +16,16 @@ const serviceWorkerChannel = makeServiceWorkerChannel({scope: import.meta.env.BA
 export const renderer = new Renderer();
 export const isPythonWorkerReady = ref(false);
 // These two will get recreated when we restart Pyodide:
-let pythonWorker : Worker = makeNewPyodideWorker();
-let pythonClient = makePyodideClient(pythonWorker);
+// They will only be null if a special testing flag is used:
+let pythonWorker : Worker | null = makeNewPyodideWorker();
+let pythonClient : PyodideClient<any> | null = pythonWorker == null ? null: makePyodideClient(pythonWorker);
 
-function makeNewPyodideWorker() : Worker {
+function makeNewPyodideWorker() : Worker | null {
+    if ((window as any)?.TestingNoPyodide) {
+        console.log("Skipping Pyodide as in testing mode");
+        return null;
+    }
+    
     // The channel used to send Sprite updates asynchronously, outside of the main requests:
     // (channels cannot be re-used/re-transferred so we need a new one for each Pyodide worker
     // and thus we have to tell the renderer about the new channel too:
@@ -50,14 +56,14 @@ function makePyodideClient(pythonWorker: Worker) : PyodideClient {
 // execution won't carry over any state).
 export function terminateAndRestartPyodide() : void {
     // This is apparently instant, so we can immediately assume Pyodide has stopped:
-    pythonWorker.terminate();
+    pythonWorker?.terminate();
     // Then we must make a new Pyodide worker ready for a potential future run:
     isPythonWorkerReady.value = false;
     pythonWorker = makeNewPyodideWorker();
-    pythonClient = makePyodideClient(pythonWorker);
+    pythonClient = pythonWorker == null ? null : makePyodideClient(pythonWorker);
 }
 
 // Note that the value of this function will change after you call terminateAndRestartPyodide()
-export function getPythonClient() : PyodideClient {
+export function getPythonClient() : PyodideClient | null {
     return pythonClient;
 }

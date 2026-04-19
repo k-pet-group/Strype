@@ -13,7 +13,7 @@ class Sound:
         Creates a new soond object.  The first parameter is a list of samples from -1 to +1,
         and the optional second parameter indicates the sample rate (samples per second).
                  
-        :param samples: A list of sound samples with values ranging from -1 to +1.
+        :param samples: A list of sound samples with values ranging from -1 to +1.  This list should not be empty; if it is, a single sample of value 0 will be used.
         :param samples_per_second: The sampling rate in samples per second. 
         """
         if samples_per_second == -4242: # Magic number used internally to indicate source is already a RemoteSOund
@@ -45,7 +45,8 @@ class Sound:
         
         :return: All the samples from the sound 
         """
-        return _strype_sound_internal.getSamples(self.__buffer)
+        # Because it's a [proxy] object, must convert to Python before returning it:
+        return _strype_sound_internal.getSamples(self.__buffer).to_py()
 
     def set_samples(self, sample_list):
         # type: (list[float]) -> None

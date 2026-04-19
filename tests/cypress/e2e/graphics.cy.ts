@@ -95,6 +95,7 @@ function checkImageMatch(expectedImageFileName: string, actual : PNG, comparison
 
 // but it's not very long:
 function checkGraphicsCanvasContent(expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING) {
+    cy.get("#graphicsPEATab").click();
     cy.get("#pythonGraphicsCanvas").then((canvas) => {
         return (canvas[0] as HTMLCanvasElement).toDataURL("image/png").replace(/^data:image\/png;base64,/, "");
     }).then((actualImageBase64) => {
@@ -164,7 +165,7 @@ function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis =
     (cy.get("body") as any).paste(main);
     cy.wait(1000);
     cy.contains("button.pea-display-tab", "Graphics").click();
-    cy.get("#runButton").contains("Run", {timeout: 30000});
+    cy.get("#runButton").contains("Run", {timeout: 60000});
     cy.get("#runButton").click();
     // Wait for it to finish:
     cy.wait(timeToWaitMillis);

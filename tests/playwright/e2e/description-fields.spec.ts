@@ -2,6 +2,7 @@ import {test, expect} from "@playwright/test";
 import {checkFrameXorTextCursor, doTextHomeEndKeyPress} from "../support/editor";
 import {readFileSync} from "node:fs";
 import {loadContent, save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
+import { skipPyodideLoading } from "../support/general";
 
 const defaultStandardStrypeProjectDocLiteralWithDotSpace = "This is the default Strype starter project. ";
 
@@ -10,15 +11,19 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         // On Windows+Webkit it just can't seem to load the page for some reason:
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
     }
-    
+
+    // These tests can take longer than the default 30 seconds:
+    testInfo.setTimeout(90000); // 90 seconds
+
+    // Make browser's console.log output visible in our logs (useful for debugging):
+    page.on("console", (msg) => {
+        console.log("Browser log:", msg.text());
+    });
+    await skipPyodideLoading(page);
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
     await page.evaluate(() => {
         (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
     });
 });
 
@@ -247,7 +252,6 @@ print(myString)
         expect(readFileSync(await save(page, false), "utf-8")).toEqual(expected);
     });
     test("Navigates up/down in funcdoc slots then edits #2", async ({page}) => {
-        test.setTimeout(90_000);
         await loadContent(page, multilineExample);
         // Cursor all the way to end, then back up to function:
         for (let i = 0; i < 30; i++) {

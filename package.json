@@ -9,7 +9,7 @@
         "build:microbit": "cross-env vite build --mode microbit",
         "build:python": "npm run compile-service-worker && cross-env vite build --mode standard",
         "build:github-pages": "npm run compile-service-worker && cross-env VITE_GITHUB_PAGE=true vite build --mode standard",
-        "compile-service-worker": "npx node scripts/build-service-worker.mjs",
+        "compile-service-worker": "node scripts/build-service-worker.mjs",
         "lint:check": "eslint . --ext .js,.vue --max-warnings 0",
         "type:check": "vue-tsc --noEmit",
         "library:make-ac-json": "cd scripts && npm install && npx tsc && (node -e \"console.log('library_arg = \\'' + process.env.LIBRARY + '\\';')\" && npx esbuild --loader:.py=text --alias:pysrc=../pysrc --bundle compiled/scripts/process-pyodide-api.js) | npx browser-run -s ../public > ../autocomplete.json",

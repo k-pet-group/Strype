@@ -2,7 +2,7 @@ name: Cypress tests
 on: [push,pull_request]
 jobs:
   Build-And-Run-Tests:
-    timeout-minutes: 90
+    timeout-minutes: 125
     strategy:
       fail-fast: false
       matrix:

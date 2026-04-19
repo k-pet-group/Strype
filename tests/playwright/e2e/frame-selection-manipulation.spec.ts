@@ -1,6 +1,7 @@
 import {Page, test, expect} from "@playwright/test";
 import { loadContent, save } from "../support/loading-saving";
 import { readFileSync } from "node:fs";
+import { skipPyodideLoading } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && (process.platform === "win32" || process.platform === "linux")) {
@@ -12,14 +13,15 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     // These tests can take longer than the default 30 seconds:
     testInfo.setTimeout(90000); // 90 seconds
 
+    // Make browser's console.log output visible in our logs (useful for debugging):
+    page.on("console", (msg) => {
+        console.log("Browser log:", msg.text());
+    });
+    await skipPyodideLoading(page);
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
     await page.evaluate(() => {
         (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
     });
 });
 

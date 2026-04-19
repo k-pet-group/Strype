@@ -93,4 +93,26 @@ export default [
             "no-undef": "off",
         },
     },
+
+    // No exports from workers:
+    {
+        files: ["src/workers/python-execution.ts", "src/workers/service-worker.ts"],
+        rules: {
+            "no-restricted-syntax": [
+                "error",
+                {
+                    selector: "ExportNamedDeclaration",
+                    message: "Do not export from worker files.",
+                },
+                {
+                    selector: "ExportDefaultDeclaration",
+                    message: "Do not export from worker files.",
+                },
+                {
+                    selector: "ExportAllDeclaration",
+                    message: "Do not export from worker files.",
+                },
+            ],
+        },
+    },
 ];

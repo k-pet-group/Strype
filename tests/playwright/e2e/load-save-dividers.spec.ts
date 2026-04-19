@@ -6,6 +6,7 @@ import { getDefaultStrypeProjectDocumentationFullLine } from "../support/editor"
 import en from "@/localisation/en/en_main.json";
 import {StrypePEALayoutMode} from "../../cypress/support/frame-types";
 import {dragDividerTo, getSplitterPos} from "../support/dividers";
+import { skipPyodideLoading } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
@@ -15,7 +16,12 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 
     // These tests can take longer than the default 30 seconds:
     testInfo.setTimeout(120000); // 120 seconds
-    
+
+    // Make browser's console.log output visible in our logs (useful for debugging):
+    page.on("console", (msg) => {
+        console.log("Browser log:", msg.text());
+    });
+    await skipPyodideLoading(page);
     await page.goto("./", {waitUntil: "load"});
     await page.waitForTimeout(20*1000);
     await page.waitForSelector("body");
@@ -23,10 +29,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
     await page.evaluate(() => {
         (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
     });
 });
 

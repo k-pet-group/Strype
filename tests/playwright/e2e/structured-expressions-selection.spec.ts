@@ -1,19 +1,22 @@
 import {Page, test} from "@playwright/test";
 import {typeIndividually, doTextHomeEndKeyPress, pressN, assertStateOfIfFrame} from "../support/editor";
 import {addFakeClipboard} from "../support/clipboard";
+import { skipPyodideLoading } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (process.platform === "win32" && browserName === "webkit") {
         testInfo.skip(true, "Skipping on WebKit + Windows due to clipboard permission issues.");
     }
-    await addFakeClipboard(page);
-    await page.goto("./", {waitUntil: "domcontentloaded"});
-    await page.waitForSelector("body");
-    //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
     // Make browser's console.log output visible in our logs (useful for debugging):
     page.on("console", (msg) => {
         console.log("Browser log:", msg.text());
     });
+    await skipPyodideLoading(page);
+    await addFakeClipboard(page);
+    await page.goto("./", {waitUntil: "domcontentloaded"});
+    await page.waitForSelector("body");
+    //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
+    
 });
 
 function testSelection(code : string, startIndex: number, endIndex: number, secondEntry : string | ((page: Page) => Promise<void>), expectedAfter : string, extraTitle?: string) : void {

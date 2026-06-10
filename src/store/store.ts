@@ -761,8 +761,14 @@ export const useStore = defineStore("app", {
                     }
 
                     let cursor: FrameObject | undefined = frame;
-                    while (cursor) {
-                        const parentId = cursor.parentId;
+                    // Joint frames (else/elif/except/finally) store their structural parent in
+                    // jointParentId, not parentId (which is 0/root for them). Walk via jointParentId
+                    // when present, otherwise parentId. The visited guard is a safety net against any
+                    // parentId cycle (the root frame, id 0, has parentId 0 pointing to itself).
+                    const visited = new Set<number>();
+                    while (cursor && !visited.has(cursor.id)) {
+                        visited.add(cursor.id);
+                        const parentId = (cursor.jointParentId > 0) ? cursor.jointParentId : cursor.parentId;
                         if (parentId === importsContainerId) {
                             sectionFrameCounts.imports += 1;
                             break;

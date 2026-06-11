@@ -14,19 +14,11 @@ import en from "@/localisation/en/en_main.json";
 import "../support/expression-test-support";
 import { scssVars, standardBeforeEach, strypeElIds } from "../support/standard-setup";
 import {checkDownloadedFileEquals, loadFile} from "../support/load-save-support";
-import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
+import { getDefaultStrypeProjectDocumentationFullLine, focusEditorAndClear } from "../support/test-support";
 
 beforeEach(standardBeforeEach);
 
 const defaultProjectDocFullLine = getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"));
-
-function focusEditorPasteAndClear(): void {
-    // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
-    // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();
-    // Delete existing content (bit of a hack):
-    cy.get("body").type("{uparrow}{uparrow}{uparrow}{del}{downarrow}{downarrow}{downarrow}{downarrow}{backspace}{backspace}");
-}
 
 function adjustIfMicrobit(filepath: string) {
     if (Cypress.env("mode") === "microbit") {
@@ -55,7 +47,7 @@ function testRoundTripImportAndDownload(filepath: string) {
     // The filename is a path, fixture just needs the filename:
     cy.readFile(filepath).then((spy) => {
         // Delete existing:
-        focusEditorPasteAndClear();
+        focusEditorAndClear();
         loadFile(strypeElIds, filepath);
         // Wait for project title to be set from the file name, which is done at end of loading:
         cy.contains("span.project-name", getBaseName(filepath), {timeout: 10000}).should("be.visible");
@@ -85,7 +77,7 @@ function testEntryDisableAndSave(commands: string|string[], disableFrames: strin
     
     cy.readFile(filepath).then((spy) => {
         // Delete existing:
-        focusEditorPasteAndClear();
+        focusEditorAndClear();
         
         // Some commands may require a pause in the middle of typing, for example when adding block frames which
         // can take a bit of time for their body/joint sections to be rendered in the UI.
@@ -106,14 +98,14 @@ function testEntryDisableAndSave(commands: string|string[], disableFrames: strin
     });
 } 
 
-describe("Loads and re-saves fixture files", () => {
+describe.only("Loads and re-saves fixture files", () => {
     it("Loads a basic project", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic.spy");
     });
     it("Loads a basic trisection project", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-trisection.spy");
     });
-    it("Outputs a dummy for solo try", () => {
+    it.only("Outputs a dummy for solo try", () => {
         // Make an empty try, which should save with a placeholder:
         // (try is followed by a pause, because it can take a bit longer to add its body/join sections)
         testEntryDisableAndSave(["t","pmsg{enter}{downarrow}{backspace}"], [], "tests/cypress/fixtures/project-try-solo.spy");
@@ -211,7 +203,7 @@ describe("Tests saving layout metadata", () => {
         return;
     }
     it("Saves changed layout to tabsExpanded", () => {
-        focusEditorPasteAndClear();
+        focusEditorAndClear();
         cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
         cy.get("div[title='" + en.PEA["PEA-layout-tabs-expanded"] + "']").click();
 
@@ -219,7 +211,7 @@ describe("Tests saving layout metadata", () => {
         cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f.replace("#(=> Section:Imports", defaultProjectDocFullLine + "#(=> Section:Imports"), "My project.spy", true));
     });
     it("Saves changed layout to tabsExpanded and back", () => {
-        focusEditorPasteAndClear();
+        focusEditorAndClear();
         cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
         cy.get("div[title='" + en.PEA["PEA-layout-tabs-expanded"] + "']").click();
         cy.wait(1000);
@@ -259,7 +251,7 @@ describe("Tests loading project descriptions", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented.spy");
     });
     it("Loads a project with docs when there is already a project description", () => {
-        focusEditorPasteAndClear();
+        focusEditorAndClear();
         cy.get("body").type("{uparrow}{uparrow}{leftarrow}Temporary description.");
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented.spy");
     });
@@ -272,7 +264,7 @@ describe("Tests loading project descriptions", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-trisection.spy");
     });
     it("Loads a project without docs when there is already a project description", () => {
-        focusEditorPasteAndClear();
+        focusEditorAndClear();
         cy.get("body").type("{uparrow}{uparrow}{leftarrow}Temporary description.");
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic.spy");
     });

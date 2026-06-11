@@ -2,7 +2,7 @@
 // into the URL
 
 require("cypress-terminal-report/src/installLogsCollector")();
-import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
+import { focusEditorAndClear, getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
 import { initialiseSupportStrypeGlobals, standardBeforeEach, strypeElIds } from "../support/standard-setup";
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
@@ -17,15 +17,6 @@ import {checkDownloadedFileEquals} from "../support/load-save-support";
 beforeEach(standardBeforeEach);
 
 const defaultProjectDocFullLine = getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"));
-
-function focusEditorPasteAndClear(): void {
-    // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
-    // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();
-    // Delete existing content (bit of a hack):
-    cy.get("body").type("{uparrow}{uparrow}{uparrow}{del}{downarrow}{downarrow}{downarrow}{downarrow}{backspace}{backspace}");
-}
-
 
 function adjustIfMicrobit(filepath: string) {
     if (Cypress.env("mode") === "microbit") {
@@ -142,14 +133,14 @@ describe("Tests saving layout metadata", () => {
         return;
     }
     it("Saves changed layout to tabsExpanded", () => {
-        focusEditorPasteAndClear();
+        focusEditorAndClear();
         cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
         cy.get("div[title='" + en.PEA["PEA-layout-tabs-expanded"] + "']").click();
 
         cy.readFile("tests/cypress/fixtures/project-layout-tabs-expanded.spy").then((f) => checkDownloadedFileEquals(strypeElIds, f.replace("#(=> Section:Imports", defaultProjectDocFullLine + "#(=> Section:Imports"), "My project.spy", true));
     });
     it("Saves changed layout to tabsExpanded and back", () => {
-        focusEditorPasteAndClear();
+        focusEditorAndClear();
         cy.get("#" + strypeElIds.getPEATabContentContainerDivId()).trigger("mouseenter");
         cy.get("div[title='" + en.PEA["PEA-layout-tabs-expanded"]).click();
         cy.wait(1000);
@@ -181,7 +172,7 @@ describe("Tests loading project descriptions", () => {
         testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-documented.spy");
     });
     it("Loads a project with docs when there is already a project description", () => {
-        focusEditorPasteAndClear();
+        focusEditorAndClear();
         cy.get("body").type("{uparrow}{uparrow}{leftarrow}Temporary description.");
         testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-documented.spy");
     });
@@ -194,7 +185,7 @@ describe("Tests loading project descriptions", () => {
         testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-basic-trisection.spy");
     });
     it("Loads a project without docs when there is already a project description", () => {
-        focusEditorPasteAndClear();
+        focusEditorAndClear();
         cy.get("body").type("{uparrow}{uparrow}{leftarrow}Temporary description.");
         testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-basic.spy");
     });

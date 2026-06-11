@@ -4,6 +4,7 @@ import {focusEditor} from "../support/expression-test-support";
 // imports the locale files we need for the locales used by this test
 import en from "@/localisation/en/en_main.json";
 import { standardBeforeEach, strypeElIds } from "./standard-setup";
+import { focusEditorAndClear } from "./test-support";
 
 // Must clear all local storage between tests to reset the state,
 // and also retrieve the shared CSS and HTML elements IDs exposed
@@ -31,14 +32,6 @@ Cypress.Commands.add("paste",
             $element[0].dispatchEvent(pasteEvent);
         });
     });
-
-export function focusEditorAndClear(): void {
-    // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
-    // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();
-    // Delete existing content (bit of a hack):
-    cy.get("body").type("{uparrow}{uparrow}{uparrow}{del}{downarrow}{downarrow}{downarrow}{downarrow}{backspace}{backspace}");
-}
 
 export function checkDownloadedCodeEquals(fullCode: string, format: "py" | "spy" = "py") : void {
     const downloadsFolder = Cypress.config("downloadsFolder");

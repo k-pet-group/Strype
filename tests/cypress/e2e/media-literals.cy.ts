@@ -9,7 +9,7 @@ import path from "path";
 // imports the locale files we need for the locales used by this test
 import en from "@/localisation/en/en_main.json";
 
-import { getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
+import { focusEditorAndClear, getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
 
 
 failOnConsoleError();
@@ -46,14 +46,6 @@ Cypress.Commands.add("paste",
             $element[0].dispatchEvent(pasteEvent);
         });
     });
-
-function focusEditorPasteAndClear(): void {
-    // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
-    // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#frame_id_-3", {timeout: 15 * 1000}).focus();
-    // Delete existing content (bit of a hack):
-    cy.get("body").type("{uparrow}{uparrow}{uparrow}{del}{downarrow}{downarrow}{downarrow}{downarrow}{backspace}{backspace}");
-}
 
 enum ImageComparison {
     COMPARE_TO_EXISTING,
@@ -169,7 +161,7 @@ describe("Paste image literals", () => {
     
     it("Paste and show image", () => {
         cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
-            focusEditorPasteAndClear();
+            focusEditorAndClear();
             enterImports();
             cy.get("body").type(" Actor(");
             cy.wait(1000);
@@ -182,7 +174,7 @@ describe("Paste image literals", () => {
 
     it("Paste and show SVG image from a file", () => {
         cy.readFile("tests/cypress/test-http-assets/kcl-logo.svg", null).then((svg) => {
-            focusEditorPasteAndClear();
+            focusEditorAndClear();
             enterImports();
             cy.get("body").type(" Actor(");
             cy.wait(1000);
@@ -196,7 +188,7 @@ describe("Paste image literals", () => {
 
     it("Paste and show SVG image as if from inside browser", () => {
         cy.readFile("tests/cypress/test-http-assets/kcl-logo.svg", "utf8").then((svg) => {
-            focusEditorPasteAndClear();
+            focusEditorAndClear();
             enterImports();
             cy.get("body").type(" Actor(");
             cy.wait(1000);
@@ -210,7 +202,7 @@ describe("Paste image literals", () => {
     });
 
     it("Paste and show IMG with SVG source as if from inside browser", () => {
-        focusEditorPasteAndClear();
+        focusEditorAndClear();
         enterImports();
         cy.get("body").type(" Actor(");
         cy.wait(1000);
@@ -224,7 +216,7 @@ describe("Paste image literals", () => {
 
     it("Can call method on pasted image", () => {
         cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
-            focusEditorPasteAndClear();
+            focusEditorAndClear();
             enterImports();
             cy.get("body").type(" set_background(");
             cy.wait(1000);
@@ -239,7 +231,7 @@ describe("Paste image literals", () => {
 
     it("Can delete pasted image with backspace", () => {
         cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
-            focusEditorPasteAndClear();
+            focusEditorAndClear();
             enterImports();
             cy.get("body").type(" set_background(");
             cy.wait(1000);
@@ -254,7 +246,7 @@ describe("Paste image literals", () => {
 
     it("Can delete pasted image with delete", () => {
         cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
-            focusEditorPasteAndClear();
+            focusEditorAndClear();
             enterImports();
             cy.get("body").type(" set_background(");
             cy.wait(1000);
@@ -269,7 +261,7 @@ describe("Paste image literals", () => {
 
     it("Can delete and retype operator after pasted image", () => {
         cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
-            focusEditorPasteAndClear();
+            focusEditorAndClear();
             enterImports();
             cy.get("body").type(" set_background(");
             cy.wait(1000);
@@ -291,7 +283,7 @@ describe("Paste image literals", () => {
 
     it("Can paste image in existing slot", () => {
         cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
-            focusEditorPasteAndClear();
+            focusEditorAndClear();
             enterImports();
             cy.get("body").type(" set_background(dontget_pixel(270,150");
             cy.wait(1000);
@@ -315,7 +307,7 @@ describe("Paste image literals", () => {
 
     it("Can type before and after pasted image", () => {
         cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
-            focusEditorPasteAndClear();
+            focusEditorAndClear();
             enterImports();
             cy.get("body").type(" set_background(");
             cy.wait(1000);
@@ -336,7 +328,7 @@ describe("Paste image literals", () => {
 
     it("Converts to .py file successfully", () => {
         cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
-            focusEditorPasteAndClear();
+            focusEditorAndClear();
             enterImports();
             cy.get("body").type(" a(");
             cy.wait(1000);
@@ -363,7 +355,7 @@ describe("Paste sound literals", () => {
 
     it("Paste and show preview", () => {
         cy.readFile("src/assetsFilesystem/sounds/cat-test-meow.wav", null).then((catWAV) => {
-            focusEditorPasteAndClear();
+            focusEditorAndClear();
             enterImports();
             // No point playing the sound as we can't test that, but at least check the preview shows up:
             cy.get("body").type("=s=");

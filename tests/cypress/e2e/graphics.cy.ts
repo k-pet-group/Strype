@@ -3,6 +3,7 @@ import {PNG} from "pngjs";
 import { standardBeforeEach } from "../support/standard-setup";
 import pixelmatch from "pixelmatch";
 import failOnConsoleError from "cypress-fail-on-console-error";
+import { focusEditorAndClear } from "../support/test-support";
 failOnConsoleError();
 
 beforeEach(standardBeforeEach);
@@ -28,14 +29,6 @@ Cypress.Commands.add("paste",
             $element[0].dispatchEvent(pasteEvent);
         });
     });
-
-function focusEditorPasteAndClear(): void {
-    // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
-    // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
-    cy.get("#frame_id_-3", {timeout: 15 * 1000}).focus();
-    // Delete existing content (bit of a hack):
-    cy.get("body").type("{uparrow}{uparrow}{uparrow}{del}{downarrow}{downarrow}{downarrow}{downarrow}{backspace}{backspace}");
-}
 
 enum ImageComparison {
     COMPARE_TO_EXISTING,
@@ -114,7 +107,7 @@ function formatDate(timestamp: number) {
 }
 
 function checkImageViaDownload(functions: string, main: string, downloadStem: string, imageFileStem: string, comparison = ImageComparison.COMPARE_TO_EXISTING) {
-    focusEditorPasteAndClear();
+    focusEditorAndClear();
     // The timestamp should be between before and after:
     const before = Date.now();
     enterAndExecuteCode(functions, main, 5000);
@@ -170,7 +163,7 @@ function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis =
 }
 
 function runCodeAndCheckImage(functions: string, main: string, expectedImageFileName : string, comparison = ImageComparison.COMPARE_TO_EXISTING, timeToWaitMillis = 2000, terminationExpected = true) : void {
-    focusEditorPasteAndClear();
+    focusEditorAndClear();
     enterAndExecuteCode(functions, main, timeToWaitMillis, terminationExpected);
     // Check the image matches expected:
     checkGraphicsCanvasContent(expectedImageFileName, comparison);
@@ -567,7 +560,7 @@ describe("Image download", () => {
     it("Rate limits downloads to one every two seconds", () => {
         // To test this, we write code which tries to download a lot of images very quickly
         // but the timestamps on them should always be at least one second apart:
-        focusEditorPasteAndClear();
+        focusEditorAndClear();
         // The timestamp should be between before and after:
         const before = Date.now();
         enterAndExecuteCode("", `

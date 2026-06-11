@@ -160,7 +160,7 @@ describe("Paste image literals", () => {
     }
     
     it("Paste and show image", () => {
-        cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
+        cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAndClear();
             enterImports();
             cy.get("body").type(" Actor(");
@@ -215,7 +215,7 @@ describe("Paste image literals", () => {
     });
 
     it("Can call method on pasted image", () => {
-        cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
+        cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAndClear();
             enterImports();
             cy.get("body").type(" set_background(");
@@ -230,7 +230,7 @@ describe("Paste image literals", () => {
     });
 
     it("Can delete pasted image with backspace", () => {
-        cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
+        cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAndClear();
             enterImports();
             cy.get("body").type(" set_background(");
@@ -245,7 +245,7 @@ describe("Paste image literals", () => {
     });
 
     it("Can delete pasted image with delete", () => {
-        cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
+        cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAndClear();
             enterImports();
             cy.get("body").type(" set_background(");
@@ -260,7 +260,7 @@ describe("Paste image literals", () => {
     });
 
     it("Can delete and retype operator after pasted image", () => {
-        cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
+        cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAndClear();
             enterImports();
             cy.get("body").type(" set_background(");
@@ -282,7 +282,7 @@ describe("Paste image literals", () => {
     });
 
     it("Can paste image in existing slot", () => {
-        cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
+        cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAndClear();
             enterImports();
             cy.get("body").type(" set_background(dontget_pixel(270,150");
@@ -306,7 +306,7 @@ describe("Paste image literals", () => {
     });
 
     it("Can type before and after pasted image", () => {
-        cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
+        cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAndClear();
             enterImports();
             cy.get("body").type(" set_background(");
@@ -327,7 +327,7 @@ describe("Paste image literals", () => {
     });
 
     it("Converts to .py file successfully", () => {
-        cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
+        cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAndClear();
             enterImports();
             cy.get("body").type(" a(");

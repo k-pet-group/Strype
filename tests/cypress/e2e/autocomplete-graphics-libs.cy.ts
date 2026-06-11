@@ -93,7 +93,7 @@ describe("Graphics library", () => {
     });
 
     it("Shows completions for image literal", () => {
-        cy.readFile("src/assetsFilesystem/graphics/cat-test.jpg", null).then((catJPEG) => {
+        cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAC();
             // Add graphics import:
             cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");

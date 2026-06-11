@@ -179,7 +179,7 @@ def load_sound(source):
             with open(source, "rb") as f:
                 encoded = base64.b64encode(f.read()).decode("ascii")
         except:
-            with open("/strype/sounds/" + source, "rb") as f:
+            with open("/sounds/" + source, "rb") as f:
                 encoded = base64.b64encode(f.read()).decode("ascii")
         mime_type, _ = mimetypes.guess_type(source)
         buffer = _strype_sound_internal.loadAndWaitForAudioBuffer(f"data:{mime_type};base64,{encoded}")

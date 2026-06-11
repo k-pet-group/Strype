@@ -99,7 +99,7 @@ const assetFileList : string[] = Object.keys(import.meta.glob(
         query: "?url",
         import: "default",
     }
-)).map((path) => path.replace(/^\/src\/assetsFilesystem/, "/strype"))
+)).map((path) => path.replace(/^\/src\/assetsFilesystem/, "/"))
     // Leave out cat-test.jpg etc:
     .filter((path) => !path.includes("-test"));
 

@@ -50,8 +50,10 @@ export function createLazyFetchFS(pyodide : PyodideAPI, fileIndex: Record<string
                 // Don't need to do anything for directories:
                 return;
             }
+
+            const root : string | undefined = stream.node.rootDir;
             
-            const path = (libraryURL === undefined ? "/src/assetsFilesystem/" : "") + normalize(getFullFilePath(stream.node));
+            const path = (libraryURL === undefined ? ("/src/assetsFilesystem/" + (root ? (root + "/") : "")) : "") + normalize(getFullFilePath(stream.node));
             
             if (!cache.has(path)) {
                 const url = fileIndex[path];
@@ -110,8 +112,9 @@ export function createLazyFetchFS(pyodide : PyodideAPI, fileIndex: Record<string
             const root : FSNode = FS.createNode(null, "/", 16384 | 511, 0);
             root.node_ops = this.node_ops;
             root.stream_ops = this.stream_ops;
+            root.rootDir = mount.opts.root;
 
-            buildTree(root);
+            buildTree(root, mount.opts.root);
 
             return root;
         },
@@ -121,11 +124,17 @@ export function createLazyFetchFS(pyodide : PyodideAPI, fileIndex: Record<string
         stream_ops: unifiedStreamOps,
     };
 
-    function buildTree(root : FSNode) : void {
+    function buildTree(root : FSNode, subDirToMakeRoot: string | undefined) : void {
         for (const fullPath in fileIndex) {
-            const path = normalize(libraryURL === undefined ? fullPath.replace(/^\/src\/assetsFilesystem\//, "") : fullPath);
-            const parts = path.split("/");
-
+            const parts = normalize(libraryURL === undefined ? fullPath.replace(/^\/src\/assetsFilesystem\//, "") : fullPath).split("/");
+            // If we are doing a subdir then ignore those which don't match, and remove first part:
+            if (subDirToMakeRoot) {
+                if (parts[0] !== subDirToMakeRoot) {
+                    continue;
+                }
+                parts.splice(0, 1);
+            }
+            
             let node = root;
 
             for (let i = 0; i < parts.length; i++) {
@@ -140,6 +149,7 @@ export function createLazyFetchFS(pyodide : PyodideAPI, fileIndex: Record<string
                     child.node_ops = LazyFetchFS.node_ops;
                     child.stream_ops = LazyFetchFS.stream_ops;
                     child.assetsChildren = isFile ? null : {};
+                    child.rootDir = subDirToMakeRoot;
 
                     node.assetsChildren[part] = child;
                 }

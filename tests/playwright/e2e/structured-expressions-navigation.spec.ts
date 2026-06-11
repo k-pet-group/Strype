@@ -159,7 +159,7 @@ test.describe("Check clicking near image literal", () => {
         await page.keyboard.press("Delete");
         await page.keyboard.type(" ");
         await page.keyboard.type("Actor(");
-        const image = fs.readFileSync("src/assetsFilesystem/graphics/cat-test.jpg").toString("base64");
+        const image = fs.readFileSync("src/assetsFilesystem/images/cat-test.jpg").toString("base64");
         await doPagePaste(page, image, "image/jpeg");
         await page.waitForTimeout(500);
         const element = await page.$("." + scssVars.labelSlotMediaClassName);

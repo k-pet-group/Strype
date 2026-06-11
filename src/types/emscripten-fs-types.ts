@@ -18,6 +18,7 @@ export interface FSNode {
     strypeCloudCachedChildren?: CloudFileInfo[];
     assetsChildren : Record<string, FSNode>;
     assetsContent : Uint8ClampedArray;
+    rootDir: string | undefined;
 }
 
 export interface FSStream {

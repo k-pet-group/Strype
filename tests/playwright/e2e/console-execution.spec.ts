@@ -120,7 +120,7 @@ except Exception:
 test.describe("Test assets filesystem", () => {
     test("Check reading and processing book", async ({page}) => {
         await enterCode(page, ["", "", `
-with open("/strype/books/three-men-in-a-boat.txt", "r", encoding="utf-8") as file:
+with open("/books/three-men-in-a-boat.txt", "r", encoding="utf-8") as file:
     content = file.read()
 count = content.count("Montmorency")
 

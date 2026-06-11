@@ -99,7 +99,7 @@ test.describe("Check slots have errors", () => {
     test("List of image and invalid number", async ({page}) => {
         // Assignment, x = [<img>,1a]
         await page.keyboard.type("=x=[");
-        const image = fs.readFileSync("src/assetsFilesystem/graphics/cat-test.jpg").toString("base64");
+        const image = fs.readFileSync("src/assetsFilesystem/images/cat-test.jpg").toString("base64");
         await doPagePaste(page, image, "image/jpeg");
         await page.keyboard.type(",1a");
         await checkErrorAfterExitingSlot(page, ["ArrowRight", "ArrowRight"]);

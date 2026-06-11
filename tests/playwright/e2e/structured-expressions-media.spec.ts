@@ -42,7 +42,7 @@ test.describe("Media literal copying", () => {
         await page.waitForTimeout(100);
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, "set_background(");
-        const image = fs.readFileSync("src/assetsFilesystem/graphics/cat-test.jpg").toString("base64");
+        const image = fs.readFileSync("src/assetsFilesystem/images/cat-test.jpg").toString("base64");
         await doPagePaste(page, image, "image/jpeg");
         await typeIndividually(page, ")");
         let startIndex = 0;
@@ -74,7 +74,7 @@ test.describe("Media literal copying", () => {
         await page.waitForTimeout(100);
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, "set_background(");
-        const image = fs.readFileSync("src/assetsFilesystem/graphics/cat-test-2.png").toString("base64");
+        const image = fs.readFileSync("src/assetsFilesystem/images/cat-test-2.png").toString("base64");
         await doPagePaste(page, image, "image/png");
         await typeIndividually(page, ")");
         const startIndex = "set_background(".length;
@@ -174,7 +174,7 @@ test.describe("Media literal copying", () => {
         await page.keyboard.press("Backspace");
         await checkFrameXorTextCursor(page, true);
         await page.waitForTimeout(100);
-        const image = fs.readFileSync("src/assetsFilesystem/graphics/cat-test.jpg").toString("base64");
+        const image = fs.readFileSync("src/assetsFilesystem/images/cat-test.jpg").toString("base64");
         await doPagePaste(page, image, "image/jpeg");
         // Can take a moment to decode the image:
         await page.waitForTimeout(2000);
@@ -194,7 +194,7 @@ test.describe("Media literal manipulation", () => {
         await page.keyboard.type("i");
         await page.waitForTimeout(100);
         await assertStateOfIfFrame(page, "{$}");
-        const image = fs.readFileSync("src/assetsFilesystem/graphics/cat-test.jpg").toString("base64");
+        const image = fs.readFileSync("src/assetsFilesystem/images/cat-test.jpg").toString("base64");
         await doPagePaste(page, image, "image/jpeg");
         // Check it is appearing as an image:
         await expect(page.getByText("load_image")).not.toBeVisible();

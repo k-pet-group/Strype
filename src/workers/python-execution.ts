@@ -83,7 +83,7 @@ import {ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, SyncStrypePyodideHan
 import {SpriteManager} from "@/stryperuntime/image_and_collisions";
 import {asyncBridge, PyodideWorkerGlobalScope, syncBridge} from "@/workers/python_execution_type";
 import {getFSForEmscripten} from "@/stryperuntime/pyodide-emscripten-cloud-fs";
-import {createLazyFetchAssetsFS} from "@/stryperuntime/pyodide-emscripten-assets-fs";
+import { assetsFilePrefixes, createLazyFetchAssetsFS } from "@/stryperuntime/pyodide-emscripten-assets-fs";
 import {PyodideErrorDetails} from "@/workers/shared_helpers";
 import {createLazyFetchFS} from "@/stryperuntime/pyodide-emscript-fetch-fs";
 
@@ -105,7 +105,6 @@ async function loadOnly() : Promise<PyodideInterface> {
     pyodide.FS.mkdir("/cloud");
     
     pyodide.FS.filesystems.ASSETSFS = createLazyFetchAssetsFS(pyodide);
-    pyodide.FS.mkdir("/strype");
 
     pyodide.FS.mkdir("/strype_libraries");
     
@@ -299,7 +298,12 @@ runner`);
             }
                 
         }
-        pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {}, "/strype");
+        
+        // We mount the "books" assets at /books, "images" at /images, etc:
+        for (const dir of assetsFilePrefixes) {
+            pyodide.FS.mkdir("/" + dir);
+            pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {root: dir}, "/" + dir);
+        }
         
         let error : PyodideErrorDetails | null = null;
         let matPlotLibSpriteId : number | null = null;

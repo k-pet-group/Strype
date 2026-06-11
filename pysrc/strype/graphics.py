@@ -871,7 +871,7 @@ def _load_image_bitmap(name):
             with open(name, "rb") as f:
                 encoded = base64.b64encode(f.read()).decode("ascii")
         except:
-            with open("/strype/graphics/" + name, "rb") as f:
+            with open("/images/" + name, "rb") as f:
                 encoded = base64.b64encode(f.read()).decode("ascii")
         mime_type, _ = mimetypes.guess_type(name)
         return _strype_graphics_internal.loadAndWaitForImage(f"data:{mime_type};base64,{encoded}")

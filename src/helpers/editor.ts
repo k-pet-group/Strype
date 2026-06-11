@@ -13,6 +13,7 @@ import { debounce } from "lodash";
 import {toUnicodeEscapes} from "@/parser/parser";
 import {fromUnicodeEscapes} from "@/helpers/pythonToFrames";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { eventBus } from "@/helpers/appContext";
 
 export const undoMaxSteps = 50;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -67,6 +68,8 @@ export enum CustomEventTypes {
     duplicateFrameSelection = "duplicateFrameSelection",
     toggleFrameSelectionDisability = "toggleFrameSelectionDisability",
     updateParamPrompts = "updateParamPrompts",
+    renameIdentifier = "renameIdentifier",
+    closeOtherRenameIdentifierPopup = "closeOtherRenameIdentifierPopup",
     // The following events are used for our modal dialogs, a wrapping mechanism around Bootstrap modals
     showStrypeModal = "bv::show::modal", // request a modal opening, param is a dialog ID
     strypeModalShown = "bv::modal::shown", // event after a modal is opened: param is a BvTriggerableEvent event
@@ -2301,3 +2304,22 @@ export function getGraphemeLength(content: string, currentCursorPos:number, look
         return (lookAt == "before" && currentCursorPos == 0) ? -1: graphemePosAndLength[currentPosGraphemeIndex + ((lookAt == "current") ? 0 : -1)].length;                    
     }
 }
+
+// Helper method to handle the closing of a rename identifier popups (see details in function).
+export const closeRenameIdentifierPopups = (keepOnePopupId?: string): void => {
+    // We have several popups created by Bootstrap and our components.
+    // We want only one staying opened, or none.
+    // If an ID is provided, that is the popup we expect to keep opened; so no ID means close all popups.
+    // When no ID is provided, we also reset the timestamp flag in the store that indicates no popup is shown at all.
+    if(!keepOnePopupId){
+        useStore().renameIdentifierPopupShownTimestamp = 0;
+    }
+    eventBus.emit(CustomEventTypes.closeOtherRenameIdentifierPopup, keepOnePopupId);
+};
+
+// Helper to extract the name bindings stated in an import frame
+export const getImportFrameNameBindings = (frameId: number): string[] => {
+    return [...slotStructureToString(useStore().frameObjects[frameId].labelSlotsDict[0].slotStructures)
+        .matchAll(/ as ([^,]*)/g)]
+        .map((match)=> match[1]); 
+};

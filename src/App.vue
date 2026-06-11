@@ -1,7 +1,7 @@
 <template>
     <!-- With the new package for Bootstrap (for Vue 3), BApp must wrap the application content -->
     <BApp>
-        <div>
+        <div @mousedown.capture="onAppMouseDownCapture">
             <div v-if="showAppProgress || setAppNotOnTop" :class="{'app-overlay-pane': true, 'app-overlay-pane-absolute': showAppProgress, 'app-progress-pane': showAppProgress}" @contextmenu="handleOverlayRightClick">
                 <div v-if="showAppProgress" class="app-progress-container">
                     <div class="progress">
@@ -117,7 +117,7 @@
 //////////////////////
 //      Imports     //
 //////////////////////
-import { defineComponent } from "vue";
+import { defineComponent, watch } from "vue";
 import { useI18n } from "vue-i18n";
 import { BApp } from "bootstrap-vue-next";
 import MessageBanner from "@/components/MessageBanner.vue";
@@ -130,7 +130,7 @@ import {Splitpanes, Pane} from "splitpanes";
 import { useStore, settingsStore, getEditorTabId } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
-import {getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID } from "./helpers/editor";
+import {getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getSelectionCursorsComparisonValue, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID, closeRenameIdentifierPopups } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { debounceComputeAddFrameCommandContainerSize, getPEATabContentContainerDivId, getPEAComponentRefId } from "@/helpers/editor";
@@ -169,6 +169,21 @@ export default defineComponent({
     name: "App",
 
     setup() {
+        watch(
+            // Watch the changes of frame cursor (cannot use "currentFrame" here as it's an object and we wouldn't see a difference)
+            () => [useStore().currentFrame.caretPosition, useStore().currentFrame.id],
+            ([newCaretPosVal, newIdVal], [oldCaretPosVal, oldIdVal]) => {
+                // When a change is detected, we check if we should close the rename identifiers popup:
+                // changing the frame cursor: until a timeout hasn't passed, we keep the popup opened - otherwise we reset the timestamp in the store and close the popup
+                // changing the editor content: always discard the popup
+                const isChangeOfCaret = (newCaretPosVal != oldCaretPosVal || newIdVal != oldIdVal);
+                if(useStore().renameIdentifierPopupShownTimestamp > 0 && isChangeOfCaret
+                    && Date.now() - useStore().renameIdentifierPopupShownTimestamp > 5*1000){
+                    closeRenameIdentifierPopups();                  
+                }
+            }
+        );
+
         // We use the Composition API style for i18n
         const { availableLocales } = useI18n();
         return { availableLocales };
@@ -414,6 +429,15 @@ export default defineComponent({
                 return;
             }
 
+            // Close the rename identifiers popup on most keys:
+            // to simplify the event registration on when we close the popup, we close it on almost all key hits except navigation keys:
+            // they will be handled in watch() via the change of frame and we do allow navigation when the popup is showing.
+            // We also ignore escape and ctrl/meta+R (that's handled later), enter and # (OK to add a blank frame and comments)
+            if(this.appStore.renameIdentifierPopupShownTimestamp > 0 && !["Escape", "Enter", "ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", "Home", "End", "PageUp", "PageDown", "", "Meta", "Control"].includes(event.key) 
+                && !((event.metaKey || event.ctrlKey) &&  event.key == "r")){
+                closeRenameIdentifierPopups(); 
+            }
+
             this.appStore.updateKeyModifiers(event);
             const activeContextMenu = getActiveContextMenu();
             if(activeContextMenu != null){
@@ -544,6 +568,15 @@ export default defineComponent({
                 event.stopPropagation();
                 return;
             }
+
+            // The "rename" identifier tool can be executed when we are editing or not. But never when Python is running. 
+            if (!this.isPythonExecuting && (event.ctrlKey || event.metaKey) && event.key ==  "r"){
+                eventBus.emit(CustomEventTypes.renameIdentifier);
+                event.preventDefault();
+                event.stopPropagation();
+                event.stopImmediatePropagation();
+                return;
+            }
             
             if (!this.appStore.isEditing && !this.isPythonExecuting && !event.ctrlKey && !event.metaKey && event.key === ".") {
                 // The relevant frames are the selection, or otherwise the frame *after* the caret:
@@ -593,9 +626,12 @@ export default defineComponent({
                 return;
             }
 
-            // Handle "escape" on error popover: if an error popover is showing, escape should discard the popup.
+            // Handle "escape" on error and rename identifier popovers: if an error popover is showing, escape should discard the popup.
             if(event.key == "Escape" && !this.appStore.isAppMenuOpened && !this.isPythonExecuting && !this.appStore.isDraggingFrame){
+                // For error popovers:
                 [...document.querySelectorAll(".popover.b-popover:has(.error-popover)")].forEach((popup) => (popup as HTMLDivElement).style.display = "none");
+                // For rename identifier popover
+                closeRenameIdentifierPopups();
             }
         });
 
@@ -983,6 +1019,17 @@ export default defineComponent({
                 }
                 return value;
             });
+        },
+
+        onAppMouseDownCapture(event: MouseEvent){
+            // If a mousedown is performed on the application when a rename popup is displayed (but *on* not the popup itself), we close that popup.
+            // (we work on the CAPTURE phase, not the bubble phase as some other element may consume the mousedown event before the parent gets it.)
+            if(this.appStore.renameIdentifierPopupShownTimestamp > 0){
+                const openedPopup = document.querySelector(".popover.show:has(." + scssVars.renameIdentifierPopoverClassName + "");
+                if(event.target == null || !openedPopup?.contains(event.target as Node)){
+                    closeRenameIdentifierPopups();
+                }
+            }
         },
 
         onHideModalDlg(event: BvTriggerableEvent) {

@@ -852,6 +852,27 @@ export const isContainedInFrame = function (currFrameId: number, caretPosition: 
     return isAncestorTypeFound;
 };
 
+// This method looks for the ancestor of a given frame indicated by frameId, 
+// and which has a given frame type indicated by ancestorType (we exclude sections).
+// The ancestor ID is returned if found, undefined otherwise.
+export const getAncestorFrameOfTypeId = (frameId: number, ancestorType: string): number | undefined => {
+    let parentFrameId = frameId;
+    do{
+        parentFrameId = getParentOrJointParent(parentFrameId);
+        if(parentFrameId < 0){
+            return undefined;
+        }
+        else if(useStore().frameObjects[parentFrameId].frameType.type == ancestorType){
+            return parentFrameId;
+        }
+    }
+    while(parentFrameId > 0);
+
+    // Just in case...
+    return undefined;
+};
+
+
 // Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
 // We get the available caret positions through the DOM, where they are all present.
 // If showIsInCollapsedFrameContainer is set to true, we check that the frame container (section) containing the cursor is not collapsed 

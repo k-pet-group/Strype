@@ -35,6 +35,21 @@
                 @requestSlotsRefactoring="checkSlotRefactoring"
             />
     </div>
+    <teleport to="body">    
+        <BPopover
+            :show="showRenameIdentifierPopup"
+            :target="labelSlotsStructDivId"
+            :key="refactorCount"
+            manual
+            placement="top-start"
+            :body-class="scssVars.renameIdentifierPopoverClassName"
+        >
+            <span>{{ renameIdentifierPopupMsg }}</span>
+            <br>
+            <br>
+            <BButton variant="primary" v-html="renameAllPopupButtonLabel" @click="renameIdentifiers"></BButton>
+        </BPopover>
+    </teleport>
 </template>
 
 <script lang="ts">
@@ -43,8 +58,8 @@ import { computed, defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
-import { CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID } from "@/helpers/editor";
-import { checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, areSlotStructuresIsomorphic} from "@/helpers/storeMethods";
+import { CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getFlatCodeSlotsInLabelStruct, getCaretContainerUID, closeRenameIdentifierPopups, getImportFrameNameBindings } from "@/helpers/editor";
+import { checkCodeErrors, evaluateSlotType, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName } from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import { calculateParamPrompt } from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -55,6 +70,7 @@ import { preparePasteMediaData } from "@/helpers/media";
 import { useAsyncComputed } from "@/helpers/vue3composables";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
+import { BPopover } from "bootstrap-vue-next";
 
 export default defineComponent({
     name: "LabelSlotsStructure",
@@ -103,6 +119,7 @@ export default defineComponent({
 
     components:{
         LabelSlot,
+        BPopover,
     },
 
     props: {
@@ -124,6 +141,11 @@ export default defineComponent({
             // Vue into re-rendering all items in our loop above.
             refactorCount : 0,
             prependText: "", // This is updated properly in updatePrependText()
+            partialIgnoreRefocus: false, // see checkSlotRefactoring() for details
+            labelSlotsStructFlatIdentifiersArrayBeforeFocusLoss: [] as string[], // the full label slots structure before that structure loses focus (set when it gets focus)
+            renamableIdentifiersList: [] as {oldIdentifierName: string, newIdentifierName: string, changeSlotInfos: SlotCoreInfos[]}[],
+            showRenameIdentifierPopup: false,
+            renameIdentifierPopupMsg: "",
         };
     },
 
@@ -154,6 +176,14 @@ export default defineComponent({
             this.updatePrependText();
         });
         eventBus.on(CustomEventTypes.updateParamPrompts, this.updateParamPromptsIfInList);
+        eventBus.on(CustomEventTypes.renameIdentifier, this.renameIdentifiers);
+        eventBus.on(CustomEventTypes.closeOtherRenameIdentifierPopup, this.closeRenameIdentifierPopupIfNotActive);
+    },
+
+    unmounted(){
+        // Just to be safe with events, we clear off any registrations
+        eventBus.off(CustomEventTypes.updateParamPrompts, this.updateParamPromptsIfInList);
+        eventBus.off(CustomEventTypes.renameIdentifier, this.renameIdentifiers);
     },
 
     computed:{
@@ -166,13 +196,26 @@ export default defineComponent({
         
         focusSlotCursorInfos(): SlotCursorInfos | undefined {
             return this.appStore.focusSlotCursorInfos;
-        },        
+        },
+        
+        renameAllPopupButtonLabel(): string {
+            return this.$t("buttonLabel.renameAllWithShortcut", {modifierkey: isMacOSPlatform() ? "⌘" : this.$t("contextMenu.ctrl") });
+        },
     },
 
     watch: {
         // Whenever the focus changes, we update the flag to check the bracket emphasis
         focusSlotCursorInfos() {
             this.ignoreBracketEmphasisCheck = false;
+        },
+
+        // Whenever the rename identifier popup is closed (automatically, or by the user actions) we also clear the internal related flags
+        showRenameIdentifierPopup(newVal){
+            if(newVal == false){
+                this.labelSlotsStructFlatIdentifiersArrayBeforeFocusLoss = [];
+                this.renamableIdentifiersList = [];
+                this.renameIdentifierPopupMsg = "";
+            }
         },
     },
 
@@ -405,10 +448,11 @@ export default defineComponent({
                 let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots, mediaLiterals} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID, {useFlatMediaDataCode: options?.useFlatMediaDataCode});
                 const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: options?.skipCursorSetAndStateSave ? undefined : focusCursorAbsPos, skipStringEscape: hasStringSlots, imageLiterals: mediaLiterals});
                 const majorChange = this.majorChange(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures, parsedCodeRes.slots);
-                // Chrome triggers a loss of focus when the slots structure (and only structurally speaking) are changed in the store, typically when inserting operators
-                // so might want to ignore the event in this situation.
+                // Chrome triggers a loss and reset of focus when the slots structure (and only structurally speaking) are changed in the store, typically when inserting operators
+                // so might want to ignore the events in this situation (ignore blur fully, and partially ignore refocus as some things in focus() should not be done).
                 if(detectBrowser() == "chrome" && !areSlotStructuresIsomorphic(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures, parsedCodeRes.slots)){
                     this.appStore.ignoreBlurEditableSlot = options?.ignoreBlurEditableSlot??false;
+                    this.partialIgnoreRefocus = true;
                 }
                 this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures = parsedCodeRes.slots;
                 // The parser can be return a different size "code" of the slots than the code literal
@@ -531,7 +575,6 @@ export default defineComponent({
                         }
                     });
                 });
-
             }
         },
 
@@ -1036,11 +1079,20 @@ export default defineComponent({
                 this.appStore.frameObjects[slotInfos.frameId].labelSlotsDict[slotInfos.labelSlotsIndex].slotStructures.operators.splice(0);
                 this.appStore.focusSlotCursorInfos = {slotInfos: {...slotInfos, slotId: "0", slotType: SlotType.code}, cursorPos: newCursorPosition};
                 this.$nextTick(() => this.checkSlotRefactoring(getLabelSlotUID(this.appStore.focusSlotCursorInfos?.slotInfos as SlotCoreInfos), stateBeforeChanges, {useFlatMediaDataCode: true}));
-                
             }
         },
 
         onFocus(){
+            if(!this.partialIgnoreRefocus){
+                // For import frames, we need to make a special check: we can only change the part after "as", which is an operator.
+                this.labelSlotsStructFlatIdentifiersArrayBeforeFocusLoss = (this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.import)
+                    ? getImportFrameNameBindings(this.frameId)
+                    : getFlatCodeSlotsInLabelStruct(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures, {[SlotType.media]: "<media>", [SlotType.string]: "<str>"});                
+            }
+            else{
+                this.partialIgnoreRefocus = false;
+            }        
+
             this.updatePrependText();
             // When the application gains focus again, the browser might try to give the first span of a div the focus (because the div may have been focused)
             // even if we have the blue caret showing. We do not let this happen.
@@ -1063,7 +1115,10 @@ export default defineComponent({
                 this.appStore.bypassEditableSlotBlurErrorCheck = false;
                 return;
             }
-                   
+
+            // We check if the loss of focus can trigger the "rename" identifiers popup:
+            this.checkAndShowRenameIdentifiersPopup();
+            
             // When the div containing the slots loses focus, we need to also notify the currently focused slot inside *this* container
             // that the caret has been "lost" (since a contenteditable div won't let its children having/loosing focus)
             if(document.activeElement?.id === this.labelSlotsStructDivId){
@@ -1132,6 +1187,125 @@ export default defineComponent({
                 }
             }, 200);
         },
+
+        async checkAndShowRenameIdentifiersPopup() {
+            // We may show the popup when :
+            // 1) we are on a label slots struct that reflects the corresponding frame's label type (FrameLabel) "isIdentifierDefsContainer" property is set to true,
+            // 2) we have the same number of elements in both old and new identifiers list
+            // 3) we detect that some of the variables' (old) name is used in the code
+            const thisFrame = this.appStore.frameObjects[this.frameId];
+            const frameType = thisFrame?.frameType;
+            if(thisFrame && frameType && frameType.labels[this.labelIndex].isIdentifierDefsContainer){
+                // The first condition is met, but for import frames, we need to make a special check: we can only change the part after "as", which is an operator.
+                const newIdentifierNamesFlatArray = (thisFrame.frameType.type == AllFrameTypesIdentifier.import)
+                    ? getImportFrameNameBindings(thisFrame.id)
+                    : getFlatCodeSlotsInLabelStruct(thisFrame.labelSlotsDict[this.labelIndex].slotStructures, {[SlotType.media]: "<media>", [SlotType.string]: "<str>"});
+                                    
+                if(this.labelSlotsStructFlatIdentifiersArrayBeforeFocusLoss.length != newIdentifierNamesFlatArray.length){
+                    // Condition 2 isn't met: we do nothing
+                    return;
+                }
+
+                // Construct an order list of old/new identifier names, we omit strings and medias, and empty fields.
+                // We will need to know where we are: depending on the location in the editor and the frame type, we might need to look in a scope or in the full code.
+                let lookAndRenameInFrameId = 0; // assume by default we look everywhere in the editor
+                let variableLookup: "generic" | "class" | null = "generic"; // indicates the type of identifier, variable or not (variable needs extra care when searching locations)
+                let identifierType = this.$t("appMessage.thisVariable"); // will be updated for other types, variables is the most common, so we use it as default
+                switch (frameType.type) {
+                case AllFrameTypesIdentifier.varassign:
+                case AllFrameTypesIdentifier.with:
+                case AllFrameTypesIdentifier.for:               
+                    // A variable assignment / for iterators / with name binding  change is scoped: inside a function definition, if not global*, 
+                    // we only change inside that function definition;
+                    // inside a frame container we can change anywhere (but not in a function definition if the variable isn't global* there);
+                    // inside a class (direct parent) we can change anywhere but we check it follows "."
+                    // (*) this rule is checked when find out the variable replacement locations
+                    if(this.appStore.frameObjects[thisFrame.parentId].frameType.type == AllFrameTypesIdentifier.classdef){
+                        variableLookup = "class";
+                    }
+                    const potentialFuncDefFrameAncestorId = getAncestorFrameOfTypeId(this.frameId, AllFrameTypesIdentifier.funcdef);
+                    if (potentialFuncDefFrameAncestorId != undefined) {
+                        lookAndRenameInFrameId = potentialFuncDefFrameAncestorId;
+                    }
+                    break;
+                case AllFrameTypesIdentifier.funcdef:
+                    // We need to see where we are in the function definition: if the change is made on the function name: we look everywhere, 
+                    // if the change is made on the arguments, we only change inside the function.
+                    variableLookup = null;
+                    if(this.labelIndex > 0) {
+                        lookAndRenameInFrameId = this.frameId;                       
+                    }
+                    else if(this.appStore.frameObjects[thisFrame.parentId].frameType.type == AllFrameTypesIdentifier.classdef){
+                        // If the function name is part of a class, we'll look for uses preceded by a "."
+                        variableLookup = "class";
+                    }
+                    identifierType = this.$t("appMessage.thisFunction");
+                    break;
+                case AllFrameTypesIdentifier.classdef:
+                case AllFrameTypesIdentifier.import:
+                    // Class or import module name binding change is everywhere
+                    variableLookup = null;
+                    identifierType = this.$t("appMessage.thisClass");
+                    break;
+                default: 
+                    // Case where we look everywhere for variables:
+                    // global
+                    break;
+                }
+
+                const discardedEntries = ["<string>", "<media>", ""];
+                this.renamableIdentifiersList = [];
+
+                for(let i=0; i < newIdentifierNamesFlatArray.length; i++){
+                    const newIdentifierName = newIdentifierNamesFlatArray[i];
+                    const oldIdentifierName = this.labelSlotsStructFlatIdentifiersArrayBeforeFocusLoss[i];
+                    if(oldIdentifierName != newIdentifierName && !discardedEntries.includes(newIdentifierName) && !discardedEntries.includes(this.labelSlotsStructFlatIdentifiersArrayBeforeFocusLoss[i])){
+                        // Round check now inside the code to see where and if a change for this variable can happen.
+                        const changeSlotInfos = await findSlotsWithIndentifierName(lookAndRenameInFrameId, variableLookup, oldIdentifierName);
+                        if(changeSlotInfos.length > 0){
+                            this.renamableIdentifiersList.push({oldIdentifierName, newIdentifierName, changeSlotInfos});
+                        }
+                    }
+                }
+
+                if(this.renamableIdentifiersList.length > 0){
+                    // First we close any other popups that may have stayed open for other frames - we want only one popup to show at a time...
+                    closeRenameIdentifierPopups(this.labelSlotsStructDivId);
+
+                    // We construct the popup message and trigger its activation
+                    this.renameIdentifierPopupMsg = `${this.$t("appMessage.renameIdentifiers", {thisIdentifierType: identifierType})}\n${this.renamableIdentifiersList.map((varsIndentifiersListChange) => `  ${(this.renamableIdentifiersList.length > 1) ? "• " : ""}"${varsIndentifiersListChange.oldIdentifierName}" ⇒ "${varsIndentifiersListChange.newIdentifierName}"`).join("\n")}`;
+                    this.showRenameIdentifierPopup = true;
+                    this.appStore.renameIdentifierPopupShownTimestamp = Date.now();
+                }               
+            }
+        },
+
+        renameIdentifiers(){
+            // Performs the identifiers renaming based on the list of changes (renamableIdentifiersList) created before.
+            // This actions is considered atomic, so we need to have undo/redo set up for it.
+            if(this.showRenameIdentifierPopup){
+                const stateBeforeChanges = cloneDeep(this.appStore.$state);
+
+                this.renamableIdentifiersList.forEach((identifierChangeInfos) => {
+                    identifierChangeInfos.changeSlotInfos.forEach((slotInfos) =>{
+                        (retrieveSlotFromSlotInfos(slotInfos) as BaseSlot).code = identifierChangeInfos.newIdentifierName;
+                    });
+                });
+
+                // Close the popup and reset the timestamp
+                this.showRenameIdentifierPopup=false;
+                this.appStore.renameIdentifierPopupShownTimestamp = 0;
+
+                // Save state
+                this.appStore.saveStateChanges(stateBeforeChanges);
+            }
+        },
+
+        closeRenameIdentifierPopupIfNotActive(keepForLabelSlotsStructId: string){
+            if(this.labelSlotsStructDivId != keepForLabelSlotsStructId){
+                this.showRenameIdentifierPopup = false;
+            }
+        },
     },
 });
 </script>
@@ -1150,10 +1324,25 @@ export default defineComponent({
     display: inline-block;
     border: 1px solid transparent; /* For alignment with following slots */
 }
+
 .label-slot-structure.prepend-self-only::before {
     content: "self";
 }
+
 .label-slot-structure.prepend-self-comma::before {
     content: "self,";
+}
+
+.popover:has(.#{$strype-classname-rename-identifier-popover}){
+    max-width: none !important;
+}
+
+.#{$strype-classname-rename-identifier-popover} {
+    max-width: none;
+    white-space: pre-wrap;
+}
+
+.#{$strype-classname-rename-identifier-popover} .kb-shortcut {
+    font-size: 0.7em;
 }
 </style>

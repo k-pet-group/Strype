@@ -72,7 +72,8 @@
     "continue" :"Continue",
     "select": "Select",
     "refresh": "refresh",
-    "choose": "Choose"
+    "choose": "Choose",
+    "renameAllWithShortcut": "Rename all <span class=\"kb-shortcut\">({modifierkey}+R)</span>"
   },
   "errorMessage": {
     "wrongDataFormat": "the data format cannot be read",
@@ -183,7 +184,11 @@
     "snapshotLinkTooLarge": "Warning: this link may be too large for some browsers, probably due to images/sounds in the code.", 
     "cloudShareUnavailable": "You need to save to a cloud drive first.",
     "cloudShareNotSaved": "You currently have unsaved changes.",
-    "kb": "KB"
+    "kb": "KB",
+    "renameIdentifiers": "Rename all uses of {thisIdentifierType}?",
+    "thisVariable": "this variable",
+    "thisFunction": "this function",
+    "thisClass": "this class"
   },
   "contextMenu": {
     "ctrl": "Ctrl",

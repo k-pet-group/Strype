@@ -217,6 +217,7 @@
     "downloadPython": "Convertir vers Python",
     "loadProject": "Ouvrir...",
     "loadDemoProject": "Exemples...",
+    "book": "Manuel...",
     "saveProject": "Enregistrer",
     "saveAsProject": "Enregistrer sous...",
     "resetProject": "Nouveau projet",
@@ -284,6 +285,9 @@
     "cursorTimeMac": "Temps (⌘ C pour copier) :",
     "cursorHeightWin": "Hauteur (Ctrl-Maj-C pour copier) :",
     "cursorHeightMac": "Hauteur (⇧ ⌘ C pour copier) :"
+  },
+  "book": {
+    "dialogTitle": "Manuel Strype"
   },
   "demos": {
     "dialogTitle": "Exemples de programmes",

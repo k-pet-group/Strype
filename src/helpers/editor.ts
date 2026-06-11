@@ -2241,33 +2241,42 @@ export function simpleSlotStructureToString(ss: SlotsStructure) : string {
     return r.join("");
 }
 
-export function slotStructureToString(ss: SlotsStructure) : string {
+export function slotStructureParserToString(ss: SlotsStructure, options?:{ignoreBracketTokenSlots?: boolean, ignoreOperatorSlots?: boolean, slotTypeRepacerMap?: Partial<Record<SlotType, string>>}) : string[] {
     const r : string[] = [];
-    if (ss.openingBracketValue) {
+    if (ss.openingBracketValue && !(options?.ignoreBracketTokenSlots)) {
         r.push(ss.openingBracketValue);
     }
     for (let i = 0; i < ss.fields.length; i++) {
         const field = ss.fields[i];
         if (isFieldMediaSlot(field)) {
-            r.push("<img>");
+            r.push((options?.slotTypeRepacerMap?.[SlotType.media]) ?? ((field as MediaSlot).code));
         }
         else if (isFieldStringSlot(field)) {
-            r.push(field.quote + field.code + field.quote);
+            r.push((options?.slotTypeRepacerMap?.[SlotType.string]) ?? (field.quote + field.code + field.quote));
         }
         else if (isFieldBaseSlot(field)) {
             r.push(field.code);
         }
         else {
-            r.push(slotStructureToString(ss));
+            r.push(...slotStructureParserToString(field, options));
         }
-        if (i < ss.operators.length) {
-            r.push(ss.operators[i].code);
+        if (i < ss.operators.length && !options?.ignoreOperatorSlots) {
+            r.push(" " + ss.operators[i].code + " ");
         }
     }
-    if (ss.openingBracketValue) {
+    if (ss.openingBracketValue && !(options?.ignoreBracketTokenSlots)) {
         r.push(getMatchingBracket(ss.openingBracketValue, true));
     }
+    return r;
+}
+
+export function slotStructureToString(ss: SlotsStructure) : string {
+    const r = slotStructureParserToString(ss, {slotTypeRepacerMap: {[SlotType.media]: "<img>"}});
     return r.join("");
+}
+
+export function getFlatCodeSlotsInLabelStruct(ss: SlotsStructure, slotTypeRepacerMap: Partial<Record<SlotType, string>>): string[] {
+    return slotStructureParserToString(ss, {ignoreBracketTokenSlots: true, ignoreOperatorSlots: true, slotTypeRepacerMap});
 }
 
 // Method to get the length of a grapheme (a grapheme is a visual "character" of a string, for example an emoji)

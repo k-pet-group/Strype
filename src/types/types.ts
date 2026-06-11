@@ -198,6 +198,7 @@ export interface FrameLabel {
     allowedSlotContent?: AllowedSlotContent; // default TERMINAL_EXPRESSION; what the slot accepts
     newLine?: boolean; //default false; this item starts a new line
     appendSelfWhenInClass?: boolean, // default false.  For the opening bracket in function definitions (which show "self" if inside a class)
+    isIdentifierDefsContainer?: boolean; // Flag indicating if a label structure is meant to contain a variable definition (like in a varassign or for frame) - false by default
 }
 
 export enum CaretPosition {
@@ -545,7 +546,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
     const GlobalDefinition: FramesDefinitions = {
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.global,
-        labels: [{ label: "global ", defaultText: i18n.global.t("frame.defaultText.variable"), allowedSlotContent: AllowedSlotContent.ONLY_NAMES }],
+        labels: [{ label: "global ", defaultText: i18n.global.t("frame.defaultText.variable"), allowedSlotContent: AllowedSlotContent.ONLY_NAMES, isIdentifierDefsContainer: true }],
         colour: scssVars.mainCodeContainerBackground,
     };
 
@@ -553,7 +554,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: StandardFrameTypesIdentifiers.varassign,
         labels: [
-            { label: "", defaultText: i18n.global.t("frame.defaultText.identifier") },
+            { label: "", defaultText: i18n.global.t("frame.defaultText.identifier"), isIdentifierDefsContainer: true },
             { label: " &#x21D0; ", defaultText: i18n.global.t("frame.defaultText.value") },
         ],
         colour: scssVars.mainCodeContainerBackground,
@@ -590,10 +591,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...StatementDefinition,
         type: ImportFrameTypesIdentifiers.import,
         labels: [
-            { label: "import ", defaultText: i18n.global.t("frame.defaultText.modulePart"), allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
-            // The as slot to be used in a future version, as it seems that Brython does not understand the shortcut the as is creating
-            // and thus not giving us back any AC results on the shortcut
-            //{ label: "as ", hidableLabelSlots: true, defaultText: "shortcut", acceptAC: false},
+            // Note that "as" is supported as a detected operator, rather than label.
+            { label: "import ", defaultText: i18n.global.t("frame.defaultText.modulePart"), allowedSlotContent: AllowedSlotContent.ONLY_NAMES, isIdentifierDefsContainer: true },
         ],
         colour: scssVars.nonMainCodeContainerBackground,
         isImportFrame: true,
@@ -668,7 +667,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.for,
         labels: [
-            { label: "for ", defaultText: i18n.global.t("frame.defaultText.identifier"), acceptAC: false },
+            { label: "for ", defaultText: i18n.global.t("frame.defaultText.identifier"), acceptAC: false, isIdentifierDefsContainer: true },
             { label: " in ", defaultText: i18n.global.t("frame.defaultText.list") },
             { label: " :", showSlots: false, defaultText: "" },
         ],
@@ -725,8 +724,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: DefIdentifiers.funcdef,
         labels: [
-            { label: "def ", defaultText: i18n.global.t("frame.defaultText.name"), acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
-            { label: "(", defaultText: i18n.global.t("frame.defaultText.parameters"), optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_FORMAL_PARAMS, appendSelfWhenInClass: true },
+            { label: "def ", defaultText: i18n.global.t("frame.defaultText.name"), acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_NAMES, isIdentifierDefsContainer: true },
+            { label: "(", defaultText: i18n.global.t("frame.defaultText.parameters"), optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK, acceptAC: false, allowedSlotContent: AllowedSlotContent.ONLY_FORMAL_PARAMS, appendSelfWhenInClass: true, isIdentifierDefsContainer: true },
             { label: ")&nbsp;:", showSlots: false, defaultText: "" },
             { label: `<img src='${quoteCircleFuncdef}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.global.t("frame.defaultText.funcDescription"), allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
@@ -739,7 +738,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: DefIdentifiers.classdef,
         labels: [
-            { label: "class ", defaultText: i18n.global.t("frame.defaultText.name"), acceptAC: false},
+            { label: "class ", defaultText: i18n.global.t("frame.defaultText.name"), acceptAC: false, isIdentifierDefsContainer: true },
             { label: " :", showSlots: false, defaultText: ""},
             { label: `<img src='${quoteCircleClass}'>`, newLine: true, showSlots: true, acceptAC: false, optionalSlot: OptionalSlotType.PROMPT_WHEN_UNFOCUSED_AND_BLANK, defaultText: i18n.global.t("frame.defaultText.classDescription"), allowedSlotContent: AllowedSlotContent.FREE_TEXT_DOCUMENTATION},
         ],
@@ -758,7 +757,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         type: StandardFrameTypesIdentifiers.with,
         labels: [
             { label: "with ", defaultText: i18n.global.t("frame.defaultText.expression") },
-            { label: " as ", defaultText: i18n.global.t("frame.defaultText.identifier"), allowedSlotContent: AllowedSlotContent.ONLY_NAMES },
+            { label: " as ", defaultText: i18n.global.t("frame.defaultText.identifier"), allowedSlotContent: AllowedSlotContent.ONLY_NAMES, isIdentifierDefsContainer: true },
             { label: " :", showSlots: false, defaultText: "" },
         ],
         colour: "#ede8f2",

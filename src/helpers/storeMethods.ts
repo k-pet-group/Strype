@@ -2,7 +2,7 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, MessageDefinitions, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FieldSlot, FlatSlotBase, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, MessageDefinitions, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import { nextTick} from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID, slotStructureParserToString } from "./editor";
 import { cloneDeep, isEqual } from "lodash";
@@ -156,6 +156,80 @@ export const retrieveSlotByPredicate = (frameLabelSlotStructs: SlotsStructure[],
 
     return resSlot;
 };
+
+export const findSlotsWithIndentifierName = async (lookAndRenameInFrameId: number, variableLookup: "generic" | "class" | null, identifierName: string, functionDefsFramesLocalVarsInfos?: Record<number, {vars: string[], allSubFramesId: number[]}>): Promise<SlotCoreInfos[]> => {
+    // This method recursively looks for slots containing a given identifier (identifierName) within the frame identified by lookAndRenameInFrameId.
+    // variableLookup is used to check some rules about the context of this identifier (generic variables are not expected to follow a dot, for example).
+
+    // First we get the user-defined functions' local variables, as we'll need them to evaluate the rules below.
+    // This is done once in a first call: recursive calls use that value to avoid doing the routine more than required...
+    // Likewise, we retrieve a list of all function defs deep children at one to avoid look them up again and again.
+
+    if(functionDefsFramesLocalVarsInfos == undefined && variableLookup == "generic"){
+        functionDefsFramesLocalVarsInfos = [];
+        const functionDefsFramesLocalVars = await listFunctionDefsLocalVars();
+        for(const funcDefFrameIdStr in functionDefsFramesLocalVars){
+            const funcDefFrameId = parseInt(funcDefFrameIdStr);
+            functionDefsFramesLocalVarsInfos[funcDefFrameId] = {
+                vars: functionDefsFramesLocalVars[funcDefFrameId],
+                allSubFramesId: getAllChildrenAndJointFramesIds(funcDefFrameId),
+            };
+        }
+    }
+
+    if(lookAndRenameInFrameId == 0){
+        // If we look everywhere in the editor, we look in the definitions and main code sections
+        return [...await findSlotsWithIndentifierName(useStore().getDefsFrameContainerId, variableLookup, identifierName, functionDefsFramesLocalVarsInfos),
+            ...await findSlotsWithIndentifierName(useStore().getMainCodeFrameContainerId, variableLookup, identifierName, functionDefsFramesLocalVarsInfos)];
+    }
+    else{
+        const foundSlots: SlotCoreInfos[] = [];
+
+        // Look in the frame, its child and joint frames
+        const allFramesToLookIn = [lookAndRenameInFrameId, ...getAllChildrenAndJointFramesIds(lookAndRenameInFrameId)];
+        allFramesToLookIn.forEach((frameId) => {
+            // If a frame is disabled or is frozen (or part of a frozen ancestor), we ignore the change.
+            const thisFrame = useStore().frameObjects[frameId];
+            if(thisFrame.isDisabled || useStore().isEffectivelyFrozen(frameId)){
+                return;
+            }
+
+            Object.entries(thisFrame.labelSlotsDict).forEach((labelSlotContentEntry, labelSlotsIndex) => {
+                generateFlatSlotBases(thisFrame.frameType.labels[labelSlotsIndex], labelSlotContentEntry[1].slotStructures, undefined, (flatSlot, _, opBefore) => {
+                    const basicEval = (isFieldBaseSlot(flatSlot) && flatSlot.code == identifierName);
+                    // When we look for variable names, we don't look at a basic name comparison,
+                    // we also check that this is the right variable by checking these rules:
+                    // - the matching slot from a generic evaluation isn't preceeded by "." 
+                    // - if the variable name (generic) to find is across the whole code, check the slot isn't part of a function definition that lists that variable as local
+                    // - if the variable name (class) to find is not preceded by ".", we ignore it
+                    if(variableLookup == "generic"){
+                        if(opBefore == "."){
+                            return;
+                        }
+
+                        if(lookAndRenameInFrameId < 0){
+                            if(thisFrame.frameType.type == AllFrameTypesIdentifier.funcdef || Object.entries(functionDefsFramesLocalVarsInfos??[]).find((entry) => entry[1].allSubFramesId.includes(frameId) && entry[1].vars.includes(identifierName))){
+                                return;
+                            }
+                        }
+                    }
+                    else if(variableLookup == "class"){
+                        if(opBefore != "."){
+                            return;
+                        }
+                    }
+                    if(basicEval){
+                        foundSlots.push({frameId:thisFrame.id, labelSlotsIndex, slotId: flatSlot.id, slotType: SlotType.code});
+                    }
+                });
+            });
+        });
+        
+        // Return the result
+        return foundSlots;
+    }
+};
+
 export const getSlotParentIdAndIndexSplit = (slotId: string): {parentId: string, slotIndex: number} => {
     const idMatchArray = slotId.match(/^((\d+,)*)(\d+)$/);
     if(idMatchArray){

@@ -947,6 +947,10 @@ export const useStore = defineStore("app", {
             this.currentFrame.caretPosition = nextCaret.caretPosition;
 
             this.frameObjects[nextCaret.id].caretVisibility = nextCaret.caretPosition;
+            
+            // In order to keep a coherence between our state's focus information and the internal browser active element,
+            // we explicitly set the focus on the frame cursor that holds it now.
+            document.getElementById(getCaretContainerUID(nextCaret.caretPosition, nextCaret.id))?.focus();
 
             // Scroll caret into view when navigating with keyboard:
             nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));

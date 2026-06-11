@@ -5,6 +5,7 @@
         @contextmenu.prevent.stop="handleClick($event)"
         :key="UID"
         :id="UID"
+        tabindex="-1"        
     >
         <ContextMenu 
             :contextMenuItemsDef="frameContextMenuItems"
@@ -471,6 +472,7 @@ export default defineComponent({
     padding-bottom: 0px;
     scroll-margin-top: 50px;
     scroll-margin-bottom: 50px;
+    outline: none;
 }
 
 .static-caret-container{

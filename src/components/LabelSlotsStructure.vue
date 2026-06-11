@@ -853,7 +853,6 @@ export default defineComponent({
             
             this.appStore.isEditing = false;
             this.appStore.isSelectingMultiSlots = false;
-            this.blurEditableSlot(undefined, true);
             document.getSelection()?.removeAllRanges();
             
             //If the up arrow is pressed you need to move the caret as well.
@@ -870,11 +869,17 @@ export default defineComponent({
                 else if (this.appStore.isCurrentFrameCollapsedClassOrFunction){
                     // If we are leaving the content of a class or function def frame, and that frame is *fully collapsed*, we need to go below.
                     this.appStore.toggleCaret({id: this.frameId, caretPosition: CaretPosition.below});
+                    // In order to keep a coherence between our state's focus information and the internal browser active element,
+                    // we explicitly set the focus on the frame cursor that holds it now.
+                    document.getElementById(getCaretContainerUID(CaretPosition.below, this.frameId))?.focus();
                 }
                 else {
                     // Restore the caret visibility
                     this.appStore.frameObjects[this.appStore.currentFrame.id].caretVisibility = this.appStore.currentFrame.caretPosition;
                     this.$nextTick(() => document.dispatchEvent(new CustomEvent(CustomEventTypes.scrollCaretIntoView, {})));
+                    // In order to keep a coherence between our state's focus information and the internal browser active element,
+                    // we explicitly set the focus on the frame cursor that holds it now.                    
+                    document.getElementById(getCaretContainerUID(this.appStore.currentFrame.caretPosition, this.frameId))?.focus();
                 }
             }
         },
@@ -1045,9 +1050,7 @@ export default defineComponent({
             this.appStore.ignoreFocusRequest = false;
         },
 
-        blurEditableSlot(event: FocusEvent | undefined, force?: boolean){
-            // event here is only kept for keeping TS happy
-
+        blurEditableSlot(){
             // If a request to ignore the loss of focus has been made, we return right away but reset the flag
             if(this.appStore.ignoreBlurEditableSlot) {
                 this.appStore.ignoreBlurEditableSlot = false;
@@ -1063,7 +1066,7 @@ export default defineComponent({
                    
             // When the div containing the slots loses focus, we need to also notify the currently focused slot inside *this* container
             // that the caret has been "lost" (since a contenteditable div won't let its children having/loosing focus)
-            if(force !== true && document.activeElement?.id === this.labelSlotsStructDivId){
+            if(document.activeElement?.id === this.labelSlotsStructDivId){
                 // We don't lose focus that's from an outside event (like when the browser itself loses focus)
                 // cf https://stackoverflow.com/questions/24638129/javascript-dom-how-to-prevent-blur-event-if-focus-is-lost-to-another-window
                 this.appStore.ignoreFocusRequest = true;

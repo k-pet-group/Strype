@@ -1,7 +1,6 @@
 # Adapted from Neil's side project so no issues with licensing:
 # The only concession from the original is to add spaces around all operators to
 # match what our code generation does (hence weird spacing around commas and dots):
-
 content.delete(1.0,"end")
 
 try:

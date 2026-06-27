@@ -1,8 +1,9 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesAction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
+import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CurrentFrame, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesAction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { checkCodeErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameSectionIdFromFrameId } from "./storeMethods";
 import { splitByRegexMatches, strypeFileExtension } from "./common";
+import Parser from "@/parser/parser";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
 import scssVars  from "@/assets/style/_export.module.scss";
 import html2canvas, { Options } from "html2canvas";
@@ -11,7 +12,7 @@ import { nextTick } from "vue";
 import { debounce } from "lodash";
 // #v-endif
 import {toUnicodeEscapes} from "@/parser/parser";
-import {fromUnicodeEscapes} from "@/helpers/pythonToFrames";
+import { fromUnicodeEscapes, pasteMixedPython } from "@/helpers/pythonToFrames";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
 
@@ -1102,14 +1103,8 @@ const bodyMouseUpEventHandlerForFrameDnD = (event: MouseEvent): void => {
             // We either reorder the frames (most commont drag and drop case) OR add a copy if the drop is made with the ctrl or option keys held.
             const currentDraggedFirstFrameParentFrameId = useStore().frameObjects[currentDraggedSingleFrameId ?? useStore().selectedFrames[0]].parentId;
             if(event.ctrlKey || event.altKey){
-                if(currentDraggedSingleFrameId){
-                    useStore().doCopyFrame(currentDraggedSingleFrameId);
-                    useStore().pasteFrame({clickedFrameId: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
-                }
-                else{
-                    useStore().doCopySelection();
-                    useStore().pasteSelection({clickedFrameId: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
-                }
+                const text = copyFrameTextReadyForClipboard(currentDraggedSingleFrameId ? [currentDraggedSingleFrameId] : useStore().selectedFrames);
+                pasteMixedPython(text, {id: currentCaretDropPosFrameId, caretPosition: currentCaretDropPosCaretPos});
             }
             else {
                 useStore().updateDroppedFramesOrder(currentCaretDropPosFrameId, currentCaretDropPosCaretPos, currentDraggedSingleFrameId);
@@ -2346,4 +2341,37 @@ export function isFullyInViewport(el: Element, margin = 0) : boolean {
         rect.bottom <= window.innerHeight - margin &&
         rect.right <= window.innerWidth - margin
     );
+}
+
+// Finds the last caret pos inside the given parent:
+export function getLastCaretPosInsideParent(parentId: number) : CurrentFrame {
+    const childrenIds = useStore().frameObjects[parentId]?.childrenIds;
+    if (childrenIds.length > 0) {
+        return {id: childrenIds[childrenIds.length - 1], caretPosition: CaretPosition.below};
+    }
+    else {
+        return {id: parentId, caretPosition: CaretPosition.body};
+    }
+}
+
+// frameIds must refer to contiguous frames (i.e. siblings at same level of the AST)
+export function copyFrameTextReadyForClipboard(frameIds: number[]) : string {
+    let code = "";
+    if (frameIds.length > 0) {
+        const p = new Parser(true, "spy");
+        code = p.parse({
+            startAtFrameId: frameIds[0],
+            stopAt: {frameId: frameIds[frameIds.length - 1], includeThisFrame: true},
+        });
+    }
+    return code;
+}
+
+// Must be called in response to click or key handler so that we have access to the clipboard
+// frameIds must refer to contiguous frames (i.e. siblings at same level of the AST)
+export function copyFramesToClipboard(frameIds: number[]) : void {
+    let code = copyFrameTextReadyForClipboard(frameIds);
+    navigator.clipboard.writeText(code).catch((err) => {
+        console.error(err);
+    });
 }

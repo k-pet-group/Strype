@@ -129,7 +129,7 @@ function genRandomFrame(fromFrames: string[], level : number): FrameEntry {
     const subLen = level == 2 ? 0 : genRandomInt(4 - level * 2);
 
     const children = def.allowChildren ? Array.from({ length: subLen }, () => genRandomFrame(framesBySection[2].filter((f) => !def.forbiddenChildrenTypes.includes(f)), level + 1)) : undefined;
-    const jointChildren: FrameEntry[] | undefined = def.allowJointChildren ? [] : undefined;
+    const jointChildren: FrameEntry[] | undefined = !!def.allowJointChildren ? [] : undefined;
     if (jointChildren != undefined && (id == "try" || genRandomInt(2) == 0)) {
         // Pick one then see what can follow that:
         let cur : string | undefined = pick(def.jointFrameTypes.filter((j) => !(j == "else" && id == "try")));

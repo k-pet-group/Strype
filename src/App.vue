@@ -1704,7 +1704,7 @@ export default defineComponent({
         
         setStateFromPythonFile(completeSource: string, fileName: string, lastSaveDate: number, requestFSFileLoadedNotification: boolean, fileLocation: FileSystemFileHandle | "local" | "cloud" | "import") : Promise<void> {
             return new Promise((resolve) => {
-                const s = pasteMixedPython(completeSource, true);
+                const s = pasteMixedPython(completeSource, {id: useStore().getMainCodeFrameContainerId, caretPosition: CaretPosition.body}, true);
                 if (s != null) {
                     // Now we can clear other non-frame related elements
                     this.appStore.clearNoneFrameRelatedState();

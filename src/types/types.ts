@@ -326,7 +326,7 @@ export interface EditableFocusPayload extends SlotCoreInfos {
 export interface NavigationPosition {
     frameId: number;
     isSlotNavigationPosition: boolean, // flag to indicate if we are working with a slot position (change from previous version that used composite types)
-    caretPosition?: string;
+    caretPosition?: CaretPosition;
     labelSlotsIndex?: number;
     slotId?: string;
     slotType?: SlotType;
@@ -347,6 +347,11 @@ export interface AddShorthandFrameCommandDef {
     goNextSlot?: boolean; // indicates whether the text cursor should move to the next slot (i.e. added "print" in a function call, we want to go inside the brackets)
 }
 
+// Helper for the allowJointChildren; see below
+function j(keyword: string) {
+    return "(_" + keyword + ")";
+}
+
 // This is an array with all the frame Definitions objects.
 // Note that the slot variable of each objects tells if the
 // Label needs an editable slot as well attached to it.
@@ -354,7 +359,11 @@ export interface FramesDefinitions {
     type: string;
     labels: FrameLabel[];
     allowChildren: boolean;
-    allowJointChildren: boolean;
+    // Allow joint Children is a string to feed to a regex that looks like this:
+    // (_elif)*(_else)?
+    // (the underscores are needed to separate the terms in case one should ever be a prefix of another
+    // that can then be run against the concatenated identifiers of the joint children to check if they are valid
+    allowJointChildren: string | null;
     forbiddenChildrenTypes: string[];
     isJointFrame: boolean;
     jointFrameTypes: string[];
@@ -433,7 +442,7 @@ export const DefaultFramesDefinition: FramesDefinitions = {
     type: StandardFrameTypesIdentifiers.funccall,
     labels: [],
     allowChildren: false,
-    allowJointChildren: false,
+    allowJointChildren: null,
     forbiddenChildrenTypes: [],
     isJointFrame: false,
     jointFrameTypes: [],
@@ -636,7 +645,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             { label: "if ", defaultText: i18n.global.t("frame.defaultText.condition") },
             { label: " :", showSlots: false, defaultText: "" },
         ],
-        allowJointChildren: true,
+        allowJointChildren: `${j(StandardFrameTypesIdentifiers.elif)}*${j(StandardFrameTypesIdentifiers.else)}?`,
         jointFrameTypes: [StandardFrameTypesIdentifiers.elif, StandardFrameTypesIdentifiers.else],
         colour: "#E0DFE4",
         forbiddenChildrenTypes: Object.values(ImportFrameTypesIdentifiers)
@@ -671,7 +680,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             { label: " in ", defaultText: i18n.global.t("frame.defaultText.list") },
             { label: " :", showSlots: false, defaultText: "" },
         ],
-        allowJointChildren: true,
+        allowJointChildren: `${j(StandardFrameTypesIdentifiers.else)}?`,
         jointFrameTypes: [StandardFrameTypesIdentifiers.else],
         colour: "#E4D5D5",
     };
@@ -683,7 +692,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             { label: "while ", defaultText: i18n.global.t("frame.defaultText.condition") },
             { label: " :", showSlots: false, defaultText: "" },
         ],
-        allowJointChildren: true,
+        allowJointChildren: `${j(StandardFrameTypesIdentifiers.else)}?`,
         jointFrameTypes: [StandardFrameTypesIdentifiers.else],
         colour: "#E4D5D5",
     };
@@ -714,7 +723,8 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         ...BlockDefinition,
         type: StandardFrameTypesIdentifiers.try,
         labels: [{ label: "try :", showSlots: false, defaultText: "" }],
-        allowJointChildren: true,
+        // Complicated; either just a finally, or 1+ excepts with optional else and optional finally.
+        allowJointChildren: `(${j(StandardFrameTypesIdentifiers.except)}+${j(StandardFrameTypesIdentifiers.else)}?${j(StandardFrameTypesIdentifiers.finally)}?|${j(StandardFrameTypesIdentifiers.finally)})`,
         jointFrameTypes: [StandardFrameTypesIdentifiers.except, StandardFrameTypesIdentifiers.else, StandardFrameTypesIdentifiers.finally],
         defaultJointTypes: [{ ...EmptyFrameObject, frameType: ExceptDefinition, labelSlotsDict: { 0: { slotStructures: { fields: [{ code: "" }], operators: [] } } } }],
         colour: "#C7D9DC",

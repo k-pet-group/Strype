@@ -1,11 +1,12 @@
-import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState } from "@/types/types";
 import {useStore} from "@/store/store";
-import {getCaretContainerUID, operators, trimmedKeywordOperators} from "@/helpers/editor";
+import {checkCodeErrors} from "@/helpers/storeMethods";
+import {CustomEventTypes, getLastCaretPosInsideParent, operators, trimmedKeywordOperators} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
-import {AppName, AppSPYFullPrefix, projectDocumentationFrameId} from "@/helpers/appContext";
+import {AppName, AppSPYFullPrefix, eventBus, projectDocumentationFrameId} from "@/helpers/appContext";
 import {toUnicodeEscapes, stringToCollapsed, stringToFrozen} from "@/parser/parser";
-import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import {nextTick} from "vue";
 
 const TOP_LEVEL_TEMP_ID = -999;
 
@@ -503,12 +504,56 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
     return { disabledLines, frameStateLines: frameStateLines, transformedLines, strypeDirectives };
 }
 
+// Information about a set of "copied" frames.  This is the result of parsing
+// Python into a set of frame objects.
+interface CopiedFrames {
+    frameIds: number[];
+    frames: EditorFrameObjects;
+    // The project documentation is special because it's a singleton frame, so its content is recorded separately:
+    docSlots: SlotsStructure | undefined;
+}
+
+class CopyFailure extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = "CopyFailure";
+    }
+}
+
+// Offsets all IDs by the given amount, ready for insertion into real frames
+// Modifies in-place and returns the modified item
+export function offsetAllIds(frames: CopiedFrames, offset: number) : CopiedFrames {
+    for (let i = 0; i < frames.frameIds.length; i++) {
+        frames.frameIds[i] += offset;
+    }
+    // Can't modify keys while iterating so take a copy, remove them all, put them all back offset:
+    const entries = Object.entries(frames.frames);
+    for (const key in frames.frames) {
+        delete frames.frames[Number(key)];
+    }
+    for (const [id, frame] of entries) {
+        frames.frames[Number(id) + offset] = frame;
+        
+        // We also have to modify all child IDs etc:
+        // Don't add the offset if the parent or joint parent is -1:
+        frame.parentId = frame.parentId <= 0 ? frame.parentId : frame.parentId + offset;
+        frame.jointParentId = frame.jointParentId <= 0 ? frame.jointParentId : frame.jointParentId + offset;
+        // No such issues with our ID or child IDs:
+        frame.id += offset;
+        for (let i = 0; i < frame.childrenIds.length; i++) {
+            frame.childrenIds[i] += offset;
+        }
+        for (let i = 0; i < frame.jointFrameIds.length; i++) {
+            frame.jointFrameIds[i] += offset;
+        }        
+    }
+    return frames;
+}
+
 // The main entry point to this module.  Given a string of Python code that the user
-// has pasted in, copy it to the store's copiedFrames/copiedSelectionFrameIds fields,
-// ready to be pasted immediately afterwards.
-// If successful, returns a map with key-value Strype directives.  If unsuccessful, returns a string with some info about
-// where the Python parse failed.
-export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>, dryrun?: "dryrun" | undefined) : string | null | Map<string, string> {
+// has pasted in, return the string after turning it into frames.
+// If unsuccessful, throws CopyFailure with a string with some info about where the Python parse failed.
+function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>) : CopiedFrames {
     const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
     const indents = new Map<number, string>();
     
@@ -544,48 +589,40 @@ export function copyFramesFromParsedPython(codeLines: string[], currentStrypeLoc
     const transformed = transformCommentsAndBlanks(codeLines, format);
     const parsedBySkulpt = parseWithSkulpt(transformed.transformedLines, mapLineno);
     if (typeof parsedBySkulpt === "string") {
-        return parsedBySkulpt;
+        throw new CopyFailure(parsedBySkulpt);
     }
     const addedFakeJoinParent = parsedBySkulpt.addedFakeJoinParent;
 
-    useStore().copiedFrames = {};
-    useStore().copiedSelectionFrameIds = [];
     try {
-        // Use the next available ID to avoid clashing with any existing IDs:
-        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: useStore().nextAvailableId, addToNonJoint: useStore().copiedSelectionFrameIds, addToJoint: undefined, loadedFrames: useStore().copiedFrames, disabledLines: transformed.disabledLines, frameStateLines: transformed.frameStateLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
-            if (!dryrun) {
-                const docFrame = useStore().frameObjects[projectDocumentationFrameId] as FrameObject;
-                docFrame.labelSlotsDict[0].slotStructures = c;
-            }
+        const result : CopiedFrames = {frameIds: [], frames: {}, docSlots: undefined};
+        // We assign new IDs starting from 1, later on they are offset:
+        copyFramesFromPython(parsedBySkulpt.parseTree, {nextId: 1, addToNonJoint: result.frameIds, addToJoint: undefined, loadedFrames: result.frames, disabledLines: transformed.disabledLines, frameStateLines: transformed.frameStateLines, parent: null, jointParent: null, lastLineProcessed: 0, lineNumberToIndentation: indents, isSPY: transformed.strypeDirectives.size > 0, transformTopComment: (c) => {
+            result.docSlots = c;
         }});
         // At this stage, we can make a sanity check that we can copy the given Python code in the current position in Strype (for example, no "import" in a function definition section)
-        if(!canPastePythonAtStrypeLocation(currentStrypeLocation)){
-            useStore().copiedFrames = {};
-            useStore().copiedSelectionFrameIds = [];
-            return i18n.global.t("messageBannerMessage.incompatiblePythonStrypeSection");
+        if(!canPastePythonAtStrypeLocation(currentStrypeLocation, result)){
+            throw new CopyFailure(i18n.global.t("messageBannerMessage.incompatiblePythonStrypeSection"));
         }
 
         if (addedFakeJoinParent > 0) {
             // Now have to detach that parent again.  If it was joint frames only, there should be one parent on the list:
-            if (useStore().copiedSelectionFrameIds.length == 1) {
+            if (result.frameIds.length == 1) {
                 // Clone the list to avoid modification issues:
-                useStore().copiedSelectionFrameIds = [...useStore().copiedFrames[useStore().copiedSelectionFrameIds[0]].jointFrameIds.slice(addedFakeJoinParent - 1)];
+                result.frameIds = [...result.frames[result.frameIds[0]].jointFrameIds.slice(addedFakeJoinParent - 1)];
             }
             else {
                 // Uh-oh, they had other things after the else, etc.  We can't handle that, so abandon:
-                useStore().copiedFrames = {};
-                useStore().copiedSelectionFrameIds = [];
-                return i18n.global.t("messageBannerMessage.wrongPythonStructCopied");
+                throw new CopyFailure(i18n.global.t("messageBannerMessage.wrongPythonStructCopied"));
             }
         }
-        return null;
+        return result;
     }
     catch (e) {
         console.warn(e); // + "On:\n" + debugToString(parsedBySkulpt, "  "));
-        // Don't leave partial content:
-        useStore().copiedFrames = {};
-        useStore().copiedSelectionFrameIds = [];
-        return ((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + mapLineno((e as any).traceback?.[0].lineno);
+        if (e instanceof CopyFailure) {
+            throw e;
+        }
+        throw new CopyFailure(((e as any).$offset?.v?.[2]?.$mangled ?? (e as any).$msg?.$mangled) + " line: " + mapLineno((e as any).traceback?.[0].lineno));
     }
 }
 
@@ -975,6 +1012,18 @@ function makeAndAddFrameWithBody(p: ParsedConcreteTree, frameType: string, keywo
 }
 
 // Process the given node in the tree at the current point designed by CopyState
+function removeFirstFuncParam(params: LabelSlotsContent) {
+    if (params && params.slotStructures.fields.length == 1) {
+        // We need to keep a field, but we blank the content:
+        (params.slotStructures.fields[0] as BaseSlot).code = "";
+    }
+    else if (params && params.slotStructures.fields.length > 1) {
+        // We can just delete the first item and first operator, and rest can stay:
+        params.slotStructures.fields.splice(0, 1);
+        params.slotStructures.operators.splice(0, 1);
+    }
+}
+
 // Returns a copy state, including the frame ID of the next insertion point for any following statements
 function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState {
     switch (p.type) {
@@ -1223,15 +1272,7 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
             // assuming it is the self parameter that we add automatically.
             const params = r.frame.labelSlotsDict[1];
 
-            if (params && params.slotStructures.fields.length == 1) {
-                // We need to keep a field, but we blank the content:
-                (params.slotStructures.fields[0] as BaseSlot).code = "";
-            }
-            else if (params && params.slotStructures.fields.length > 1) {
-                // We can just delete the first item and first operator, and rest can stay:
-                params.slotStructures.fields.splice(0, 1);
-                params.slotStructures.operators.splice(0, 1);
-            }
+            removeFirstFuncParam(params);
         }
         break;
     }
@@ -1315,7 +1356,7 @@ export function findCurrentStrypeLocation(options?: {lookForGivenFramePosition?:
         case ContainerTypesIdentifiers.framesMainContainer:
             return {strypeLocation: STRYPE_LOCATION.MAIN_CODE_SECTION, locationFrameId: navigFrameId};
         case AllFrameTypesIdentifier.classdef:
-            return {strypeLocation: STRYPE_LOCATION.IN_CLASSDEF, locationFrameId: navigFrameId};
+            return {strypeLocation: (navigFrameCaretPos == CaretPosition.body) ? STRYPE_LOCATION.IN_CLASSDEF : STRYPE_LOCATION.DEFS_SECTION, locationFrameId: navigFrameId};
         case AllFrameTypesIdentifier.funcdef:
             // Three possible cases: A) we are not checking for classes -- we are at the body of a function definition or at the bottom:
             // in the first case, we are inside a function definition,
@@ -1345,7 +1386,7 @@ export function findCurrentStrypeLocation(options?: {lookForGivenFramePosition?:
 }
 
 // This function makes a simple sanity check on the copied Python code (as frames then): we make sure that it "fits" the current Strype location
-function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION): boolean {
+function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION, frames: CopiedFrames): boolean {
     // In more details, we check the same-leve (top level) frames in the copy:
     // - in the "import" section, only imports can be copied,
     // - in the "function definition" section, only function definitions can be copied
@@ -1354,7 +1395,7 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
     // We remove any blank frames that could exist for an imports or function definitions section top frames: they are not required in the editor.
     // Nevertheless, for this test method to complete, we still need to accept blanks to be inside imports and function definitions for validation.
     
-    const copiedPythonToFrames = Object.values(useStore().copiedFrames);
+    const copiedPythonToFrames = Object.values(frames.frames);
     const topLevelCopiedFrames = copiedPythonToFrames.filter((frame) => frame.parentId == TOP_LEVEL_TEMP_ID);
     const topLevelCopiedFrameIds = topLevelCopiedFrames.flatMap((frame) => frame.id);
     // Check if the match between the current Strype location and the copied Python code frames is possible
@@ -1364,7 +1405,7 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
     case STRYPE_LOCATION.IN_FUNCDEF:
         return !copiedPythonToFrames.some((frame) => [AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.funcdef].includes(frame.frameType.type));
     case STRYPE_LOCATION.DEFS_SECTION:
-        removeTopLevelBlankFrames();
+        frames = removeTopLevelBlankFrames(frames);
         // We are checking if we can paste; the not at the beginning means everything inside the ensuing bracket is actually the cases
         // where we *cannot* paste, then we invert this to get all the cases we can paste
         return !(topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.funcdef, AllFrameTypesIdentifier.classdef, AllFrameTypesIdentifier.varassign, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type))
@@ -1382,10 +1423,10 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
                         || !topLevelCopiedFrames.some((p) => p.id == frame.parentId && p.frameType.type == AllFrameTypesIdentifier.classdef)))
                 )));
     case  STRYPE_LOCATION.IMPORTS_SECTION:
-        removeTopLevelBlankFrames();
+        frames = removeTopLevelBlankFrames(frames);
         return !topLevelCopiedFrames.some((frame) => ![AllFrameTypesIdentifier.import, AllFrameTypesIdentifier.fromimport, AllFrameTypesIdentifier.library, AllFrameTypesIdentifier.comment, AllFrameTypesIdentifier.blank].includes(frame.frameType.type));
     case STRYPE_LOCATION.PROJECT_DOC_SECTION:
-        removeTopLevelBlankFrames();
+        frames = removeTopLevelBlankFrames(frames);
         // Given we transform top comment, shouldn't be anything left:
         return topLevelCopiedFrames.length == 0;
     default:
@@ -1394,18 +1435,20 @@ function canPastePythonAtStrypeLocation(currentStrypeLocation : STRYPE_LOCATION)
     }
 }
 
-function removeTopLevelBlankFrames(): void {
+// Note: modifies in-place, but for convenience returns its parameter
+function removeTopLevelBlankFrames(frames: CopiedFrames): CopiedFrames {
     // Remove blank frames in the first level of the copied frames. T
     // This is useful when copying Python code that had line breaks between the function defs or the imports:
     // our editor do not allow adding blank frames, so they shouldn't be kept when pasted.
-    const copiedPythonToFrames = Object.values(useStore().copiedFrames);
+    const copiedPythonToFrames = Object.values(frames.frames);
     const topLevelCopiedFrames = copiedPythonToFrames.filter((frame) => frame.parentId == TOP_LEVEL_TEMP_ID);
     const topLevelBlankFramesIds = topLevelCopiedFrames.filter((frame) => frame.frameType.type === AllFrameTypesIdentifier.blank)
         .map((frame) => frame.id);
     topLevelBlankFramesIds.forEach((frameId) => {
-        delete useStore().copiedFrames[frameId];
-        useStore().copiedSelectionFrameIds.splice(useStore().copiedSelectionFrameIds.indexOf(frameId), 1);
+        delete frames.frames[frameId];
+        frames.frameIds.splice(frames.frameIds.indexOf(frameId), 1);
     });
+    return frames;
 }
 
 interface NumberedLine {
@@ -1420,11 +1463,11 @@ function makeMapping(section: NumberedLine[]) : Record<number, number> {
     }, {} as Record<number, number>);
 }
 
-// Takes a list of lines of Python code and splits them into three sections: imports, function definitions, and main code.
-// Each line of the original will end up in exactly one of the three parts of the return.
+// Takes a list of lines of Python code and splits them into four sections: imports, function definitions, class definitions, and main code.
+// Each line of the original will end up in exactly one of the four parts of the return.
 // With Python's indentation rules, this operation is actually easier at line level than it is post-parse.
 // The mappings map line numbers in the returned sections to line numbers in the original
-export function splitLinesToSections(allLines : string[]) : {projectDoc: string[], imports: string[]; defs: string[]; main: string[], importsMapping: Record<number, number>, defsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
+function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: boolean) : {projectDoc: string[], imports: string[]; funcDefs: string[]; classDefs: string[]; main: string[], importsMapping: Record<number, number>, funcDefsMapping: Record<number, number>, classDefsMapping: Record<number, number>, mainMapping: Record<number, number>, headers: Record<string, string>, format: "py" | "spy"} {
     // There's two possibilities:
     //  - we're loading a .spy with section headings, or
     //  - we're loading a .py where we must infer it.
@@ -1435,10 +1478,12 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
         const r = {
             projectDoc: [] as string[],
             imports: [] as string[],
-            defs: [] as string[],
+            funcDefs: [] as string[],
+            classDefs: [] as string[],
             main: [] as string[],
             importsMapping: {} as Record<number, number>,
-            defsMapping: {} as Record<number, number>,
+            funcDefsMapping: {} as Record<number, number>,
+            classDefsMapping: {} as Record<number, number>,
             mainMapping: {} as Record<number, number>,
             headers: {} as Record<string, string>,
             format: "spy" as "py" | "spy",
@@ -1465,8 +1510,9 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
         line += 1;
         const firstDefsLine = line;
         while (line < allLines.length && !allLines[line].match(new RegExp("^" + escapeRegExp(AppSPYFullPrefix) + " *Section *:Main"))) {
-            r.defs.push(allLines[line]);
-            r.defsMapping[line - firstDefsLine] = line;
+            // Since it's an SPY we just say it's all class defs so it all ends up at top level:
+            r.classDefs.push(allLines[line]);
+            r.classDefsMapping[line - firstDefsLine] = line;
             line += 1;
         }
         line += 1;
@@ -1482,19 +1528,22 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
     
     // We associate comments with the line immediately following them, so we keep a list of the most recent comments:
     let latestComments: NumberedLine[] = [];
+    let latestAssignments: NumberedLine[] = [];
     const projectDoc: NumberedLine[] = [];
     const imports: NumberedLine[] = [];
-    const defs: NumberedLine[] = [];
+    const funcDefs: NumberedLine[] = [];
+    const classDefs: NumberedLine[] = [];
     const main: NumberedLine[] = [];
     // -1 if we're not in a def
     let outermostDefIndentLevel = -1;
+    let curDefTypeIsClass = false;
     allLines.forEach((line : string, zeroBasedLine : number) => {
         const lineWithNum : NumberedLine = {text: line, lineno: zeroBasedLine + 1};
         const indentLevel = line.length - line.trimStart().length;
         if (line.trim() != "" && indentLevel <= outermostDefIndentLevel) {
             outermostDefIndentLevel = -1;
         }
-        if (line.match(/^\s*["'].*/) && imports.length + defs.length + main.length == 0) {
+        if (line.match(/^\s*["'].*/) && imports.length + funcDefs.length + classDefs.length + main.length == 0) {
             projectDoc.push(lineWithNum);
         }
         else if (line.match(/^\s*(import|from)\s+/)) {
@@ -1504,39 +1553,79 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
             imports.push(lineWithNum);
         }
         // We're only the new outermost if there is no current outermost:
-        else if (line.match(/^\s*(def|class)\s+/) && outermostDefIndentLevel == -1) {
-            defs.push(...latestComments.map((l) => ({...l, text: l.text.trimStart() + " ".repeat(indentLevel)})));
+        else if (line.match(/^\s*class\s+/) && outermostDefIndentLevel == -1) {
+            classDefs.push(...latestComments.map((l) => ({...l, text: l.text.trimStart() + " ".repeat(indentLevel)})));
             latestComments = [];
-            defs.push({...lineWithNum, text: line.trimStart()});
+            classDefs.push(...latestAssignments);
+            latestAssignments = [];
+            classDefs.push({...lineWithNum, text: line.trimStart()});
             outermostDefIndentLevel = indentLevel;
+            curDefTypeIsClass = true;
+        }
+        else if (line.match(/^\s*def\s+/) && outermostDefIndentLevel == -1) {
+            funcDefs.push(...latestComments.map((l) => ({...l, text: l.text.trimStart() + " ".repeat(indentLevel)})));
+            latestComments = [];
+            funcDefs.push(...latestAssignments);
+            latestAssignments = [];
+            funcDefs.push({...lineWithNum, text: line.trimStart()});
+            outermostDefIndentLevel = indentLevel;
+            curDefTypeIsClass = false;
         }
         else if (line.match(/^\s*#/)) {
             latestComments.push(lineWithNum);
         }
         else if (outermostDefIndentLevel >= 0) {
             // Keep adding to defs until we see a non-comment non-blank line with less or equal indent:
-            defs.push(...latestComments);
+            (curDefTypeIsClass ? classDefs : funcDefs).push(...latestComments);
             latestComments = [];
-            defs.push({...lineWithNum, text: line.slice(outermostDefIndentLevel)});
+            (curDefTypeIsClass ? classDefs : funcDefs).push({...lineWithNum, text: line.slice(outermostDefIndentLevel)});
+        }
+        // Does it look like an assignment:
+        else if (line.match(/^\s*[A-Za-z_][A-Za-z0-9_.,\[\]()\s]*?(?<![!<>=:])=(?!=)/)) {
+            if (main.length == 0) {
+                latestAssignments.push(lineWithNum);
+            }
+            else {
+                main.push(lineWithNum);
+            }
         }
         else {
+            const mainWasEmpty = main.length == 0;
             main.push(...latestComments);
             latestComments = [];
             // We don't push leading blanks to main (i.e. blank lines while main is empty), otherwise all the blanks before/between imports and defs end up there:
-            if (line.trim() != "" || main.length > 0) {
+            if (line.trim() != "" || !mainWasEmpty) {
+                if (latestAssignments.length > 0) {
+                    if (mainWasEmpty && leadingAssignmentsGoInDefs) {
+                        funcDefs.push(...latestAssignments);
+                    }
+                    else {
+                        main.push(...latestAssignments);
+                    }
+                    latestAssignments = [];
+                }
                 main.push(lineWithNum);
             }
         }
     });
-    // Add any trailing comments:
+    // Add any trailing comments and assignments:
+    if (main.length == 0 && leadingAssignmentsGoInDefs) {
+        funcDefs.push(...latestAssignments);
+    }
+    else {
+        main.push(...latestAssignments);
+    }
     main.push(...latestComments);
+    
     return {
-        projectDoc: projectDoc.map((l) => l.text), 
-        imports: imports.map((l) => l.text),
-        defs: defs.map((l) => l.text),
-        main: main.map((l) => l.text),
+        projectDoc: projectDoc.sort((a, b) => a.lineno - b.lineno).map((l) => l.text), 
+        imports: imports.sort((a, b) => a.lineno - b.lineno).map((l) => l.text),
+        funcDefs: funcDefs.sort((a, b) => a.lineno - b.lineno).map((l) => l.text),
+        classDefs: classDefs.sort((a, b) => a.lineno - b.lineno).map((l) => l.text),
+        main: main.sort((a, b) => a.lineno - b.lineno).map((l) => l.text),
         importsMapping : makeMapping(imports),
-        defsMapping : makeMapping(defs),
+        funcDefsMapping : makeMapping(funcDefs),
+        classDefsMapping : makeMapping(classDefs),
         mainMapping : makeMapping(main),
         headers: {} as Record<string, string>,
         format: "py",
@@ -1544,81 +1633,156 @@ export function splitLinesToSections(allLines : string[]) : {projectDoc: string[
 }
 
 // Returns headers if successful, or null if there was an error (which will already have been shown in the UI)
-export function pasteMixedPython(completeSource: string, clearExisting: boolean) : { headers: Record<string, string> } | null {
+export function pasteMixedPython(completeSource: string, at: CurrentFrame, clearExisting: boolean = false, dontSetCaretAfter: boolean = false) : { headers: Record<string, string> } | null {
     const allLines = completeSource.split(/\r?\n/);
     // Split can make an extra blank line at the end which we don't want:
     if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
         allLines.pop();
     }
-    const s = splitLinesToSections(allLines);
     // If we are clearing all, we are effectively pasting into the main section,
     // no matter where the frame cursor happens to be:
-    const curLocation = clearExisting ? STRYPE_LOCATION.MAIN_CODE_SECTION : findCurrentStrypeLocation().strypeLocation;
-    
-    // Bit awkward but we first attempt to copy each to check for errors because
-    // if there are any errors we don't want to paste any:
-    let err = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format, s.importsMapping, "dryrun");
-    if (typeof err != "string") {
-        err = copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.defsMapping, "dryrun");
-    }
-    if (typeof err != "string") {
+    const curLocation = clearExisting ? STRYPE_LOCATION.MAIN_CODE_SECTION : findCurrentStrypeLocation({lookForGivenFramePosition: at}).strypeLocation;
+    const s = splitLinesToSections(allLines, curLocation == STRYPE_LOCATION.DEFS_SECTION || curLocation == STRYPE_LOCATION.IMPORTS_SECTION);
+
+
+    let importFrames : CopiedFrames;
+    let funcDefFrames : CopiedFrames;
+    let classDefFrames : CopiedFrames;
+    let mainFrames : CopiedFrames;
+    let docFrames : CopiedFrames;
+    try {
+        importFrames = copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format, s.importsMapping);
+        funcDefFrames = copyFramesFromParsedPython(s.funcDefs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.funcDefsMapping);
+        classDefFrames = copyFramesFromParsedPython(s.classDefs, STRYPE_LOCATION.DEFS_SECTION, s.format, s.classDefsMapping);
         // We may be trying to paste something inside a function defintion.
         // The "content" to paste is seen as if it was to paste in the main section,
         // however the rules are slightly different: we use the current location to decide
         // what container we should check the code against.
         const pastingSectionTarget = (curLocation == STRYPE_LOCATION.IN_FUNCDEF) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.MAIN_CODE_SECTION;
-        err = copyFramesFromParsedPython(s.main, pastingSectionTarget, s.format, s.mainMapping, "dryrun");
+        mainFrames = copyFramesFromParsedPython(s.main, pastingSectionTarget, s.format, s.mainMapping);
+        docFrames = copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format, s.mainMapping);
     }
-    if (typeof err != "string") {
-        err = copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format, s.mainMapping, "dryrun");
-    }
-    if (typeof err == "string") {
+    catch (err : any) {
         const msg = cloneDeep(MessageDefinitions.InvalidPythonParseImport);
         const msgObj = msg.message as FormattedMessage;
-        msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err);
+        msgObj.args[FormattedMessageArgKeyValuePlaceholders.error.key] = msgObj.args.errorMsg.replace(FormattedMessageArgKeyValuePlaceholders.error.placeholderName, err?.message);
 
         useStore().showMessage(msg, 10000);
         return null;
     }
-    else {
-        if (clearExisting) {
-            // Clear the current existing code (i.e. frames) of the editor
-            useStore().clearAllFrames();
+    if (clearExisting) {
+        // Clear the current existing code (i.e. frames) of the editor
+        useStore().clearAllFrames();
+    }
+    
+    // The logic for pasting is: every frame that are allowed at the current cursor's position are added.
+    // Frames that are related to another section where the caret is not present are added in that section.
+    if (docFrames.docSlots) {
+        const docFrame = useStore().frameObjects[projectDocumentationFrameId] as FrameObject;
+        docFrame.labelSlotsDict[0].slotStructures = docFrames.docSlots;
+    }
+    
+    let posAfter = at;
+    
+    // The rule for cursor positions for pasting in other sections is the point closest to the frame cursor;
+    // see individual comments below
+    
+    if (importFrames.frameIds.length > 0) {
+        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IMPORTS_SECTION) 
+            ? {...at}
+            // If we're not in the imports, we know we're below it:
+            : getLastCaretPosInsideParent(useStore().getImportsFrameContainerId);
+        offsetAllIds(importFrames, useStore().nextAvailableId);
+        const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: importFrames});
+        if (curLocation == STRYPE_LOCATION.IMPORTS_SECTION) {
+            posAfter = adjusted ?? posAfter;
+        }
+    }
+    if (classDefFrames.frameIds.length > 0) {
+        let currentCaretContainerPosition: { id: number; caretPosition: CaretPosition };
+        if (curLocation == STRYPE_LOCATION.DEFS_SECTION) {
+            currentCaretContainerPosition = {...at};
+        }
+        else if (curLocation == STRYPE_LOCATION.IMPORTS_SECTION || curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.IN_CLASSDEF) {
+            // Closest to imports is top of defs:
+            // And for defs... we could find the closest cursor in the defs but it's quite fiddly so let's just add at the beginning:
+            currentCaretContainerPosition = {id: useStore().getDefsFrameContainerId, caretPosition: CaretPosition.body};
+        }
+        else {
+            // We are in main, use the bottom:
+            currentCaretContainerPosition = getLastCaretPosInsideParent(useStore().getDefsFrameContainerId);
+        }
+        offsetAllIds(classDefFrames, useStore().nextAvailableId);
+        const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: classDefFrames});
+        if (curLocation == STRYPE_LOCATION.DEFS_SECTION) {
+            posAfter = adjusted ?? posAfter;
+            // Adjust in case we also paste more in the defs:
+            at = adjusted ?? at;
         }
         
-        // The logic for pasting is: every frame that are allowed at the current cursor's position are added.
-        // Frames that are related to another section where the caret is not present are added in that section.
-        const isCurLocationInImportsSection = curLocation == STRYPE_LOCATION.IMPORTS_SECTION, isCurLocationInDefsSection = curLocation == STRYPE_LOCATION.DEFS_SECTION, 
-            isCurLocationInMainCodeSection = curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION, isCurLocationInAFuncDefFrame = curLocation == STRYPE_LOCATION.IN_FUNCDEF;
-
-        copyFramesFromParsedPython(s.projectDoc, STRYPE_LOCATION.PROJECT_DOC_SECTION, s.format);
-        copyFramesFromParsedPython(s.imports, STRYPE_LOCATION.IMPORTS_SECTION, s.format);        
-        if (useStore().copiedSelectionFrameIds.length > 0) {
-            const currentCaretContainerPosition = (isCurLocationInImportsSection) 
-                ? {...useStore().currentFrame}
-                : {id: useStore().getImportsFrameContainerId, caretPosition: CaretPosition.body};
-            vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(currentCaretContainerPosition.caretPosition, currentCaretContainerPosition.id)].doPaste(isCurLocationInImportsSection ? "caret" : "end");
-        }
-        copyFramesFromParsedPython(s.defs, STRYPE_LOCATION.DEFS_SECTION, s.format);
-        if (useStore().copiedSelectionFrameIds.length > 0) {
-            const currentCaretContainerPosition = (isCurLocationInDefsSection) 
-                ? {...useStore().currentFrame} 
-                : {id: useStore().getDefsFrameContainerId, caretPosition: CaretPosition.body};
-            vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(currentCaretContainerPosition.caretPosition, currentCaretContainerPosition.id)].doPaste(isCurLocationInDefsSection ? "caret" : "end");
-        }
-        if (s.main.length > 0) {
-            copyFramesFromParsedPython(s.main, (isCurLocationInAFuncDefFrame) ? STRYPE_LOCATION.IN_FUNCDEF : STRYPE_LOCATION.MAIN_CODE_SECTION, s.format);
-            if (useStore().copiedSelectionFrameIds.length > 0) {
-                const currentCaretContainerPosition = (isCurLocationInAFuncDefFrame || isCurLocationInMainCodeSection) 
-                    ? {...useStore().currentFrame} 
-                    : {id: useStore().getMainCodeFrameContainerId, caretPosition: CaretPosition.body};
-                vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[getCaretContainerUID(currentCaretContainerPosition.caretPosition, currentCaretContainerPosition.id)].doPaste((isCurLocationInAFuncDefFrame || isCurLocationInMainCodeSection) ? "caret" : "start");
-            }
-        }
-        return s;
     }
-}
+    if (funcDefFrames.frameIds.length > 0) {
+        let currentCaretContainerPosition: { id: number; caretPosition: CaretPosition };
+        if (curLocation == STRYPE_LOCATION.DEFS_SECTION || curLocation == STRYPE_LOCATION.IN_CLASSDEF) {
+            currentCaretContainerPosition = {...at};
+        }
+        else if (curLocation == STRYPE_LOCATION.IMPORTS_SECTION || curLocation == STRYPE_LOCATION.IN_FUNCDEF) {
+            // Closest to imports is top of defs:
+            // And for defs... we could find the closest cursor in the defs but it's quite fiddly so let's just add at the beginning:
+            currentCaretContainerPosition = {id: useStore().getDefsFrameContainerId, caretPosition: CaretPosition.body};
+        }
+        else {
+            // We are in main, use the bottom:
+            currentCaretContainerPosition = getLastCaretPosInsideParent(useStore().getDefsFrameContainerId);
+        }
+        offsetAllIds(funcDefFrames, useStore().nextAvailableId);
+        // There is one awkward case.  If we copy a function from a class, it gets copied as "def foo(self)"
+        // because the user might be pasting it externally.  But when we paste back in to Strype, because we add self
+        // automatically, the function becomes "def foo(self, self)".
+        if (curLocation === STRYPE_LOCATION.IN_CLASSDEF) {
+            Object.values(funcDefFrames.frames).forEach((frame: FrameObject) => {
+                if (frame.frameType.type == AllFrameTypesIdentifier.funcdef) {
+                    const params = frame.labelSlotsDict[1];
+                    // We have to spot it by name as it may be a plain functino:
+                    if (isFieldBaseSlot(params.slotStructures.fields[0]) && params.slotStructures.fields[0].code === "self") {
+                        removeFirstFuncParam(params);
+                    }
+                }
+            });
+        }
 
+        const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: funcDefFrames});
+        if (curLocation == STRYPE_LOCATION.DEFS_SECTION || curLocation == STRYPE_LOCATION.IN_CLASSDEF) {
+            posAfter = adjusted ?? posAfter;
+        }
+    }
+    if (mainFrames.frameIds.length > 0) {
+        // If we're not in the main section, closest cursor will be the top:
+        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) 
+            ? {...at} 
+            : {id : useStore().getMainCodeFrameContainerId, caretPosition: CaretPosition.body};
+        offsetAllIds(mainFrames, useStore().nextAvailableId);
+        const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: mainFrames});
+        if (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) {
+            posAfter = adjusted ?? posAfter;
+        }
+    }
+    if (!dontSetCaretAfter) {
+        useStore().setCurrentFrame(posAfter, true);
+    }
+    const framesAdded = [
+        Object.keys(importFrames.frames),
+        Object.keys(classDefFrames.frames),
+        Object.keys(funcDefFrames.frames),
+        Object.keys(mainFrames.frames),
+    ].flat().map(Number);
+    void nextTick(() => {
+        eventBus.emit(CustomEventTypes.updateParamPrompts, framesAdded);
+        framesAdded.forEach((pastedFrameId) => checkCodeErrors(pastedFrameId));
+    });
+    
+    return {headers: s.headers};
+}
 
 const transformTripleQuotesStrings = (slots: {[index: number]: LabelSlotsContent}): void => {
     // This helper function replaces all strings content in slots that came up from parsing triple quotes strings literals.

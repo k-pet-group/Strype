@@ -22,6 +22,8 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     await skipPyodideLoading(page);
     await page.goto("./", {waitUntil: "load"});
     await page.waitForSelector("body");
+    // Wait for content to load:
+    await expect(page.locator(".frame-div")).toHaveCount(2);
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
     await page.evaluate(() => {

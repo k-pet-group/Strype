@@ -154,7 +154,7 @@ ${STARTING_MAIN}
 
     it("Pastes full set in imports", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{home}{uparrow}{home}", `
+        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN2, MAIN1, MAIN0].join("\n"), "{home}{uparrow}{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${IMPORT0}
@@ -162,13 +162,13 @@ ${IMPORT1}
 ${IMPORT2}
 ${STARTING_IMPORT}
 #(=> Section:Definitions
-${STARTING_DEF}
 ${DEF0}
 ${DEF1}
+${STARTING_DEF}
 #(=> Section:Main
-${MAIN0}
-${MAIN1}
 ${MAIN2}
+${MAIN1}
+${MAIN0}
 ${STARTING_MAIN}
 #(=> Section:End
 `.trimStart(), true, "spy");
@@ -176,7 +176,7 @@ ${STARTING_MAIN}
 
     it("Pastes full set in defs", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{home}", `
+        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN2, MAIN1, MAIN0].join("\n"), "{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
@@ -188,9 +188,9 @@ ${DEF0}
 ${DEF1}
 ${STARTING_DEF}
 #(=> Section:Main
-${MAIN0}
-${MAIN1}
 ${MAIN2}
+${MAIN1}
+${MAIN0}
 ${STARTING_MAIN}
 #(=> Section:End
 `.trimStart(), true, "spy");
@@ -220,7 +220,8 @@ ${MAIN2}
 
     it("Pastes unordered in main", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload([IMPORT0, MAIN0, DEF0, IMPORT1, DEF1, MAIN1, MAIN2, IMPORT2].join("\n"), "", `
+        // Important MAIN0 (an assignment) is later on because otherwise it gets put in defs:
+        testRoundTripPasteAndDownload([IMPORT0, MAIN1, DEF0, IMPORT1, DEF1, MAIN2, MAIN0, IMPORT2].join("\n"), "", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
@@ -233,9 +234,9 @@ ${DEF0}
 ${DEF1}
 #(=> Section:Main
 ${STARTING_MAIN}
-${MAIN0}
 ${MAIN1}
 ${MAIN2}
+${MAIN0}
 #(=> Section:End
 `.trimStart(), true, "spy");
     });
@@ -250,12 +251,12 @@ ${IMPORT0}
 ${IMPORT1}
 ${IMPORT2}
 #(=> Section:Definitions
+${DEF0}
+${DEF1}
 ${STARTING_DEF}
     ${MAIN0}
     ${MAIN1}
     ${MAIN2.replaceAll("\n", "\n    ")}
-${DEF0}
-${DEF1}
 #(=> Section:Main
 ${STARTING_MAIN}
 #(=> Section:End
@@ -272,13 +273,13 @@ ${IMPORT0}
 ${IMPORT1}
 ${IMPORT2}
 #(=> Section:Definitions
+${DEF0}
+${DEF1}
 ${STARTING_DEF}
     ${MAIN0}
     ${MAIN1}
     ${MAIN2.replaceAll("\n", "\n    ")}
     afterwards()
-${DEF0}
-${DEF1}
 #(=> Section:Main
 ${STARTING_MAIN}
 #(=> Section:End
@@ -309,7 +310,7 @@ afterwards()
 
     it("Pastes full set in imports then adds frame", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{home}{uparrow}{home}", `
+        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN2, MAIN1, MAIN0].join("\n"), "{home}{uparrow}{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${IMPORT0}
@@ -318,13 +319,13 @@ ${IMPORT2}
 import afterwards
 ${STARTING_IMPORT}
 #(=> Section:Definitions
-${STARTING_DEF}
 ${DEF0}
 ${DEF1}
+${STARTING_DEF}
 #(=> Section:Main
-${MAIN0}
-${MAIN1}
 ${MAIN2}
+${MAIN1}
+${MAIN0}
 ${STARTING_MAIN}
 #(=> Section:End
 `.trimStart(), true, "spy", () => {

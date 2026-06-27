@@ -34,16 +34,15 @@
 import { defineComponent, PropType } from "vue";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
-import { AllFrameTypesIdentifier, CaretPosition, Position, MessageDefinitions, PythonExecRunningState, FrameContextMenuActionName, CurrentFrame, CollapsedState, StrypeContextMenuItem, CoordPosition } from "@/types/types";
+import {AllFrameTypesIdentifier, CaretPosition, Position, PythonExecRunningState, FrameContextMenuActionName, CollapsedState, StrypeContextMenuItem, CoordPosition} from "@/types/types";
 import { getCaretUID, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes, getCaretContainerUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { cloneDeep } from "lodash";
-import { checkCodeErrors, getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import scssVars  from "@/assets/style/_export.module.scss";
 import {detectBrowser} from "@/helpers/browser";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
-import { eventBus } from "@/helpers/appContext";
+import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { getFrameDefType, SlotType, MediaDataAndDim} from "@/types/types";
 import { getFrameLabelSlotsStructureUID, getLabelSlotUID } from "@/helpers/editor";
@@ -79,7 +78,6 @@ export default defineComponent({
                 this.isDuplicateDnDAction = value;
             },
             handleClick: this.handleClick,
-            doPaste: this.doPaste,
         };
         
         if(vueComponentsAPIHandler.caretContainerComponentAPI == null){    
@@ -154,10 +152,6 @@ export default defineComponent({
             return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
         },
 
-        pasteAvailable(): boolean {
-            return this.appStore.isCopiedAvailable;
-        },
-
         pasteMenuActionName(): FrameContextMenuActionName {
             return FrameContextMenuActionName.paste;
         },
@@ -176,7 +170,6 @@ export default defineComponent({
         return {
             CustomEventTypes, // just for using in template
             scssVars, // just to be able to use in template
-            showPasteMenuItem: false,
             insertFrameMenuItems: [] as StrypeContextMenuItem[],
             areFramesDraggedOver: false,
             areDropFramesAllowed: true,
@@ -242,10 +235,24 @@ export default defineComponent({
         },
 
         pasteIfFocused(event: Event, overrideText?: string) {
-            // A paste via shortcut cannot get the verification that would be done via a click
-            // so we check that 1) we are on the caret position that is currently selected and 2) that paste is allowed here.
-            // We should know the action is about pasting frames or text if some text is present in the clipboard (we clear it when copying frames)
+            // Only respond if we are focused:
             if (this.isFocusedForPaste) {
+                let pasteDestination = {id: this.frameId, caretPosition: this.caretAssignedPosition};
+                // If we currently have a selection of frames, the pasted frame should replace the selection, so we delete that selection.
+                // (it should be fine regarding the grammar check because the caret will be at the same level whether it's before or after the selection)
+                if(this.appStore.selectedFrames.length > 0){
+                    // The key doesn't actually matter here, the method handles it already by doing a backspace deletion.
+                    // However, we need to know where was the caret with regards to the selection:
+                    // if it was below the selection, it means the deletion will change the current caret
+                    // and therefore we need to amend this as a new paste destination (i.e. top of selection).
+                    if(this.frameId == this.appStore.selectedFrames.at(-1) as number){
+                        const topOfSelectionPos = getAboveFrameCaretPosition(this.appStore.selectedFrames[0]);
+                        pasteDestination.id = topOfSelectionPos.frameId;
+                        pasteDestination.caretPosition = topOfSelectionPos.caretPosition as CaretPosition;
+                    }
+                    this.appStore.deleteFrames("backspace", true);
+                }
+
                 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                 const inFrameType = this.appStore.frameObjects[(this.appStore.currentFrame.caretPosition == CaretPosition.body) ? this.frameId : getParentOrJointParent(this.frameId)].frameType;
                 if(!inFrameType.forbiddenChildrenTypes.includes(AllFrameTypesIdentifier.funccall) && Object.values((event as ClipboardEvent).clipboardData?.items??[]).some((dataTransferItem: DataTransferItem) => dataTransferItem.kind == "file" && /^(image)|(audio)\//.test(dataTransferItem.type))){
@@ -292,28 +299,10 @@ export default defineComponent({
                 }
                 // #v-endif
                 const pythonCode = overrideText ?? (event as ClipboardEvent).clipboardData?.getData("text");
-                if (this.pasteAvailable && (pythonCode == undefined || pythonCode.trim().length == 0)) {
-                    // We check if pasting frames is possible here, if not, show a message.
-                    //we need to update the context menu as if it had been shown
-                    const isPasteAllowedAtFrame = this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition);
-                    if(isPasteAllowedAtFrame){
-                        this.appStore.contextMenuShownId = this.UID;
-                        this.doPaste("caret");
-                    }
-                    else{
-                        this.appStore.showMessage(MessageDefinitions.ForbiddenFramePaste, 3000);
-                        return;
-                    }
-                }
-                else {
-                    // Note we don't permanently trim the code because we need to preserve leading indent.
-                    // But we trim for the purposes of checking if there's any content at all:
-                    if (pythonCode != undefined && pythonCode?.trim()) {
-                        pasteMixedPython(pythonCode.trimEnd(), false);
-                    }
-                    // Must take ourselves off the clipboard after:
-                    useStore().copiedFrames = {};
-                    useStore().copiedSelectionFrameIds = [];
+                // Note we don't permanently trim the code because we need to preserve leading indent.
+                // But we trim for the purposes of checking if there's any content at all:
+                if (pythonCode != undefined && pythonCode?.trim()) {
+                    pasteMixedPython(pythonCode.trimEnd(), pasteDestination);
                 }
             }
         },
@@ -341,7 +330,6 @@ export default defineComponent({
 
             this.appStore.contextMenuShownId = this.UID;
 
-            this.showPasteMenuItem = this.pasteAvailable && this.appStore.isPasteAllowedAtFrame(this.frameId, this.caretAssignedPosition);
             this.prepareInsertFrameSubMenu();
 
             // Overwrite readonly properties clientX and clientY (to position the menu if needed)
@@ -349,9 +337,7 @@ export default defineComponent({
 
             // Create the menu content here and open it
             this.frameContextMenuItems.splice(0);
-            if(this.showPasteMenuItem){
-                this.frameContextMenuItems.push({label: this.$t("contextMenu.paste"), onClick: this.paste}, {divided: "self"});
-            }
+            this.frameContextMenuItems.push({label: this.$t("contextMenu.paste"), onClick: () => this.paste()}, {divided: "self"});
             this.frameContextMenuItems.push({label: this.$t("contextMenu.insert"), children: this.insertFrameMenuItems});                                    
             this.showContextMenuAtCoordPos.x = event.x;
             this.showContextMenuAtCoordPos.y = event.y;
@@ -370,82 +356,8 @@ export default defineComponent({
             // by any other mean which caret is the one the user clicked on.
             const currentShownContextMenuUID: string = this.appStore.contextMenuShownId;
             if(currentShownContextMenuUID === this.UID){
-                this.doPaste();
+                navigator.clipboard.readText().then((text) => pasteMixedPython(text, {id: this.frameId, caretPosition: this.caretAssignedPosition}));
             }
-        },
-
-        doPaste(pasteAt: "start" | "end" | "caret" = "start") : void {
-            let pasteDestination: CurrentFrame;
-            let restoreCaretTo: CurrentFrame | null = {... useStore().currentFrame};
-            const stateBeforeChanges = cloneDeep(this.appStore.$state);
-            
-            const sectionId = getFrameSectionIdFromFrameId(this.frameId);
-            const isSectionEmpty = (this.appStore.frameObjects[sectionId].childrenIds.length == 0);
-            
-            if (pasteAt == "end" && !isSectionEmpty) {
-                const newCaretId = this.appStore.frameObjects[sectionId].childrenIds.at(-1) as number;
-                pasteDestination = {id: newCaretId, caretPosition: CaretPosition.below};
-            }
-            else if (pasteAt == "caret") {
-                pasteDestination = {... useStore().currentFrame};
-                // Don't restore caret:
-                restoreCaretTo = null;
-            }
-            else {
-                pasteDestination = {id: this.frameId, caretPosition: this.caretAssignedPosition};
-            }
-
-            // If we currently have a selection of frames, the pasted frame should replace the selection, so we delete that selection.
-            // (it should be fine regarding the grammar check because the caret will be at the same level whether it's before or after the selection)
-            if(this.appStore.selectedFrames.length > 0){
-                // The key doesn't actually matter here, the method handles it already by doing a backspace deletion.
-                // However, we need to know where was the caret with regards to the selection:
-                // if it was below the selection, it means the deletion will change the current caret
-                // and therefore we need to amend this as a new paste destination (i.e. top of selection).
-                if(pasteDestination.id == this.appStore.selectedFrames.at(-1) as number){
-                    const topOfSelectionPos = getAboveFrameCaretPosition(this.appStore.selectedFrames[0]);
-                    pasteDestination.id = topOfSelectionPos.frameId;
-                    pasteDestination.caretPosition = topOfSelectionPos.caretPosition as CaretPosition;
-                }
-                this.appStore.deleteFrames("backspace", true);
-            }   
-            
-            // To find all new frames added (including at lower levels), we record all frame ids before the paste:
-            const frameIdsBeforePaste = new Set(Object.keys(this.appStore.frameObjects).map((key) => Number(key)));
-
-            if(this.appStore.isSelectionCopied){
-                this.appStore.pasteSelection(
-                    {
-                        clickedFrameId: pasteDestination.id,
-                        caretPosition: pasteDestination.caretPosition,
-                        ignoreStateBackup: true,
-                    }
-                );
-            }
-            else {
-                this.appStore.pasteFrame(
-                    {
-                        clickedFrameId: pasteDestination.id,
-                        caretPosition: pasteDestination.caretPosition,
-                        ignoreStateBackup: true,
-                    }                
-                );
-            }
-
-            const frameIdsAfterPaste = Object.keys(this.appStore.frameObjects).map((key) => Number(key));
-            
-            if (restoreCaretTo != null && (this.appStore.currentFrame?.id != restoreCaretTo.id || this.appStore.currentFrame?.caretPosition != restoreCaretTo.caretPosition)) {
-                this.appStore.setCurrentFrame(restoreCaretTo);
-            }
-
-            this.appStore.saveStateChanges(stateBeforeChanges);
-
-            const framesAdded = frameIdsAfterPaste.filter((frameId) => !frameIdsBeforePaste.has(frameId));
-            // Then after nextTick tell all the new frames to update their prompts and check potential errors:
-            this.$nextTick(() => {
-                eventBus.emit(CustomEventTypes.updateParamPrompts, framesAdded);
-                framesAdded.forEach((pastedFrameId) => checkCodeErrors(pastedFrameId));
-            });
         },
     
         prepareInsertFrameSubMenu(): void {

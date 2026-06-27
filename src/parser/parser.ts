@@ -1,6 +1,6 @@
 import Compiler from "@/compiler/compiler";
 import {hasEditorCodeErrors, trimmedKeywordOperators} from "@/helpers/editor";
-import {generateFlatSlotBases, getNextSibling, retrieveSlotByPredicate} from "@/helpers/storeMethods";
+import { generateFlatSlotBases, getNextSibling, getParentOrJointParent, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, FrozenState, getLoopFramesTypeIdentifiers, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
@@ -562,6 +562,12 @@ export default class Parser {
         return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAt: {frameId: useStore().getDefsFrameContainerId, includeThisFrame: false}});
     }
 
+    // You can only pass start if you also pass stop.  (But stop by itself is fine)
+    // If you pass start and stop frames, they must be siblings.
+    // (To explain: we sometimes want to stop at an arbitrary place, e.g. just before
+    // a particular line to do code completion, so we may need just stop.  But we never
+    // need the opposite, to start at an arbitrary place and run to the end -- and this
+    // could cause invalid indentation if you started at an indented item.)
     public parse({startAtFrameId, stopAt, excludeLoopsAndCommentsAndCloseTry, defsLast, ignoreSpecificFrameId}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeLoopsAndCommentsAndCloseTry?: boolean, defsLast?: boolean; ignoreSpecificFrameId?: number}): string {
         let output = "";
         if(startAtFrameId){
@@ -588,8 +594,16 @@ export default class Parser {
         let parentInsideAClass = false;
         let codeUnits: FrameObject[];
         if (this.startAtFrameId > -100) {
-            codeUnits = [useStore().frameObjects[this.startAtFrameId]];
-            parentInsideAClass = useStore().frameObjects[codeUnits[0].parentId].frameType.type == AllFrameTypesIdentifier.classdef;
+            if (this.stopAtFrameId == -100) {
+                throw new Error("Internal error: if you pass start you should also pass stop");
+            }
+            const startIsJoint = useStore().frameObjects[this.startAtFrameId].frameType.isJointFrame;
+            const startIndex = useStore().getIndexInParent(this.startAtFrameId);
+            const endIndex = useStore().getIndexInParent(this.stopAtFrameId);
+            const parentOrJointParent = useStore().frameObjects[getParentOrJointParent(this.startAtFrameId)];
+            const allChildrenOfParentOrJointParent = (startIsJoint ? parentOrJointParent.jointFrameIds : parentOrJointParent.childrenIds).map((id) => useStore().frameObjects[id]);
+            codeUnits = allChildrenOfParentOrJointParent.slice(startIndex, endIndex + (this.stopAtIncludesLastFrame ? 1 : 0));
+            parentInsideAClass = parentOrJointParent.frameType.type == AllFrameTypesIdentifier.classdef;
         }
         else {            
             codeUnits = useStore().getFramesForParentId(0);

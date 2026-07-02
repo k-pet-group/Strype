@@ -697,7 +697,7 @@ function parseNextTerm(ps : ParseState) : SlotsStructure {
         ps.nextIndex += 1;
         return concatSlots({fields: [{code: ""}], operators: []}, nextVal, parseNextTerm(ps));
     }
-    if (nextVal === "not" || nextVal === ":") {
+    if (nextVal === "not" || nextVal === ":" || nextVal === "*") {
         ps.nextIndex += 1;
         return concatSlots({fields: [{code: ""}], operators: []}, nextVal, parseNextTerm(ps));
     }
@@ -930,12 +930,9 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
             throw new Error("Cannot find operator " + ps.nextIndex + " in:\n" + debugToString(p, ""), {cause: err});
         }
         if (op != null && (operators.includes(op) || trimmedKeywordOperators.includes(op))) {
-            if (op == ":" && ps.nextIndex == ps.seq.length) {
-                // Can be blank on RHS of colon
+            if ((op == ":" || op == ",") && ps.nextIndex == ps.seq.length) {
+                // Can be blank on RHS of colon or comma
                 latest = concatSlots(latest, op, {fields: [{code: ""}], operators: []});
-            }
-            else if (op == "," && ps.nextIndex == ps.seq.length) {
-                // Can have a trailing comma with nothing following; ignore
             }
             else {
                 latest = concatSlots(latest, op, parseNextTerm(ps));
@@ -1070,7 +1067,10 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
                     s = addFrame(makeFrame(AllFrameTypesIdentifier.library, {0: {slotStructures: {fields: [{code: library}], operators: []}}}, s.isSPY), p.lineno, s);
                 }
                 else if (slots.fields.length == 1 && (slots.fields[0] as BaseSlot)?.code && (slots.fields[0] as BaseSlot).code === STRYPE_WHOLE_LINE_BLANK) {
-                    s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}, s.isSPY), p.lineno, s);
+                    // Blanks are not allowed directly inside class defs:
+                    if (s.parent?.frameType.type != AllFrameTypesIdentifier.classdef) {
+                        s = addFrame(makeFrame(AllFrameTypesIdentifier.blank, {}, s.isSPY), p.lineno, s);
+                    }
                 }
                 else {
                     // Everything else goes in method call:

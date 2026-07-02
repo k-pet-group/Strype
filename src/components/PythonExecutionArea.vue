@@ -8,6 +8,8 @@
             <!-- IMPORTANT: keep this div with "invisible" text for proper layout rendering, it replaces the tabs -->
             <span v-if="!isTabsLayout" :class="scssVars.peaNoTabsPlaceholderSpanClassName">c+g</span>
             <div class="flex-padding"/>            
+            <span v-if="peaDisplayTabIndex == 0 && !isPythonExecuting && mouseCoordsToShow" class="pea-hover-coords">{{mouseCoordsToShow}}</span>
+            <div class="flex-padding"/>
             <button id="runButton" ref="runButton" class="pea-controls-button" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!isPythonWorkerReady">
                 <img v-if="!isPythonExecuting" :src="faviconURL" class="pea-play-img">
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
@@ -21,7 +23,7 @@
                 <Splitpanes :horizontal="!isExpandedPEA" @resize="onSplitterPane1Resize">
                     <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
                         <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}" @contextmenu="handleContextMenu">
-                            <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @mousedown.stop="graphicsCanvasMouseDown" @mouseup.stop="graphicsCanvasMouseUp" @mousemove="graphicsCanvasMouseMove"></canvas>
+                            <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @mousedown.stop="graphicsCanvasMouseDown" @mouseup.stop="graphicsCanvasMouseUp" @mousemove="graphicsCanvasMouseMove" @mouseleave="graphicsCanvasMouseExit"></canvas>
                         </div>
                     </pane>
                     <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5">
@@ -216,6 +218,7 @@ export default defineComponent({
             // Prepare an empty version of the menu: it will be updated as required in handleClick()
             frameContextMenuItems: [] as StrypeContextMenuItem[],
             showContextMenuAtCoordPos: {x: 0, y: 0} as CoordPosition,
+            mouseCoordsToShow: undefined as string | undefined,
             graphicsOverride: null as {background: OffscreenCanvas | HTMLImageElement, imageToShowCentered: OffscreenCanvas | HTMLImageElement} | null,
         };
     },
@@ -1049,7 +1052,14 @@ export default defineComponent({
                 adjustedY >= -graphicsCanvasLogicalHeight / 2 && adjustedY <= graphicsCanvasLogicalHeight / 2 - 1) {
                 mostRecentMouseDetails.x = adjustedX;
                 mostRecentMouseDetails.y = adjustedY;
+                this.mouseCoordsToShow = "(" + Math.round(mostRecentMouseDetails.x) + ", " + Math.round(mostRecentMouseDetails.y) + ")";
             }
+            else {
+                this.mouseCoordsToShow = undefined;
+            }
+        },
+        graphicsCanvasMouseExit(event: MouseEvent) {
+            this.mouseCoordsToShow = undefined;
         },
         graphicsCanvasMouseUp(event: MouseEvent) {
             if (event.button < mostRecentMouseDetails.buttonsPressed.length) {
@@ -1340,6 +1350,11 @@ export default defineComponent({
     .pea-graphics-div {
         background-color: white;
         outline: none;
+    }
+    
+    .pea-hover-coords {
+        font-size: 90%;
+        color: #333;
     }
     
     .pea-no-graphics-import-span {

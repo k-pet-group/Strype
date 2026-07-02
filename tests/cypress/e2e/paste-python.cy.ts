@@ -31,6 +31,13 @@ describe("Python round-trip", () => {
         // ** binds tighter than unary -, hence the space before:
         "raise foo**-6.7**False**True**'bye'\n",
         "try:\n    x = 0\nexcept:\n    x = 1\n",
+        // Expand operator:
+        "f(*a)\n",
+        "x = [*a]\n",
+        "first,*rest = x\n",
+        // Single element tuples (made using a trailing comma in a bracket):
+        "(x,) = a\n",
+        "print((100,))\n",        
     ];
     for (const basic of basics) {
         // Since basics paste code from the default state, we need to include the default project documentation to the code

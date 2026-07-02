@@ -233,33 +233,96 @@ runner = StrypePyodideRunner()
 if ${usingMatplotlib ? "True" : "False"}:
     try:
         import matplotlib
-        # Must set backend before importing pyplot:
-        matplotlib.use("Agg", force=True)
+        matplotlib.use("Agg", force=True)  # placeholder, overridden below
     
-        # workaround from https://github.com/pyodide/pyodide/issues/1518
+        import sys
+        import types
         import base64
         from io import BytesIO
     
-        import matplotlib.pyplot
+        from matplotlib.backend_bases import FigureManagerBase, _Backend
+        from matplotlib.backends.backend_agg import FigureCanvasAgg
     
-        def show():
-            fig = matplotlib.pyplot.gcf()
-            # Current figure size in inches
-            w_in, h_in = fig.get_size_inches()
-            # Compute DPI that fits within bounds:
-            dpi = min(800 / w_in, 600 / h_in)
+        class FigureRendererPyodide:        
+            def render_current_figure(self, fig):            
+                w_in, h_in = fig.get_size_inches()
+                dpi = min(800 / w_in, 600 / h_in)
+    
+                buf = BytesIO()
+                fig.savefig(buf, format="png", dpi=dpi) #, bbox_inches="tight")
+                buf.seek(0)
+                img = "data:image/png;base64," + base64.b64encode(buf.read()).decode("utf-8")
+    
+                self.cur_width, self.cur_height = runner.callback("matplotlib_img", data=img)
+
+        _figure_renderer_pyodide = FigureRendererPyodide()
+    
+        class FigureCanvasPyodide(FigureCanvasAgg):
+            """Canvas class — rendering is inherited from Agg."""
+            def draw(self):
+                # Actually rasterize the figure (this is what FigureCanvasAgg.draw normally does)
+                super().draw()
+                # Now push it out, same as show() does
+                _figure_renderer_pyodide.render_current_figure(self.figure)
         
-            buf = BytesIO()
-            matplotlib.pyplot.savefig(buf, format="png", dpi=dpi, bbox_inches="tight")
-            buf.seek(0)
-            # encode to a base64 str
-            img = "data:image/png;base64," + base64.b64encode(buf.read()).decode("utf-8")
-            matplotlib.pyplot.clf()
-            runner.callback("matplotlib_img", data=img)
+            def draw_idle(self):
+                # draw_idle is what most interactive matplotlib code calls
+                # (widgets, event handlers, animations) instead of draw()
+                # directly, so route it through the same path.
+                self.draw()
     
-        matplotlib.pyplot.show = show
+        class FigureManagerPyodide(FigureManagerBase):
+            """Manager class — this is where plt.show() ends up."""
+    
+            def show(self):
+                _figure_renderer_pyodide.render_current_figure(self.canvas.figure)
+                
+            @classmethod
+            def start_main_loop():
+                
+                # Now run a main loop:
+                x, y = -1, -1
+                import strype.graphics as g
+                from matplotlib.backend_bases import MouseEvent, KeyEvent
+                while True:
+                    fig = self.canvas.figure
+                    render_w, render_h = fig.canvas.get_width_height()
+                    scale_x = render_w / 800
+                    scale_y = render_h / 600
+                    x2, y2, _, _, _ = g.get_mouse()
+                    if x != x2 or y != y2:
+                        x, y = x2, y2
+                        self.canvas.callbacks.process("motion_notify_event", MouseEvent("motion_notify_event", self.canvas, (x + 400) * scale_x, (y + 300) * scale_y))
+                    # Strype's API doesn't give us press and release, but it does give clicks so we turn that into press with immediate release:
+                    c = g.get_mouse_click()
+                    if c is not None:
+                        xc, yc, button, clicks = c
+                        # Picking is done automatically when handling these events:
+                        self.canvas.callbacks.process("button_press_event", MouseEvent("button_press_event", self.canvas, (x + 400) * scale_x, (y + 300) * scale_y, button=button + 1, dblclick=clicks==2))
+                        self.canvas.callbacks.process("button_release_event", MouseEvent("button_release_event", self.canvas, (x + 400) * scale_x, (y + 300) * scale_y, button=button + 1))
+                    g.pace()
+    
+        # Tell the canvas which manager class to use. This has to be set
+        # after both classes are defined, since FigureCanvasPyodide is
+        # declared before FigureManagerPyodide exists.
+        FigureCanvasPyodide.manager_class = FigureManagerPyodide
+    
+        sys.modules["pyodide_mpl_backend"] = types.ModuleType("pyodide_mpl_backend")
+    
+        @_Backend.export
+        class _BackendPyodide(_Backend):
+            __module__ = "pyodide_mpl_backend"
+            FigureCanvas = FigureCanvasPyodide
+            FigureManager = FigureManagerPyodide
+    
+        matplotlib.use("module://pyodide_mpl_backend")
+    
+        import matplotlib.pyplot as plt  # import *after* matplotlib.use()
+    
     except ModuleNotFoundError:
         pass
+    except Exception as e:
+        print(e)
 
 # Now return the runner object:
 runner`);
@@ -383,6 +446,7 @@ runner`);
                 
                 // Then add it as a sprite (default 0, 0 position is fine):
                 matPlotLibSpriteId = self.spriteManager.addSprite(image, false);
+                return [image.width, image.height];
             }
             else {
                 // We don't currently handle any other callbacks

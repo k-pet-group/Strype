@@ -604,7 +604,7 @@ matplotlib.pyplot.ylabel("Y axis")
 matplotlib.pyplot.title("Simple Matplotlib Graph")
 
 # Show the graph
-matplotlib.pyplot.show()
+matplotlib.pyplot.show(block=False)
 `);
 
         await runToFinish(page, true);
@@ -648,7 +648,7 @@ for ax, (title, y) in zip(axes, plots):
 # Overall figure title
 fig.suptitle("Multi-panel Matplotlib Example", fontsize=16)
 
-plt.show()        
+plt.show(block=False)        
 `);
 
         await runToFinish(page, true);

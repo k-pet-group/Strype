@@ -1360,8 +1360,7 @@ export default defineComponent({
                                 pastedInvalidCode = true;
                             }
                             else{
-                                const isSimpleImport = (this.frameType == AllFrameTypesIdentifier.import);
-                                if(tempSlots.operators.some((operator) => operator.code != "," && operator.code != "." && (!isSimpleImport || (isSimpleImport && operator.code != "as")))){
+                                if(tempSlots.operators.some((operator) => operator.code != "," && operator.code != "." && operator.code != "as")){
                                     pastedInvalidCode = true;
                                 }
                             }

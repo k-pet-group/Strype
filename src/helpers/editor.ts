@@ -421,7 +421,7 @@ export function getFrameLabelSlotLiteralCodeAndFocus(frameLabelStruct: HTMLEleme
                 const spanElementContentLength = (spanElement.textContent?.replace(/\u200B/g, "")?.length??0);
                 // Note that sometimes the frameId is unavailable (-100) so the frame object may not be available, hence we need ?. when accessing it:
                 const frameType : string | undefined = useStore().frameObjects[parseLabelSlotUID(spanElement.id).frameId]?.frameType?.type;
-                const ignoreAsKW = (spanElement.textContent == "as" && frameType != AllFrameTypesIdentifier.import && frameType != AllFrameTypesIdentifier.except);
+                const ignoreAsKW = (spanElement.textContent == "as" && frameType != AllFrameTypesIdentifier.import && frameType != AllFrameTypesIdentifier.fromimport && frameType != AllFrameTypesIdentifier.except);
                 if(!ignoreAsKW && !isSlotStringLiteralType(labelSlotCoreInfos.slotType) && (trimmedKeywordOperators.includes(spanElement.textContent??""))){
                     spacesOffset = 2;
                     // Reinsert the spaces in the literal code
@@ -1778,7 +1778,7 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
         // - "as" is only relevant for import frames, we ignore it otherwise
         const isInFromImportFrame = (frameType == AllFrameTypesIdentifier.fromimport);
         const isInImportFrame = (frameType == AllFrameTypesIdentifier.import);
-        const operatorPosList : OpFound[] = ((isInFromImportFrame) ? allOperators.filter((opDef) => !opDef.match.includes("*") && opDef.match != " as ") : allOperators.filter((opDef) => isInImportFrame || opDef.match != " as "))
+        const operatorPosList : OpFound[] = ((isInFromImportFrame) ? allOperators.filter((opDef) => !opDef.match.includes("*")) : allOperators.filter((opDef) => isInImportFrame || opDef.match != " as "))
             .flatMap((operator : OpDef) => {
                 if (operator.keywordOperator) {
                     // "g" flag is necessary to make it obey the lastIndex item as a place to start:

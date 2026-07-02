@@ -277,6 +277,9 @@ if ${usingMatplotlib ? "True" : "False"}:
             def show(self):
                 _figure_renderer_pyodide.render_current_figure(self.canvas.figure)
                 
+            @classmethod
+            def start_main_loop():
+                
                 # Now run a main loop:
                 x, y = -1, -1
                 import strype.graphics as g
@@ -442,7 +445,6 @@ runner`);
                 // So no need to scale.
                 
                 // Then add it as a sprite (default 0, 0 position is fine):
-                console.log("Plot size: " + image.width + " x " + image.height);
                 matPlotLibSpriteId = self.spriteManager.addSprite(image, false);
                 return [image.width, image.height];
             }

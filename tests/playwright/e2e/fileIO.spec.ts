@@ -26,6 +26,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 
 function deleteDefaultProject(): ((page: Page) => Promise<void>) {
     return async (page) => {
+        await page.waitForTimeout(200);
         await page.keyboard.press(process.platform == "darwin" ? "Meta+a" : "Control+a");
         await page.waitForTimeout(200);
         await page.keyboard.press("Backspace");
@@ -35,11 +36,10 @@ function deleteDefaultProject(): ((page: Page) => Promise<void>) {
 
 function copyAssetInTemp(assetPath: string, copyFileName: string): ((page: Page) => Promise<void>) {
     const createAssetCopyCode = `text  = "" 
-with open("${assetPath}","r",encoding="utf-8")  as f  :
-    f.seek(5) 
-    text  = f.read() 
-with open("/tmp/${copyFileName}","w")  as f2  :
-    f2.write(text) 
+with open("${assetPath}","rb")  as f  :
+    content  = f.read() 
+with open("/tmp/${copyFileName}","wb")  as f2  :
+    f2.write(content) 
 `;
     return async (page) => {
         await deleteDefaultProject()(page);
@@ -115,10 +115,12 @@ with open("/tmp/test.txt")  as f  :
 
     test("Read+Write an existing file", async ({page}) => {
         await copyAssetInTemp("/books/fairy-tales.txt", "test.txt")(page);
-        const writeAndReadCode =`with open("/tmp/test.txt","r+")  as f3  :
-    f3.seek(2) 
+        // First seek: +3 (BOM) +2 (the first line break) + 2 (position for "A |certain king" where | is the cursor)
+        // Second seek: same except the last +2
+        const writeAndReadCode =`with open("/tmp/test.txt","r+", encoding="utf-8-sig")  as f3  :
+    f3.seek(7) 
     f3.write("great Strype") 
-    f3.seek(0) 
+    f3.seek(5) 
     print(f3.read(250)+"|")
     `;
         await doPagePaste(page, writeAndReadCode);

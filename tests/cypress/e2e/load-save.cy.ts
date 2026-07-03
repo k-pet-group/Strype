@@ -114,6 +114,18 @@ describe("Loads and re-saves fixture files", () => {
         // Make an empty try, which should save with a placeholder:
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-try-solo.spy");
     });
+    it("Loads and saves a global with one variable", () => {
+        // Make a function containing a global frame with 1 variable, and calls for it in main
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-global-single-var.spy");
+    });
+    it("Loads and saves a global with 2 variables", () => {
+        // Make a function containing a global frame with 2 variables, and calls for it in main
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-global-multi-vars-1.spy");
+    });
+    it("Loads and saves a global with 4 variables", () => {
+        // Make a function containing a global frame with 4 variables, and calls for it in main
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-global-multi-vars-2.spy");
+    });
 });
 
 describe("Tests disabling frames", () => {

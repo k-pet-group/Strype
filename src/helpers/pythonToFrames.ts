@@ -1099,7 +1099,10 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
         s = addFrame(makeFrame(AllFrameTypesIdentifier.continue, {}, s.isSPY), p.lineno, s);
         break;
     case Sk.ParseTables.sym.global_stmt:
-        s = addFrame(makeFrame(AllFrameTypesIdentifier.global, {0: {slotStructures: toSlots(children(p)[1])}}, s.isSPY), p.lineno, s);
+        // Global construct can include several comma-separated variables
+        // (first child at index 0 is "global" itself)
+        const globalVarsStruct = toSlots({...p, children: p.children?.slice(1)??null});
+        s = addFrame(makeFrame(AllFrameTypesIdentifier.global, {0: {slotStructures: globalVarsStruct}}, s.isSPY), p.lineno, s);
         break;
     case Sk.ParseTables.sym.import_name:
         s = addFrame(makeFrame(AllFrameTypesIdentifier.import, {0: {slotStructures: toSlots(children(p)[1])}}, s.isSPY), p.lineno, s);

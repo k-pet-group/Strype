@@ -105,7 +105,7 @@ function interleave<T>(a: T[], b: T[]): T[] {
 function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string, slotIndex: number}): SlotsStructure {
     // Here's what prevents parsing:
     // - A unary operator (like "not", "~") with something non-blank before it.
-    // - Commas at the top-level of most constructs (only assignments, return, for allow it)
+    // - Commas at the top-level of most constructs (only assignments, return, for and global allow it)
     // - Anything with a blank operator between two adjacent non-blank items, except
     //     if the right-hand item is a round or square bracket (function call and list index, respectively)
     let valid = true;
@@ -164,7 +164,8 @@ function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string
                 // We invert where commas are allowed:
                 if (!([AllFrameTypesIdentifier.varassign,
                     AllFrameTypesIdentifier.for,
-                    AllFrameTypesIdentifier.return].includes(topLevel.frameType)
+                    AllFrameTypesIdentifier.return,
+                    AllFrameTypesIdentifier.global].includes(topLevel.frameType)
                     || (topLevel.frameType === AllFrameTypesIdentifier.funcdef && topLevel.slotIndex == 1)
                     || (topLevel.frameType === AllFrameTypesIdentifier.fromimport && topLevel.slotIndex == 1)
                     || (topLevel.frameType === AllFrameTypesIdentifier.import && topLevel.slotIndex == 0))) {

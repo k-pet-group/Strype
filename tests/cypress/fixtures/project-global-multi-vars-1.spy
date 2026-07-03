@@ -1,0 +1,13 @@
+#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def testF (toAdd1,toAdd2 ) :
+    global myString,yourString 
+    myString  = myString+toAdd1 
+    yourString  = yourString+toAdd2 
+#(=> Section:Main
+myString  = "Hello from Strype" 
+yourString  = "Bye from Strype" 
+testF(" and later",", see you soon") 
+print(myString,yourString) 
+#(=> Section:End

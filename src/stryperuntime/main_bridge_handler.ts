@@ -12,6 +12,7 @@ import {useStore} from "@/store/store";
 import { handleTurtle, TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import { sInput } from "@/helpers/execPythonCode";
 import {getRawFileFromLibraries} from "@/helpers/libraryManager";
+import { StrypeSyncTarget } from "@/types/types";
 
 // These are callbacks passed from PythonExecutionArea.vue to do things that are tied to the DOM or wider Strype state.
 // This means we don't have to make reference to the PythonExecutionArea component itself.
@@ -192,6 +193,19 @@ export const handleSyncRequests : (
             return {request: req.request, response: Promise.reject("The turtle rendering failed to initialise.  Try refreshing the page or using a different browser.")};
         }
     }
+    case "getCurrentCloudName":
+        let cloudName = undefined;
+        switch (useStore().syncTarget) {
+        case StrypeSyncTarget.gd:
+            cloudName = "Google Drive";
+            break;
+        case StrypeSyncTarget.od:
+            cloudName = "Microsoft OneDrive";
+            break;
+        default:
+            break;
+        }
+        return {request: req.request, response: Promise.resolve(cloudName)};
     default:
         // Trick to give a compile-time error if a case is missing above:
         const _exhaustive: never = req;

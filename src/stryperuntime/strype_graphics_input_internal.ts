@@ -1,6 +1,7 @@
 // This file contains the internal mouse+keyboard input API for the Strype graphics world.
 // These functions are not directly exposed to users, but are used by graphics.py to
 // form the actual public API.
+// It also contains (for ease) the Strype builtins internals.
 import { asyncBridge, PyodideWorkerGlobalScope, syncBridge } from "@/workers/python_execution_type";
 import { SpriteHandle } from "@/stryperuntime/worker_bridge_type";
 
@@ -56,6 +57,16 @@ export function setCollidable(id : number, collidable : boolean) : void {
     globalThis.spriteManager.setSpriteCollidable(id, collidable);
 }
 
+/**
+ * Strype builtins related content.
+ * We keep it for now as there are very few elements.
+ */
+
 export function clearConsole() : void {
     asyncBridge({request: "console_clear"});
 }
+
+export function getCurrentCloudName() : string | undefined {
+    return syncBridge({request: "getCurrentCloudName"});
+} 
+// end Strype builtins

@@ -98,6 +98,11 @@ export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPl
             return content.length;
         },
         write(stream: FSStream, buffer: Uint8Array | Int8Array, offset: number, length: number, position: number): number {
+            if (stream.flags & stream.isAppend && stream.node.size) {
+                // Very strangely, stream.isAppend returns the flag value rather than a boolean.
+                // When the file opened in append mode, the position 0 is against the end of file.
+                position = stream.node.size;
+            }
             // It seems Pyodide/Emscripten can give an Int8Array so we must convert to make the bytes in 0-255 range before encoding to string:
             const u8 = new Uint8Array(buffer.buffer, offset, length);
             syncBridge({request: "file_write", id: stream.node.strypeCloudFileId, from: position, encodedContent: encodeUint8ToString(u8), filePath: getFullFilePath(stream.node)});

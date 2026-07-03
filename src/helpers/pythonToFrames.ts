@@ -1122,8 +1122,6 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
     case Sk.ParseTables.sym.return_stmt:
         // Return may or may not have an expression child after it:
         if (children(p).length >= 2) {
-            console.log("for return: ");
-            console.log(p);
             s = addFrame(makeFrame(AllFrameTypesIdentifier.return, {0: {slotStructures: toSlots(children(p)[1])}}, s.isSPY), p.lineno, s);
         }
         else {

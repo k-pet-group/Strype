@@ -1,0 +1,16 @@
+#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def testF ( ) :
+    global myString1,yourString1,myString2,yourString2 
+    myString1  = myString1+myString2 
+    yourString1  = yourString1+yourString2 
+#(=> Section:Main
+myString1  = "Hello from Strype" 
+yourString1  = "Bye from Strype" 
+myString2  = ", but later..." 
+yourString2  = " and keep calm!" 
+testF() 
+print(myString1,yourString1) 
+print(myString2,yourString2) 
+#(=> Section:End

@@ -1,0 +1,11 @@
+#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def testF (toAdd ) :
+    global myString 
+    myString  = myString+toAdd 
+#(=> Section:Main
+myString  = "Hello from Strype" 
+testF(", let's code in Python",___strype_blank) 
+print(myString) 
+#(=> Section:End

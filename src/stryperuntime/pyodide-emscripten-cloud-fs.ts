@@ -98,7 +98,7 @@ export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPl
             return content.length;
         },
         write(stream: FSStream, buffer: Uint8Array | Int8Array, offset: number, length: number, position: number): number {
-            if (stream.flags & stream.isAppend && stream.node.size) {
+            if ((stream.flags & stream.isAppend) != 0 && stream.node.size) {
                 // Very strangely, stream.isAppend returns the flag value rather than a boolean.
                 // When the file opened in append mode, the position 0 is against the end of file.
                 position = stream.node.size;

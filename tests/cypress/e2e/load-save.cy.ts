@@ -105,6 +105,9 @@ describe("Loads and re-saves fixture files", () => {
     it("Loads a basic trisection project", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic-trisection.spy");
     });
+    it("Loads a project with except as", () => {
+        testRoundTripImportAndDownload("tests/cypress/fixtures/project-except-as.spy");
+    });
     it("Outputs a dummy for solo try", () => {
         // Make an empty try, which should save with a placeholder:
         // (try is followed by a pause, because it can take a bit longer to add its body/join sections)

@@ -1,0 +1,10 @@
+#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+try :
+    print(myString) 
+except Exception as e  :
+    print("oh") 
+    print(e) 
+#(=> Section:End

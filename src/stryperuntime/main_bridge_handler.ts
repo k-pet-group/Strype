@@ -195,6 +195,8 @@ export const handleSyncRequests : (
     }
     case "getCurrentCloudName":
         let cloudName = undefined;
+        // The following values are directly returned to the user code, so we should NOT modify them in the future
+        // to prevent any incompatibility within the older user programs which may have used them...
         switch (useStore().syncTarget) {
         case StrypeSyncTarget.gd:
             cloudName = "Google Drive";

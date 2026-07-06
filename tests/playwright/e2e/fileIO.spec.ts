@@ -115,12 +115,13 @@ with open("/tmp/test.txt")  as f  :
 
     test("Read+Write an existing file", async ({page}) => {
         await copyAssetInTemp("/books/fairy-tales.txt", "test.txt")(page);
-        // First seek: +3 (BOM) +2 (the first line break) + 2 (position for "A |certain king" where | is the cursor)
+        // First seek: +3 (BOM) +2 or +1 (the first line break on Windows or Linux) + 2 (position for "A |certain king" where | is the cursor)
         // Second seek: same except the last +2
+        const firstLinebreakOSOffset = (process.platform === "win32") ? 1 : 0;
         const writeAndReadCode =`with open("/tmp/test.txt","r+", encoding="utf-8-sig")  as f3  :
-    f3.seek(7) 
+    f3.seek(6+${firstLinebreakOSOffset}) 
     f3.write("great Strype") 
-    f3.seek(5) 
+    f3.seek(4+${firstLinebreakOSOffset}) 
     print(f3.read(250)+"|")
     `;
         await doPagePaste(page, writeAndReadCode);

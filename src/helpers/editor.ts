@@ -1776,9 +1776,9 @@ const getFirstOperatorPos = (codeLiteral: string, blankedStringCodeLiteral: stri
         // When we look for operators, there is 2 exceptions:
         // - we discard "*" (and "**" why not) when are in a from import frame, we will treat it as text
         // - "as" is only relevant for import frames, we ignore it otherwise
-        const isInFromImportFrame = (frameType == AllFrameTypesIdentifier.fromimport);
+        const canHaveAs = (frameType == AllFrameTypesIdentifier.fromimport) || (frameType == AllFrameTypesIdentifier.except);
         const isInImportFrame = (frameType == AllFrameTypesIdentifier.import);
-        const operatorPosList : OpFound[] = ((isInFromImportFrame) ? allOperators.filter((opDef) => !opDef.match.includes("*")) : allOperators.filter((opDef) => isInImportFrame || opDef.match != " as "))
+        const operatorPosList : OpFound[] = ((canHaveAs) ? allOperators.filter((opDef) => !opDef.match.includes("*")) : allOperators.filter((opDef) => isInImportFrame || opDef.match != " as "))
             .flatMap((operator : OpDef) => {
                 if (operator.keywordOperator) {
                     // "g" flag is necessary to make it obey the lastIndex item as a place to start:

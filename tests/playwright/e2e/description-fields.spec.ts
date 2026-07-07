@@ -196,6 +196,10 @@ print(myString)
     test("Round trip awkward quotes #3", async ({page}, testInfo) => {
         await testPlaywrightRoundTripImportAndDownload(page, "tests/cypress/fixtures/project-documented-quotes-3.spy");
     });
+
+    test("Round trip newlines", async ({page}, testInfo) => {
+        await testPlaywrightRoundTripImportAndDownload(page, "tests/cypress/fixtures/project-documented-newlines.spy");
+    });
 });
 
 test.describe("Up/down in description slots", () => {

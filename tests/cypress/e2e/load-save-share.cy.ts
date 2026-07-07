@@ -171,6 +171,9 @@ describe("Tests loading project descriptions", () => {
     it("Loads a project with docs", () => {
         testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-documented.spy");
     });
+    it("Loads a project with docs and newlines", () => {
+        testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-documented-newlines.spy");
+    });
     it("Loads a project with docs when there is already a project description", () => {
         focusEditorAndClear();
         cy.get("body").type("{uparrow}{uparrow}{leftarrow}Temporary description.");

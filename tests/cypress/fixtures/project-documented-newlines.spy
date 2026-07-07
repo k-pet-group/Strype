@@ -1,0 +1,35 @@
+#(=> Strype:1:std
+'''
+
+This project has a description attached.
+
+
+It has leading newlines, middle newlines and trailing ones.
+
+
+'''
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo ( ) :
+    '''
+    
+    This is the function foo.
+    
+    
+    
+    It also has a bunch of newlines.
+    
+    
+        
+    '''
+    '''
+    
+    This is a multiline comment which has newlines too
+    Which is allowed
+    
+    
+    '''
+    return 42 
+#(=> Section:Main
+print("This will cause an error:" + len(None)) 
+#(=> Section:End

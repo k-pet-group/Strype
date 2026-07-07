@@ -9,3 +9,13 @@ def clear_console():
     """
     _strype_input_internal.clearConsole()
 
+def get_connected_cloud():
+    # type: () -> str | None
+    """
+    Use this function to check the Cloud provider name where this Strype project lives.
+    (Currently, the Cloud providers Strype supports are `"Google Drive"` and `"Microsoft OneDrive"`.) 
+
+    :return: The name of the Cloud provider where this Strype project lives, `None` if the Strype project does not live on the Cloud.
+    """
+    return _strype_input_internal.getCurrentCloudName()
+

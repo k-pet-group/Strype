@@ -59,6 +59,8 @@ Module strype.builtins
   .. container:: module-content
       
     Note that everything from this module is automatically imported so you should not ever need to import it yourself.  For example, if you want to call `clear_console()` you can just call it, without needing to add an import.
+    
+    ⚠️The content of this module is only available on the standard version of Strype.
 
     .. automodule:: strype.builtins
        :members:

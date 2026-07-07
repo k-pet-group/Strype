@@ -22,12 +22,14 @@ describe("Built-ins", () => {
             checkExactlyOneItem(acIDSel, BUILTIN, "AssertionError()");
             // We had a previous bug with multiple sum items in microbit:
             checkExactlyOneItem(acIDSel, BUILTIN, "sum(iterable, start)");
-            // Should show our built-in, clear_console, but not in microbit:
+            // Should show our built-in, clear_console and get_connected_cloud, but not in microbit:
             if (Cypress.env("mode") === "microbit") {
                 checkNoItems(acIDSel, "clear_console");
+                checkNoItems(acIDSel, "get_connected_cloud");
             }
             else {
                 checkExactlyOneItem(acIDSel, BUILTIN, "clear_console()");
+                checkExactlyOneItem(acIDSel, BUILTIN, "get_connected_cloud()");
             }
             checkExactlyOneItem(acIDSel, BUILTIN, "ZeroDivisionError()");
             checkExactlyOneItem(acIDSel, BUILTIN, "zip()");

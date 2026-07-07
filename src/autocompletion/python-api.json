@@ -15026,6 +15026,14 @@
                 "function"
             ],
             "version": 0
+        },
+        {
+            "acResult": "get_connected_cloud",
+            "documentation": "Use this function to check the Cloud provider name where this Strype project lives.\n(Currently, the Cloud providers Strype supports are `\"Google Drive\"` and `\"Microsoft OneDrive\"`.) \n\n:return: The name of the Cloud provider where this Strype project lives, `None` if the Strype project does not live on the Cloud.",
+            "type": [
+                "function"
+            ],
+            "version": 0
         }
     ],
     "strype.graphics": [

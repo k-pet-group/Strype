@@ -10,6 +10,19 @@ It has leading newlines, middle newlines and trailing ones.
 '''
 #(=> Section:Imports
 #(=> Section:Definitions
+class Foo  :
+    '''
+    
+    This is the class docs
+    
+    
+    '''
+    def __init__ (self, ) :
+        '''This is the init docs, only trailing newlines
+        
+        
+        '''
+        pass
 def foo ( ) :
     '''
     
@@ -30,6 +43,18 @@ def foo ( ) :
     
     '''
     return 42 
+def bar ( ) :
+    '''
+    
+    
+    
+    '''
+    print("This project doc has only newlines") 
 #(=> Section:Main
+print(len(__doc__.split('\n'))) 
+print(len(Foo.__doc__.split('\n'))) 
+print(len(Foo.__init__.__doc__.split('\n'))) 
+print(len(foo.__doc__.split('\n'))) 
+print(len(bar.__doc__.split('\n'))) 
 print("This will cause an error:" + len(None)) 
 #(=> Section:End

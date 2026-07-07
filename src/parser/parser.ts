@@ -242,7 +242,6 @@ export default class Parser {
     private ignoreSpecificFrameId = -100;
     private ignoreCheckErrors = false;
     private saveAsSPY = false;
-    private outputProjectDoc = false;
     private stoppedIndentation = ""; // The indentation level when we encountered the stop frame.
     private libraries : string[] = [];
     private omitMediaLiterals = false;
@@ -250,7 +249,6 @@ export default class Parser {
     constructor(ignoreCheckErrors = false, destination: "spy" | "py-export" | "py" = "py", omitMediaLiterals = false) {
         this.ignoreCheckErrors = ignoreCheckErrors;
         this.saveAsSPY = destination == "spy";
-        this.outputProjectDoc = destination == "spy" || destination == "py-export";
         this.omitMediaLiterals = omitMediaLiterals;
     }
 
@@ -352,8 +350,8 @@ export default class Parser {
         || (!this.saveAsSPY && statement.frameType.type === AllFrameTypesIdentifier.funccall && isFieldBaseSlot(statement.labelSlotsDict[0].slotStructures.fields[0]) && (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.startsWith("#"))){
             const commentContent = (statement.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
 
-            // The project doc is optional so if it's blank omit it, and we don't mind about line numbers for SPY:
-            if (statement.frameType.type === AllFrameTypesIdentifier.projectDocumentation && (!this.outputProjectDoc || commentContent.trim().length == 0)) {
+            // The project doc is optional so if it's blank omit it:
+            if (statement.frameType.type === AllFrameTypesIdentifier.projectDocumentation && commentContent.length == 0) {
                 return "";
             }
             
@@ -396,10 +394,10 @@ export default class Parser {
             let hasDocContent = false;
             if(label.showLabel??true){
                 if (label.allowedSlotContent == AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
-                    if (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields.length > 1 || (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code.trim().length > 0) {
+                    if (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields.length > 1 || (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code != "") {
                         if (label.newLine ?? false) {
                             // If we are in a free text documentation situation (in functions or classes docs), we need to account for all the line breaks this comment can contain.
-                            this.line += ((((useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code.trim().length > 0)) ? ((useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code.split("\n").length) : 1);
+                            this.line += (useStore().frameObjects[statement.id].labelSlotsDict[labelSlotsIndex].slotStructures.fields[0] as BaseSlot).code.split("\n").length;
                             // Newlines indent below, e.g. comments in funcdef frames:
                             output += "\n" + indentation + "    ";
                         }
@@ -437,7 +435,7 @@ export default class Parser {
                     // (if user ends with a single quote, there will be four single quotes in a row at the end, and Python will parse it
                     // as the first three ending the string, and the fourth as left-over outside the string).
                     // We also need to escape backslashes by doubling them.
-                    output += slotStartsLengthsAndCode.code.trimStart().replaceAll("\n", ("\n" + indentation + "    ")).replaceAll("\\", "\\\\").replaceAll("'", "\\'") + "'''";
+                    output += slotStartsLengthsAndCode.code.replaceAll("\n", ("\n" + indentation + "    ")).replaceAll("\\", "\\\\").replaceAll("'", "\\'") + "'''";
                 }
                 else if (label.allowedSlotContent != AllowedSlotContent.FREE_TEXT_DOCUMENTATION) {
                     output += slotStartsLengthsAndCode.code.trimStart() + " ";
@@ -872,8 +870,9 @@ export default class Parser {
             else{        
                 // that's an editable (code) slot, we get the position and length for that slot
                 // we trim the field's code when we are not in a string literal
-                let flatSlotCode = (isSlotStringLiteralType(flatSlot.type) ? flatSlot.code : flatSlot.code.trim());
-                if (flatSlot.type != SlotType.string) {
+                const stringOrComment = isSlotStringLiteralType(flatSlot.type) || flatSlot.type == SlotType.comment;
+                let flatSlotCode = stringOrComment ? flatSlot.code : flatSlot.code.trim();
+                if (!stringOrComment) {
                     // Blanks are allowed before colons in slices:
                     if (opBefore === ":" || opAfter === ":") {
                         // Don't substitute the special blank marker.

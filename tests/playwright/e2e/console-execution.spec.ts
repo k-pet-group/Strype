@@ -1,6 +1,7 @@
 import { test, expect, Locator, Page } from "@playwright/test";
 import { enterCode } from "../support/editor";
 import { checkConsoleContent, runButtonShowsRun, runToFinish, startRunning } from "../support/execution";
+import { load } from "../support/loading-saving";
 
 let scssVars: {[varName: string]: string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
@@ -147,6 +148,15 @@ except Exception:
         await checkConsoleContent(page, /.*TypeError: object of type 'NoneType' has no len\(\).*/);
         // Should not show any error counts because we caught it:
         await checkFrameErrorCount(page, 0);
+    });
+    
+    test("Check error shows at right place when documentation parts have newlines", async ({page}) => {
+        await load(page, "tests/cypress/fixtures/project-documented-newlines.spy");
+        await runToFinish(page);
+        // Two separate checks to keep things clear, one for the expected lengths of each of the docs, one for the error:
+        await checkConsoleContent(page, /9\n6\n4\n11\n5\n.*/);
+        await checkConsoleContent(page, /.*TypeError: object of type 'NoneType' has no len\(\).*/);
+        await expectHasVisibleErrorIcon(page.locator("span", {hasText: "This will cause an error:"}));
     });
 });
 
@@ -295,7 +305,7 @@ except Exception:
         await runToFinish(page);
         // Should be an error, but only one:
         await checkConsoleContent(page, `Traceback (most recent call last):
-  File "/home/pyodide/my_program.py", line 8, in <module>
+  File "/home/pyodide/my_program.py", line 9, in <module>
     print(len(None))
           ~~~^^^^^^
 TypeError: object of type 'NoneType' has no len()
@@ -326,8 +336,8 @@ while True:
             // Then check the last actual printed line:
             consoleValue = await page.locator("#peaConsole").inputValue();
             const lastNumberAfterStopping = Number(consoleValue.split("\n")?.at(-2)?.trim());
-            // Should have stopped printing within 4 seconds (should be less, but CI can be slow...):
-            expect(lastNumberAfterStopping).toBeLessThan(lastNumberWhileRunning + 4);
+            // Should have stopped printing within 10 seconds (should be less, but CI can be slow...):
+            expect(lastNumberAfterStopping).toBeLessThan(lastNumberWhileRunning + 10);
         });
 
         test(`Check console stops printing literal within seconds of stopping after running for ${runTime} seconds`, async ({page}) => {

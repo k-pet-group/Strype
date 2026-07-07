@@ -165,7 +165,8 @@ def load_sound(source):
     # If they mistakenly try to load a sound (e.g. a literal) just let it through:
     if isinstance(source, Sound):
         return source
-    if source.startswith("http:") or source.startswith("https:") or source.startswith("data:"):
+    import re
+    if source.startswith("http:") or source.startswith("https:") or source.startswith("data:")  or source.startswith(":") or (":" not in source and re.match(r'^[^./]+\.[^/]+/.+', source)):
         buffer = _strype_sound_internal.loadAndWaitForAudioBuffer(source)
     else:
         # We load it from our virtual file system, either the current dir or /strype/graphics/

@@ -31,7 +31,7 @@ def generate_next_word (prev_word,bigrams ) :
         return random.choice(following) 
 #(=> Section:Main
 #(=> Disabled:text  = "I read the news today, oh, boy. About a lucky man who made the grade." 
-text  = read_file("pride-and-prejudice.txt") 
+text  = read_file("/books/pride-and-prejudice.txt") 
 bigrams  = make_bigrams(text) 
 
 word  = "It" 

@@ -71,7 +71,7 @@ def get_overused_words (observed_counts,total_words,frequencies,how_many ) :
 #(=> Disabled:title  = "pride-and-prejudice" 
 #(=> Disabled:title  = "three-men-in-a-boat" 
 title  = "winnie-the-pooh" 
-text  = read_file(title+".txt") 
+text  = read_file("/books/"+title+".txt") 
 
 word_counts  = count_words(text) 
 total_words  = len(text.split()) 

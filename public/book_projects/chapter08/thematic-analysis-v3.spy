@@ -56,7 +56,7 @@ def count_words (text ) :
 counts  = count_words("How many cakes could a good cook cook if a good cook could cook cakes?") 
 print(counts) 
 
-text  = read_file("winnie-the-pooh.txt") 
+text  = read_file("/books/winnie-the-pooh.txt") 
 counts  = count_words(text) 
 print(counts) 
 #(=> Section:End

@@ -56,5 +56,5 @@ print(len(Foo.__doc__.split('\n')))
 print(len(Foo.__init__.__doc__.split('\n'))) 
 print(len(foo.__doc__.split('\n'))) 
 print(len(bar.__doc__.split('\n'))) 
-print("This will cause an error:" + len(None)) 
+print("This will cause an error:"+len(None)) 
 #(=> Section:End

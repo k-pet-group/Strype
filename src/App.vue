@@ -431,6 +431,12 @@ export default defineComponent({
                 return;
             }
 
+            // The media editor dialogs also register an event listener which callback will be called after this one.
+            // So when we detect one of the dialogs is opened, we just ignore this callback method.
+            if(this.appStore.isModalDlgShown && (this.appStore.currentModalDlgId == "editImageDlg" || this.appStore.currentModalDlgId == "editSoundDlg")){
+                return;
+            }
+
             // Close the rename identifiers popup on most keys:
             // to simplify the event registration on when we close the popup, we close it on almost all key hits except navigation keys:
             // they will be handled in watch() via the change of frame and we do allow navigation when the popup is showing.

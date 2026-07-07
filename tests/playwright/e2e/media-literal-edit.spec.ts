@@ -101,7 +101,7 @@ test.describe("Media literal resizing", async () => {
                 // Now check it matches exactly the new size:
                 await page.locator(".btn.btn-primary", {hasText: "OK"}).filter({visible: true}).click();
                 // Give it a moment to update:
-                await page.waitForTimeout(1500);
+                await page.waitForTimeout(4000);
                 
                 await page.locator("img.label-slot-media").hover();
                 const newSizeText = await page.locator(".MediaPreviewPopup-header-text").textContent();

@@ -1,6 +1,6 @@
 {
     "name": "strype-editor",
-    "version": "2.2.0",
+    "version": "2.2.1",
     "private": true,
     "scripts": {
         "serve:microbit": "cross-env STRYPE_PLATFORM=microbit vite --port 8081",

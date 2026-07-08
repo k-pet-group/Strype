@@ -65,6 +65,11 @@ test.describe("Media literal resizing", async () => {
                 await page.keyboard.press("p");
                 await doPagePaste(page, srcImage, "image/png");
                 
+                // Get the old src=... attribute ready to wait for it to change later:
+                const before = await page.locator("img.label-slot-media").getAttribute("src");
+                if (!before?.startsWith("data:image/png")) {
+                    throw new Error("Expected a data:image/png image");
+                }
                 // Now hover over it and bring up the edit dialog:
                 await page.locator("img.label-slot-media").hover();
                 await page.locator(".MediaPreviewPopup-header-edit-button").click();
@@ -100,8 +105,11 @@ test.describe("Media literal resizing", async () => {
                 
                 // Now check it matches exactly the new size:
                 await page.locator(".btn.btn-primary", {hasText: "OK"}).filter({visible: true}).click();
-                // Give it a moment to update:
-                await page.waitForTimeout(4000);
+                // Wait for the src= to update by polling::
+                await expect.poll(
+                    async () => await page.locator("img.label-slot-media").getAttribute("src"),
+                    { timeout: 15000 }
+                ).not.toBe(before);
                 
                 await page.locator("img.label-slot-media").hover();
                 const newSizeText = await page.locator(".MediaPreviewPopup-header-text").textContent();

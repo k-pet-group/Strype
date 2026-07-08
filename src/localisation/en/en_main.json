@@ -266,7 +266,7 @@
   },
   "media": {
     "edit": "Edit",
-    "imageChangedSize": "Changed size (approx): ",
+    "imageChangedSize": "Changed size: ",
     "imageCrop": "Image Crop",
     "imageDetails": "Image Details",
     "imageOriginalSize": "Original size: ",

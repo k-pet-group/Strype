@@ -188,8 +188,8 @@ export default defineComponent({
                 return Promise.reject("Loading");
             }
             const scale = this.imageScale / 100.0;
-            let width = this.cropSize.width * scale;
-            let height = this.cropSize.height * scale;
+            let width = Math.ceil(this.cropSize.width * scale);
+            let height = Math.ceil(this.cropSize.height * scale);
 
             const targetCanvas = document.createElement("canvas");
             targetCanvas.width = width;

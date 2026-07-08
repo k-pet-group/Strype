@@ -1,0 +1,60 @@
+#(=> Strype:1:std
+'''
+
+This project has a description attached.
+
+
+It has leading newlines, middle newlines and trailing ones.
+
+
+'''
+#(=> Section:Imports
+#(=> Section:Definitions
+class Foo  :
+    '''
+    
+    This is the class docs
+    
+    
+    '''
+    def __init__ (self, ) :
+        '''This is the init docs, only trailing newlines
+        
+        
+        '''
+        pass
+def foo ( ) :
+    '''
+    
+    This is the function foo.
+    
+    
+    
+    It also has a bunch of newlines.
+    
+    
+        
+    '''
+    '''
+    
+    This is a multiline comment which has newlines too
+    Which is allowed
+    
+    
+    '''
+    return 42 
+def bar ( ) :
+    '''
+    
+    
+    
+    '''
+    print("This project doc has only newlines") 
+#(=> Section:Main
+print(len(__doc__.split('\n'))) 
+print(len(Foo.__doc__.split('\n'))) 
+print(len(Foo.__init__.__doc__.split('\n'))) 
+print(len(foo.__doc__.split('\n'))) 
+print(len(bar.__doc__.split('\n'))) 
+print("This will cause an error:"+len(None)) 
+#(=> Section:End

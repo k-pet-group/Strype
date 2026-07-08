@@ -73,6 +73,7 @@ async function testLongRoundTripLoadShareNewLoadSave(page: Page, filepath: strin
 test.describe("Fully round-trip the sharing", () => {
     const filesToCheck = [
         "tests/cypress/fixtures/project-basic.spy",
+        "tests/cypress/fixtures/project-except-as.spy",
         "tests/cypress/fixtures/project-libraries-disable.spy",
         "tests/cypress/fixtures/default-parameter-values.spy",
         "tests/cypress/fixtures/format-strings.spy",

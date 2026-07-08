@@ -54,7 +54,7 @@ def count_word (search_word,text ) :
 count  = count_word("say","You say, Yes, I say, No. You say, Stop and I say, Go, go, go") 
 print(count) 
 
-text  = read_file("winnie-the-pooh.txt") 
+text  = read_file("/books/winnie-the-pooh.txt") 
 count  = count_word("piglet",text) 
 print(count) 
 #(=> Section:End

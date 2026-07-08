@@ -30,9 +30,9 @@ def generate_next_word (prev1,prev2,trigrams ) :
     else :
         return random.choice(following) 
 #(=> Section:Main
-#(=> Disabled:text  = read_file("pride-and-prejudice.txt") 
-#(=> Disabled:text  = read_file("fairy-tales.txt") 
-text  = read_file("sherlock-holmes.txt") 
+#(=> Disabled:text  = read_file("/books/pride-and-prejudice.txt") 
+#(=> Disabled:text  = read_file("/books/fairy-tales.txt") 
+text  = read_file("/books/sherlock-holmes.txt") 
 trigrams  = make_trigrams(text) 
 
 word1,word2  = "It","was" 

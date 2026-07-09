@@ -645,4 +645,117 @@ describe("Editor operations", () => {
             });            
         });
     });
+
+    // Have a different selection direction: a bug occured only when selecting in one direction
+    // so we should try both directions in this test.
+       
+    it("Paste simple content over a selection with ctrl+a", () => {
+        // Select everything in the main selection
+        cy.get("body").type("{ctrl}a").then(() => {
+            // Then retrieve a fixture content and paste it over, and test it
+            cy.fixture("python-only-main.py").then((py) => {
+                testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + py, true);
+            });
+        });
+    });
+
+    it("Paste simple content over a selection with shift-up", () => {
+        // First go to the end of the main section, select everything with shift+up in the main selection
+        cy.get("body").type("{end}").then(() => {
+            cy.get("body").type("{shift}{upArrow}{shift}{upArrow}").then(() => {
+                //cy.wait(300);
+                // Then retrieve a fixture content and paste it over, and test it
+                cy.fixture("python-only-main.py").then((py) => {
+                    testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + py, true);
+                });
+            });
+        });
+    });
+
+    it("Paste mixed content over a selection", () => {
+        // Select everything in the main selection
+        cy.get("body").type("{ctrl}a").then(() => {
+            cy.wait(300);
+            // Then retrieve a fixture content and paste it over, and test it
+            cy.fixture("python-mixed-1.py").then((py) => {
+                testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + py, true);
+            });
+        });
+    });
+
+    it("Undo/redo paste simple content over a selection", () => {
+        // Keep a backup of the current initial project
+        getDownloadedFileContent(strypeElIds, "My project.spy", true).then((spyContent) => {
+            const initialCodeContent = spyContent;
+ 
+            // Select everything in the main selection
+            cy.get("body").type("{ctrl}a").then(() => {
+                // Then retrieve a fixture content and paste it over, and test it
+                cy.fixture("python-only-main.py").then((py) => {
+                    testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + py, true);
+
+                    // Keep a backup of the pasted code
+                    getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                        const pasteCodeContent = spyContent;
+
+                        // Then perform undo: we expect paste to be reverted entirely, and the initial code to be there
+                        cy.get("body").type("{ctrl}z").then(() => {
+                        // wait a bit, then test
+                            cy.wait(300);
+                            getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                                expect(spyContent).to.equal(initialCodeContent);
+
+                                // Then perform redo: we expect the paste content to be back
+                                cy.get("body").type("{ctrl}y").then(() => {
+                                // wait a bit, then test
+                                    cy.wait(300);
+                                    getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                                        expect(spyContent).to.equal(pasteCodeContent);
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    });
+    
+    it("Undo/redo paste mixed content over a selection", () => {
+        // Keep a backup of the current initial project
+        getDownloadedFileContent(strypeElIds, "My project.spy", true).then((spyContent) => {
+            const initialCodeContent = spyContent;
+ 
+            // Select everything in the main selection
+            cy.get("body").type("{ctrl}a").then(() => {
+                // Then retrieve a fixture content and paste it over, and test it
+                cy.fixture("python-mixed-1.py").then((py) => {
+                    testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + py, true);
+
+                    // Keep a backup of the pasted code
+                    getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                        const pasteCodeContent = spyContent;
+
+                        // Then perform undo: we expect paste to be reverted entirely, and the initial code to be there
+                        cy.get("body").type("{ctrl}z").then(() => {
+                        // wait a bit, then test
+                            cy.wait(300);
+                            getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                                expect(spyContent).to.equal(initialCodeContent);
+
+                                // Then perform redo: we expect the paste content to be back
+                                cy.get("body").type("{ctrl}y").then(() => {
+                                // wait a bit, then test
+                                    cy.wait(300);
+                                    getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                                        expect(spyContent).to.equal(pasteCodeContent);
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    });
 });

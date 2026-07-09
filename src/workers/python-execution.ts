@@ -263,12 +263,18 @@ if ${usingMatplotlib ? "True" : "False"}:
                 super().draw()
                 # Now push it out, same as show() does
                 _figure_renderer_pyodide.render_current_figure(self.figure)
+                self._draw_pending = False
         
             def draw_idle(self):
                 # draw_idle is what most interactive matplotlib code calls
                 # (widgets, event handlers, animations) instead of draw()
-                # directly, so route it through the same path.
-                self.draw()
+                # directly.  Schedule a draw:
+                self._draw_pending = True
+            
+            def flush_events(self):
+                # Flush the pending draw, by drawing:
+                if getattr(self, "_draw_pending", False):
+                    self.draw()        
     
         class FigureManagerPyodide(FigureManagerBase):
             """Manager class — this is where plt.show() ends up."""

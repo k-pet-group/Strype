@@ -59,7 +59,7 @@ def get_month_data (month ) :
         print("Error: Invalid value used for month") 
         return [] 
 #(=> Section:Main
-data  = read_file("london-temperature-2025.txt") 
+data  = read_file("/data/london-temperature-2025.txt") 
 temp  = [] 
 for elem  in data  :
     temp.append(float(elem)) 

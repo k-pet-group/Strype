@@ -69,7 +69,7 @@ async function checkImageMatch(expectedImageFileName: string, fetchActual : (wid
         // calculating a percent diff
         const diffPercent = (numDiffPixels / (width * height) * 100);
 
-        expect(diffPercent).toBeLessThanOrEqual(25);
+        expect(diffPercent).toBeLessThanOrEqual(5);
 
     }
     else {
@@ -639,7 +639,7 @@ matplotlib.pyplot.show(block=False)
 `);
 
         await runToFinish(page, true);
-        await checkGraphicsAreaContent(page, "matplotlib-simple");
+        await checkGraphicsAreaContent(page, "matplotlib-simple", ImageComparison.WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS);
     });
     
     test("Test facet plot with matplotlib", async ({page}) => {
@@ -696,7 +696,7 @@ import matplotlib.pyplot as plt
 FIG_W, FIG_H = ${aspectRatio.join(", ")}
 CIRCLE_COLOR = "green"
 # In axes (data) coordinates, since xlim/ylim are 0-1
-CIRCLE_RADIUS = 0.05
+CIRCLE_RADIUS = 0.25
 
 def on_click(event):
     # Ignore clicks outside the axes (e.g. on toolbar)
@@ -737,9 +737,9 @@ plt.show()
             // It will switch to graphics tab once it has displayed, make sure to add extra wait:
             await checkTab(page, "graphics", true);
             // Now click in three corners:
-            await clickMatplotlibProportionalPos(page, 0.05, 0.05, aspectRatio);
-            await clickMatplotlibProportionalPos(page, 0.05, 0.95, aspectRatio);
-            await clickMatplotlibProportionalPos(page, 0.95, 0.95, aspectRatio);
+            await clickMatplotlibProportionalPos(page, 0.25, 0.25, aspectRatio);
+            await clickMatplotlibProportionalPos(page, 0.25, 0.75, aspectRatio);
+            await clickMatplotlibProportionalPos(page, 0.75, 0.75, aspectRatio);
             // We need to give it a moment to make sure the clicks are processed
             // Unavoidable to use a timed wait:
             await page.waitForTimeout(1000);

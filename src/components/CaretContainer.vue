@@ -301,7 +301,11 @@ export default defineComponent({
                 // Note we don't permanently trim the code because we need to preserve leading indent.
                 // But we trim for the purposes of checking if there's any content at all:
                 if (pythonCode != undefined && pythonCode?.trim()) {
-                    pasteMixedPython(pythonCode.trimEnd(), pasteDestination);
+                    const stateBeforeChanges = cloneDeep(this.appStore.$state); 
+                    const res = pasteMixedPython(pythonCode.trimEnd(), pasteDestination, false, false, true);
+                    if(res != null){
+                        this.appStore.saveStateChanges(stateBeforeChanges);
+                    }
                 }
             }
         },

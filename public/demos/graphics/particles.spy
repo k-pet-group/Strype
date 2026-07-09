@@ -1,19 +1,14 @@
 #(=> Strype:1:std
-#(=> peaLayoutMode:tabsCollapsed
-#(=> peaCommandsSplitterPane2Size:{"2":68.42,"tabsCollapsed":48.22}
-#(=> peaSplitViewSplitterPane1Size:{"2":77.23}
-'''A particle sparkling effect that follows the mouse'''
+#(=> editorCommandsSplitterPane2Size:{"undefined":58.16,"tabsCollapsed":39.32}
+#(=> peaCommandsSplitterPane2Size:{"undefined":68.42,"tabsCollapsed":51.94}
+#(=> peaExpandedSplitterPane2Size:{"tabsExpanded":53.18}
 #(=> Section:Imports
 from strype.graphics import * 
 import random 
 #(=> Section:Definitions
-def init ( ) :
-    #Constants:
-    global GRAVITY 
-    GRAVITY  = 0.3 
-    global FORCE 
-    FORCE  = 6 
-    set_background("Black") 
+GRAVITY  = 0.3 
+FORCE  = 6 
+particle_image  = load_image("data:image/png;base64,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") 
 def act (particle ) :
     if particle.is_at_edge()  :
         particle.remove() 
@@ -23,12 +18,12 @@ def act (particle ) :
 def create_particles ( ) :
     mouse  = get_mouse() 
     for i  in range(10)  :
-        particle  = Actor(load_image("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAC0AAAAtCAYAAAA6GuKaAAAACXBIWXMAAAsTAAALEwEAmpwYAAAFLElEQVRYha2Z7W7bRhBFL0UptoOkKdr3f8MCrdvYdSyK7A/uFQ+vhpLcdoEFP0TtnhnemZ2Vumma9D+2rh056K74XJLGeO7utv83X9poXXHeaYbu0N1G9A/B/1foCtTnBu5bJ/ykGfYkaWjHu+E/Cp3e6uKYwHtJn9qxj+cMfJT0juub4PdCEy771v1dA35sx749O7VuSL+F9/b5gHlLA+6BThCe37r+JOmh9R0gLI1dfM/ttAV8DbryovW5i3O/9l6XBvQN+KB1FjE09c7mN/Eh6IR1tzb7ds57W57n54SqPGyDrmaVhE7v9lpDuh8AQyh62+MYLlsFPWoOzEGLnC7ACZ2BRNCDZn0e0PfxzFY+pgETOqEZnHTAFP0M3eFGAhvWAeVzQqc0CEpYYXJr2vd6LYFZZScpoKXawwZ+1JIBDJ7AlgFBq+aJB1xz6R+DZ4f7Z+MJzYj3ovDQoAnunFulQL6xqtkwBiY9biPM0GmdRVbQBCf0I7qNoH4rSXjiCjzfyqjZ63xzhw3jLzSd2cLSoCys4ww6AyQ026S1kYR23VFJIx1ykjTttfbwFrB1zPTWaR2EmQmkdeApQBTPSuv0+gMGDHh2qjztIGRqS+BcWHzNwGGWoBcNy5TWxbhZFQrjjNc0XcGm5jNnJ/RJ82JBCVQLRpYJrAhZwo4KeRCKK10f952rnVEM32udVdQm+iHpb0lvzQCCe1yCcwWdtNTbPu4ojwTPAmmnRe9PrTNIXRzZmL5N9CrpWdLvkr43I+hpSjM3CkMb+winlPKoViUWP/byk5ZUuG+gXyV9a8dDm/QvSb+1cY5a5EKZEHTfjpX0OkldtSJmNqiyywOgHbhfJf3a+rdmzCDpz/b5SdKLZpl4RbRuKYdOs4QYWyzchqrKqwr+9La94NXxUdIXST9L+kXST82wU3tm1CyNL82Idy3azoXIwOwrFkNnRFcrWr6FNOJJ0mct0nnAuC/ts88w1PVEVU87JVZ9FYhZS7NdlIdoBs/X6Dx8KPoeY2WtfcIxa/mdoa+1Cn5rwWAuZV52qnLwOS62ys9K06v0S4v5xSmuCTygG2bQnItf23EP6O+aM8ir5swhLXvGBPZ3ttaLXlKfmmbin+K+PXjUnGudm5lnn9uEP7QEoFPec7svLa/ajQWTdJmxVts6QtPiSsP08rvm1MVqzcv2m6Q/2iROc8/t3jsMZK1Mx3BDm8v7WdP5+k9aa3CMftT61XrlOjbgFy1L80mzd9/akdUaAS2xlB5T4nlOBiIlwN7jvlc1N0/40LzIWnuKcTzGhGsGrg2vfuNzO+fp3Gym1Q4qV3CG77QOTmqcjtiKDR5ZFFUcqwpxH4PS4qPWGWIHTxGK38ndTG4IUmppxBb0EefjvhiMv2Tm1sp51sC91kZdg/Z3fJ+5nG+EjiD02YnUtCdmhsjfNDhJFxNkveJWraK5u0no9DY9PWTKMzgzRJaN+QPNtU1utmp/WOme5xcSoaY98UnLb8Xc8jjYrv3gSLitWoZO8Njc/PKY3j4Kmqb1TvgETmhuZKVLWVTn2SvoZEk9X2haWlvsa987qt593wtd/UrqObb+cxm0LEwXgUivbg2am9yEJmAliZQTx2cw0mksGfy/zJie5iCZgrL4vwa4JY8quDNrENoFGteMqYs/P7cm54T5ilOj16ArXVfgimvWQlOl6WwMmC3PZrvleR+5Wt7qZ81f27k4DU5xnZAdPlOcJ2QaxLkSXsX5PMCN/8ZvefGeduutsFW7pgvAfwAD44DCww8llwAAAABJRU5ErkJggg=="),mouse.x,mouse.y) 
+        particle  = Actor(particle_image,mouse.x,mouse.y) 
         #Instance variables
         particle.dx  = random.gauss(0,1)*FORCE 
         particle.dy  = random.gauss(0,1)*FORCE 
 #(=> Section:Main
-init() 
+set_background("Black") 
 while True  :
     create_particles() 
     for p  in get_actors()  :

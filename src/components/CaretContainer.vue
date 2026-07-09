@@ -238,6 +238,7 @@ export default defineComponent({
             // Only respond if we are focused:
             if (this.isFocusedForPaste) {
                 let pasteDestination = {id: this.frameId, caretPosition: this.caretAssignedPosition};
+                const stateBeforeChanges = cloneDeep(this.appStore.$state);
                 // If we currently have a selection of frames, the pasted frame should replace the selection, so we delete that selection.
                 if(this.appStore.selectedFrames.length > 0){
                     // The key doesn't actually matter here, the method handles it already by doing a backspace deletion.
@@ -253,7 +254,7 @@ export default defineComponent({
                 }
 
                 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-                const inFrameType = this.appStore.frameObjects[(this.appStore.currentFrame.caretPosition == CaretPosition.body) ? this.frameId : getParentOrJointParent(this.frameId)].frameType;
+                const inFrameType = this.appStore.frameObjects[(this.appStore.currentFrame.caretPosition == CaretPosition.body) ? this.appStore.currentFrame.id : getParentOrJointParent(this.appStore.currentFrame.id)].frameType;
                 if(!inFrameType.forbiddenChildrenTypes.includes(AllFrameTypesIdentifier.funccall) && Object.values((event as ClipboardEvent).clipboardData?.items??[]).some((dataTransferItem: DataTransferItem) => dataTransferItem.kind == "file" && /^(image)|(audio)\//.test(dataTransferItem.type))){
                     // For the special case of image media, we want to simulate the addition of a method call with that media.
                     // Therefore, we will need to "wrap" around the media literal value with our usual wrappers.
@@ -301,7 +302,6 @@ export default defineComponent({
                 // Note we don't permanently trim the code because we need to preserve leading indent.
                 // But we trim for the purposes of checking if there's any content at all:
                 if (pythonCode != undefined && pythonCode?.trim()) {
-                    const stateBeforeChanges = cloneDeep(this.appStore.$state); 
                     const res = pasteMixedPython(pythonCode.trimEnd(), pasteDestination, false, false, true);
                     if(res != null){
                         this.appStore.saveStateChanges(stateBeforeChanges);

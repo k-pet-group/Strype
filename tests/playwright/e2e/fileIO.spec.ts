@@ -50,8 +50,7 @@ with open("/tmp/${copyFileName}","wb")  as f2  :
 test.describe("Internal FileIO checkups", () => {
     test("Read N lines of an existing file (text)", async ({page}) => {
         await deleteDefaultProject()(page);
-        // ("utf-8-sig" allows to ignore the BOM (\uFEFF))
-        const readExistingFileCode = `with open("/books/fairy-tales.txt",encoding="utf-8-sig")  as f  :
+        const readExistingFileCode = `with open("/books/fairy-tales.txt",encoding="utf-8")  as f  :
     for line_index  in range(0,5)  :
         print(f"#{line_index+1} -> {f.readline()}") 
 `;
@@ -115,13 +114,13 @@ with open("/tmp/test.txt")  as f  :
 
     test("Read+Write an existing file", async ({page}) => {
         await copyAssetInTemp("/books/fairy-tales.txt", "test.txt")(page);
-        // First seek: +3 (BOM) +2 or +1 (the first line break on Windows or Linux) + 2 (position for "A |certain king" where | is the cursor)
+        // First seek: +2 or +1 (the first line break on Windows or Linux) + 2 (position for "A |certain king" where | is the cursor)
         // Second seek: same except the last +2
         const firstLinebreakOSOffset = (process.platform === "win32") ? 1 : 0;
-        const writeAndReadCode =`with open("/tmp/test.txt","r+", encoding="utf-8-sig")  as f3  :
-    f3.seek(6+${firstLinebreakOSOffset}) 
+        const writeAndReadCode =`with open("/tmp/test.txt","r+", encoding="utf-8")  as f3  :
+    f3.seek(3+${firstLinebreakOSOffset}) 
     f3.write("great Strype") 
-    f3.seek(4+${firstLinebreakOSOffset}) 
+    f3.seek(1+${firstLinebreakOSOffset}) 
     print(f3.read(250)+"|")
     `;
         await doPagePaste(page, writeAndReadCode);

@@ -252,7 +252,7 @@ if ${usingMatplotlib ? "True" : "False"}:
                 buf.seek(0)
                 img = "data:image/png;base64," + base64.b64encode(buf.read()).decode("utf-8")
     
-                self.cur_width, self.cur_height = runner.callback("matplotlib_img", data=img)
+                fig.strype_display_width, fig.strype_display_height = runner.callback("matplotlib_img", data=img)
 
         _figure_renderer_pyodide = FigureRendererPyodide()
     
@@ -281,32 +281,7 @@ if ${usingMatplotlib ? "True" : "False"}:
     
             def show(self):
                 _figure_renderer_pyodide.render_current_figure(self.canvas.figure)
-                
-            @classmethod
-            def start_main_loop():
-                
-                # Now run a main loop:
-                x, y = -1, -1
-                import strype.graphics as g
-                from matplotlib.backend_bases import MouseEvent, KeyEvent
-                while True:
-                    fig = self.canvas.figure
-                    render_w, render_h = fig.canvas.get_width_height()
-                    scale_x = render_w / 800
-                    scale_y = render_h / 600
-                    x2, y2, _, _, _ = g.get_mouse()
-                    if x != x2 or y != y2:
-                        x, y = x2, y2
-                        self.canvas.callbacks.process("motion_notify_event", MouseEvent("motion_notify_event", self.canvas, (x + 400) * scale_x, (y + 300) * scale_y))
-                    # Strype's API doesn't give us press and release, but it does give clicks so we turn that into press with immediate release:
-                    c = g.get_mouse_click()
-                    if c is not None:
-                        xc, yc, button, clicks = c
-                        # Picking is done automatically when handling these events:
-                        self.canvas.callbacks.process("button_press_event", MouseEvent("button_press_event", self.canvas, (x + 400) * scale_x, (y + 300) * scale_y, button=button + 1, dblclick=clicks==2))
-                        self.canvas.callbacks.process("button_release_event", MouseEvent("button_release_event", self.canvas, (x + 400) * scale_x, (y + 300) * scale_y, button=button + 1))
-                    g.pace()
-    
+                   
         # Tell the canvas which manager class to use. This has to be set
         # after both classes are defined, since FigureCanvasPyodide is
         # declared before FigureManagerPyodide exists.
@@ -319,6 +294,40 @@ if ${usingMatplotlib ? "True" : "False"}:
             __module__ = "pyodide_mpl_backend"
             FigureCanvas = FigureCanvasPyodide
             FigureManager = FigureManagerPyodide
+
+            @classmethod
+            def mainloop(cls):                
+                # Now run a main loop:
+                x, y = -1, -1
+                import strype.graphics as g
+                from matplotlib.backend_bases import MouseEvent, KeyEvent
+                from matplotlib._pylab_helpers import Gcf
+                while True:
+                    for manager in Gcf.get_all_fig_managers():
+                        canvas = manager.canvas
+                        fig = canvas.figure
+                        render_w, render_h = canvas.get_width_height()
+                        if fig is not None:
+                            render_w = getattr(fig, "strype_display_width", render_w)
+                            render_h = getattr(fig, "strype_display_height", render_h)
+                        scale_x = render_w / 800
+                        scale_y = render_h / 600
+                        x2, y2, _, _, _ = g.get_mouse()
+                        if x != x2 or y != y2:
+                            x, y = x2, y2
+                            canvas.callbacks.process("motion_notify_event", MouseEvent("motion_notify_event", canvas, (x + 400) * scale_x, (y + 300) * scale_y))
+                        # Strype's API doesn't give us press and release, but it does give clicks so we turn that into press with immediate release:
+                        c = g.get_mouse_click()
+                        if c is not None:
+                            xc, yc, button, clicks = c
+                            # Picking is done automatically when handling these events:
+                            canvas.callbacks.process("button_press_event", MouseEvent("button_press_event", canvas, (x + 400) * scale_x, (y + 300) * scale_y, button=button + 1, dblclick=clicks==2))
+                            canvas.callbacks.process("button_release_event", MouseEvent("button_release_event", canvas, (x + 400) * scale_x, (y + 300) * scale_y, button=button + 1))
+                        # Must flush_events() to process any draw_idle()
+                        canvas.flush_events()
+                        # Use pace() to prevent running too quickly:
+                        g.pace()
+
     
         matplotlib.use("module://pyodide_mpl_backend")
     

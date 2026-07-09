@@ -243,7 +243,7 @@ if ${usingMatplotlib ? "True" : "False"}:
         from matplotlib.backends.backend_agg import FigureCanvasAgg
     
         class FigureRendererPyodide:        
-            def render_current_figure(self, fig):            
+            def render_current_figure(self, fig):
                 w_in, h_in = fig.get_size_inches()
                 dpi = min(800 / w_in, 600 / h_in)
     
@@ -263,6 +263,10 @@ if ${usingMatplotlib ? "True" : "False"}:
                 super().draw()
                 # Now push it out, same as show() does
                 _figure_renderer_pyodide.render_current_figure(self.figure)
+                
+                # Re-draw at fig.dpi (notional space) so cached renderer/bboxes match
+                # the coordinate space the click events will be delivered in.
+                super().draw()
                 self._draw_pending = False
         
             def draw_idle(self):
@@ -280,7 +284,7 @@ if ${usingMatplotlib ? "True" : "False"}:
             """Manager class — this is where plt.show() ends up."""
     
             def show(self):
-                _figure_renderer_pyodide.render_current_figure(self.canvas.figure)
+                self.canvas.draw()
                    
         # Tell the canvas which manager class to use. This has to be set
         # after both classes are defined, since FigureCanvasPyodide is
@@ -303,6 +307,7 @@ if ${usingMatplotlib ? "True" : "False"}:
                 from matplotlib.backend_bases import MouseEvent, KeyEvent
                 from matplotlib._pylab_helpers import Gcf
                 while True:
+                    # Should only be one manager, but we loop for simplicity:
                     for manager in Gcf.get_all_fig_managers():
                         canvas = manager.canvas
                         fig = canvas.figure

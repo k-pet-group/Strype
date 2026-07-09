@@ -14,6 +14,12 @@ export function getDefaultStrypeProjectDocumentationFullLine(mode: string): stri
         : "'''This is the default Strype starter project'''\n";
 }
 
+export function getDefaultStrypeProjectImportFullLine(mode: string): string {
+    return (mode == "microbit") 
+        ? "from microbit import *\n"
+        : "";
+}
+
 export function focusEditorAndClear(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)

@@ -7,10 +7,11 @@ import path from "path";
 import * as os from "os";
 import "../support/paste-test-support";
 import { checkDownloadedCodeEquals, testRoundTripPasteAndDownload, testRoundTripImportAndDownload } from "../support/paste-test-support";
-import { focusEditorAndClear, getDefaultStrypeProjectDocumentationFullLine, getDownloadedFileContent } from "../support/test-support";
+import { focusEditorAndClear, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportFullLine, getDownloadedFileContent } from "../support/test-support";
 import { scssVars, strypeElIds } from "../support/standard-setup";
 
 const defaultProjectDocFullLine = getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"));
+const defaultImportFullLine = getDefaultStrypeProjectImportFullLine(Cypress.env("mode"));
 
 describe("Python round-trip", () => {
     // Some of these are semantically invalid but as long as they're syntactically valid,
@@ -654,7 +655,7 @@ describe("Editor operations", () => {
         cy.get("body").type("{ctrl}a").then(() => {
             // Then retrieve a fixture content and paste it over, and test it
             cy.fixture("python-only-main.py").then((py) => {
-                testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + py, true);
+                testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + defaultImportFullLine + py, true);
             });
         });
     });
@@ -666,7 +667,7 @@ describe("Editor operations", () => {
                 //cy.wait(300);
                 // Then retrieve a fixture content and paste it over, and test it
                 cy.fixture("python-only-main.py").then((py) => {
-                    testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + py, true);
+                    testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + defaultImportFullLine + py, true);
                 });
             });
         });
@@ -678,7 +679,7 @@ describe("Editor operations", () => {
             cy.wait(300);
             // Then retrieve a fixture content and paste it over, and test it
             cy.fixture("python-mixed-1.py").then((py) => {
-                testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + py, true);
+                testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + defaultImportFullLine + py, true);
             });
         });
     });
@@ -692,7 +693,7 @@ describe("Editor operations", () => {
             cy.get("body").type("{ctrl}a").then(() => {
                 // Then retrieve a fixture content and paste it over, and test it
                 cy.fixture("python-only-main.py").then((py) => {
-                    testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + py, true);
+                    testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + defaultImportFullLine + py, true);
 
                     // Keep a backup of the pasted code
                     getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
@@ -730,7 +731,7 @@ describe("Editor operations", () => {
             cy.get("body").type("{ctrl}a").then(() => {
                 // Then retrieve a fixture content and paste it over, and test it
                 cy.fixture("python-mixed-1.py").then((py) => {
-                    testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + py, true);
+                    testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + defaultImportFullLine + py, true);
 
                     // Keep a backup of the pasted code
                     getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {

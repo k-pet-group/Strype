@@ -22,7 +22,7 @@ def read_file (filename ) :
 def get_expected_frequencies ( ) :
     '''Returns a dictionary with expected frequencies for words in the English language.'''
     result  = {} 
-    with open("/strype/book/word_counts.txt","r")  as f  :
+    with open("/data/word_counts.txt","r")  as f  :
         for line  in f  :
             line  = line.strip() 
             if not line  :

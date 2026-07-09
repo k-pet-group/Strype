@@ -306,23 +306,31 @@ if ${usingMatplotlib ? "True" : "False"}:
                     for manager in Gcf.get_all_fig_managers():
                         canvas = manager.canvas
                         fig = canvas.figure
-                        render_w, render_h = canvas.get_width_height()
-                        if fig is not None:
-                            render_w = getattr(fig, "strype_display_width", render_w)
-                            render_h = getattr(fig, "strype_display_height", render_h)
-                        scale_x = render_w / 800
-                        scale_y = render_h / 600
+                        notional_w, notional_h = canvas.get_width_height()
+                        render_w = getattr(fig, "strype_display_width", notional_w)
+                        render_h = getattr(fig, "strype_display_height", notional_h)
+                        # Viewport is 800x600, image (render_w x render_h) is centered inside it.
+                        # Gap on each side, in viewport pixels:
+                        offset_x = (800 - render_w) / 2
+                        offset_y = (600 - render_h) / 2
+                        scale_x = notional_w / render_w
+                        scale_y = notional_h / render_h
+                       
                         x2, y2, _, _, _ = g.get_mouse()
                         if x != x2 or y != y2:
                             x, y = x2, y2
-                            canvas.callbacks.process("motion_notify_event", MouseEvent("motion_notify_event", canvas, (x + 400) * scale_x, (y + 300) * scale_y))
+                            image_x, image_y = (x + 400 - offset_x) * scale_x, (y + 300 - offset_y) * scale_y
+                            if 0 <= image_x < notional_w and 0 <= image_y < notional_h:
+                                canvas.callbacks.process("motion_notify_event", MouseEvent("motion_notify_event", canvas, image_x, image_y))
                         # Strype's API doesn't give us press and release, but it does give clicks so we turn that into press with immediate release:
                         c = g.get_mouse_click()
                         if c is not None:
                             xc, yc, button, clicks = c
                             # Picking is done automatically when handling these events:
-                            canvas.callbacks.process("button_press_event", MouseEvent("button_press_event", canvas, (x + 400) * scale_x, (y + 300) * scale_y, button=button + 1, dblclick=clicks==2))
-                            canvas.callbacks.process("button_release_event", MouseEvent("button_release_event", canvas, (x + 400) * scale_x, (y + 300) * scale_y, button=button + 1))
+                            image_x, image_y = (xc + 400 - offset_x) * scale_x, (yc + 300 - offset_y) * scale_y
+                            if 0 <= image_x < notional_w and 0 <= image_y < notional_h:
+                                canvas.callbacks.process("button_press_event", MouseEvent("button_press_event", canvas, image_x, image_y, button=button + 1, dblclick=clicks==2))
+                                canvas.callbacks.process("button_release_event", MouseEvent("button_release_event", canvas, image_x, image_y, button=button + 1))
                         # Must flush_events() to process any draw_idle()
                         canvas.flush_events()
                         # Use pace() to prevent running too quickly:

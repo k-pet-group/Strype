@@ -2,13 +2,13 @@
 // This test here is for things Playwright is handy at:
 //  - screenshotting arbitrary elements (to check Strype graphics vs Turtle)
 //  - sending real keyboard events (ditto)
-import { expect, Page, test } from "@playwright/test";
-import { PNG } from "pngjs";
+import {expect, Page, test} from "@playwright/test";
+import {PNG} from "pngjs";
 import fs from "fs";
-import { enterCode } from "../support/editor";
-import { dragDividerTo } from "../support/dividers";
-import { load, loadContent } from "../support/loading-saving";
-import { checkConsoleContent, runToFinish, startRunning } from "../support/execution";
+import {enterCode} from "../support/editor";
+import {dragDividerTo} from "../support/dividers";
+import {load, loadContent} from "../support/loading-saving";
+import {checkConsoleContent, runToFinish, startRunning} from "../support/execution";
 
 let browser = "";
 
@@ -388,14 +388,15 @@ async function executeCode(page: Page, waitForFinish = true) {
     }
 }
 
-async function checkTab(page: Page, selected : "graphics" | "console") {
+async function checkTab(page: Page, selected : "graphics" | "console", extraTimeout: boolean = false) {
+    const options = extraTimeout ? { timeout: 60000} : {};
     if (selected == "console") {
-        await expect(page.locator("#graphicsPEATab")).not.toHaveClass(/active/);
-        await expect(page.locator("#consolePEATab")).toHaveClass(/active/);
+        await expect(page.locator("#graphicsPEATab")).not.toHaveClass(/active/, options);
+        await expect(page.locator("#consolePEATab")).toHaveClass(/active/, options);
     }
     else {
-        await expect(page.locator("#graphicsPEATab")).toHaveClass(/active/);
-        await expect(page.locator("#consolePEATab")).not.toHaveClass(/active/);
+        await expect(page.locator("#graphicsPEATab")).toHaveClass(/active/, options);
+        await expect(page.locator("#consolePEATab")).not.toHaveClass(/active/, options);
     }
 }
 
@@ -586,6 +587,36 @@ while True:
     });
 });
 
+function clickMatplotlibProportionalPos(
+    page: Page,
+    px: number,
+    py: number,
+    aspectRatio: [number, number]
+) : Promise<void> {
+    const [ figW, figH ] = aspectRatio;
+
+    // Same fit logic as the original dpi calc: scale to fit inside the
+    // viewport while preserving aspect ratio (letterboxing on one axis).
+    const scale = Math.min(800 / figW, 600 / figH);
+    const renderW = figW * scale;
+    const renderH = figH * scale;
+
+    // Centering offsets, in host pixels.
+    const offsetX = (800 - renderW) / 2;
+    const offsetY = (600 - renderH) / 2;
+
+    // Position within the image, in host pixels.
+    const imageX = px * renderW;
+    const imageY = py * renderH;
+
+    // Position within the full host container, in host pixels.
+    const hostX = offsetX + imageX;
+    const hostY = offsetY + imageY;
+
+    // Back to proportional (0..1) host coordinates.
+    return clickProportionalPos(page, hostX / 800, hostY / 600);
+}
+
 test.describe("Test matplotlib", () => {
     test("Test simple plot with matplotlib", async ({page}) => {
         await loadContent(page, `
@@ -654,5 +685,69 @@ plt.show(block=False)
         await runToFinish(page, true);
         await checkGraphicsAreaContent(page, "matplotlib-facet");
     });
+    
+    for (const aspectRatio of [[3, 8], [7, 2], [5, 5]] as [number, number][]) {
+        test("Test matplotlib click response with figure with aspect ratio " + JSON.stringify(aspectRatio), async ({page}) => {
+            await loadContent(page, `
+# Click-location test: Click anywhere on the axes to drop a green circle at that spot.
+
+import matplotlib.pyplot as plt
+
+FIG_W, FIG_H = ${aspectRatio.join(", ")}
+CIRCLE_COLOR = "green"
+# In axes (data) coordinates, since xlim/ylim are 0-1
+CIRCLE_RADIUS = 0.05
+
+def on_click(event):
+    # Ignore clicks outside the axes (e.g. on toolbar)
+    if event.inaxes is None:
+        return
+    circle = plt.Circle(
+        (event.xdata, event.ydata),
+        radius=CIRCLE_RADIUS,
+        color=CIRCLE_COLOR,
+        zorder=5,
+    )
+    event.inaxes.add_patch(circle)
+    event.canvas.draw_idle()
+    print(f"Click at data coords: ({event.xdata:.3f}, {event.ydata:.3f}) " +
+          f"| pixel coords: ({event.x}, {event.y})")
+
+fig = plt.figure(figsize=(FIG_W, FIG_H))
+fig.patch.set_facecolor("white")
+
+# Axes fill the ENTIRE figure — no margins, no ticks, no spines.
+# The whole rendered image is the click area.
+ax = fig.add_axes([0, 0, 1, 1])
+ax.set_facecolor("white")
+ax.set_xlim(0, 1)
+ax.set_ylim(0, 1)
+ax.set_xticks([])
+ax.set_yticks([])
+for spine in ax.spines.values():
+    spine.set_visible(False)
+
+fig.canvas.mpl_connect("button_press_event", on_click)
+
+plt.show()
+`);
+            // Make sure to start on console tab:
+            await page.locator("#consolePEATab").click();
+            await startRunning(page, true);
+            // It will switch to graphics tab once it has displayed, make sure to add extra wait:
+            await checkTab(page, "graphics", true);
+            // Now click in three corners:
+            await clickMatplotlibProportionalPos(page, 0.05, 0.05, aspectRatio);
+            await clickMatplotlibProportionalPos(page, 0.05, 0.95, aspectRatio);
+            await clickMatplotlibProportionalPos(page, 0.95, 0.95, aspectRatio);
+            // We need to give it a moment to make sure the clicks are processed
+            // Unavoidable to use a timed wait:
+            await page.waitForTimeout(1000);
+            
+            // Note that these images have stretched circles because they are circles in matplotlib's 0->1 coordinates
+            // which are then stretched by our aspect ratio.  The key thing is they should just touch the edges:
+            await checkGraphicsAreaContent(page, "matplotlib-click-" + aspectRatio.join("-"));
+        });
+    }
 });
 

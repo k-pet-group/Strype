@@ -40,17 +40,25 @@ async function testLongRoundTripLoadShareNewLoadSave(page: Page, filepath: strin
     await page.locator("#" + await strypeElIds.getEditorMenuUID()).click();
     await page.locator("#" + await strypeElIds.getShareProjectLinkId()).click();
     await page.locator("#shareMethodSnapshotButton").click();
-    await page.waitForTimeout(1000);
+    // The clipboard write (Menu.vue's copySnapshotLink) is fire-and-forget with no DOM signal
+    // tied to its completion, so poll the clipboard itself until the link lands rather than
+    // guessing how long the write takes:
+    await expect.poll(() => page.evaluate("navigator.clipboard.readText()")).not.toBe("<empty>");
     // Now should be on the clipboard:
     const shareLink : string = await page.evaluate("navigator.clipboard.readText()");
     // Now we make a new project:
     await page.locator("#" + await strypeElIds.getEditorMenuUID()).click();
     await page.locator("#" + await strypeElIds.getNewProjectLinkId()).click();
-    await page.waitForTimeout(2000);
+    // "New project" triggers a full page reload (App.vue's onHideModalDlg navigates to
+    // "?new_project"), so wait for that reload to complete before touching the freshly
+    // mounted editor:
+    await page.waitForURL(/\?new_project/);
+    await page.waitForSelector("body");
     // Should be no need to tell it we want to discard changes, because unchanged since load
 
-    // Quick sanity check that it is a new project; should only be two frames:
-    await expect(page.locator(".frame-header")).toHaveCount(2);
+    // Quick sanity check that it is a new project; should only be two frames. Give this a
+    // generous timeout since the reload above can take a while to finish mounting:
+    await expect(page.locator(".frame-header")).toHaveCount(2, { timeout: 20000 });
 
     console.log("Visiting share link: " + shareLink.slice(0, 75));
     

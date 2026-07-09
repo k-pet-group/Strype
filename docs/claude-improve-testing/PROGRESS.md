@@ -60,7 +60,7 @@ deliberately kept, say why instead of checking it off as fully done.
 | [ ] | `tests/playwright/e2e/load-save-demos-books.spec.ts` | 5 | |
 | [ ] | `tests/playwright/e2e/console-execution.spec.ts` | 3 | |
 | [ ] | `tests/cypress/e2e/graphics.cy.ts` | 3 | |
-| [ ] | `tests/playwright/e2e/load-save-share.spec.ts` | 2 | |
+| [x] | `tests/playwright/e2e/load-save-share.spec.ts` | 2 | Converted both, see Log |
 | [ ] | `tests/cypress/e2e/load-save-share.cy.ts` | 2 | |
 | [ ] | `tests/cypress/e2e/load-save.cy.ts` | 2 | |
 | [ ] | `tests/cypress/e2e/structured-expressions-selection.cy.ts` | 1 | |
@@ -146,3 +146,45 @@ deliberately left in place with a reason.
   all the flakiness (15/20 runs failed vs 0/20 for Cypress), concentrated
   in shards 2/3 on both OSes. Worth a deeper pass later (more runs, full
   per-test flaky-frequency counts) once conversions are underway.
+- 2026-07-09 — First real conversion, done as a practice run (picked for
+  small size, not by the time-savings ordering above):
+  `tests/playwright/e2e/load-save-share.spec.ts`, both waits.
+  - `waitForTimeout(1000)` after clicking `#shareMethodSnapshotButton`
+    (waiting for the share link to land on the clipboard) → replaced with
+    `expect.poll(() => page.evaluate("navigator.clipboard.readText()")).not.toBe("<empty>")`.
+    Traced the handler (`Menu.vue`'s `copySnapshotLink`) — the clipboard
+    write is fire-and-forget (promise not awaited) with no DOM signal tied
+    to completion, so polling the clipboard's own content is the only
+    faithful replacement.
+  - `waitForTimeout(2000)` after clicking "New project" → replaced with
+    `page.waitForURL(/\?new_project/)` + `page.waitForSelector("body")`,
+    and bumped the existing `expect(...).toHaveCount(2)` assertion right
+    after it to `{ timeout: 20000 }`. Traced this handler too
+    (`App.vue`'s `onHideModalDlg`) — "New project" does a full
+    `window.location.href` reload, not an in-place state reset, so the
+    real completion signal is the navigation, and the post-reload mount
+    genuinely can take a while.
+  - **Reproduction was essential here** — this is a case the "before
+    converting, set the wait to 0 and try to break it" step in PLAN.md
+    was written for. At CPU throttle rate=6 (via CDP), zeroing both waits
+    passed 5/5 with no failure, which looked like both waits were simply
+    unnecessary. Only at rate=20 did the second wait's removal fail
+    reliably (8/8), with `.frame-header` count stuck at 0 — the reload
+    hadn't finished mounting inside the default 5s `expect` timeout. The
+    fix isn't "remove the wait", it's "wait for the real signal
+    (navigation) and give the follow-up assertion realistic headroom",
+    since a full page reload is genuinely slower than the DOM changes this
+    initiative's other waits are standing in for.
+  - Note for later CDP-throttling attempts: the CDP session's
+    `Emulation.setCPUThrottlingRate` doesn't survive a full page
+    navigation — it has to be re-armed via a fresh `newCDPSession(page)`
+    call after any `page.goto`/navigation if you want throttling to keep
+    applying afterwards.
+  - Verified: 8/8 passes at CPU throttle rate=20 (same rate that reliably
+    broke the pre-fix version), plus 3/3 at normal speed and a full
+    8-fixture run of the file at normal speed. `eslint` clean.
+  - Ran via local dev server (`npm run serve:python:testing`) with
+    `BASE_URL=http://localhost:8081/editor/ SPEC=tests/playwright/e2e/load-save-share.spec.ts
+    npx playwright test --project=chromium` — much faster to iterate with
+    than the full `npm run test:playwright` (which rebuilds a production
+    bundle every run).

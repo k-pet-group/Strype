@@ -102,7 +102,6 @@ async function loadOnly() : Promise<PyodideInterface> {
     // whether to mount and "cd /cloud" before running, and we give a runtime error if the user tries to access the file system
     // while not saved to the cloud.
     pyodide.FS.filesystems.CLOUDFS = getFSForEmscripten(pyodide);
-    pyodide.FS.mkdir("/cloud");
     
     pyodide.FS.filesystems.ASSETSFS = createLazyFetchAssetsFS(pyodide);
 
@@ -367,6 +366,13 @@ runner`);
             catch {
                 // Ignore any errors
             }
+            // Do mkdir in a separate catch because it will expectedly fail if the directory exists:
+            try {
+                pyodide.FS.mkdir("/cloud");
+            }
+            catch {
+                // Ignore errors because they will come from the dir already existing
+            }
             try {
                 // We have done the mkdir("/cloud") in the one time Pyodide initialisation, earlier.
                 pyodide.FS.mount(pyodide.FS.filesystems.CLOUDFS, {}, "/cloud");
@@ -382,7 +388,7 @@ runner`);
                 pyodide.FS.mkdir("/local");
             }
             catch {
-                // Ignore errors
+                // Ignore errors because they will come from the dir already existing
             }
             try {
                 pyodide.FS.chdir("/local");

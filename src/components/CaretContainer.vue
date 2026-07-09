@@ -239,6 +239,7 @@ export default defineComponent({
             if (this.isFocusedForPaste) {
                 let pasteDestination = {id: this.frameId, caretPosition: this.caretAssignedPosition};
                 const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                let hasRemovedFrameSelection = false;
                 // If we currently have a selection of frames, the pasted frame should replace the selection, so we delete that selection.
                 if(this.appStore.selectedFrames.length > 0){
                     // The key doesn't actually matter here, the method handles it already by doing a backspace deletion.
@@ -251,6 +252,7 @@ export default defineComponent({
                         pasteDestination.caretPosition = topOfSelectionPos.caretPosition as CaretPosition;
                     }
                     this.appStore.deleteFrames("backspace", true);
+                    hasRemovedFrameSelection = true;
                 }
 
                 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
@@ -263,7 +265,6 @@ export default defineComponent({
                     // (this test is done first in the condition above).
                     preparePasteMediaData(event as ClipboardEvent, (code: string, dataAndDim: MediaDataAndDim) => {
                         // We create a new function call frame with the media-adapated code content
-                        const stateBeforeChanges = cloneDeep(this.appStore.$state);
                         this.appStore.ignoreStateSavingActionsForUndoRedo = true;
                         this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall), undefined, true).then((frameId) => {
                             this.appStore.setFrameEditableSlotContent(
@@ -305,6 +306,10 @@ export default defineComponent({
                     const res = pasteMixedPython(pythonCode.trimEnd(), pasteDestination, false, false, true);
                     if(res != null){
                         this.appStore.saveStateChanges(stateBeforeChanges);
+                    }
+                    else if(hasRemovedFrameSelection){
+                        // If we had a frame selection, it must be restored as it was since we have already deleted the frames...
+                        this.appStore.$state = stateBeforeChanges;
                     }
                 }
             }

@@ -758,4 +758,31 @@ describe("Editor operations", () => {
             });
         });
     });
+
+    it("Paste invalid content over a selection (check selection remains)", () => {
+        // Keep a backup of the current initial project
+        getDownloadedFileContent(strypeElIds, "My project.spy", true).then((spyContent) => {
+            const initialCodeContent = spyContent;
+ 
+            // Select everything in the main selection
+            cy.get("body").type("{ctrl}a").then(() => {
+                // Then retrieve a fixture content and paste it over, and test it
+                cy.fixture("python-invalid.py").then((py) => {
+                    // Get rid of any Windows file endings:
+                    const code = py.replaceAll(/\r\n/g, "\n");    
+                    (cy.get("body") as any).paste(code);    
+                    // We make sure our pasting has completed before saving, so that the save mechanism is based on an loaded file...
+                    cy.wait(1000);    
+
+                    // Check undo is not available (just to make sure no action has been "recorded")
+                    cy.get(".menu-icon-entry[title=\"Undo\"").should("exist").and("be.disabled");
+
+                    // Check the code
+                    getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                        expect(spyContent).to.equal(initialCodeContent);
+                    });
+                });
+            });
+        });
+    });
 });

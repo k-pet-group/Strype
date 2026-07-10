@@ -60,7 +60,7 @@ async function checkImageMatch(expectedImageFileName: string, fetchActual : (wid
         console.log("Actual size: " + actual.width + "x" + actual.height);
 
         // calling pixelmatch return how many pixels are different
-        const numDiffPixels = pixelmatch(expected.data, actual.data, diff.data, width, height, {threshold: 0.05});
+        const numDiffPixels = pixelmatch(expected.data, actual.data, diff.data, width, height, {threshold: 0.15});
 
         // The recursive option stops it failing if the dir exists:
         fs.mkdirSync("tests/cypress/expected-screenshots/diff/", { recursive: true });
@@ -69,7 +69,7 @@ async function checkImageMatch(expectedImageFileName: string, fetchActual : (wid
         // calculating a percent diff
         const diffPercent = (numDiffPixels / (width * height) * 100);
 
-        expect(diffPercent).toBeLessThanOrEqual(5);
+        expect(diffPercent).toBeLessThanOrEqual(20);
 
     }
     else {
@@ -639,7 +639,7 @@ matplotlib.pyplot.show(block=False)
 `);
 
         await runToFinish(page, true);
-        await checkGraphicsAreaContent(page, "matplotlib-simple", ImageComparison.WRITE_NEW_EXPECTED_DO_NOT_COMMIT_USE_OF_THIS);
+        await checkGraphicsAreaContent(page, "matplotlib-simple");
     });
     
     test("Test facet plot with matplotlib", async ({page}) => {

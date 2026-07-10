@@ -58,10 +58,24 @@ export async function save(page: Page, firstSave = true, projectName? : string) 
     let download;
     if (firstSave) {
         await page.click("#" + await strypeElIds(page).getSaveProjectLinkId());
-        // The save dialog (ModalDlg) renders with no-animation, so the elements below are usable
-        // as soon as they're actionable -- no manual settle wait needed here either:
+        // The save dialog (ModalDlg) itself renders with no-animation, so most elements below are
+        // usable as soon as they're actionable. But the filename input is special: Menu.vue's
+        // onStrypeMenuShownModalDlg sets its default value and focuses it via a genuine
+        // setTimeout ~500ms after the dialog is shown. If we fill in our own name before that
+        // timer fires, it gets silently overwritten back to the default project name (confirmed
+        // via a real CI failure) -- wait for that setup to finish (it ends by focusing the input)
+        // before filling in ours, bounded so we don't hang if it never fires:
         if (projectName) {
-            await page.fill("#saveStrypeFileNameInput", projectName);
+            const nameInput = page.locator("#saveStrypeFileNameInput");
+            await nameInput.evaluate((el) => new Promise<void>((resolve) => {
+                if (document.activeElement === el) {
+                    resolve();
+                    return;
+                }
+                el.addEventListener("focus", () => resolve(), {once: true});
+                setTimeout(resolve, 3000);
+            }));
+            await nameInput.fill(projectName);
         }
         // For testing, we always want to save to this device:
         await page.locator("span:visible").getByText(en.appMessage.targetFS).click();

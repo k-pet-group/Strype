@@ -216,6 +216,23 @@ consciously decide about the rest.
   `run-cypress-tests.yml` — check it for the same shared-runner contention
   reasoning if Cypress-specific flakiness patterns look different from
   Playwright's.
+- **The 3 Playwright shards align with the 3 browser projects, not with
+  file groupings — confirmed directly from CI logs (2026-07-10), not just
+  inferred.** `playwright.config.ts` declares exactly 3 projects
+  (chromium, firefox, webkit, in that order) all running the same
+  `testDir`/`testMatch`, and the CI workflow runs `npx playwright test
+  --shard=N/3` with no `--project` filter. Playwright builds one combined
+  (project, file) list in project-declaration order before slicing it into
+  N contiguous shards; with 3 equal-sized projects and 3 shards, the shard
+  boundaries land exactly on project boundaries — shard 1 = all of
+  chromium, shard 2 = all of firefox, shard 3 = all of webkit. Verified by
+  pulling job logs via `gh api repos/k-pet-group/Strype/actions/jobs/<id>/logs`
+  and grepping for `[chromium]`/`[firefox]`/`[webkit]` markers across two
+  separate runs, both OSes: every shard-1 job logged only `[chromium]`
+  lines, every shard-2 only `[firefox]`, every shard-3 only `[webkit]` —
+  zero exceptions. (Corrected from an earlier, wrong assumption in
+  PROGRESS.md that shards split by spec-file weight — see PROGRESS.md's
+  CI findings section for what this changes about the flakiness picture.)
 
 ## Handover notes (read this if resuming on a new machine)
 

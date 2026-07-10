@@ -20,8 +20,8 @@ deliberately kept, say why instead of checking it off as fully done.
 | Done | File | Waits (snapshot) | Notes |
 |---|---|---|---|
 | [x] | `tests/playwright/support/editor.ts` | 5 | Converted all (6 incl. one non-literal), added prod nextTick hook, see Log |
-| [x] | `tests/playwright/support/loading-saving.ts` | 4 | Converted all 4, see Log |
-| [ ] | `tests/playwright/support/dividers.ts` | 3 | drag-settle waits, see RECIPES.md |
+| [x] | `tests/playwright/support/loading-saving.ts` | 4 | Converted all 4; one had a real CI-caught bug, fixed 2026-07-10 -- see Log |
+| [x] | `tests/playwright/support/dividers.ts` | 3 | Converted all 3, see Log |
 | [ ] | `tests/cypress/support/paste-test-support.ts` | 5 | paste/save/load round trip, see RECIPES.md |
 | [ ] | `tests/cypress/support/expression-test-support.ts` | 3 | |
 | [ ] | `tests/cypress/support/autocomplete-test-support.ts` | 3 | |
@@ -79,36 +79,61 @@ runs/deeper log parsing later.
   the last 20 Cypress runs, **0 failed** (19 succeeded, 1 cancelled). Point
   the initiative's effort at `tests/playwright/*` first — see PLAN.md's
   ordering, but treat this as the top-level priority signal above it.
-- **Shards 2 and 3 are both the slowest and the flakiest**, across both OS.
-  Job-level stats across the 20 runs (`test (os, shard)`):
+- **CORRECTED 2026-07-10, then confirmed directly from CI logs the same
+  day** (was wrong below until now — thanks to a sharp catch from Neil):
+  the 3 Playwright shards are **not** a file-count split.
+  `playwright.config.ts` declares exactly 3 projects, in this order:
+  `chromium`, `firefox`, `webkit`, all running the identical file set, and
+  CI's `--shard=N/3` has no `--project` filter. Playwright shards a single
+  combined (project, file) list built in project-declaration order, so with
+  3 equal-sized projects and 3 shards, the boundaries land exactly on
+  project boundaries: **shard 1 = all of chromium, shard 2 = all of
+  firefox, shard 3 = all of webkit.** See PLAN.md's CI section for the
+  fuller reasoning. Initially this was only inferred from the config (`gh`
+  wasn't installed in that session); once Neil installed `gh` and logged
+  in, pulled job logs directly (`gh api
+  repos/k-pet-group/Strype/actions/jobs/<id>/logs`) and grepped for
+  `[chromium]`/`[firefox]`/`[webkit]` markers across two separate runs on
+  both OSes — every shard-1 job logged only `[chromium]`, every shard-2
+  only `[firefox]`, every shard-3 only `[webkit]`, no exceptions. Treat
+  this as settled, not just inferred.
+- **Shards 2 and 3 are both the slowest and the flakiest**, across both OS
+  — i.e. it's **Firefox and WebKit that are slower and flakier than
+  Chromium**, not any particular set of spec files. Job-level stats across
+  the 20 runs (`test (os, shard)`):
 
-  | Job | Runs | Failures | Avg duration | Max duration |
-  |---|---|---|---|---|
-  | macos, shard 1 | 20 | 3 | 29 min | 37 min |
-  | macos, shard 2 | 20 | 8 | 80 min | 118 min |
-  | **macos, shard 3** | 20 | **14** | **76 min** | **124 min** |
-  | ubuntu, shard 1 | 20 | 4 | 29 min | 34 min |
-  | ubuntu, shard 2 | 20 | 3 | 66 min | 87 min |
-  | ubuntu, shard 3 | 20 | 10 | 59 min | 76 min |
+  | Job | Browser | Runs | Failures | Avg duration | Max duration |
+  |---|---|---|---|---|---|
+  | macos, shard 1 | chromium | 20 | 3 | 29 min | 37 min |
+  | macos, shard 2 | firefox | 20 | 8 | 80 min | 118 min |
+  | **macos, shard 3** | **webkit** | 20 | **14** | **76 min** | **124 min** |
+  | ubuntu, shard 1 | chromium | 20 | 4 | 29 min | 34 min |
+  | ubuntu, shard 2 | firefox | 20 | 3 | 66 min | 87 min |
+  | ubuntu, shard 3 | webkit | 20 | 10 | 59 min | 76 min |
 
-  Playwright's `--shard=N/3` splits spec files by count, not duration, so
-  the heaviest spec files (`rename-identifiers.spec.ts`, 139 waits;
-  `match-statement.spec.ts`, 105; the `structured-expressions*.spec.ts`
-  family) likely landed together in shards 2/3. This means the biggest
-  wait-count files in the table below (already first in line by that
-  ordering) are also disproportionately the ones driving CI pain — the two
-  prioritizations agree, which is a good sign.
-- **Failures cluster, they don't isolate.** One sampled run (macOS, shard 2)
-  had `2 failed / 26 flaky / 479 passed` in a single job — dozens of
-  unrelated spec files (`console-execution`, `frame-selection-manipulation`,
-  `graphics`, `load-save-frozen-collapsed`, `load-save-random`,
-  `load-save-share`, `media-literal-edit`, `rename-identifiers`,
-  `storage-model`, `structured-expressions-copy-paste`,
+  Chromium is both fastest and most reliable on both OSes; WebKit is worst
+  on both; Firefox is in between (slow on both, but its failure count is
+  inconsistent between OSes — worth more samples). **This invalidates the
+  old "biggest wait-count files land in shard 2/3" reasoning below** — every
+  spec file runs in every shard (once per browser), so there's no file-level
+  signal here, only a browser-level one. The wait-count-based file ordering
+  in the table below still stands on its own merits (bigger files still
+  waste more wall-clock per run, and a Playwright-vs-Cypress split is still
+  the right first cut), it just isn't *additionally* weighted by shard
+  number the way the note below used to claim.
+- **Failures cluster, they don't isolate.** One sampled run (macOS, shard 2
+  — i.e. a **Firefox** job) had `2 failed / 26 flaky / 479 passed` in a
+  single job — dozens of unrelated spec files (`console-execution`,
+  `frame-selection-manipulation`, `graphics`, `load-save-frozen-collapsed`,
+  `load-save-random`, `load-save-share`, `media-literal-edit`,
+  `rename-identifiers`, `storage-model`, `structured-expressions-copy-paste`,
   `structured-expressions-navigation`) all needed a retry in the same run.
-  That pattern — many unrelated tests wobbling together in one job — is
-  more consistent with a CPU-starved runner (see PLAN.md's CI section) than
-  with several independently-broken waits, and is exactly what "wait for
-  the right condition, not a clock" should fix.
+  That pattern — many unrelated tests wobbling together in one Firefox job —
+  is more consistent with a CPU-starved runner (see PLAN.md's CI section)
+  than with several independently-broken waits, and is exactly what "wait
+  for the right condition, not a clock" should fix. It may also mean
+  Firefox/WebKit specifically deserve a closer look for browser-specific
+  timing assumptions once the easy conversions are done.
 - **One named recurring flake worth a direct look**:
   `console-execution.spec.ts` → "Check console prints don't queue up after
   stopping" (the 30-second variant) failed 3 times including after 2
@@ -126,11 +151,13 @@ runs/deeper log parsing later.
   None of these showed up as flaky in the 20-run sample, consistent with
   "Cypress isn't the problem" above.
 
-**Net effect on ordering:** within the spec-file table below, treat
-Playwright files — especially any that tend to land in shard 2/3 — as
-higher priority than the raw wait-count ordering alone would suggest, and
-treat Cypress files as lower urgency than Playwright files of a similar
-wait-count.
+**Net effect on ordering:** within the spec-file table below, treat all
+Playwright files as higher priority than Cypress files of a similar
+wait-count (Playwright is where the flakiness actually is). The earlier
+"and especially files landing in shard 2/3" refinement was based on the
+now-corrected wrong shard assumption above and no longer applies — there's
+no per-file shard signal, only a per-browser one (Firefox/WebKit run
+slower and flakier than Chromium, uniformly across all files).
 
 ## Log
 
@@ -331,3 +358,145 @@ deliberately left in place with a reason.
     `--repeat-each=3` (30/30 passed) to confirm the poll-based settle
     survives slow conditions, not just fast local ones. `eslint` and
     `vue-tsc --noEmit` both clean.
+- 2026-07-10 — Fourth conversion, next in the shared-helper priority list:
+  `tests/playwright/support/dividers.ts` (the drag-a-splitter helpers,
+  used by `load-save-dividers.spec.ts` and `graphics.spec.ts`). This one
+  had two distinct real bugs hiding behind the original 6-second blind
+  sleep, both only found by empirical instrumentation, not by reading the
+  code:
+  - **`dragDividerTo`'s drag itself**: instrumented the splitter's
+    bounding box during a live drag and found `splitpanes` (the 3rd-party
+    library backing these dividers) updates pane sizes synchronously on
+    `mousemove` — no settling delay at all, confirmed on both a vertical
+    and a horizontal splitter. Replaced the 3 fixed sleeps with a single
+    `expect.poll` waiting for the position to move away from its start
+    (checking both x and y, since a horizontal splitter's meaningful
+    movement is in y and a vertical one's is in x).
+  - **`getSplitterPos` grabbing a position too early**: found via a real
+    test failure (not anticipated in advance) that right after switching
+    to the "expanded Python execution area" view, the divider's bounding
+    box can briefly — or, in one case, stably — report a degenerate
+    position, because the pane sizing is driven by a computed getter
+    (`App.vue`'s `expandedPEAOverlaySplitterPane2Size`) that can itself
+    trigger a further reactive update via `nextTick`. Fixed by requiring
+    two consecutive reads to agree before trusting the position, rather
+    than trusting the first read.
+  - **A third, more fundamental discovery**: for one specific test
+    (`load-save-dividers.spec.ts` → "Saves main and secondary divider
+    state in second mode"), the code/sidebar splitter gets compressed to
+    an ~100px-tall sliver at the top of the screen (screenshot from the
+    failing run confirmed this visually) once the Python execution area
+    is expanded to fill most of the viewport. In that state the
+    splitter's bounding box is genuinely, stably degenerate — yet the
+    drag still works, because `splitpanes`' resize logic operates on the
+    mouse's pixel delta, not on the splitter's own rendered geometry. This
+    meant the "wait for position to change" check needed to be
+    **best-effort, not a hard requirement** — wrapped the poll in a
+    bounded 2s timeout with `.catch(() => {})` so a legitimately-static
+    splitter doesn't fail the whole drag.
+  - Confirmed both bugs were genuinely new (not something the original
+    fixed-wait code happened to dodge) by reverting to the original
+    `dividers.ts` via `git stash` and re-running the exact same failing
+    test — it passed unmodified, proving the 6-second sleep really was
+    masking these two races, not that they were unrelated flakes.
+  - Verified: full `load-save-dividers.spec.ts` (7 tests, 1 correctly
+    skipped for an unrelated pre-existing Chromium/hover limitation, all
+    passing including the tricky "second mode" test which alone takes
+    ~2.4 minutes due to that file's own separate large fixed waits —
+    out of scope for this pass, tracked as that file's own row below),
+    re-ran the "second mode" test `--repeat-each=2` to confirm it's
+    reliably passing rather than lucky, and the 3 `graphics.spec.ts`
+    tests that use `dragDividerTo`. `eslint` clean. Did not throttle-test
+    this one (mouse-driven drag isn't obviously slowed by CPU throttling
+    the way rendering/script work is, and the two real bugs found here
+    were state/timing bugs independent of raw speed) — worth doing if
+    this file misbehaves in CI despite the above.
+  - **Also fixed, unrelated to the waits initiative**: corrected a wrong
+    assumption in the "CI findings" section above and in PLAN.md — the 3
+    Playwright shards are not a file-count split, they align exactly with
+    the 3 browser projects (shard 1 = chromium, 2 = firefox, 3 = webkit).
+    Caught by Neil spotting it didn't look right; see the CI findings
+    section for the corrected analysis and what it changes (the "files
+    landing in shard 2/3" prioritization no longer applies — there's no
+    per-file shard signal, only "Firefox/WebKit are slower and flakier
+    than Chromium" as a browser-level one). Confirmed directly from CI job
+    logs later the same day once Neil installed and authenticated `gh` —
+    see the "CORRECTED 2026-07-10" bullet in CI findings above.
+- 2026-07-10 — **Real CI run validated the `editor.ts`/`loading-saving.ts`
+  conversions and found one genuine bug**, plus gave a clean read on
+  everything else. Neil pushed the committed `editor.ts`/`loading-saving.ts`
+  work to his fork and ran the full CI matrix
+  (`neilccbrown/Strype`, run 29071880285).
+  - **macOS/chromium** (job 86294889588): 454 passed, 7 flaky (recovered
+    on retry), 1 genuine failure
+    (`structured-expressions-selection.spec.ts` → "Shift-Home..." →
+    "Tests selecting and deleting in a+c"). Root-caused and fixed — see
+    below.
+  - **ubuntu/webkit** (job 86294889612): 341 passed, 120 flaky, 1 genuine
+    failure (`storage-model.spec.ts` → "Load several states, save some
+    (2nd: true), then load new one"). This one was a **real, confirmed bug
+    in my `save()` conversion**, not a pre-existing issue — see below. The
+    120-flaky count on WebKit is consistent with the CI findings above
+    (WebKit is the slowest/flakiest browser); didn't chase these
+    individually given they all self-healed via CI's retries=3 and none
+    pointed at code I'd touched.
+  - **ubuntu/chromium**: passed clean.
+  - **Bug #1 — genuine pre-existing gap, exposed by less slack elsewhere**:
+    `structured-expressions-selection.spec.ts`'s "Shift-Home... a+c" test
+    has a bare `page.keyboard.press("ArrowLeft")` with **no** wait before
+    the following `doTextHomeEndKeyPress(page, false, true)` (Shift+Home).
+    Its near-identical sibling test one `describe` block down
+    ("Shift-End... a+c") has the *exact* same bare-press pattern but
+    **does** have an explicit `page.waitForTimeout(200)` after it — this
+    looks like a plain oversight in the original test, just never
+    triggered before because other parts of the test had enough slack to
+    mask it. My faster/more-precise `editor.ts` waits removed that
+    accidental slack. Fixed by importing `waitForEditorSettled` into the
+    spec file and calling it after the two bare `ArrowLeft` presses in
+    the "Shift-Home" describe block (both instances, only one of which
+    had actually been observed failing). This is a spec-file change (not
+    the shared-helper file itself), but directly caused by validating the
+    helper conversion, so fixed in place rather than deferred to that
+    file's own future conversion pass.
+  - **Bug #2 — a real, previously-undiscovered race in my `save()`
+    conversion, found and fixed the same way as the editor.ts debounce
+    timers**: `storage-model.spec.ts` saves several projects with custom
+    names (`save(page, true, "Project 1")` etc.) then checks those names
+    appear in a "recent projects" list. It failed with the saved name
+    showing as the *default* project name instead of the custom one.
+    Traced to `Menu.vue`'s `onStrypeMenuShownModalDlg`: it has a genuine
+    `setTimeout(..., 500)` that sets `#saveStrypeFileNameInput`'s default
+    value and focuses it, *~500ms after the dialog is shown*. My
+    conversion's `page.fill(...)` (no wait beforehand, since the dialog
+    itself has no animation) usually races **ahead** of that timer — so
+    the fill happens first, then the 500ms timer fires and silently
+    overwrites it back to the default name. Confirmed with hard
+    empirical evidence: instrumented the input's value every 100ms after
+    filling it and watched it read back "MyCustomName" up to +455ms, then
+    "My project" (the default) from +564ms onward, in every one of 5/5
+    repeated runs — a clean, ~100%-reproducible race on a fast local
+    machine (didn't even need CPU throttling, unlike most of the other
+    races in this initiative, since the fill in the broken code has zero
+    wait before it and the 500ms timer is fixed real time). Fixed by
+    waiting for the *real* completion signal instead of guessing a
+    duration: the app's own setup code calls `.focus()` on the input as
+    its last action, so wait for that focus event (bounded to 3s as a
+    backstop) before filling in the custom name — this guarantees the
+    fill always lands *after* the app's own default-population code has
+    already run, however long that takes. Re-verified with the same
+    100ms-interval instrumentation: value stays as "MyCustomName" through
+    every check across 3/3 repeated runs. Then re-ran the actual
+    `storage-model.spec.ts` tests end-to-end: 17/17 passing, and much
+    faster than before (~23s vs. the 1-2.5 minutes each attempt took in
+    the CI log, since the removed fixed waits were mostly pure overhead
+    once the race is closed properly).
+  - **Lesson for future conversions**: a `.fill()`/`.click()` racing ahead
+    of a value-setting `setTimeout` is a distinct failure mode from the
+    "read state too early" races found elsewhere in this initiative — it
+    fails *silently* (no error, no timeout, just a wrong-but-plausible
+    final value) and doesn't reliably reproduce under CPU throttling the
+    way rendering-bound races do, since the race is against a fixed
+    real-time timer, not throttleable script work. When converting a
+    "click open a dialog, immediately fill an input" pattern, check
+    whether the app has any deferred (`setTimeout`) logic that also
+    touches that same input, not just whether the dialog itself animates.

@@ -1,5 +1,5 @@
 import {Page, test} from "@playwright/test";
-import {typeIndividually, doTextHomeEndKeyPress, pressN, assertStateOfIfFrame} from "../support/editor";
+import {typeIndividually, doTextHomeEndKeyPress, pressN, assertStateOfIfFrame, waitForEditorSettled} from "../support/editor";
 import {addFakeClipboard} from "../support/clipboard";
 import { skipPyodideLoading } from "../support/general";
 
@@ -117,6 +117,7 @@ test.describe("Shift-Home selects to the beginning of current level", () => {
     testSelectionThenDelete("a+c",async (page) => {
         await doTextHomeEndKeyPress(page, true, false); // equivalent to End
         await page.keyboard.press("ArrowLeft");
+        await waitForEditorSettled(page);
         await doTextHomeEndKeyPress(page, false, true); // equivalent to Shift+Home
     }, "{$c}");
 
@@ -131,6 +132,7 @@ test.describe("Shift-Home selects to the beginning of current level", () => {
     testSelectionThenDelete("a+min(b,c)",async (page) => {
         await doTextHomeEndKeyPress(page, true, false); // equivalent to End
         await page.keyboard.press("ArrowLeft");
+        await waitForEditorSettled(page);
         await doTextHomeEndKeyPress(page, false, true); // equivalent to Shift+Home
     }, "{a}+{min}_({$})_{}");
 });

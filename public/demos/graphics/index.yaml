@@ -17,3 +17,8 @@
   description: A simple memory game using OOP principles
   image: oop.png
   file: oop.spy
+
+- name: Graphing
+  description: An example of how to draw a graph using the numpy and matplotlib libraries
+  image: matplotlib-example.png
+  file: matplotlib-example.spy

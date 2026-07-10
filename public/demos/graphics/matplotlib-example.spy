@@ -1,0 +1,47 @@
+#(=> Strype:1:std
+#(=> editorCommandsSplitterPane2Size:{"tabsCollapsed":39.91}
+#(=> peaCommandsSplitterPane2Size:{"tabsCollapsed":64.53}
+'''This is an example of plotting and handling clicks in matplotlib in Strype.
+
+It is adapted from a matplotlib example here: https://matplotlib.org/stable/gallery/event_handling/legend_picking.html'''
+#(=> Section:Imports
+import matplotlib.pyplot as plt 
+import numpy as np 
+#(=> Section:Definitions
+#Maps legends to original lines:
+map_legend_to_ax  = {} 
+#How close the click needs to be to trigger an event:
+pickradius  = 5 
+def on_pick (event ) :
+    '''Handles a pick (click) event on the graph'''
+    # On the pick event, find the original line corresponding to the legend proxy line, and toggle its visibility.
+    legend_line  = event.artist 
+    # Do nothing if the source of the event is not a legend line.
+    if legend_line not in map_legend_to_ax  :
+        return  
+    ax_line  = map_legend_to_ax[legend_line] 
+    visible  = not ax_line.get_visible() 
+    ax_line.set_visible(visible) 
+    # Change the alpha on the line in the legend, so we can see which lines have been toggled.
+    legend_line.set_alpha(1.0 if visible else 0.2) 
+    fig.canvas.draw_idle() 
+#(=> Section:Main
+#Generate some sine waves with numpy for source data:
+t  = np.linspace(0,1) 
+y1  = 2*np.sin(2*np.pi*t) 
+y2  = 4*np.sin(2*np.pi*2*t) 
+#Create the plots in matplotlib:
+fig,ax  = plt.subplots() 
+ax.set_title('Click on legend line to toggle line on/off') 
+lines1  = ax.plot(t,y1,lw=2,label='1 Hz') 
+lines2  = ax.plot(t,y2,lw=2,label='2 Hz') 
+leg  = ax.legend(fancybox=True,shadow=True) 
+lines  = lines1+lines2 
+for legend_line,ax_line  in zip(leg.get_lines(),lines)  :
+    legend_line.set_picker(pickradius) 
+    # Enable picking on the legend line by recording the mapping:
+    map_legend_to_ax[legend_line]  = ax_line 
+fig.canvas.mpl_connect('pick_event',on_pick) 
+#Finally, show the graph (must block to process mouse events):
+plt.show(block=True) 
+#(=> Section:End

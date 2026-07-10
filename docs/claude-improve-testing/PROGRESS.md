@@ -23,9 +23,9 @@ deliberately kept, say why instead of checking it off as fully done.
 | [x] | `tests/playwright/support/loading-saving.ts` | 4 | Converted all 4; one had a real CI-caught bug, fixed 2026-07-10 -- see Log |
 | [x] | `tests/playwright/support/dividers.ts` | 3 | Converted all 3, see Log |
 | [x] | `tests/cypress/support/paste-test-support.ts` | 5 | Converted all 5, see Log |
-| [ ] | `tests/cypress/support/expression-test-support.ts` | 3 | |
-| [ ] | `tests/cypress/support/autocomplete-test-support.ts` | 3 | |
-| [ ] | `tests/cypress/support/param-prompt-support.ts` | 3 | |
+| [x] | `tests/cypress/support/expression-test-support.ts` | 3 | Converted all 3, see Log |
+| [x] | `tests/cypress/support/autocomplete-test-support.ts` | 3 | Converted all 3, see Log |
+| [x] | `tests/cypress/support/param-prompt-support.ts` | 3 | Converted all 3, see Log |
 | [x] | `tests/cypress/support/load-save-support.ts` | 1 | Converted, see Log |
 
 ## Spec files (descending count — see PLAN.md for why this order)
@@ -590,3 +590,49 @@ deliberately left in place with a reason.
     pattern-matched `pkill` — confirmed no lingering `vite` process
     afterwards. Worth doing this way from now on for any future session's
     dev server.
+- 2026-07-10 — **All shared support/helper files are now converted** (both
+  Playwright and Cypress) — the last three Cypress ones,
+  `expression-test-support.ts`, `autocomplete-test-support.ts`, and
+  `param-prompt-support.ts` (3 waits each, 9 total), all had a genuinely
+  duplicated `withSelection` function (each file's own copy, same body,
+  same "We need a delay to make sure last DOM update has occurred"
+  comment) plus a near-identical `withFrameId`/`withAC`. All mapped
+  directly onto `waitForEditorSettled()` (already built for
+  `paste-test-support.ts` last time) — no new investigation needed for 8
+  of the 9 waits, just apply the existing helper.
+  - The 9th, `checkAutocompleteSorted`'s `cy.wait(1000)` (comment: *"The
+    autocomplete only updates after 500ms"*), needed real investigation:
+    grepped the whole autocompletion codebase and `AutoCompletion.vue` for
+    a debounce/setTimeout and found **none** — the comment appears to be
+    stale/inaccurate (possibly describing an older implementation).
+    Since `waitForEditorSettled()` only tracks `#editor`'s own attributes
+    and `.frame-div` count, not the autocomplete popup's content, it
+    can't cover this one. Added a second, autocomplete-specific stability
+    helper inline in `autocomplete-test-support.ts` (same
+    two-consecutive-reads pattern, targeting the popup container's text
+    content) rather than guessing at a duration.
+  - Strategy note for whoever picks up the next batch: this file family
+    (three nearly-identical Cypress support files with the same
+    duplicated helpers) is a good example of "look for the same pattern
+    copy-pasted elsewhere" being worth a quick check before converting a
+    file in isolation — the plan's own "shared support/helper files" list
+    already made this file family adjacent, but it was the near-identical
+    function *bodies*, not just proximity in the todo list, that made the
+    conversion fast here.
+  - Verified extremely broadly, including the two heaviest specs in the
+    entire Cypress suite: `structured-expressions-brackets.cy.ts`
+    (67 tests, was **840s → now 3min**), `param-prompts-user-defined.cy.ts`
+    (54 tests, was **600s → now 5min**), and
+    `param-prompts-python-library.cy.ts` (42 tests, was **490s → now
+    5min**) — all passing, all dramatically faster, confirming the
+    removed waits were close to pure dead weight. Plus
+    `structured-expressions.cy.ts` (62), `structured-expressions-selection.cy.ts`
+    (23), `autocomplete.cy.ts` (27, exercises `checkAutocompleteSorted`),
+    `autocomplete-modules.cy.ts` (15, exercises `checkAutocompleteSorted`
+    17 times), and `param-prompts.cy.ts` (64) — 354 tests total across 8
+    spec files, zero failures. `eslint` and `vue-tsc --noEmit` both clean.
+  - **Shared support/helper files phase of the plan is now complete** —
+    every file in that table is checked off. Next up per the plan's
+    ordering is the spec-files table, biggest-count-first (tempered by
+    the Playwright-vs-Cypress and browser-flakiness priority notes in the
+    CI findings section above).

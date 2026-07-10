@@ -45,7 +45,7 @@ deliberately kept, say why instead of checking it off as fully done.
 | [ ] | `tests/playwright/e2e/load-save-random.spec.ts` | 23 | |
 | [ ] | `tests/playwright/e2e/load-save-dividers.spec.ts` | 21 | uses dividers.ts helper above |
 | [ ] | `tests/cypress/e2e/autocomplete-user-defined.cy.ts` | 21 | |
-| [ ] | `tests/playwright/e2e/structured-expressions-selection.spec.ts` | 16 | |
+| [x] | `tests/playwright/e2e/structured-expressions-selection.spec.ts` | 16 | Converted all 16, see Log |
 | [ ] | `tests/cypress/e2e/autocomplete.cy.ts` | 15 | |
 | [ ] | `tests/cypress/e2e/translation.cy.ts` | 13 | |
 | [ ] | `tests/playwright/e2e/structured-expressions-copy-paste.spec.ts` | 12 | |
@@ -557,3 +557,36 @@ deliberately left in place with a reason.
     the `.spy`/custom-name save path), full file, 18/18 passing, twice.
     `load-save.cy.ts` (uses `load-save-support.ts`'s `loadFile`), 2/2
     passing. `eslint` and `vue-tsc --noEmit` both clean throughout.
+- 2026-07-10 — First **spec file** conversion (as opposed to a shared
+  helper): `tests/playwright/e2e/structured-expressions-selection.spec.ts`
+  (16 waits). Chosen because it was already partially touched (the
+  CI-caught `ArrowLeft` fix lives here) and, as expected, turned out to be
+  a fast, low-risk conversion: all 16 waits were the same "settle after a
+  keystroke/paste before reading state" pattern `waitForEditorSettled()`
+  (from `editor.ts`, already imported in this file) was built for — no new
+  investigation needed, just apply the existing helper.
+  - Also closed one more latent gap of the same shape as the CI-caught
+    `ArrowLeft` bug while in there: `testSelectionThenDelete` pressed
+    `Delete` and then called `assertStateOfIfFrame` (a one-shot DOM
+    snapshot, no built-in retry) with **no wait in between at all**. Added
+    a `waitForEditorSettled()` call there too, on the same reasoning as
+    the CI fix — this is exactly the class of gap that only shows up under
+    real contention, not on a fast local machine.
+  - Removed one wait entirely as pure redundancy: `testSelection` had a
+    standalone 100ms wait between the selection-building loops and typing
+    the replacement text, but every code path into that point already
+    ends with a `waitForEditorSettled()` call from the preceding loop (or
+    from `doTextHomeEndKeyPress`, which also settles internally) — so the
+    extra wait was dead weight even before conversion.
+  - Verified unusually broadly given how mechanical the conversion was:
+    full file, all 103 tests, on **all three browsers** — chromium
+    (1.2min), firefox (1.7min), webkit (1.6min) — plus a CPU throttle
+    rate=15 run on chromium (103/103, 8.5min). `eslint` and `vue-tsc
+    --noEmit` both clean.
+  - Process note: started the dev server via the harness's own
+    `run_in_background` this time (instead of the earlier `(cmd &)`
+    shell-backgrounding pattern) specifically so it could be stopped with
+    `TaskStop` by task ID afterwards, rather than a raw PID or a
+    pattern-matched `pkill` — confirmed no lingering `vite` process
+    afterwards. Worth doing this way from now on for any future session's
+    dev server.

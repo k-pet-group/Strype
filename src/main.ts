@@ -1,11 +1,11 @@
-import { createApp } from "vue";
+import { createApp, nextTick } from "vue";
 import App from "@/App.vue";
 import  {createPinia } from "pinia";
 import i18n from "@/i18n";
 import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap-vue-next/dist/bootstrap-vue-next.css";
 import scssVars  from "@/assets/style/_export.module.scss";
-import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "./helpers/sharedIdCssWithTests";
+import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_NEXTTICK_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "./helpers/sharedIdCssWithTests";
 import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getFrameContainerUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getImportFileInputId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNewProjectLinkId, getSaveProjectLinkId, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, getShareProjectLinkId} from "./helpers/editor";
 import "@imengyu/vue3-context-menu/lib/vue3-context-menu.css";
 import ContextMenu from "@imengyu/vue3-context-menu";
@@ -51,6 +51,9 @@ else {
 
 // Set the SCSS variables for the tests here
 (window as any)[WINDOW_STRYPE_SCSSVARS_PROPNAME] = scssVars;
+// Expose Vue's nextTick for the tests here, so they can wait for reactive updates to settle
+// instead of a fixed timeout:
+(window as any)[WINDOW_STRYPE_NEXTTICK_PROPNAME] = nextTick;
 // Set the HTML Elements shared IDs for the test here
 (window as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME] = {
     getEditorID: getEditorID,

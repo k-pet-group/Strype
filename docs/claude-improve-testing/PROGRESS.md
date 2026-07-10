@@ -19,8 +19,8 @@ deliberately kept, say why instead of checking it off as fully done.
 
 | Done | File | Waits (snapshot) | Notes |
 |---|---|---|---|
-| [ ] | `tests/playwright/support/editor.ts` | 5 | keypress/paste helpers, see RECIPES.md |
-| [ ] | `tests/playwright/support/loading-saving.ts` | 4 | |
+| [x] | `tests/playwright/support/editor.ts` | 5 | Converted all (6 incl. one non-literal), added prod nextTick hook, see Log |
+| [x] | `tests/playwright/support/loading-saving.ts` | 4 | Converted all 4, see Log |
 | [ ] | `tests/playwright/support/dividers.ts` | 3 | drag-settle waits, see RECIPES.md |
 | [ ] | `tests/cypress/support/paste-test-support.ts` | 5 | paste/save/load round trip, see RECIPES.md |
 | [ ] | `tests/cypress/support/expression-test-support.ts` | 3 | |
@@ -188,3 +188,146 @@ deliberately left in place with a reason.
     npx playwright test --project=chromium` — much faster to iterate with
     than the full `npm run test:playwright` (which rebuilds a production
     bundle every run).
+- 2026-07-09 — Second conversion, following the priority order this time
+  (shared helper before spec files, and this one is also the natural
+  next step since `load-save-share.spec.ts` already calls into it):
+  `tests/playwright/support/loading-saving.ts`, all 4 waits (`load()`
+  and `save()`). Used first as a caller of this helper, so already had
+  a validated repro/throttle setup to reuse. Used against 15 callers
+  across the Playwright suite.
+  - `load()` wait #1 (2000ms after clicking "Load project", before
+    checking for a "discard changes" confirmation): traced to
+    `Menu.vue`'s `openLoadProjectModal()` — the confirmation dialog
+    (`#save-on-load-project-modal-dlg`) only shows if the project has
+    unsaved changes, so it may legitimately never appear. Replaced with
+    a bounded `locator.waitFor({state:"visible", timeout:5000})` that
+    resolves to `false` (not an error) if the dialog never shows, instead
+    of always sleeping 2s then doing a single un-retried `.count()`
+    check. Narrowed the selector from a global `button.btn-secondary`
+    to one scoped to the dialog's own id, since the global one also
+    matches an unrelated button in `APIDiscovery.vue`.
+  - `load()` wait #2 (5000ms after `fileChooser.setFiles()`, waiting for
+    the load to finish): **this one had a trap.** The obvious signal —
+    `Menu.vue`'s own progress overlay (`.app-progress-container`) — turned
+    out to be misleading: `selectedFile()` hides the overlay as soon as
+    the file has been *read*, not once the new state has actually been
+    *applied* (`onFileLoaded()` runs inside a separate, un-awaited
+    `.then()` off the state-application promise). Waiting on the overlay
+    disappearing would have converted one race into a subtler one.
+    Instead, traced through to `onFileLoaded()` (`Menu.vue:1391`), which
+    sets `appStore.projectName` — this is only reached once the state is
+    genuinely in place, and mirrors into a visible `.project-name` label
+    (`Commands.vue`'s `projectName` computed). Replaced with
+    `expect(page.locator(".project-name")).toHaveText(expectedProjectName)`,
+    deriving the expected name from the loaded file's basename
+    (`path.basename(filepath, path.extname(filepath))`), matching the
+    app's own `noExtFileName` logic.
+  - `save()` wait #3 (1000ms after opening the hamburger menu, before
+    clicking "Save"): the menu's slide-open is a real animated
+    transition (`vue3-burger-menu`'s `<Slide>`, ~0.5s CSS transition),
+    but Playwright's own actionability check on the subsequent `.click()`
+    already waits for the target to be visible and stable — dropped
+    entirely, no replacement needed.
+  - `save()` wait #4 (1000ms after clicking "Save", before interacting
+    with the save dialog): the dialog (`ModalDlg`) renders with
+    `no-animation`, so `.fill()`'s and `.click()`'s own auto-wait on the
+    dialog's elements is already sufficient — dropped entirely.
+  - Found and deliberately did **not** chase: manually reproducing
+    "load while the project has unsaved changes" (to test wait #1's
+    discard-dialog branch directly) hung identically with both the
+    original and converted code, via a throwaway one-off test. Since no
+    existing spec in the repo actually calls `load()` in that state
+    (all current callers either just came from `save()`, which clears
+    the modified flag, or load from a fresh page), this looks like a
+    pre-existing product-code quirk in the discard→reopen modal chain,
+    not a regression from this conversion — out of scope here, but worth
+    a follow-up if this codepath ever gets real test coverage.
+  - Verified: 8/8 `load-save-share.spec.ts` passes at CPU throttle
+    rate=15 (up from the practice run's rate=20, since this round tests
+    both `load()` and `save()` together and total runtime scales with
+    throttle rate), plus normal-speed runs of the same file and three
+    `load-save-random.spec.ts` cases on Firefox (that file skips
+    Chromium for an unrelated, pre-existing reason — see its own
+    `beforeEach`). `eslint` clean.
+- 2026-07-09/10 — Third conversion, following the priority order:
+  `tests/playwright/support/editor.ts`. This is the highest-leverage file
+  in the whole initiative — it's the keypress/paste helper used across
+  most of the Playwright suite, including the biggest spec files
+  (`rename-identifiers.spec.ts` 139 waits, `match-statement.spec.ts` 105,
+  the `structured-expressions*.spec.ts` family) — but also the trickiest,
+  and took real investigation before landing on a solid fix. It also
+  ended up including a production code change (discussed with and
+  approved by the user first, since it's exactly the case PLAN.md flags
+  for a check-in).
+  - **What the waits were guarding, and why a naive fix would have been
+    wrong**: instrumented a live typing session with a MutationObserver
+    on `data-slot-cursor`/`data-slot-focus-id` (custom attributes on
+    `#editor` that mirror the store's focus/cursor state — see
+    `App.vue:39,245-252`). Found the settle time after a keystroke
+    varies from ~10ms (plain characters) to 300ms+ (structural
+    characters that trigger frame restructuring). Concretely: typing
+    "=" into a function-call frame converts it to a variable-assignment
+    frame via a genuine, deliberate `setTimeout(..., 300)` in
+    `LabelSlotsStructure.vue` (likely so typing "==" doesn't briefly
+    convert on the first "="). Similar real (non-reactivity) timers
+    exist elsewhere in the editor: `LabelSlotsStructure.vue` ~200ms
+    (refocus-check after blur) and `LabelSlot.vue` 1000ms (delayed
+    backspace-frame-deletion, presumably to avoid accidental deletion on
+    rapid repeated backspaces). None of these are expressible as "wait
+    for Vue to flush" — a `nextTick()`-only fix (the initial plan) was
+    empirically proven insufficient: awaiting `nextTick()` twice (even
+    with an extra macrotask flush for a zero-delay `setTimeout` also
+    found in the same conversion function) still returned before the
+    real 300ms timer fired, confirmed by re-checking the DOM 500ms later
+    and finding it had changed *after* our wait had already resolved.
+  - **Fix**: added a small test-only hook,
+    `WINDOW_STRYPE_NEXTTICK_PROPNAME` (`src/helpers/sharedIdCssWithTests.ts`)
+    / `window[...] = nextTick` (`src/main.ts`), following the exact
+    precedent of the existing `WINDOW_STRYPE_HTMLIDS_PROPNAME`/
+    `WINDOW_STRYPE_SCSSVARS_PROPNAME` test hooks in the same file. Then
+    built `waitForEditorSettled(page, timeoutMs=4000)` in `editor.ts`:
+    first flushes reactivity (nextTick, a macrotask turn, nextTick again
+    — fast path, a few ms for ordinary keystrokes), then polls
+    `data-slot-focus-id` + `data-slot-cursor` + `.frame-div` count until
+    all three stop changing, bounded by `timeoutMs`. This one helper
+    replaced every wait in the file: `typeIndividually()` (per
+    character), `doPagePaste()`, `doTextHomeEndKeyPress()`, `pressN()`
+    (when `enforceWaitBetween`), and both waits in `enterCode()` (the
+    post-backspace one also switched to explicitly asserting
+    `.frame-div` count reaches 0, rather than just settling generically).
+  - Also converted the 6th, non-numeric-literal wait in this file
+    (`typeIndividually`'s `timeout` parameter, default 75 — not caught by
+    the initiative's counting regex since it's not a numeric literal at
+    the call site) since it's the exact same pattern as the other 5.
+    Updated its one external caller
+    (`load-save-random.spec.ts:224`) that passed an explicit `100`,
+    since that value meant something different under the old semantics
+    (ms between chars) than the new one (settle-poll bound).
+  - This was a three-step process, not a one-shot fix — worth recording
+    since it's a good example of the "before/after" verification loop in
+    PLAN.md paying off: first tried nextTick-only (checked with the user
+    before adding the prod hook at all), empirically found it
+    insufficient via the MutationObserver instrument, then checked with
+    the user again on how to handle genuine debounce timers before
+    building the hybrid poll. Each step was validated against the *actual
+    running app*, not assumed from reading the source.
+  - Verified extremely broadly given the blast radius: 306 tests passed
+    across 9 spec files exercising all 5 converted functions —
+    `structured-expressions-selection.spec.ts` (103),
+    `structured-expressions-media.spec.ts` (9, Firefox — Chromium skips
+    this file for an unrelated clipboard-permissions reason),
+    `structured-expressions-copy-paste.spec.ts` (67),
+    `rename-identifiers.spec.ts` (21, full file — the single biggest
+    beneficiary),`console-execution.spec.ts` (29, including the
+    previously-flagged flaky "30 seconds" variant from the CI findings
+    above), `package-installation.spec.ts` (7, needed the
+    `test:cypress:serve-assets` asset server on :8089 running locally —
+    easy to miss since the failure otherwise looks like a genuine
+    regression), `graphics.spec.ts` (29), `structured-expressions.spec.ts`
+    (10, the file most directly exercising the funccall/varassign
+    restructuring path this investigation was about), and
+    `description-fields.spec.ts` (21). Also re-ran
+    `structured-expressions.spec.ts` under CPU throttle rate=15,
+    `--repeat-each=3` (30/30 passed) to confirm the poll-based settle
+    survives slow conditions, not just fast local ones. `eslint` and
+    `vue-tsc --noEmit` both clean.

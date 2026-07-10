@@ -4,6 +4,7 @@ import en from "../../../src/localisation/en/en_main.json";
 import {readFileSync} from "node:fs";
 import fs from "fs";
 import { randomUUID } from "node:crypto";
+import path from "node:path";
 
 
 export async function load(page: Page, filepath: string) : Promise<void> {
@@ -12,15 +13,13 @@ export async function load(page: Page, filepath: string) : Promise<void> {
     
     await page.click("#" + await strypeElIds(page).getEditorMenuUID());
     await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
-    // A modification update might arise because we had changed something in the editor:
-    // so we check if this situation happened, and discard changes if so.
-    await page.waitForTimeout(2000);
-    const discardChangesButton = page.locator("button.btn-secondary:visible");
-    if(await discardChangesButton.count() > 0) {
-        const discardChangesButtonContent = await discardChangesButton.textContent();
-        if(discardChangesButtonContent == "Discard changes"){
-            await discardChangesButton.click();
-        }
+    // A modification update might arise because we had changed something in the editor: Menu.vue's
+    // openLoadProjectModal() only shows the "discard changes" dialog when the project has unsaved
+    // changes, so this may legitimately never appear -- wait for it with a bounded timeout rather
+    // than assuming it needs a fixed delay to show up:
+    const discardChangesButton = page.locator("#save-on-load-project-modal-dlg button.btn-secondary");
+    if (await discardChangesButton.waitFor({state: "visible", timeout: 5000}).then(() => true).catch(() => false)) {
+        await discardChangesButton.click();
     }
     const [fileChooser] = await Promise.all([
         page.waitForEvent("filechooser"),
@@ -28,7 +27,14 @@ export async function load(page: Page, filepath: string) : Promise<void> {
         page.click("#" + await strypeElIds(page).getLoadFromFSStrypeButtonId()),
     ]);
     await fileChooser.setFiles(filepath);
-    await page.waitForTimeout(5000);
+    // Menu.vue's selectedFile() shows a progress overlay while it *reads* the file, but hides it
+    // again as soon as reading is done -- before the state is actually applied (onFileLoaded() is
+    // only called inside a separate, un-awaited .then() chain), so the overlay disappearing isn't
+    // a reliable "load has finished" signal. Once onFileLoaded() does run, it sets
+    // appStore.projectName from the loaded file's name, which the visible ".project-name" label
+    // mirrors -- wait for that instead, since it only updates once the new state is truly in place:
+    const expectedProjectName = path.basename(filepath, path.extname(filepath));
+    await expect(page.locator(".project-name")).toHaveText(expectedProjectName, {timeout: 30000});
 }
 
 export async function loadContent(page: Page, spyToLoad: string) : Promise<void> {
@@ -44,15 +50,16 @@ export async function save(page: Page, firstSave = true, projectName? : string) 
     // Wait for page load:
     await page.waitForSelector(".frame-container");
     
-    // Save is located in the menu, so we need to open it first, then find the link and click on it:
+    // Save is located in the menu, so we need to open it first, then find the link and click on it.
+    // The menu's slide-open animation is covered by Playwright's own actionability checks on the
+    // click below (it waits for the target to be visible and stable), so no manual wait is needed:
     await page.click("#" + await strypeElIds(page).getEditorMenuUID());
-    await page.waitForTimeout(1000);
-    
+
     let download;
     if (firstSave) {
         await page.click("#" + await strypeElIds(page).getSaveProjectLinkId());
-        // Wait for the dialog to appear and settle:
-        await page.waitForTimeout(1000);
+        // The save dialog (ModalDlg) renders with no-animation, so the elements below are usable
+        // as soon as they're actionable -- no manual settle wait needed here either:
         if (projectName) {
             await page.fill("#saveStrypeFileNameInput", projectName);
         }

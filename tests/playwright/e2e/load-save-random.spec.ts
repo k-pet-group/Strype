@@ -221,7 +221,7 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         console.log("Entering slot:   <<<" + s + ">>> into " + frame.frameType);
         await checkFrameXorTextCursor(page, false, "Slot of frame " + frame.frameType);
         const enterable = slotType == AllowedSlotContent.FREE_TEXT_DOCUMENTATION || slotType == AllowedSlotContent.LIBRARY_ADDRESS ? s : s.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
-        await typeIndividually(page, enterable, 100);
+        await typeIndividually(page, enterable);
         await page.keyboard.press("ArrowRight");
         await page.waitForTimeout(200);
     }

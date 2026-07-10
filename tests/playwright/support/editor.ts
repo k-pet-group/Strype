@@ -1,4 +1,43 @@
 import {Page, expect, ElementHandle} from "@playwright/test";
+import {WINDOW_STRYPE_NEXTTICK_PROPNAME} from "@/helpers/sharedIdCssWithTests";
+
+async function readEditorState(page: Page) : Promise<{focusId: string, cursor: string, frameCount: number}> {
+    return page.evaluate(() => {
+        const editor = document.querySelector("#editor");
+        return {
+            focusId: editor?.getAttribute("data-slot-focus-id") ?? "",
+            cursor: editor?.getAttribute("data-slot-cursor") ?? "",
+            frameCount: document.querySelectorAll(".frame-div").length,
+        };
+    });
+}
+
+// Waits for the editor to settle after an action, rather than guessing how long it will take.
+// Most keystrokes only need Vue's reactivity to flush (a couple of nextTicks, plus one macrotask
+// turn for logic deferred via a zero-delay setTimeout) -- this resolves in a few ms. But some
+// editor actions (e.g. converting a function-call frame to a variable assignment when typing "=",
+// see LabelSlotsStructure.vue) go through a genuine debounce timer (300ms there; similar 200ms/
+// 1000ms timers exist elsewhere in the editor) that nextTick cannot wait through. So after
+// flushing reactivity, we additionally poll the focused slot and frame count until they stop
+// changing, bounded by timeoutMs (comfortably above the largest known timer).
+export async function waitForEditorSettled(page: Page, timeoutMs = 4000) : Promise<void> {
+    await page.evaluate(async (prop) => {
+        await (window as any)[prop]();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+        await (window as any)[prop]();
+    }, WINDOW_STRYPE_NEXTTICK_PROPNAME);
+
+    const start = Date.now();
+    let last = await readEditorState(page);
+    while (Date.now() - start < timeoutMs) {
+        await page.waitForTimeout(30);
+        const cur = await readEditorState(page);
+        if (cur.focusId === last.focusId && cur.cursor === last.cursor && cur.frameCount === last.frameCount) {
+            return;
+        }
+        last = cur;
+    }
+}
 
 // This enumeration is used for the media slots placeholder when parsing slots
 // Don't use "_" in the values as they will be scrapped by the parser later.
@@ -158,7 +197,7 @@ export async function assertStateOfVarAssignFrame(page: Page, expectedLHSState :
     await assertLabelSlotsContent(page, `${expectedLHSState}{ ⇐ }${expectedRHSState}`, {isInStatementFrame: true});
 }
 
-export async function typeIndividually(page: Page, content: string, timeout = 75) : Promise<void> {
+export async function typeIndividually(page: Page, content: string, settleTimeoutMs = 4000) : Promise<void> {
     for (let i = 0; i < content.length; i++) {
         if (content[i] == "\n") {
             await page.keyboard.press("Shift+Enter");
@@ -166,7 +205,7 @@ export async function typeIndividually(page: Page, content: string, timeout = 75
         else {
             await page.keyboard.type(content[i]);
         }
-        await page.waitForTimeout(timeout);
+        await waitForEditorSettled(page, settleTimeoutMs);
     }
 }
 
@@ -195,7 +234,7 @@ export async function doPagePaste(page: Page, clipboardContent: string, clipboar
         // Dispatch the paste event to the whole document
         document.activeElement?.dispatchEvent(pasteEvent);
     }, {clipboardContent, clipboardContentType});
-    await page.waitForTimeout(300);
+    await waitForEditorSettled(page);
 }
 
 export async function doTextHomeEndKeyPress(page: Page, isGoingForward: boolean, isShiftEnabled: boolean) : Promise<void> {
@@ -208,8 +247,8 @@ export async function doTextHomeEndKeyPress(page: Page, isGoingForward: boolean,
     else{
         await page.keyboard.press(`${isShiftEnabled ? "Shift+" : ""}${isGoingForward ? "End" : "Home"}`);
     }
-    await page.waitForTimeout(200);
-} 
+    await waitForEditorSettled(page);
+}
 
 export function pressN(key: string, n : number, enforceWaitBetween?: boolean) : ((page: Page) => Promise<void>) {
     return async (page) => {
@@ -219,9 +258,9 @@ export function pressN(key: string, n : number, enforceWaitBetween?: boolean) : 
                 await doTextHomeEndKeyPress(page, (key == "End"), false);
                 return;
             }            
-            await page.keyboard.press(key); 
+            await page.keyboard.press(key);
             if(enforceWaitBetween){
-                await page.waitForTimeout(100);
+                await waitForEditorSettled(page);
             }
         }
     };
@@ -237,12 +276,14 @@ export async function enterCode(page: Page, codeSections : string[]) : Promise<v
     await page.keyboard.press("ArrowDown");
     await page.keyboard.press("Backspace");
     await page.keyboard.press("Backspace");
-    await page.waitForTimeout(500);
+    // Backspace-deleting a frame can go through a delayed-removal debounce (LabelSlot.vue), so
+    // wait for the count to actually drop by 2 rather than a fixed guess:
+    await expect(page.locator(".frame-div")).toHaveCount(0, {timeout: 4000});
     await page.keyboard.press("ArrowUp");
     await page.keyboard.press("ArrowUp");
     for (const codeSection of codeSections) {
+        // doPagePaste already waits for the editor (including frame count) to settle:
         await doPagePaste(page, codeSection);
-        await page.waitForTimeout(1000);
         await page.keyboard.press("ArrowDown");
     }
 }

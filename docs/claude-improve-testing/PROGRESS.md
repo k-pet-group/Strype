@@ -48,7 +48,7 @@ deliberately kept, say why instead of checking it off as fully done.
 | [x] | `tests/playwright/e2e/structured-expressions-selection.spec.ts` | 16 | Converted all 16, see Log |
 | [ ] | `tests/cypress/e2e/autocomplete.cy.ts` | 15 | |
 | [ ] | `tests/cypress/e2e/translation.cy.ts` | 13 | |
-| [ ] | `tests/playwright/e2e/structured-expressions-copy-paste.spec.ts` | 12 | |
+| [x] | `tests/playwright/e2e/structured-expressions-copy-paste.spec.ts` | 12 | Converted all 12 call sites (67 generated test cases), see Log |
 | [ ] | `tests/playwright/e2e/frame-selection-manipulation.spec.ts` | 10 | |
 | [ ] | `tests/playwright/e2e/storage-model.spec.ts` | 9 | |
 | [ ] | `tests/cypress/e2e/autocomplete-more.cy.ts` | 8 | |
@@ -919,3 +919,74 @@ deliberately left in place with a reason.
   - Verified: firefox+webkit (Chromium doesn't run this file) full file
     (20/20), then `--repeat-each=3` (60/60). `eslint` and
     `vue-tsc --noEmit` both clean.
+
+- **2026-07-10**: Reviewed CI run
+  [29108401961](https://github.com/neilccbrown/Strype/actions/runs/29108401961)
+  (commit `9837e863`, flagged by Neil -- "a lot on Linux/WebKit are
+  flaky") to check which failures/flakes were in files already converted
+  this session vs still-to-do. Tallied failure/flaky occurrences by spec
+  file across all 6 jobs:
+  - Confirmed the WebKit jobs were the clear outliers: macOS+WebKit (2
+    failed, 14 flaky) and especially Linux+WebKit (0 failed but **130
+    flaky**, vs 3-9 flaky on the other 4 jobs).
+  - `structured-expressions-selection.spec.ts` (66 occurrences) and
+    `structured-expressions-copy-paste.spec.ts` (49 occurrences)
+    dominated the Linux+WebKit flaky count. The former is converted
+    (mine), the latter was not at the time. Both showed the *same*
+    symptom -- a test finding stale content from a *different* prior
+    test (e.g. the untouched default-project text) -- which, combined
+    with the fact `copy-paste` wasn't touched by me yet, points to a
+    `beforeEach`/page-navigation-level race on that runner rather than
+    something wrong with either file's individual wait conversions.
+    Treating this as most likely a noisy/contended runner that specific
+    run, not a regression -- worth confirming on the next CI run now
+    that `copy-paste` is also converted.
+  - **Real, recurring issue, not attributable to my conversions**:
+    `graphics.spec.ts` → "Test get_clicked_actor returns the right item"
+    failed (final, not flaky) on macOS+Firefox and flaked on Linux+WebKit,
+    both times with the identical signature: `loading-saving.ts`'s
+    `load()` stuck for 30s waiting for `.project-name` to read
+    `"data-graph"`, staying on `"My project"` throughout -- yet on one
+    retry that got further, the *file content* had clearly loaded (the
+    console showed the loaded program's own output). This is now the
+    same signature recurring across 3 browser/OS combinations over two
+    separate CI runs -- Neil's hypothesis is a real app-level bug (the
+    project name label not updating even when the load itself succeeded),
+    not test timing. **Logged in PLAN.md's new "Known suspected app bug"
+    section and deliberately NOT fixed here** -- Neil wants it kept out
+    of this PR to stay focused on the wait-conversion work; it'll be a
+    separate investigation.
+  - Possible real regression, lower confidence: `match-statement.spec.ts`
+    had 2 tests on Linux+WebKit come back with **zero** match/case
+    content saved, as if none of the setup keystrokes registered --
+    worse than ordinary flakiness. Hypothesis: removing the fixed 200ms
+    wait after pressing "m" (which creates the match frame) may let
+    typing race ahead of the frame's initial render specifically on
+    Linux's WebKit build, which I have no way to test locally (only
+    validated macOS WebKit, which passed cleanly). Not yet reproduced or
+    fixed -- flagged for a future session with access to a Linux
+    environment, or by watching whether it recurs on the next CI run.
+  - Per Neil's direction: picked the next file to convert by **actual CI
+    flakiness impact** (tallied above) rather than by the original static
+    wait-count table, since a file with a smaller raw wait count can
+    still dominate CI noise once its parameterised test-case count is
+    factored in. That's what led to `structured-expressions-copy-paste.spec.ts`
+    (see next entry below) instead of the next-highest row in the table above.
+
+- **2026-07-10**: Converted `tests/playwright/e2e/structured-expressions-copy-paste.spec.ts`
+  (all 12 call sites, generating 67 parameterised test cases -- the
+  highest-impact untouched file in the CI run reviewed above). Same
+  shape as `structured-expressions-selection.spec.ts`: ordinary waits →
+  `waitForEditorSettled`; the clipboard-write wait around `Ctrl+C`/`Ctrl+X`
+  → `expect.poll` on the clipboard read (same fix as
+  `structured-expressions-media.spec.ts`), simplified further here since
+  the poll already proves the clipboard equals `expectedClipboard`, so
+  the `CUT_REPASTE` branch reuses that constant directly instead of doing
+  a second clipboard read. Also deleted a wait between the last selection
+  keystroke and the next action that was redundant once that keystroke's
+  own loop iteration already ends in a settle.
+  - Verified: full file across all 3 browsers (201/201 = 67 cases × 3),
+    chromium `--repeat-each=3` (201/201), chromium under CDP 4x CPU
+    throttle (67/67) given this file's history of being the worst
+    flakiness offender in real CI. `eslint` and `vue-tsc --noEmit` both
+    clean.

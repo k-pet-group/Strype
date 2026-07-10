@@ -358,6 +358,29 @@ completed):
   PROGRESS.md that shards split by spec-file weight — see PROGRESS.md's
   CI findings section for what this changes about the flakiness picture.)
 
+## Known suspected app bug (deliberately deferred, not in scope here)
+
+- **Project name sometimes doesn't update even though the file otherwise
+  loaded correctly.** Recurring CI signature (seen across at least 3
+  browser/OS combinations over two separate CI runs, 2026-07-10):
+  `graphics.spec.ts` → "Test get_clicked_actor returns the right item"
+  fails/flakes inside `loading-saving.ts`'s `load()`, stuck waiting up to
+  30s for `.project-name` to read `"data-graph"` -- it stays on `"My
+  project"` the whole time, even though (per the one retry that got
+  further) the file's *content* clearly did load (the console showed
+  actor-creation output from the loaded program). This suggests the
+  project name label specifically is failing to update in some cases,
+  independent of whether the load itself succeeded -- a real app-level
+  bug, not (or not only) a test-timing issue. Confirmed recurring, not
+  a one-off flake: same exact signature on macOS+Firefox (final failure,
+  twice) and Linux+WebKit (flaky).
+  - **Deliberately not fixing this now**: Neil wants this kept out of the
+    PR for the wait-conversion/timeout work, to keep that PR focused.
+    Revisit as a separate, dedicated investigation (likely needs to look
+    at what actually updates `.project-name` in the app and whether
+    there's a race between that update and the rest of the load
+    completing, rather than just widening the 30s bound in the test).
+
 ## Handover notes (read this if resuming on a new machine)
 
 - Start by reading `PROGRESS.md` for current status, then re-run the `rg`

@@ -34,7 +34,7 @@ deliberately kept, say why instead of checking it off as fully done.
 |---|---|---|---|
 | [ ] | `tests/playwright/e2e/rename-identifiers.spec.ts` | 139 | |
 | [ ] | `tests/playwright/e2e/match-statement.spec.ts` | 105 | |
-| [ ] | `tests/playwright/e2e/graphics.spec.ts` | 41 | |
+| [x] | `tests/playwright/e2e/graphics.spec.ts` | 41 | Converted 40/41; 1 deliberately kept (waiting for an exception to manifest, not a state) -- see Log |
 | [x] | `tests/playwright/e2e/structured-expressions.spec.ts` | 35 | Converted all 35; found+fixed a real bug in the shared waitForEditorSettled() helper along the way -- see Log |
 | [ ] | `tests/playwright/e2e/structured-expressions-media.spec.ts` | 32 | |
 | [ ] | `tests/cypress/e2e/autocomplete-modules.cy.ts` | 32 | |
@@ -696,3 +696,121 @@ deliberately left in place with a reason.
     `autocomplete.cy.ts` (27/27), `param-prompts.cy.ts` (64/64) — all
     clean, no regressions from the stricter blank-state handling.
   - `eslint` and `vue-tsc --noEmit` both clean throughout.
+
+- **2026-07-10**: Converted `tests/playwright/e2e/graphics.spec.ts` (40 of
+  41 waits).
+  - **New mechanism**: unlike prior conversions, there's no dedicated test
+    hook for "the graphics canvas just redrew" -- turtle/strype.graphics
+    drawing happens inside a running Python program with no JS-side signal
+    of its own. Found that `redrawCanvas()` in `PythonExecutionArea.vue`
+    does one incidental, unconditional DOM write on every actual redraw:
+    it sets `#pythonGraphicsCanvas`'s `data-scale` attribute (even to the
+    same value if unchanged). A `MutationObserver` on that attribute gives
+    a reliable "redraw happened" proxy signal. Added
+    `setupGraphicsRedrawObserver(page)` / `waitForGraphicsSettled(page)` to
+    `tests/playwright/support/execution.ts`.
+  - Confirmed via code reading (not just guessing) that matplotlib images
+    go through the *same* path: `python-execution.ts`'s `matplotlib_img`
+    callback adds the rendered figure as a sprite via
+    `spriteManager.addSprite`, which is the same sprite-based redraw
+    mechanism turtle/strype.graphics actors use -- so the one mechanism
+    covers all three graphics backends in this file, including the
+    matplotlib click-response test's redraw-after-click wait.
+  - Also confirmed `#pythonGraphicsCanvas` is always present in the DOM
+    (`v-show`, not `v-if`, in `PythonExecutionArea.vue`), so
+    `setupGraphicsRedrawObserver` is safe to call before the graphics tab
+    has ever been switched to.
+  - **Real bug found on first full local run**: 4 tests failed with
+    the graphics area showing ~86-99% pixel diff against baseline -- the
+    screenshots showed Python genuinely running (Stop button visible) but
+    the canvas still black/untouched. Root cause was the same class of
+    defect as the `waitForEditorSettled` blank-placeholder bug above:
+    `waitForGraphicsSettled`'s "N consecutive equal reads = settled" logic
+    was fooled by a redraw count that was stable *at zero* -- i.e. stable
+    because nothing had been drawn yet, not because drawing had finished.
+    This only showed up in tests where the assertion follows immediately
+    after the first wait post-run-click, with no other action beforehand
+    to accidentally paper over it (e.g. the mouse-input test's later
+    waits, downstream of several real clicks, happened to have
+    accumulated enough incidental wall-clock time to mask the same bug).
+    Fixed by requiring at least one non-zero redraw count before trusting
+    stability, in addition to the existing "3 consecutive equal reads"
+    check.
+  - Removed the 3 pre-existing 20-second layout-toggle waits in the
+    "large view" tests entirely (not replaced), on the reasoning that
+    `dividers.ts`'s `dragDividerTo`/`getSplitterPos` (already made
+    stability-polling-based in an earlier session) makes them redundant.
+    Empirically confirmed safe: all 3 tests pass, including under
+    `--repeat-each=2`.
+  - Left one wait deliberately unconverted ("Test get_clicked_actor
+    doesn't throw an exception"): it's giving a potential exception time
+    to *manifest*, not waiting for a specific state to be reached, so
+    there's no observable condition to replace it with. Added a comment
+    explaining the distinction.
+  - Verified: full file, chromium, `--repeat-each=2` (64/64 passing,
+    including the previously-black-canvas tests and the newly-converted
+    matplotlib click test). Did not yet run firefox/webkit locally (the
+    turtle/strype.graphics `describe` blocks already skip those browsers
+    for known WebGL-on-CI reasons; the matplotlib and get_key tests do run
+    cross-browser and are worth a CI check).
+  - `eslint` and `vue-tsc --noEmit` both clean.
+
+- **2026-07-10**: Fixed a real CI-caught bug in the Cypress port of
+  `waitForEditorSettled()` (`tests/cypress/support/test-support.ts`),
+  found while reviewing CI run
+  [29089030905](https://github.com/neilccbrown/Strype/actions/runs/29089030905)
+  (flagged by Neil) for the "Fixed an issue with waiting for blank
+  placeholders" commit.
+  - `Build-And-Run-Tests (microbit, ubuntu-latest, 1)` failed on
+    `paste-python.cy.ts` → "Allows pasting fixture file with main code"
+    with `AssertionError: ... editor state should stabilise: expected 18
+    to be at least 30`. This is exactly the case flagged as an open risk
+    in the previous log entry: the Cypress port's blank-state threshold of
+    30 was an untested guess, and this large multi-statement paste was
+    the first real exercise of it.
+  - **Root cause**: the Cypress port relied on `.should()`'s own retry
+    mechanism to re-run the check repeatedly, but `.should()`'s retry
+    cadence is *not* a fixed wall-clock interval -- it slows down when the
+    page is busy (e.g. re-rendering a large frame tree after pasting a
+    big file). So "30 consecutive stable reads" needed far more than 30 ×
+    (nominal interval) of real time on a loaded page, and blew through the
+    10-second outer timeout even though the state had genuinely
+    stabilised. The Playwright port never had this problem because it
+    drives its own fixed `page.waitForTimeout(30)` loop directly, so its
+    cadence isn't affected by page load.
+  - **Fix**: rewrote the Cypress version to drive its own fixed-interval
+    `setTimeout` poll (30ms, matching Playwright) inside a
+    `cy.window().then()`-wrapped `Cypress.Promise`, instead of relying on
+    `.should()`'s retry. Also switched the blank-state threshold from the
+    untested guess of 30 down to 15, matching the Playwright port's
+    now-validated value, since both ports poll at the same 30ms cadence.
+    On timeout it rejects with an equivalent diagnostic message to
+    preserve the old "editor state should stabilise" failure clarity.
+  - **Second bug caught immediately after, before this ever reached
+    CI**: first attempt at the fix put the `{timeout: timeoutMs + 5000}`
+    override on `cy.window()` instead of the subsequent `.then()` --
+    exactly the same mistake documented in the `waitForProjectNameOrTimeout`
+    fix earlier in this initiative (`.then()` has its own independent
+    4000ms default command timeout). Caught locally before commit: the
+    fixed spec still failed, now with `CypressError: cy.then() timed out
+    after waiting 4000ms`. Fixed by moving the timeout override onto
+    `.then()` itself.
+  - Verified: `paste-python.cy.ts` alone (59/59, including the
+    previously-failing test), then a broader spot-check across the other
+    Cypress spec files that exercise this shared helper --
+    `structured-expressions.cy.ts` (62/62), `autocomplete.cy.ts` (27/27),
+    `param-prompts.cy.ts` (64/64) -- all clean, no regressions.
+  - `eslint` and `vue-tsc --noEmit` both clean.
+  - Also reviewed the other CI failures from the same run
+    (`29089030935`, Playwright): macOS+firefox shard had 1 genuine
+    failure (`graphics.spec.ts` → "Test get_clicked_actor returns the
+    right item", a `load()` timeout on `data-graph.spy` that repeated
+    across 3 of 4 attempts) plus 20 flaky-but-passing-on-retry tests
+    spanning many unrelated spec files. Given this predates the
+    `graphics.spec.ts` conversion above (that work was still uncommitted
+    local changes at the time this CI run executed) and is isolated to
+    one test on the already-documented-as-flaky macOS+firefox
+    combination, treating this as baseline CI noise rather than a new
+    regression -- worth re-checking specifically on macOS+firefox once
+    the `graphics.spec.ts` changes above are committed and a fresh CI run
+    is available.

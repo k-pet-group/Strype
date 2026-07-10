@@ -34,34 +34,62 @@ export function focusEditorAndClear(): void {
 // waitForEditorSettled: some editor actions go through genuine debounce timers in the app (not
 // just Vue reactivity), so this polls the focused slot and frame count -- exposed via #editor's
 // data-slot-focus-id/data-slot-cursor attributes and .frame-div elements -- until they stop
-// changing across consecutive checks, using Cypress's own retry-until-pass on .should() rather
-// than a manual sleep loop.
-export function waitForEditorSettled(): void {
-    let lastState: string | null = null;
-    let lastFocusId = "";
-    let stableCount = 0;
-    cy.get("#editor", {timeout: 10000}).should(($editor) => {
-        const focusId = $editor.attr("data-slot-focus-id") ?? "";
-        const cursor = $editor.attr("data-slot-cursor") ?? "";
-        const frameCount = Cypress.$(".frame-div").length;
-        const state = `${focusId}:${cursor}:${frameCount}`;
-        if (state === lastState) {
-            stableCount++;
-        }
-        else {
-            stableCount = 0;
-        }
-        lastState = state;
-        lastFocusId = focusId;
-        // A blank focus id (no slot focused) is also used by the app as a transient marker while
-        // some restructuring is in flight -- e.g. converting a function-call frame to a variable
-        // assignment on typing "=" holds focus blank for a genuine ~300ms debounce (see
-        // LabelSlotsStructure.vue) -- and that blank reading is itself stable across many
-        // consecutive checks during the whole debounce window, which would otherwise fool this
-        // into passing mid-restructure. Frame-level pastes can legitimately end up blank too (a
-        // frame caret, not a slot), so we can't just refuse blank outright -- instead require
-        // more consecutive stable reads before trusting a blank state than a real one:
-        expect(stableCount, "editor state should stabilise").to.be.at.least(lastFocusId === "" ? 30 : 1);
+// changing across consecutive checks.
+//
+// This drives its own fixed-interval setTimeout poll rather than Cypress's .should() retry --
+// .should() re-runs its callback on Cypress's own internal retry cadence, which is NOT a fixed
+// wall-clock interval: it slows down when the page is busy (e.g. re-rendering a large frame tree
+// after pasting a big file), so "N consecutive stable reads" could need far more than N * (nominal
+// interval) of real time and blow through the outer timeout despite the state genuinely having
+// stabilised. Driving our own setTimeout loop keeps the interval fixed regardless of page load,
+// matching the Playwright port's approach (which found 30ms/15 consecutive checks reliable).
+export function waitForEditorSettled(timeoutMs = 10000): void {
+    // cy.then()'s own command timeout (default 4000ms) must be longer than our internal bound,
+    // otherwise Cypress kills the wait before our own poll loop gets a chance to resolve on its
+    // own -- give it some headroom over timeoutMs (see waitForProjectNameOrTimeout below, which
+    // hit the same issue):
+    cy.window().then({timeout: timeoutMs + 5000}, (win) => {
+        return new Cypress.Promise<void>((resolve, reject) => {
+            const start = Date.now();
+            let lastState: string | null = null;
+            let lastFocusId = "";
+            let stableCount = 0;
+            const check = () => {
+                const editorEl = win.document.querySelector("#editor");
+                const focusId = editorEl?.getAttribute("data-slot-focus-id") ?? "";
+                const cursor = editorEl?.getAttribute("data-slot-cursor") ?? "";
+                const frameCount = win.document.querySelectorAll(".frame-div").length;
+                const state = `${focusId}:${cursor}:${frameCount}`;
+                if (state === lastState) {
+                    stableCount++;
+                }
+                else {
+                    stableCount = 0;
+                }
+                lastState = state;
+                lastFocusId = focusId;
+                // A blank focus id (no slot focused) is also used by the app as a transient marker
+                // while some restructuring is in flight -- e.g. converting a function-call frame to
+                // a variable assignment on typing "=" holds focus blank for a genuine ~300ms
+                // debounce (see LabelSlotsStructure.vue) -- and that blank reading is itself stable
+                // across many consecutive checks during the whole debounce window, which would
+                // otherwise fool this into passing mid-restructure. Frame-level pastes can
+                // legitimately end up blank too (a frame caret, not a slot), so we can't just
+                // refuse blank outright -- instead require more consecutive stable reads (~450ms)
+                // before trusting a blank state than a real one (~30ms), comfortably past the
+                // known debounce:
+                if (stableCount >= (lastFocusId === "" ? 15 : 1)) {
+                    resolve();
+                    return;
+                }
+                if (Date.now() - start > timeoutMs) {
+                    reject(new Error(`editor state should stabilise: stuck at ${stableCount} consecutive stable reads of "${state}" after ${timeoutMs}ms`));
+                    return;
+                }
+                setTimeout(check, 30);
+            };
+            check();
+        });
     });
 }
 

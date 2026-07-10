@@ -27,3 +27,57 @@ export async function checkConsoleContent(page: Page, expectedContent : string |
     await expect(consoleLoc).toHaveCount(1);
     await expect(consoleLoc).toHaveValue(expectedContent, {timeout: 3000});
 }
+
+// There's no dedicated test hook for "the graphics canvas just redrew" (turtle/strype.graphics
+// drawing happens inside a running Python program with no JS-side signal of its own -- see
+// PythonExecutionArea.vue's requestAnimationFrame + isDirty() loop). But redrawCanvas() does one
+// incidental, unconditional DOM write on every actual redraw: it sets #pythonGraphicsCanvas's
+// data-scale attribute (to the same value, if the scale hasn't changed) -- and a MutationObserver
+// fires an "attributes" record on every setAttribute call regardless of whether the value
+// changed. Confirmed empirically: drawing a 4-sided turtle square produced exactly 8 matching
+// mutation records (2 per side) that then stopped, and a single mouse click that adds one Actor
+// produced exactly 1 more. Call this once (after the graphics tab/canvas exists, before
+// triggering any drawing) and then waitForGraphicsSettled() after each action that should cause
+// a redraw, instead of guessing how long the animation/response will take.
+export async function setupGraphicsRedrawObserver(page: Page) : Promise<void> {
+    await page.evaluate(() => {
+        (window as any).__strypeGraphicsRedrawCount = 0;
+        const canvas = document.querySelector("#pythonGraphicsCanvas");
+        if (!canvas) {
+            return;
+        }
+        const obs = new MutationObserver((records) => {
+            (window as any).__strypeGraphicsRedrawCount += records.length;
+        });
+        obs.observe(canvas, {attributes: true, attributeFilter: ["data-scale"]});
+    });
+}
+
+// Waits for the graphics canvas to stop redrawing (see setupGraphicsRedrawObserver above),
+// rather than guessing how long an animation or a response to a click/keypress will take.
+// Requires the redraw count to stay unchanged for a short quiet window before concluding the
+// drawing has settled, since a drawing sequence (e.g. a turtle animating across the screen) can
+// span several redraws over time.
+export async function waitForGraphicsSettled(page: Page, timeoutMs = 15000) : Promise<void> {
+    const start = Date.now();
+    let last = await page.evaluate(() => (window as any).__strypeGraphicsRedrawCount ?? 0);
+    let stableCount = 0;
+    while (Date.now() - start < timeoutMs) {
+        await page.waitForTimeout(100);
+        const cur = await page.evaluate(() => (window as any).__strypeGraphicsRedrawCount ?? 0);
+        if (cur === last) {
+            stableCount++;
+            // A redraw count that's stable at zero doesn't mean drawing has settled -- it just
+            // as likely means drawing hasn't started yet (e.g. the action we're waiting on hasn't
+            // reached the canvas yet). Only trust stability once at least one redraw has actually
+            // been observed, so we don't return before anything has been drawn:
+            if (stableCount >= 3 && cur > 0) {
+                return;
+            }
+        }
+        else {
+            stableCount = 0;
+        }
+        last = cur;
+    }
+}

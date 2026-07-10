@@ -8,7 +8,7 @@ import fs from "fs";
 import {enterCode} from "../support/editor";
 import {dragDividerTo} from "../support/dividers";
 import {load, loadContent} from "../support/loading-saving";
-import {checkConsoleContent, runToFinish, startRunning} from "../support/execution";
+import {checkConsoleContent, runToFinish, setupGraphicsRedrawObserver, startRunning, waitForGraphicsSettled} from "../support/execution";
 
 let browser = "";
 
@@ -132,9 +132,11 @@ test.describe("Check turtle works when shared with graphics", () => {
                 t.right(90)        
         `]);
         await page.click("#graphicsPEATab");
+        await setupGraphicsRedrawObserver(page);
         await page.click("#runButton");
-        // Turtle takes a moment to actually animate:
-        await page.waitForTimeout(4000);
+        // Turtle takes a moment to actually animate -- wait for the canvas to actually stop
+        // redrawing instead of guessing how long that takes:
+        await waitForGraphicsSettled(page);
         await checkGraphicsAreaContent(page, "turtle-graphics-square");
     });
     test("Check turtle keyboard input", async ({page}) => {
@@ -150,13 +152,14 @@ test.describe("Check turtle works when shared with graphics", () => {
             turtle.mainloop()        
         `]);
         await page.click("#graphicsPEATab");
+        await setupGraphicsRedrawObserver(page);
         await page.click("#runButton");
-        // Seems to take a while to initialise on Firefox:
-        await page.waitForTimeout(3000);
+        // Seems to take a while to initialise on Firefox -- wait for actual settling instead:
+        await waitForGraphicsSettled(page);
         await checkGraphicsAreaContent(page, "turtle-graphics-blank");
         await page.keyboard.press("ArrowUp");
         // Turtle takes a moment to actually animate:
-        await page.waitForTimeout(4000);        
+        await waitForGraphicsSettled(page);
         await checkGraphicsAreaContent(page, "turtle-graphics-triangle-up");
     });
 
@@ -173,14 +176,15 @@ test.describe("Check turtle works when shared with graphics", () => {
             turtle.mainloop()
         `]);
         await page.click("#graphicsPEATab");
+        await setupGraphicsRedrawObserver(page);
         await page.click("#runButton");
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 0.2, 0.2);
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 0.8, 0.5);
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 0.4, 0.7);
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await checkGraphicsAreaContent(page, "turtle-graphics-triangle-mouse-follow");
     });
 });
@@ -196,9 +200,10 @@ test.describe("Check graphics works when shared with turtle", () => {
             pause(1)        
         `]);
         await page.click("#graphicsPEATab");
+        await setupGraphicsRedrawObserver(page);
         await page.click("#runButton");
-        // Give it time to run:
-        await page.waitForTimeout(3000);
+        // Give it time to run -- wait for the canvas to actually stop redrawing:
+        await waitForGraphicsSettled(page);
         await checkGraphicsAreaContent(page, "shared-graphics-background-1");
     });
 
@@ -209,16 +214,17 @@ test.describe("Check graphics works when shared with turtle", () => {
             while True:
                 if key_pressed("up"):
                     mouse.set_location(-200, -200)
-                pace(20)        
+                pace(20)
         `]);
         await page.click("#graphicsPEATab");
+        await setupGraphicsRedrawObserver(page);
         await page.click("#runButton");
-        await page.waitForTimeout(10000);
+        await waitForGraphicsSettled(page);
         // Check the mouse starts in the right place (same image as test above):
         await checkGraphicsAreaContent(page, "shared-graphics-background-1");
         // Need a delay to make sure it is registered during a frame:
         await page.keyboard.press("ArrowUp", {delay: 200});
-        await page.waitForTimeout(500);
+        await waitForGraphicsSettled(page);
         // Check the mouse has moved because it registered the keypress:
         await checkGraphicsAreaContent(page, "shared-graphics-background-2");
     });
@@ -238,14 +244,15 @@ test.describe("Check graphics works when shared with turtle", () => {
                 pace(20)        
         `]);
         await page.click("#graphicsPEATab");
+        await setupGraphicsRedrawObserver(page);
         await page.click("#runButton");
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 0.2, 0.2);
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 0.8, 0.5);
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 0.4, 0.7);
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await checkGraphicsAreaContent(page, "shared-graphics-mouse-at-mouse-click");
     });
 
@@ -268,20 +275,21 @@ test.describe("Check graphics works when shared with turtle", () => {
         `]);
         await page.click("#graphicsPEATab");
         await page.locator("#peaGraphicsContainerDiv").hover();
-        await page.waitForTimeout(1000);
         await page.click(".pea-toggle-layout-buttons-container > div:nth-child(2)");
-        await page.waitForTimeout(20 * 1000);
+        // dragDividerTo (via getSplitterPos) already polls for the splitter's position to settle
+        // after this layout switch, so no separate wait is needed here beforehand:
         await dragDividerTo(page, ".expanded-PEA-splitter-overlay.strype-split-theme > .splitpanes.splitpanes--horizontal > .splitpanes__splitter", 500, 200);
+        await setupGraphicsRedrawObserver(page);
         await page.click("#runButton");
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 100/800, 100/600);
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 700/800, 100/600);
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 100/800, 500/600);
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 700/800, 500/600);
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await checkGraphicsAreaContent(page, "shared-graphics-circle-at-mouse-click-large");
     });
 
@@ -315,20 +323,21 @@ test.describe("Check graphics works when shared with turtle", () => {
         `]);
         await page.click("#graphicsPEATab");
         await page.locator("#peaGraphicsContainerDiv").hover();
-        await page.waitForTimeout(1000);
         await page.click(".pea-toggle-layout-buttons-container > div:nth-child(2)");
-        await page.waitForTimeout(20 * 1000);
+        // dragDividerTo (via getSplitterPos) already polls for the splitter's position to settle
+        // after this layout switch, so no separate wait is needed here beforehand:
         await dragDividerTo(page, ".expanded-PEA-splitter-overlay.strype-split-theme > .splitpanes.splitpanes--horizontal > .splitpanes__splitter", 500, 200);
+        await setupGraphicsRedrawObserver(page);
         await page.click("#runButton");
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 100/800, 100/600, "left");
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 700/800, 100/600, "right");
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 100/800, 500/600, "right");
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 700/800, 500/600, "middle");
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await checkGraphicsAreaContent(page, "shared-graphics-circle-at-mouse-click-multi-button-large");
     });
 
@@ -360,20 +369,21 @@ test.describe("Check graphics works when shared with turtle", () => {
         `]);
         await page.click("#graphicsPEATab");
         await page.locator("#peaGraphicsContainerDiv").hover();
-        await page.waitForTimeout(1000);
         await page.click(".pea-toggle-layout-buttons-container > div:nth-child(2)");
-        await page.waitForTimeout(20000);
+        // dragDividerTo (via getSplitterPos) already polls for the splitter's position to settle
+        // after this layout switch, so no separate wait is needed here beforehand:
         await dragDividerTo(page, ".expanded-PEA-splitter-overlay.strype-split-theme > .splitpanes.splitpanes--horizontal > .splitpanes__splitter", 500, 200);
+        await setupGraphicsRedrawObserver(page);
         await page.click("#runButton");
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 100/800, 100/600, "left");
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 700/800, 100/600, "right");
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 100/800, 500/600, "right");
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await clickProportionalPos(page, 700/800, 500/600, "middle");
-        await page.waitForTimeout(2000);
+        await waitForGraphicsSettled(page);
         await checkGraphicsAreaContent(page, "shared-graphics-circle-at-mouse-click-get-mouse-large");
     });
 });
@@ -381,9 +391,8 @@ test.describe("Check graphics works when shared with turtle", () => {
 async function executeCode(page: Page, waitForFinish = true) {
     await page.locator("#runButton", {hasText: /Run/}).click();
     if (waitForFinish) {
-        // Wait for it to finish:
-        await page.waitForTimeout(1000);
-        // Assert it has finished, by looking at the run button:
+        // Assert it has finished, by looking at the run button. This already retries for up to
+        // 60s, so no separate wait beforehand is needed:
         await expect(page.locator("#runButton")).toHaveText(/Run/, {timeout: 60000});
     }
 }
@@ -543,7 +552,8 @@ while True  :
 `);
         // Previously, this caused an exception just by running it (see #820 on Github), so make sure that doesn't happen:
         const button = await startRunning(page);
-        // Now check it's still running a few seconds later:
+        // Deliberately wait a couple of seconds (not settle-based): this is giving a potential
+        // exception time to manifest, not waiting for a specific state to be reached:
         await page.waitForTimeout(2000);
         await expect(button).toHaveText(/Stop/);
         // Check console is blank:
@@ -553,14 +563,15 @@ while True  :
     test("Test get_clicked_actor returns the right item", async ({page}) => {
         // First load the file into the editor:
         await load(page, "tests/cypress/fixtures/data-graph.spy");
+        await setupGraphicsRedrawObserver(page);
         await startRunning(page);
-        await page.waitForTimeout(5000);
+        await waitForGraphicsSettled(page);
         const g = page.locator("#peaGraphicsContainerDiv");
         const bb = await g.boundingBox();
         expect(bb).not.toBeNull();
         // Click near top right:
         await g.click({position: {x: (bb?.width ?? 0) - 10, y: 10}});
-        await page.waitForTimeout(1000);
+        await waitForGraphicsSettled(page);
         await page.click("#consolePEATab");
         await checkConsoleContent(page, /\nClicked: button\s*$/s);
     });
@@ -579,10 +590,11 @@ while True:
     s = s + k
     show_text(s, font_size=120)
 `);
+        await setupGraphicsRedrawObserver(page);
         await startRunning(page, true);
-        await page.waitForTimeout(1000);
+        await waitForGraphicsSettled(page);
         await page.keyboard.type("Hello world", {delay: 200});
-        await page.waitForTimeout(1000);
+        await waitForGraphicsSettled(page);
         await checkGraphicsAreaContent(page, "type-get-key-show-text");
     });
 });
@@ -733,6 +745,7 @@ plt.show()
 `);
             // Make sure to start on console tab:
             await page.locator("#consolePEATab").click();
+            await setupGraphicsRedrawObserver(page);
             await startRunning(page, true);
             // It will switch to graphics tab once it has displayed, make sure to add extra wait:
             await checkTab(page, "graphics", true);
@@ -740,10 +753,9 @@ plt.show()
             await clickMatplotlibProportionalPos(page, 0.25, 0.25, aspectRatio);
             await clickMatplotlibProportionalPos(page, 0.25, 0.75, aspectRatio);
             await clickMatplotlibProportionalPos(page, 0.75, 0.75, aspectRatio);
-            // We need to give it a moment to make sure the clicks are processed
-            // Unavoidable to use a timed wait:
-            await page.waitForTimeout(1000);
-            
+            // Wait for the click-triggered circle redraws to be processed:
+            await waitForGraphicsSettled(page);
+
             // Note that these images have stretched circles because they are circles in matplotlib's 0->1 coordinates
             // which are then stretched by our aspect ratio.  The key thing is they should just touch the edges:
             await checkGraphicsAreaContent(page, "matplotlib-click-" + aspectRatio.join("-"));

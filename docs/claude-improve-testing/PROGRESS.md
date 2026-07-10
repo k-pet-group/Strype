@@ -33,7 +33,7 @@ deliberately kept, say why instead of checking it off as fully done.
 | Done | File | Waits (snapshot) | Notes |
 |---|---|---|---|
 | [x] | `tests/playwright/e2e/rename-identifiers.spec.ts` | 139 | Converted 138/139; 1 deliberately kept (waiting to prove a popup does NOT appear) -- see Log |
-| [ ] | `tests/playwright/e2e/match-statement.spec.ts` | 105 | |
+| [x] | `tests/playwright/e2e/match-statement.spec.ts` | 105 | Converted all 105, see Log |
 | [x] | `tests/playwright/e2e/graphics.spec.ts` | 41 | Converted 40/41; 1 deliberately kept (waiting for an exception to manifest, not a state) -- see Log |
 | [x] | `tests/playwright/e2e/structured-expressions.spec.ts` | 35 | Converted all 35; found+fixed a real bug in the shared waitForEditorSettled() helper along the way -- see Log |
 | [ ] | `tests/playwright/e2e/structured-expressions-media.spec.ts` | 32 | |
@@ -878,3 +878,14 @@ deliberately left in place with a reason.
     have been several minutes of fixed waits to well under a minute per
     browser.
   - `eslint` and `vue-tsc --noEmit` both clean.
+
+- **2026-07-10**: Converted `tests/playwright/e2e/match-statement.spec.ts`
+  (all 105 waits). Unlike the two files above, every wait here was the
+  same simple shape (uniform 200ms, always "wait after a keypress/typed
+  text before the next action," no popups or async eligibility checks
+  involved) -- straightforward bulk conversion to `waitForEditorSettled`,
+  plus deleting one redundant wait immediately after a
+  `pressN(..., true)(page)` call (same reasoning as in
+  `rename-identifiers.spec.ts`: it already settles after every press).
+  Verified: full file across all 3 browsers (27/27), chromium
+  `--repeat-each=3` (27/27). `eslint` and `vue-tsc --noEmit` both clean.

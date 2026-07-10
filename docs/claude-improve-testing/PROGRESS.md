@@ -22,11 +22,11 @@ deliberately kept, say why instead of checking it off as fully done.
 | [x] | `tests/playwright/support/editor.ts` | 5 | Converted all (6 incl. one non-literal), added prod nextTick hook, see Log |
 | [x] | `tests/playwright/support/loading-saving.ts` | 4 | Converted all 4; one had a real CI-caught bug, fixed 2026-07-10 -- see Log |
 | [x] | `tests/playwright/support/dividers.ts` | 3 | Converted all 3, see Log |
-| [ ] | `tests/cypress/support/paste-test-support.ts` | 5 | paste/save/load round trip, see RECIPES.md |
+| [x] | `tests/cypress/support/paste-test-support.ts` | 5 | Converted all 5, see Log |
 | [ ] | `tests/cypress/support/expression-test-support.ts` | 3 | |
 | [ ] | `tests/cypress/support/autocomplete-test-support.ts` | 3 | |
 | [ ] | `tests/cypress/support/param-prompt-support.ts` | 3 | |
-| [ ] | `tests/cypress/support/load-save-support.ts` | 1 | |
+| [x] | `tests/cypress/support/load-save-support.ts` | 1 | Converted, see Log |
 
 ## Spec files (descending count — see PLAN.md for why this order)
 
@@ -500,3 +500,60 @@ deliberately left in place with a reason.
     "click open a dialog, immediately fill an input" pattern, check
     whether the app has any deferred (`setTimeout`) logic that also
     touches that same input, not just whether the dialog itself animates.
+- 2026-07-10 — Fifth/sixth conversions: first two **Cypress** shared
+  helpers, `tests/cypress/support/paste-test-support.ts` (5 waits) and
+  `tests/cypress/support/load-save-support.ts` (1 wait) — same app, same
+  Menu.vue/App.vue mechanics already reverse-engineered for the Playwright
+  helpers, just translated to Cypress idioms (`.should()`'s built-in
+  retry-until-pass instead of `expect.poll`/manual loops).
+  - Added `waitForEditorSettled()` and `waitForProjectNameOrTimeout()` to
+    `tests/cypress/support/test-support.ts`, mirroring
+    `tests/playwright/support/editor.ts`'s `waitForEditorSettled` and
+    `loading-saving.ts`'s `.project-name` wait. The stability-poll pattern
+    translates cleanly to Cypress: since `.should(callback)` retries the
+    *same* callback closure until it stops throwing, a `let lastState`
+    variable captured in that closure persists across retries exactly like
+    the manual poll loop did in Playwright — no sleep loop needed.
+  - `paste-test-support.ts`'s save-dialog wait hit the **exact same
+    `Menu.vue` setTimeout(...,500) filename-clobber bug already found and
+    fixed in Playwright's `save()`** (see the loading-saving.ts entry
+    above) — same root cause, same fix (wait for the input to receive
+    focus before filling), confirming this wasn't a one-off.
+  - **New Cypress-specific pitfall, not present in the Playwright
+    equivalent**: the first attempt at the focus-wait
+    (`expect(document.activeElement).to.eq($el[0])`) failed consistently,
+    even with a generous timeout. Root cause: `document` referenced bare
+    in a Cypress spec file's `.should()` callback resolves to the *test
+    runner's* document, not the AUT's — Cypress does not rebind the global
+    `document` the way it's easy to assume. Fixed by using
+    `$el[0].ownerDocument.activeElement` instead, which is always correct
+    regardless of which context evaluates the callback. Worth remembering
+    for any future Cypress conversion that needs to check DOM focus state.
+  - **Second Cypress-specific pitfall**: the best-effort
+    `waitForProjectNameOrTimeout` (needed because
+    `testRoundTripImportAndDownload` is used by both successful-import
+    tests, where the name changes, and deliberately-invalid-import tests,
+    where the app rejects the load and the name never changes) first used
+    a plain `cy.window().then(...)` wrapping a bounded internal Promise —
+    but Cypress's own default command timeout for `.then()` is 4000ms,
+    shorter than the internal 10000ms bound, so Cypress killed the command
+    before the internal wait ever got a chance to resolve on its own.
+    Fixed by passing `{timeout: ...}` explicitly to `.then()`. Once that
+    was fixed, a **second, subtler bug** surfaced: `pythonToFrames.ts`
+    auto-dismisses its parse-error message after exactly `10000`ms
+    (`showMessage(msg, 10000)`), and the wait's original 10000ms default
+    bound was racing almost exactly against that same duration — sometimes
+    winning, sometimes not. Reduced the default bound to 5000ms (comfortable
+    margin under the message's 10s auto-dismiss, while still generous for
+    the successful-import case, which settles in low single-digit seconds).
+    Both bugs were only found by actually reading the specific
+    `AssertionError`/`CypressError` text from real Cypress runs, not by
+    reasoning about the code alone — another data point for "run it and
+    read the actual failure" over "review the diff and hope."
+  - Verified: `paste-python.cy.ts` (the single slowest Cypress spec in the
+    suite, 570s in the last known-good timing) — full file, 51/51 passing,
+    now **3 minutes instead of ~6-7** (multiple full runs during
+    debugging, all consistent). `paste-python-mixed.cy.ts` (heavy user of
+    the `.spy`/custom-name save path), full file, 18/18 passing, twice.
+    `load-save.cy.ts` (uses `load-save-support.ts`'s `loadFile`), 2/2
+    passing. `eslint` and `vue-tsc --noEmit` both clean throughout.

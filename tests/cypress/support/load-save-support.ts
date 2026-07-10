@@ -15,8 +15,10 @@ export function loadFile(strypeElIds: {[varName: string]: (...args: any[]) => st
     cy.get("#" + strypeElIds.getLoadProjectLinkId()).click();
     // If the current state of the project is modified,
     // we first need to discard the changes (we check the button is available)
+    // Clicking discard closes this dialog and opens the real load-target one (which contains the
+    // "load from FS" button below) via an event -- Cypress's own click retry-ability (waiting for
+    // the target to be visible/actionable) covers that transition, no fixed wait needed:
     cy.get("button").contains(en.buttonLabel.discardChanges).should("exist").click();
-    cy.wait(2000);
     // The "button" for the target selection is now a div element.
     cy.get("#" + strypeElIds.getLoadFromFSStrypeButtonId()).click();
     // Must force because the <input> is hidden:

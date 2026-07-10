@@ -29,6 +29,61 @@ export function focusEditorAndClear(): void {
     cy.get("body").type("{backspace}");
 }
 
+// Waits for the editor to settle after an action (typing, pasting, frame manipulation) rather
+// than guessing how long it will take. Mirrors tests/playwright/support/editor.ts's
+// waitForEditorSettled: some editor actions go through genuine debounce timers in the app (not
+// just Vue reactivity), so this polls the focused slot and frame count -- exposed via #editor's
+// data-slot-focus-id/data-slot-cursor attributes and .frame-div elements -- until they stop
+// changing across two consecutive checks, using Cypress's own retry-until-pass on .should()
+// rather than a manual sleep loop.
+export function waitForEditorSettled(): void {
+    let lastState: string | null = null;
+    let stableCount = 0;
+    cy.get("#editor", {timeout: 10000}).should(($editor) => {
+        const focusId = $editor.attr("data-slot-focus-id") ?? "";
+        const cursor = $editor.attr("data-slot-cursor") ?? "";
+        const frameCount = Cypress.$(".frame-div").length;
+        const state = `${focusId}:${cursor}:${frameCount}`;
+        if (state === lastState) {
+            stableCount++;
+        }
+        else {
+            stableCount = 0;
+        }
+        lastState = state;
+        expect(stableCount, "editor state should stabilise").to.be.at.least(1);
+    });
+}
+
+// Waits (bounded, best-effort) for the visible ".project-name" label to reach expectedName --
+// the real signal that a file load has actually been applied (see waitForEditorSettled's
+// sibling fix in loading-saving.ts for Playwright). Unlike a plain `.should("have.text", ...)`,
+// this does not fail if the name never arrives: some callers deliberately load invalid content
+// that gets rejected by the app, in which case the project name legitimately never changes, and
+// that's for the caller's own assertions (e.g. an error banner) to check, not this helper.
+// Keep the default bound well under 10000ms: on rejection, pythonToFrames.ts shows an error
+// message that auto-dismisses after exactly 10000ms, and a bound too close to that risks racing
+// past it before the caller's own assertion on that message gets a chance to see it.
+export function waitForProjectNameOrTimeout(expectedName: string, timeoutMs = 5000): void {
+    // cy.then()'s own command timeout (default 4000ms) must be longer than our internal bound,
+    // otherwise Cypress fails the command before our best-effort wait ever gets to time out on
+    // its own -- give it some headroom over timeoutMs:
+    cy.window().then({timeout: timeoutMs + 5000}, (win) => {
+        return new Cypress.Promise<void>((resolve) => {
+            const start = Date.now();
+            const check = () => {
+                const el = win.document.querySelector(".project-name");
+                if (el?.textContent === expectedName || Date.now() - start > timeoutMs) {
+                    resolve();
+                    return;
+                }
+                setTimeout(check, 100);
+            };
+            check();
+        });
+    });
+}
+
 export function getDownloadedFileContent(strypeElIds: {[varName: string]: (...args: any[]) => string}, filename: string, firstSave?: boolean) : Cypress.Chainable<string> {
     const downloadsFolder = Cypress.config("downloadsFolder");
     const destFile = path.join(downloadsFolder, filename);

@@ -188,6 +188,130 @@ consciously decide about the rest.
   local throttling is a proxy to catch problems before they cost a CI round
   trip, not a replacement for watching actual CI runs stay green.
 
+## Verification retrospective: commit 0d927ab4's CI run (2026-07-10)
+
+This is the first real end-to-end test of this plan's verification strategy
+against actual CI, and it's worth recording honestly because the gap between
+expectation and reality points at concrete gaps in the verification steps
+above, not just one-off bugs.
+
+**What was expected going into the push.** Commit 0d927ab4 converted
+`tests/playwright/support/editor.ts` (5-6 waits) and
+`tests/playwright/support/loading-saving.ts` (4 waits). Local verification
+beforehand was substantial for `editor.ts` — 306 tests across 9 spec files,
+plus a CPU-throttle stress run (rate=15, `--repeat-each=3`) — and moderate
+for `loading-saving.ts` (`load-save-share.spec.ts` under throttle,
+`load-save-random.spec.ts` on a couple of cases). Expectation: a clean or
+near-clean run.
+
+**What actually happened**, across all 6 CI jobs (`gh api
+repos/<owner>/<repo>/actions/jobs/<id>/logs`, pulled after the run
+completed):
+
+| Job | Browser | Result |
+|---|---|---|
+| ubuntu, shard 1 | chromium | clean pass |
+| macos, shard 1 | chromium | 454 passed, 7 flaky, **1 genuine failure** |
+| ubuntu, shard 2 | firefox | **log stops mid-run at ~42min with no final summary, though the job ran 110min before reporting "failure"** — see below |
+| macos, shard 2 | firefox | 15 failed, 28 flaky |
+| ubuntu, shard 3 | webkit | 341 passed, 120 flaky, **1 genuine failure** |
+| macos, shard 3 | webkit | 492 passed, 14 flaky, **2 failures** (both the same root cause as ubuntu/webkit's 1) |
+
+**Root causes, sorted by how much they say about the verification process:**
+
+1. **A real bug in the `save()` conversion, missed because the verification
+   run never exercised that code path.** `storage-model.spec.ts` (webkit,
+   both OSes) failed because `save(page, true, projectName)`'s custom name
+   got silently overwritten by `Menu.vue`'s own `setTimeout(..., 500)` that
+   populates the save-dialog's default filename. The bug is specifically in
+   the `if (projectName)` branch — and no test in the local verification
+   pass (`load-save-share.spec.ts`, `load-save-random.spec.ts`) ever calls
+   `save()` with a custom name. **Lesson: verifying "the tests I happened to
+   pick" is not the same as verifying "every parameter/branch of the
+   function I changed."** When a converted helper has multiple call
+   patterns (here: with/without a custom name), each pattern needs its own
+   direct verification, not just whichever the convenient nearby test files
+   happen to use. Confirmed reproducible on a fast local machine with *no*
+   throttling at all (5/5) — this is a distinct failure class from the
+   render/reactivity races the rest of this plan targets: a `.fill()`
+   racing ahead of a fixed-real-time `setTimeout` in app code. CPU
+   throttling (which slows script/render work) doesn't reliably surface it
+   either way, so **"passes under CPU throttle" is not sufficient evidence
+   for every wait — check whether the specific interaction being converted
+   could race against a real timer in the app, not just against Vue's
+   reactivity.**
+2. **A pre-existing test bug, exposed (not caused) by the conversion
+   removing accidental slack.** `structured-expressions-selection.spec.ts`
+   had a bare `page.keyboard.press("ArrowLeft")` with no wait before the
+   next action — its sibling test one `describe` block down has the
+   identical pattern *with* an explicit wait, strongly suggesting a plain
+   oversight in the original test that had enough incidental margin
+   elsewhere to never fire before. **Lesson: when a conversion makes things
+   faster/more precise, previously-masked pre-existing races can surface.
+   This is a feature of the initiative working correctly, not a regression
+   to be defensive about — but it does mean a "clean before, red after"
+   diff needs a beat of investigation before assuming the new code is at
+   fault.**
+3. **Both of the above were found by treating the CI run itself as part of
+   the discovery process**, not merely a pass/fail gate — reading actual
+   error messages and tracing them to root cause in the app/test code,
+   exactly as prescribed for local investigation elsewhere in this plan.
+   Neither bug had a local repro *before* the CI run pointed at it. Worth
+   stating plainly: **the verification steps above (throttled local runs)
+   catch a specific known class of race (Vue-reactivity/render timing) very
+   well, but are not a substitute for a real CI run** — add "run on CI and
+   actually read the failures, don't just glance at red/green" as an
+   explicit step, not an implicit hope.
+4. **Most of the "flaky" (retry-recovered) failures look like pre-existing
+   CI noise, not new regressions** — e.g. `console-execution.spec.ts`
+   failing wholesale on macOS/Firefox with `Error: expect(locator).
+   toHaveText(expected) failed ... Received: " Initialising..."`, timing
+   out on the Python runtime never leaving its init state. The test
+   helper's own comment (`tests/playwright/support/execution.ts:14`) says
+   *"Firefox is incredibly slow to reinitialise on CI"* — this predates the
+   conversion and is consistent with the CI findings in PROGRESS.md
+   (Firefox/WebKit are the slow/flaky browsers generally). Not treated as a
+   regression from this work, but **not independently confirmed as
+   pre-existing either** — there's no baseline CI run of the *unconverted*
+   code on this exact fork/runner pool to diff against. Worth getting one
+   if flakiness accounting needs to be precise later (e.g. a run on `main`
+   or the pre-initiative commit, same fork, same day, for a clean
+   before/after).
+5. **Open, unresolved: the ubuntu/firefox job's log stops abruptly at
+   05:39:56 + ~42min, mid-way through loading page assets, with no further
+   output — yet the job didn't report "failure" until 07:29:54, nearly 90
+   minutes later.** Both `gh api .../logs` and `gh run view --log` show the
+   identical truncation point, so this isn't a fetch artifact on this end.
+   Two live hypotheses, not yet distinguished: (a) GitHub's log capture
+   genuinely stopped streaming for a long-running job (a known GitHub
+   Actions behavior under high log volume) while the tests kept running
+   fine underneath, or (b) something actually hung for ~90 minutes and was
+   eventually killed by a timeout that isn't obviously visible in the
+   workflow config (`timeout-minutes: 125` = 7500s comfortably exceeds the
+   observed 6598s runtime, so that's not it as configured). **Needs a
+   fresh, isolated firefox-only CI run to resolve** — that would settle
+   whether this is a logging quirk or a genuine hang worth its own
+   investigation.
+
+**Concrete additions to the Verification section above, based on this:**
+- When converting a helper function, enumerate its call patterns
+  (parameters/branches) across all current call sites *before* declaring it
+  verified, and make sure local testing exercises each one at least once —
+  not just "pick a couple of files that happen to call it."
+- Treat the first CI run after pushing a conversion as a required discovery
+  step, not an optional confirmation — read every failure's actual error
+  message and stack trace, the same way local investigation is prescribed
+  elsewhere in this plan, before deciding whether it's a regression, a
+  newly-exposed pre-existing bug, or CI noise.
+- A race against a fixed real-time `setTimeout` in application code (as
+  opposed to Vue-reactivity timing) can be ~100%-reproducible locally with
+  *zero* throttling, because the bug is about *ordering* (does my action
+  race ahead of the app's own delayed logic), not about *speed*. Don't
+  assume "passes fast locally, even repeatedly" rules this class out —
+  specifically ask "does anything in the app touch this same element/state
+  on a delay?" for any wait involving filling a value into a freshly-opened
+  dialog.
+
 ## Risks / gotchas specific to this codebase
 
 - Some waits follow drag/mouse operations (`tests/playwright/support/dividers.ts`)

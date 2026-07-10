@@ -4,7 +4,7 @@ import {focusEditor} from "../support/expression-test-support";
 // imports the locale files we need for the locales used by this test
 import en from "@/localisation/en/en_main.json";
 import { standardBeforeEach, strypeElIds } from "./standard-setup";
-import { focusEditorAndClear } from "./test-support";
+import { focusEditorAndClear, waitForEditorSettled, waitForProjectNameOrTimeout } from "./test-support";
 
 // Must clear all local storage between tests to reset the state,
 // and also retrieve the shared CSS and HTML elements IDs exposed
@@ -44,16 +44,26 @@ export function checkDownloadedCodeEquals(fullCode: string, format: "py" | "spy"
     }
     else {
         cy.contains(en.appMenu.saveProject).click({force: true});
-        cy.wait(1000);
+        // Menu.vue's onStrypeMenuShownModalDlg sets the filename input's default value and
+        // focuses it via a genuine setTimeout ~500ms after the dialog is shown. If we clear/type
+        // before that timer fires, it gets silently overwritten back to the default project name
+        // (this is the exact same race found and fixed in the Playwright equivalent, save() in
+        // tests/playwright/support/loading-saving.ts) -- wait for that setup to finish (it ends
+        // by focusing the input) before typing in ours:
+        cy.get("#saveStrypeFileNameInput", {timeout: 10000}).should(($el) => {
+            // Use the element's own document (not the bare global `document`, which in a Cypress
+            // spec file refers to the test runner's document, not the AUT's):
+            expect($el[0].ownerDocument.activeElement).to.eq($el[0]);
+        });
         // For testing, we always want to save to this device:
         cy.get("#saveStrypeFileNameInput").clear();
         cy.get("#saveStrypeFileNameInput").type("main");
         cy.contains(en.appMessage.targetFS).click({force: true});
         cy.contains("button:visible", en.buttonLabel.save).click();
     }
-    
-    cy.wait(1000);
 
+    // cy.readFile already polls until the file exists (up to its own timeout), so no wait is
+    // needed here beforehand:
     cy.readFile(path.join(downloadsFolder, "main." + format)).then((p : string) => {
         // Before comparing, we fix up a few oddities of our generated code:
         // Get rid of any spaces at end of lines:
@@ -96,7 +106,7 @@ export function testRoundTripPasteAndDownload(code: string, extraSetup?: string 
     }
     
     // We make sure our pasting has completed before saving, so that the save mechanism is based on an loaded file...
-    cy.wait(1000);
+    waitForEditorSettled();
 
     checkDownloadedCodeEquals(expected ?? code, format ?? "py");
     // Refocus the editor and go to the bottom:
@@ -114,13 +124,23 @@ export function testRoundTripImportAndDownload(filepath: string, expected?: stri
         cy.get("#" + strypeElIds.getLoadProjectLinkId()).click();
         // If the current state of the project is modified,
         // we first need to discard the changes (we check the button is available)
+        // Clicking discard closes this dialog and opens the real load-target one (which contains
+        // the "load from FS" button below) via an event -- Cypress's own click retry-ability
+        // (waiting for the target to be visible/actionable) covers that transition, no fixed wait
+        // needed:
         cy.get("button").contains(en.buttonLabel.discardChanges).should("exist").click();
-        cy.wait(2000);
         // The "button" for the target selection is now a div element.
         cy.get("#" + strypeElIds.getLoadFromFSStrypeButtonId()).click();
         // Must force because the <input> is hidden:
         cy.get("#" + strypeElIds.getImportFileInputId()).selectFile(filepath, {force : true});
-        cy.wait(2000);
+        // Menu.vue's selectedFile() only sets appStore.projectName (which the visible
+        // ".project-name" label mirrors) once the new project's state has actually been applied --
+        // wait for that instead of guessing how long loading a given file will take (same fix as
+        // load() in tests/playwright/support/loading-saving.ts). Some callers here deliberately
+        // load invalid content that the app rejects, in which case the name never changes -- that
+        // is for the caller's own subsequent assertions to check, so this wait is best-effort:
+        const expectedProjectName = path.basename(filepath, path.extname(filepath));
+        waitForProjectNameOrTimeout(expectedProjectName);
 
         checkDownloadedCodeEquals(expected ?? py);
         // Refocus the editor and go to the bottom:

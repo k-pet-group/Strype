@@ -13,7 +13,12 @@
   image: graphics-knock-knock.png
   file: graphics-knock-knock.spy
 
-- name: Sea life game
-  description: Starting point for the sea life game
-  image: graphics-sea-life.png
-  file: graphics-sea-life.spy
+- name: Memory game (OOP)
+  description: A simple memory game using OOP principles
+  image: oop.png
+  file: oop.spy
+
+- name: Graphing
+  description: An example of how to draw a graph using the numpy and matplotlib libraries
+  image: matplotlib-example.png
+  file: matplotlib-example.spy

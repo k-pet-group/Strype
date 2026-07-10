@@ -245,7 +245,9 @@ export default defineComponent({
         },
         
         onKeyDown(event: KeyboardEvent) {
-            if (this.$refs.cropper && event.key === "c" && ((isMacOSPlatform() && event.metaKey) || (!isMacOSPlatform() && event.ctrlKey))) {
+            // We need to make sure we are actually in the sitation the dialog is opened: this event callback can be called because of interaction elsewhere in the UI,
+            // and here will may trigger the event to be prevented (last part of the method) - even if the conditions to make the copy as expected here were not met.
+            if (this.appStore.isModalDlgShown && this.appStore.currentModalDlgId == this.dlgId && this.$refs.cropper && event.key.toLowerCase() === "c" && ((isMacOSPlatform() && event.metaKey) || (!isMacOSPlatform() && event.ctrlKey))) {
                 if (event.shiftKey) {
                     if (this.cursorColor !== undefined) {
                         navigator.clipboard.writeText(this.cursorColor);

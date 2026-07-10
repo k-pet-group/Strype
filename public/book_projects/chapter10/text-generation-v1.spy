@@ -15,6 +15,6 @@ def read_file (filename ) :
     with open(filename,encoding="utf-8")  as f  :
         return f.read() 
 #(=> Section:Main
-#(=> Disabled:text  = read_file("pride-and-prejudice.txt") 
+#(=> Disabled:text  = read_file("/books/pride-and-prejudice.txt") 
 text  = "I read the news today, oh, boy. About a lucky man who made the grade." 
 #(=> Section:End

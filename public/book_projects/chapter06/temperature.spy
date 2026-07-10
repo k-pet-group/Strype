@@ -9,7 +9,7 @@ This project is part of the book "Creative Python Programming with Strype".
 Copyright ©: Michael Kölling and Neil C.C. Brown'''
 #(=> Section:Imports
 #(=> Section:Definitions
-#(=> FrameState:FoldToHeader
+#(=> FrameState:FoldToHeader;Frozen
 def read_file (filename ) :
     '''Read a text file from disk and return the content of the file as a list of strings, with each line an item in the list.
     
@@ -23,5 +23,5 @@ def read_file (filename ) :
         data  = file.readlines() 
     return data 
 #(=> Section:Main
-data  = read_file("london-temperature-2025.txt") 
+data  = read_file("/data/london-temperature-2025.txt") 
 #(=> Section:End

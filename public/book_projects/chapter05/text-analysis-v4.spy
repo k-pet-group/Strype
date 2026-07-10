@@ -10,7 +10,7 @@ Authors: Michael Kölling and Neil C.C. Brown'''
 from string import punctuation 
 #(=> Section:Definitions
 #helper functions
-#(=> FrameState:FoldToHeader
+#(=> FrameState:FoldToHeader;Frozen
 def read_file (filename ) :
     '''Read a file from disk and return the content of the file as a single string.
     
@@ -50,14 +50,14 @@ def analyse_text (text ) :
     print() 
 #(=> Section:Main
 print("Text: Pride and Prejudice") 
-text  = read_file("pride-and-prejudice.txt") 
+text  = read_file("/books/pride-and-prejudice.txt") 
 analyse_text(text) 
 
 print("Text: War and Peace") 
-text  = read_file("war-and-peace.txt") 
+text  = read_file("/books/war-and-peace.txt") 
 analyse_text(text) 
 
 print("Text: Winnie the Pooh") 
-text  = read_file("winnie-the-pooh.txt") 
+text  = read_file("/books/winnie-the-pooh.txt") 
 analyse_text(text) 
 #(=> Section:End

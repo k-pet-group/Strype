@@ -24,7 +24,7 @@ def read_file (filename ) :
 def get_expected_frequencies ( ) :
     '''Returns a dictionary with expected frequencies for words in the English language.'''
     result  = {} 
-    with open("/strype/book/word_counts.txt","r")  as f  :
+    with open("/data/word_counts.txt","r")  as f  :
         for line  in f  :
             line  = line.strip() 
             if not line  :
@@ -56,7 +56,7 @@ def count_words (text ) :
 counts  = count_words("How many cakes could a good cook cook if a good cook could cook cakes?") 
 print(counts) 
 
-text  = read_file("winnie-the-pooh.txt") 
+text  = read_file("/books/winnie-the-pooh.txt") 
 counts  = count_words(text) 
 print(counts) 
 #(=> Section:End

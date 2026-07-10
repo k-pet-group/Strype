@@ -7,10 +7,11 @@ import path from "path";
 import * as os from "os";
 import "../support/paste-test-support";
 import { checkDownloadedCodeEquals, testRoundTripPasteAndDownload, testRoundTripImportAndDownload } from "../support/paste-test-support";
-import { focusEditorAndClear, getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
-import { scssVars } from "../support/standard-setup";
+import { focusEditorAndClear, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportFullLine, getDownloadedFileContent } from "../support/test-support";
+import { scssVars, strypeElIds } from "../support/standard-setup";
 
 const defaultProjectDocFullLine = getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"));
+const defaultImportFullLine = getDefaultStrypeProjectImportFullLine(Cypress.env("mode"));
 
 describe("Python round-trip", () => {
     // Some of these are semantically invalid but as long as they're syntactically valid,
@@ -564,5 +565,225 @@ describe("Python classes", () => {
         self.x = x
         self.y = y
 `);
+    });
+});
+
+describe("Editor operations", () => {
+    it("Undo/redo simple content paste", () => {
+        // Keep a backup of the current initial project
+        getDownloadedFileContent(strypeElIds, "My project.spy", true).then((spyContent) => {
+            const initialCodeContent = spyContent;
+
+            // Then let's paste something to generate at least 2 frames
+            cy.fixture("python-only-main.py").then((py) => {
+                // Get rid of any Windows file endings:
+                const code = py.replaceAll(/\r\n/g, "\n");    
+                (cy.get("body") as any).paste(code);    
+                // We make sure our pasting has completed before saving, so that the save mechanism is based on an loaded file...
+                cy.wait(1000);    
+                // Lazy check something was pasted to be sure we have changed the code!
+                getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                    const afterPasteContent = spyContent;
+                    expect(spyContent).not.to.equal(initialCodeContent);
+
+                    // Then perform undo: we expect paste to be reverted entirely, and the initial code to be there
+                    cy.get("body").type("{ctrl}z").then(() => {
+                        // wait a bit, then test
+                        cy.wait(300);
+                        getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                            expect(spyContent).to.equal(initialCodeContent);
+
+                            // Then perform redo: we expect the paste content to be back
+                            cy.get("body").type("{ctrl}y").then(() => {
+                                // wait a bit, then test
+                                cy.wait(300);
+                                getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                                    expect(spyContent).to.equal(afterPasteContent);
+                                });
+                            });
+                        });
+                    });
+                });
+            });            
+        });
+    });
+
+    it("Undo/redo mixed content paste", () => {
+        // Keep a backup of the current initial project
+        getDownloadedFileContent(strypeElIds, "My project.spy", true).then((spyContent) => {
+            const initialCodeContent = spyContent;
+
+            // Then let's paste something to generate at least 2 frames
+            cy.fixture("python-mixed-1.py").then((py) => {
+                // Get rid of any Windows file endings:
+                const code = py.replaceAll(/\r\n/g, "\n");    
+                (cy.get("body") as any).paste(code);    
+                // We make sure our pasting has completed before saving, so that the save mechanism is based on an loaded file...
+                cy.wait(1000);    
+                // Lazy check something was pasted to be sure we have changed the code!
+                getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                    const afterPasteContent = spyContent;
+                    expect(spyContent).not.to.equal(initialCodeContent);
+
+                    // Then perform undo: we expect paste to be reverted entirely, and the initial code to be there
+                    cy.get("body").type("{ctrl}z").then(() => {
+                        // wait a bit, then test
+                        cy.wait(300);
+                        getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                            expect(spyContent).to.equal(initialCodeContent);
+
+                            // Then perform redo: we expect the paste content to be back
+                            cy.get("body").type("{ctrl}y").then(() => {
+                                // wait a bit, then test
+                                cy.wait(300);
+                                getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                                    expect(spyContent).to.equal(afterPasteContent);
+                                });
+                            });
+                        });
+                    });
+                });
+            });            
+        });
+    });
+
+    // Have a different selection direction: a bug occured only when selecting in one direction
+    // so we should try both directions in this test.
+       
+    it("Paste simple content over a selection with ctrl+a", () => {
+        // Select everything in the main selection
+        cy.get("body").type("{ctrl}a").then(() => {
+            // Then retrieve a fixture content and paste it over, and test it
+            cy.fixture("python-only-main.py").then((py) => {
+                testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + defaultImportFullLine + py, true);
+            });
+        });
+    });
+
+    it("Paste simple content over a selection with shift-up", () => {
+        // First go to the end of the main section, select everything with shift+up in the main selection
+        cy.get("body").type("{end}").then(() => {
+            cy.get("body").type("{shift}{upArrow}{shift}{upArrow}").then(() => {
+                //cy.wait(300);
+                // Then retrieve a fixture content and paste it over, and test it
+                cy.fixture("python-only-main.py").then((py) => {
+                    testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + defaultImportFullLine + py, true);
+                });
+            });
+        });
+    });
+
+    it("Paste mixed content over a selection", () => {
+        // Select everything in the main selection
+        cy.get("body").type("{ctrl}a").then(() => {
+            cy.wait(300);
+            // Then retrieve a fixture content and paste it over, and test it
+            cy.fixture("python-mixed-1.py").then((py) => {
+                testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + defaultImportFullLine + py, true);
+            });
+        });
+    });
+
+    it("Undo/redo paste simple content over a selection", () => {
+        // Keep a backup of the current initial project
+        getDownloadedFileContent(strypeElIds, "My project.spy", true).then((spyContent) => {
+            const initialCodeContent = spyContent;
+ 
+            // Select everything in the main selection
+            cy.get("body").type("{ctrl}a").then(() => {
+                // Then retrieve a fixture content and paste it over, and test it
+                cy.fixture("python-only-main.py").then((py) => {
+                    testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + defaultImportFullLine + py, true);
+
+                    // Keep a backup of the pasted code
+                    getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                        const pasteCodeContent = spyContent;
+
+                        // Then perform undo: we expect paste to be reverted entirely, and the initial code to be there
+                        cy.get("body").type("{ctrl}z").then(() => {
+                        // wait a bit, then test
+                            cy.wait(300);
+                            getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                                expect(spyContent).to.equal(initialCodeContent);
+
+                                // Then perform redo: we expect the paste content to be back
+                                cy.get("body").type("{ctrl}y").then(() => {
+                                // wait a bit, then test
+                                    cy.wait(300);
+                                    getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                                        expect(spyContent).to.equal(pasteCodeContent);
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    });
+    
+    it("Undo/redo paste mixed content over a selection", () => {
+        // Keep a backup of the current initial project
+        getDownloadedFileContent(strypeElIds, "My project.spy", true).then((spyContent) => {
+            const initialCodeContent = spyContent;
+ 
+            // Select everything in the main selection
+            cy.get("body").type("{ctrl}a").then(() => {
+                // Then retrieve a fixture content and paste it over, and test it
+                cy.fixture("python-mixed-1.py").then((py) => {
+                    testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + defaultImportFullLine + py, true);
+
+                    // Keep a backup of the pasted code
+                    getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                        const pasteCodeContent = spyContent;
+
+                        // Then perform undo: we expect paste to be reverted entirely, and the initial code to be there
+                        cy.get("body").type("{ctrl}z").then(() => {
+                        // wait a bit, then test
+                            cy.wait(300);
+                            getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                                expect(spyContent).to.equal(initialCodeContent);
+
+                                // Then perform redo: we expect the paste content to be back
+                                cy.get("body").type("{ctrl}y").then(() => {
+                                // wait a bit, then test
+                                    cy.wait(300);
+                                    getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                                        expect(spyContent).to.equal(pasteCodeContent);
+                                    });
+                                });
+                            });
+                        });
+                    });
+                });
+            });
+        });
+    });
+
+    it("Paste invalid content over a selection (check selection remains)", () => {
+        // Keep a backup of the current initial project
+        getDownloadedFileContent(strypeElIds, "My project.spy", true).then((spyContent) => {
+            const initialCodeContent = spyContent;
+ 
+            // Select everything in the main selection
+            cy.get("body").type("{ctrl}a").then(() => {
+                // Then retrieve a fixture content and paste it over, and test it
+                cy.fixture("python-invalid.py").then((py) => {
+                    // Get rid of any Windows file endings:
+                    const code = py.replaceAll(/\r\n/g, "\n");    
+                    (cy.get("body") as any).paste(code);    
+                    // We make sure our pasting has completed before saving, so that the save mechanism is based on an loaded file...
+                    cy.wait(1000);    
+
+                    // Check undo is not available (just to make sure no action has been "recorded")
+                    cy.get(".menu-icon-entry[title=\"Undo\"").should("exist").and("be.disabled");
+
+                    // Check the code
+                    getDownloadedFileContent(strypeElIds, "My project.spy").then((spyContent) => {
+                        expect(spyContent).to.equal(initialCodeContent);
+                    });
+                });
+            });
+        });
     });
 });

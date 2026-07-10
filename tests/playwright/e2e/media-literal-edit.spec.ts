@@ -9,7 +9,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     }
 
     await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
+    await expect(page.locator(".frame-div")).toHaveCount(2);
     await page.evaluate(() => {
         (window as any).Playwright = true;
     });

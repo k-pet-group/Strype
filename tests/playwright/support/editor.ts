@@ -29,11 +29,27 @@ export async function waitForEditorSettled(page: Page, timeoutMs = 4000) : Promi
 
     const start = Date.now();
     let last = await readEditorState(page);
+    let stableCount = 0;
     while (Date.now() - start < timeoutMs) {
         await page.waitForTimeout(30);
         const cur = await readEditorState(page);
         if (cur.focusId === last.focusId && cur.cursor === last.cursor && cur.frameCount === last.frameCount) {
-            return;
+            stableCount++;
+            // A blank focus id (no slot focused) is also used by the app as a transient marker
+            // while some restructuring is in flight -- e.g. converting a function-call frame to a
+            // variable assignment on typing "=" holds focus blank for a genuine ~300ms debounce
+            // (see LabelSlotsStructure.vue), and that blank reading is itself stable across many
+            // consecutive polls during the whole debounce window, which would otherwise fool this
+            // into returning mid-restructure. Frame-level pastes can legitimately end up blank too
+            // (a frame caret, not a slot), so we can't just refuse blank outright -- instead
+            // require more consecutive stable reads (~450ms) before trusting a blank state than a
+            // real one (~30ms), comfortably past the known debounce:
+            if (stableCount >= (cur.focusId === "" ? 15 : 1)) {
+                return;
+            }
+        }
+        else {
+            stableCount = 0;
         }
         last = cur;
     }

@@ -35,7 +35,7 @@ deliberately kept, say why instead of checking it off as fully done.
 | [ ] | `tests/playwright/e2e/rename-identifiers.spec.ts` | 139 | |
 | [ ] | `tests/playwright/e2e/match-statement.spec.ts` | 105 | |
 | [ ] | `tests/playwright/e2e/graphics.spec.ts` | 41 | |
-| [ ] | `tests/playwright/e2e/structured-expressions.spec.ts` | 35 | |
+| [x] | `tests/playwright/e2e/structured-expressions.spec.ts` | 35 | Converted all 35; found+fixed a real bug in the shared waitForEditorSettled() helper along the way -- see Log |
 | [ ] | `tests/playwright/e2e/structured-expressions-media.spec.ts` | 32 | |
 | [ ] | `tests/cypress/e2e/autocomplete-modules.cy.ts` | 32 | |
 | [ ] | `tests/playwright/e2e/structured-expressions-navigation.spec.ts` | 31 | |
@@ -636,3 +636,63 @@ deliberately left in place with a reason.
     ordering is the spec-files table, biggest-count-first (tempered by
     the Playwright-vs-Cypress and browser-flakiness priority notes in the
     CI findings section above).
+- 2026-07-10 — `tests/playwright/e2e/structured-expressions.spec.ts` (35
+  waits) — the file that specifically exercises the funccall↔varassign
+  restructuring. Expected this to be as mechanical as the last conversion
+  (every wait followed a keystroke/paste, exactly the
+  `waitForEditorSettled()` pattern) — did a blanket `sed` swap of all 35,
+  and it **wasn't** that simple: 4 tests failed immediately.
+  - **Found and fixed a real, previously-undetected bug in the shared
+    `waitForEditorSettled()` helper itself** (both the Playwright version
+    in `editor.ts` and the Cypress port in `test-support.ts`) — not
+    specific to this file, a genuine gap in the helper every prior
+    conversion had been relying on. The "two consecutive matching reads =
+    settled" heuristic doesn't distinguish "genuinely done" from "sitting
+    in a known transient placeholder state that's about to change" —
+    and the funccall→varassign conversion's blank-focus placeholder
+    (`data-slot-focus-id=""`, set synchronously *before* the 300ms
+    debounce is scheduled — see `LabelSlotsStructure.vue`) is exactly
+    that: stable-looking for the *entire* 300ms window, easily satisfying
+    "two matching reads" long before the real final state arrives.
+    Confirmed with a live instrumented poll (readings every 30ms): blank
+    from +126ms to +336ms (stable well before that), but the real final
+    state didn't land until +378ms — so the old helper was provably
+    returning ~200ms early on this exact case.
+  - **Why this hadn't surfaced before**: every earlier validation that
+    exercised this specific "type = to convert a frame" scenario had
+    still been protected by a fixed wait that hadn't been converted yet
+    (this file's own 1000ms waits, until this session) — so
+    `waitForEditorSettled()` was never actually the thing standing between
+    the keystroke and the assertion for *this specific case*, despite
+    being exercised successfully in dozens of other scenarios (including
+    an explicit CPU-throttle stress run of this very file, which only
+    passed because the file's own waits hadn't been touched yet at the
+    time). A good reminder that "this helper has passed N times" doesn't
+    mean "this helper is correct for every case it's used for" — it means
+    "correct for the cases actually exercised so far."
+  - **The fix, and why it isn't as simple as "never trust a blank
+    reading"**: frame-level pastes (`doPagePaste`'s frame-caret path, used
+    by `enterCode()`) can *legitimately* end with a blank focus (a frame
+    caret, not a slot) as their real final state — so blank can't just be
+    rejected outright without breaking that case. Settled on requiring
+    more consecutive stable reads specifically when blank (15 in
+    Playwright, ~450ms of confirmed quiet; 30 in the Cypress port, a more
+    conservative guess since Cypress's retry cadence isn't precisely
+    known and no current Cypress spec exercises this exact scenario to
+    validate against) versus just 1 when focus is on a real slot — so the
+    fast path for ordinary keystrokes (the overwhelming majority of calls)
+    is untouched, and only the specific transient-blank case pays the
+    extra, bounded cost.
+  - Verified the fix directly: same live-instrumented-poll technique,
+    confirmed the 4 originally-failing tests now pass; then 50/50 across
+    5 repeats on chromium, 10/10 on firefox and webkit, and 50/50 under
+    CPU throttle rate=20 with `--repeat-each=5` (this time genuinely
+    exercising the fixed logic, unlike the earlier throttle run).
+  - Re-checked for regressions in files that already used the *old*
+    helper, since this is a shared dependency: `console-execution.spec.ts`
+    (29/29, uses `enterCode()`'s legitimately-blank frame-caret path --
+    confirmed no meaningful slowdown), `structured-expressions-selection.spec.ts`
+    (103/103), and on the Cypress side `paste-python.cy.ts` (59/59),
+    `autocomplete.cy.ts` (27/27), `param-prompts.cy.ts` (64/64) — all
+    clean, no regressions from the stricter blank-state handling.
+  - `eslint` and `vue-tsc --noEmit` both clean throughout.

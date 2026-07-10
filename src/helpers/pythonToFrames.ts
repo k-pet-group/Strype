@@ -1636,7 +1636,7 @@ function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: b
 }
 
 // Returns headers if successful, or null if there was an error (which will already have been shown in the UI)
-export function pasteMixedPython(completeSource: string, at: CurrentFrame, clearExisting: boolean = false, dontSetCaretAfter: boolean = false) : { headers: Record<string, string> } | null {
+export function pasteMixedPython(completeSource: string, at: CurrentFrame, clearExisting: boolean = false, dontSetCaretAfter: boolean = false, ignoreStateBackup: boolean = false) : { headers: Record<string, string> } | null {
     const allLines = completeSource.split(/\r?\n/);
     // Split can make an extra blank line at the end which we don't want:
     if (allLines.length > 0 && allLines[allLines.length - 1] === "") {
@@ -1696,7 +1696,7 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
             // If we're not in the imports, we know we're below it:
             : getLastCaretPosInsideParent(useStore().getImportsFrameContainerId);
         offsetAllIds(importFrames, useStore().nextAvailableId);
-        const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: importFrames});
+        const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: importFrames, ignoreStateBackup});
         if (curLocation == STRYPE_LOCATION.IMPORTS_SECTION) {
             posAfter = adjusted ?? posAfter;
         }
@@ -1716,7 +1716,7 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
             currentCaretContainerPosition = getLastCaretPosInsideParent(useStore().getDefsFrameContainerId);
         }
         offsetAllIds(classDefFrames, useStore().nextAvailableId);
-        const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: classDefFrames});
+        const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: classDefFrames, ignoreStateBackup});
         if (curLocation == STRYPE_LOCATION.DEFS_SECTION) {
             posAfter = adjusted ?? posAfter;
             // Adjust in case we also paste more in the defs:
@@ -1754,7 +1754,7 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
             });
         }
 
-        const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: funcDefFrames});
+        const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: funcDefFrames, ignoreStateBackup});
         if (curLocation == STRYPE_LOCATION.DEFS_SECTION || curLocation == STRYPE_LOCATION.IN_CLASSDEF) {
             posAfter = adjusted ?? posAfter;
         }
@@ -1765,7 +1765,7 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
             ? {...at} 
             : {id : useStore().getMainCodeFrameContainerId, caretPosition: CaretPosition.body};
         offsetAllIds(mainFrames, useStore().nextAvailableId);
-        const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: mainFrames});
+        const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: mainFrames, ignoreStateBackup});
         if (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) {
             posAfter = adjusted ?? posAfter;
         }

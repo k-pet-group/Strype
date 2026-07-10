@@ -1,8 +1,9 @@
 import {test, expect} from "@playwright/test";
-import { typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame, checkFrameXorTextCursor, MEDIA_SLOT_PARSED_PLACEHOLDER } from "../support/editor";
+import { typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame, checkFrameXorTextCursor, MEDIA_SLOT_PARSED_PLACEHOLDER, assertStateOfFuncCallFrame } from "../support/editor";
 import fs from "fs";
 import {addFakeClipboard} from "../support/clipboard";
 import { skipPyodideLoading } from "../support/general";
+import { save } from "../support/loading-saving";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (process.platform === "win32" && browserName === "webkit") {
@@ -270,5 +271,37 @@ test.describe("Edition in expressions with media",() => {
         await page.waitForTimeout(200);
         await page.keyboard.type("and \"abc");
         await assertStateOfIfFrame(page, `{}${MEDIA_SLOT_PARSED_PLACEHOLDER.image}{}+{}${MEDIA_SLOT_PARSED_PLACEHOLDER.sound}{}and{}“abc$”{}`, mediaInfo);
+    });
+
+    test("Undo/redo pasting image over a selection", async ({page}) => {
+        // First get the initial content for comparison later
+        const initialContentFile = await save(page, true, "initial");
+        const initialContentCode = fs.readFileSync(initialContentFile).toString();
+        // Select all content of the main section
+        await page.waitForTimeout(200);
+        await page.keyboard.press("ControlOrMeta+a");
+        await page.waitForTimeout(200);
+        // Paste an image (we make a quick check it's pasted - the paste keeps the caret in the inserted frame text slot so why not)
+        const image = fs.readFileSync("src/assetsFilesystem/images/panda.png").toString("base64");        
+        const mediaInfo: {mediaType: "img", endOfB64: string}[]  = [{mediaType: "img", endOfB64: image.slice(-10)}];
+        await doPagePaste(page, image, "image/png");
+        await page.waitForTimeout(200);
+        await assertStateOfFuncCallFrame(page, `{}${MEDIA_SLOT_PARSED_PLACEHOLDER.image}{$}`, mediaInfo);
+        const pastedContentFile = await save(page, false, "initial");
+        const pastedContentCode = fs.readFileSync(pastedContentFile).toString();
+        // Get out the frame, then undo : should be back the initial state.
+        await page.keyboard.press("ArrowDown"),
+        await page.waitForTimeout(200);
+        await page.keyboard.press("ControlOrMeta+z"),
+        await page.waitForTimeout(200);
+        const undoContentFile = await save(page, false, "initial");
+        const undoContentCode = fs.readFileSync(undoContentFile).toString();
+        expect(undoContentCode).toEqual(initialContentCode);
+        // Redo: should be back to the pasted state
+        await page.keyboard.press("ControlOrMeta+y"),
+        await page.waitForTimeout(200);
+        const redoContentFile = await save(page, false, "initial");
+        const redoContentCode = fs.readFileSync(redoContentFile).toString();
+        expect(redoContentCode).toEqual(pastedContentCode);
     });
 });

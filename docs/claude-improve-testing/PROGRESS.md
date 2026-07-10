@@ -32,7 +32,7 @@ deliberately kept, say why instead of checking it off as fully done.
 
 | Done | File | Waits (snapshot) | Notes |
 |---|---|---|---|
-| [ ] | `tests/playwright/e2e/rename-identifiers.spec.ts` | 139 | |
+| [x] | `tests/playwright/e2e/rename-identifiers.spec.ts` | 139 | Converted 138/139; 1 deliberately kept (waiting to prove a popup does NOT appear) -- see Log |
 | [ ] | `tests/playwright/e2e/match-statement.spec.ts` | 105 | |
 | [x] | `tests/playwright/e2e/graphics.spec.ts` | 41 | Converted 40/41; 1 deliberately kept (waiting for an exception to manifest, not a state) -- see Log |
 | [x] | `tests/playwright/e2e/structured-expressions.spec.ts` | 35 | Converted all 35; found+fixed a real bug in the shared waitForEditorSettled() helper along the way -- see Log |
@@ -814,3 +814,67 @@ deliberately left in place with a reason.
     regression -- worth re-checking specifically on macOS+firefox once
     the `graphics.spec.ts` changes above are committed and a fresh CI run
     is available.
+
+- **2026-07-10**: Converted `tests/playwright/e2e/rename-identifiers.spec.ts`
+  (138 of 139 waits) -- the single largest remaining file.
+  - Almost every wait in this file followed one of three shapes, which
+    needed to be told apart per occurrence (not just per test), since a
+    generic "convert everything to `waitForEditorSettled`" pass would have
+    been wrong for two of the three:
+    1. Ordinary navigation/typing mid-sequence (the majority) →
+       `waitForEditorSettled(page)`.
+    2. The wait immediately before triggering the rename (pressing
+       `Ctrl+R`, clicking the rename button, or performing an action meant
+       to dismiss/interact with the popup) → needs the popup itself,
+       not just editor state, since losing focus triggers an *async*
+       eligibility check (`checkAndShowRenameIdentifiersPopup` in
+       `LabelSlotsStructure.vue`, which awaits a code-wide search for other
+       uses of the identifier) before the popup appears.
+    3. The wait immediately after triggering the rename, before
+       checking/saving the result → wait for the popup to close
+       (`renameIdentifiers()` synchronously mutates the store and hides
+       the popup in one go, so this also confirms the mutation landed).
+    Also deleted several waits entirely as genuinely redundant: right
+    after a `pressN(key, n, true)(page)` call, which already waits for
+    the editor to settle after *every* press including the last one via
+    its own `enforceWaitBetween` flag, and right before `doPagePaste()`,
+    which settles at its own end -- an explicit wait between two
+    already-self-settling calls added nothing.
+  - Kept exactly one wait as a deliberate fixed delay ("Module name
+    (before as: should NOT change"): this test asserts the popup should
+    **not** appear, so there's no positive state to poll for -- same
+    reasoning as the deliberately-kept wait in `graphics.spec.ts`'s
+    exception test. Added a comment explaining why.
+  - **Real regression found under validation, WebKit-only**: first full
+    run passed on chromium and firefox (`--repeat-each=3`, 63+63 clean)
+    but repeatedly failed 7-14 out of 21 tests on WebKit alone (even at
+    `--workers=1`, ruling out resource contention), always with the same
+    symptom: `expect(renameButton).toBeHidden()` timing out after
+    `Ctrl+R` -- the popup never closed. Confirmed via `git stash` that
+    the *original* fixed-wait code did not reproduce this on WebKit, so
+    this was a real regression introduced by the conversion, not
+    pre-existing flakiness.
+  - **Root cause**: `App.vue`'s global keydown handler only actually
+    dispatches the rename action for `Ctrl+R` when
+    `document.querySelector(".popover.show:has(.<popover class>)")`
+    matches -- i.e. it requires Bootstrap's `.show` class to have been
+    added to the popover's *ancestor* element, which happens on a fade-in
+    transition *after* the button inside it first becomes visible. My
+    replacement wait (`expect(renameButton).toBeVisible()`, checking only
+    the button) could resolve during that gap and fire `Ctrl+R` before
+    the app was ready to handle it -- a real, always-present race that
+    the original fixed 400ms wait happened to comfortably outlast on
+    every browser, and that only WebKit's transition timing exposed.
+  - **Fix**: added a second locator, `openedPopoverLocator`, matching the
+    app's exact guard condition (`.popover.show:has(...)`), and used it
+    (instead of `renameButton`) specifically for the wait immediately
+    preceding every `Ctrl+R` press (15 sites) -- the button-click and
+    popup-dismissal paths don't go through this guard, so those keep
+    using the plain `renameButton` visibility check.
+  - Verified: chromium+firefox `--repeat-each=3` (63/63 before the WebKit
+    fix, unaffected by it), WebKit alone `--repeat-each=2 --workers=1`
+    (0/42 → 42/42 after the fix), then the full file across all 3
+    browsers together (63/63). Full-file runtime dropped from what would
+    have been several minutes of fixed waits to well under a minute per
+    browser.
+  - `eslint` and `vue-tsc --noEmit` both clean.

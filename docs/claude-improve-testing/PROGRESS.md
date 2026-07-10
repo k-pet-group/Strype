@@ -36,7 +36,7 @@ deliberately kept, say why instead of checking it off as fully done.
 | [x] | `tests/playwright/e2e/match-statement.spec.ts` | 105 | Converted all 105, see Log |
 | [x] | `tests/playwright/e2e/graphics.spec.ts` | 41 | Converted 40/41; 1 deliberately kept (waiting for an exception to manifest, not a state) -- see Log |
 | [x] | `tests/playwright/e2e/structured-expressions.spec.ts` | 35 | Converted all 35; found+fixed a real bug in the shared waitForEditorSettled() helper along the way -- see Log |
-| [ ] | `tests/playwright/e2e/structured-expressions-media.spec.ts` | 32 | |
+| [x] | `tests/playwright/e2e/structured-expressions-media.spec.ts` | 32 | Converted all 32 (Chromium skipped entirely in this file; validated firefox+webkit), see Log |
 | [ ] | `tests/cypress/e2e/autocomplete-modules.cy.ts` | 32 | |
 | [ ] | `tests/playwright/e2e/structured-expressions-navigation.spec.ts` | 31 | |
 | [ ] | `tests/cypress/e2e/autocomplete-graphics-libs.cy.ts` | 29 | |
@@ -889,3 +889,33 @@ deliberately left in place with a reason.
   `rename-identifiers.spec.ts`: it already settles after every press).
   Verified: full file across all 3 browsers (27/27), chromium
   `--repeat-each=3` (27/27). `eslint` and `vue-tsc --noEmit` both clean.
+
+- **2026-07-10**: Converted `tests/playwright/e2e/structured-expressions-media.spec.ts`
+  (all 32 waits). This file is skipped entirely on Chromium (headless
+  Chromium blocks non-text clipboard writes) and carries its own
+  disclaimer that these clipboard tests "have a habit of passing from
+  Playwright but failing in real life" -- so validation for this file
+  means firefox+webkit only, not the usual chromium-first pass.
+  - Ordinary "wait after keypress" waits → `waitForEditorSettled`, as
+    usual. Also deleted several waits that were genuinely redundant
+    because the preceding call already settles internally:
+    `doTextHomeEndKeyPress`, `typeIndividually`, and `doPagePaste` (all
+    in `editor.ts`) each already await `waitForEditorSettled` themselves,
+    so an explicit wait immediately after one of these added nothing.
+  - Two more specific signal replacements, since this file waits on
+    things `waitForEditorSettled` doesn't track:
+    - Around `Ctrl+C`: writing to the OS clipboard is an async step
+      outside the page with no page-side signal to poll, so instead of
+      guessing a fixed delay before reading it back, switched to
+      `expect.poll(() => page.evaluate("navigator.clipboard.readText()"))`
+      (or `.read()` for item count) -- this succeeds as soon as the
+      write actually lands instead of after a fixed guess, and fails
+      clearly if it never does.
+    - The "Can take a moment to decode the image" wait before checking
+      cursor focus after pasting an image: replaced with
+      `page.waitForFunction(() => img.complete && img.naturalWidth > 0)`
+      on the pasted `img[data-code^='load_image']` element -- the actual
+      decode-completion signal, rather than a blind 2-second guess.
+  - Verified: firefox+webkit (Chromium doesn't run this file) full file
+    (20/20), then `--repeat-each=3` (60/60). `eslint` and
+    `vue-tsc --noEmit` both clean.

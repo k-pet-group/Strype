@@ -57,7 +57,7 @@ deliberately kept, say why instead of checking it off as fully done.
 | [ ] | `tests/playwright/e2e/load-save-frozen-collapsed.spec.ts` | 7 | |
 | [ ] | `tests/cypress/e2e/paste-python.cy.ts` | 7 | uses paste-test-support.ts helper above |
 | [ ] | `tests/cypress/e2e/basics.cy.ts` | 6 | |
-| [ ] | `tests/playwright/e2e/load-save-demos-books.spec.ts` | 5 | |
+| [x] | `tests/playwright/e2e/load-save-demos-books.spec.ts` | 5 | Converted all 5, see Log |
 | [ ] | `tests/playwright/e2e/console-execution.spec.ts` | 3 | |
 | [ ] | `tests/cypress/e2e/graphics.cy.ts` | 3 | |
 | [x] | `tests/playwright/e2e/load-save-share.spec.ts` | 2 | Converted both, see Log |
@@ -1179,3 +1179,24 @@ deliberately left in place with a reason.
     exercise `closePage()`, so the gap went unnoticed until now. Started
     it and reran: 51/51, twice.
   - `eslint` and `vue-tsc --noEmit` both clean.
+
+- **2026-07-11**: Converted `tests/playwright/e2e/load-save-demos-books.spec.ts`
+  (all 5 waits) -- picked as a small, quick file to close out the
+  session on. Waits before opening the burger menu and clicking through
+  the Book dialog (menu → "Book..." → chapter → example) were all
+  deleted, relying on `click()`'s own actionability wait, matching the
+  already-established finding that this app's `ModalDlg`s render with no
+  animation and the one component that does animate (the burger menu)
+  doesn't gate the *link inside it* on that animation. The wait before
+  `save()` after double-clicking to load the "fireworks" example was
+  replaced with the same `.project-name`-equals-expected signal
+  `loading-saving.ts`'s `load()` already uses -- traced the book-loading
+  path in `Menu.vue` (`selectedProject.projectFile.then(...)`) and
+  confirmed it's genuinely async and converges on the same project-name
+  update mechanism as a regular file load. The wait before `save()` in
+  the paste variant was deleted, since `doPagePaste` already settles
+  internally (including through a large multi-frame paste's frame count
+  changing while it renders).
+  - Verified: full file, all 3 browsers (18/18), chromium
+    `--repeat-each=3` (18/18). `eslint` and `vue-tsc --noEmit` both
+    clean.

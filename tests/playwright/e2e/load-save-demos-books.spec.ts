@@ -43,13 +43,15 @@ test.describe("Load/save book projects", () => {
                 await page.keyboard.press("ArrowUp");
             }
             await page.click("#" + await strypeElIds.getEditorMenuUID());
-            await page.waitForTimeout(1000);
             await page.locator("." + scssVars.strypeMenuItemClassName, {hasText: "Book..."}).click();
-            await page.waitForTimeout(1000);
             await page.locator(".open-book-dlg-book-group-item", {hasText: "Chapter 2"}).click();
-            await page.waitForTimeout(500);
             await page.locator(".open-book-dlg-name", {hasText: "fireworks"}).click({clickCount: 2});
-            await page.waitForTimeout(3000);
+            // Selecting a book example loads it asynchronously (Menu.vue awaits
+            // selectedProject.projectFile before applying the new state); the visible
+            // ".project-name" label only updates once that's truly in place, mirroring the same
+            // signal loading-saving.ts's load() uses for regular file loads -- wait for that
+            // rather than guessing how long the load takes:
+            await expect(page.locator(".project-name")).toHaveText("fireworks", {timeout: 30000});
             const output = readFileSync(await save(page, true), "utf8").replace(/\r\n/g, "\n");
             expect(output).toEqual(original);
         });
@@ -62,8 +64,9 @@ test.describe("Load/save book projects", () => {
             for (let j = 0; j < i; j++) {
                 await page.keyboard.press("ArrowUp");
             }
+            // doPagePaste already waits for the editor to settle after the paste, including
+            // through the frame count changing while a large multi-frame paste is rendered:
             await doPagePaste(page, original);
-            await page.waitForTimeout(3000);
             const output = readFileSync(await save(page, true), "utf8").replace(/\r\n/g, "\n");
             expect(output).toEqual(original);
         });

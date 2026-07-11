@@ -9,7 +9,7 @@ import en from "../../../src/localisation/en/en_main.json";
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "../../../src/helpers/sharedIdCssWithTests";
 import {Page, test, expect, ElementHandle, JSHandle} from "@playwright/test";
 import { rename } from "fs/promises";
-import {checkFrameXorTextCursor, typeIndividually} from "../support/editor";
+import {checkFrameXorTextCursor, typeIndividually, waitForEditorSettled} from "../support/editor";
 import {readFileSync} from "node:fs";
 import {createBrowserProxy} from "../support/proxy";
 import {load, save} from "../support/loading-saving";
@@ -161,6 +161,22 @@ function genRandomFrame(fromFrames: string[], level : number): FrameEntry {
     };
 }
 
+async function dismissAutocompleteIfShowing(page: Page) : Promise<void> {
+    // The randomly-generated slot content often looks like an identifier, which can trigger the
+    // autocomplete dropdown (AutoCompletion.vue). While it's open, ArrowUp/ArrowDown are consumed
+    // by LabelSlot.vue's handleUpDown to navigate the dropdown instead of the editor (see its
+    // "showAC" check), which can leave later frame/body navigation acting on the wrong target --
+    // this is a likely cause of the "expected a frame cursor, found none" flakiness in this file.
+    // Escape closes the dropdown while staying in the slot, but pressing it when the dropdown
+    // ISN'T showing exits/blurs the slot entirely (see LabelSlot.vue's onEscKeyUp), which would be
+    // its own new source of unexpected cursor movement -- so we only press it when the dropdown is
+    // actually visible:
+    if (await page.locator(`.${scssVars.acPopupContainerClassName}:visible`).count() > 0) {
+        await page.keyboard.press("Escape");
+        await waitForEditorSettled(page);
+    }
+}
+
 async function disablePrev(page: Page, fromFollowingJoint: boolean) : Promise<void> {
     // We need to disable the frame just above us and it was joint.  We must do this by clicking
     // because we don't currently have keyboard support for disabling parts of
@@ -182,9 +198,10 @@ async function disablePrev(page: Page, fromFollowingJoint: boolean) : Promise<vo
     const targetX = box.x + (fromFollowingJoint ? -10: 10);
     const targetY = box.y - (fromFollowingJoint ? 35 : 10);
     await page.mouse.click(targetX, targetY, {button: "right"});
-    await page.waitForTimeout(200);
+    // No manual wait needed for the context menu to render -- click() below already waits for
+    // the menu item to become actionable:
     await page.getByRole("menuitem", {name: en.contextMenu.disable}).click();
-    await page.waitForTimeout(100);
+    await waitForEditorSettled(page);
 }
 
 async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolean, beforeBody?: () => Promise<void>) : Promise<void> {
@@ -196,13 +213,13 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         else {
             await page.keyboard.type(shortcut);
         }
-        await page.waitForTimeout(400);
+        await waitForEditorSettled(page);
         if (frame.frameType == "try") {
             // We delete the except which automatically gets generated, then add our own:
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(200);
+            await waitForEditorSettled(page);
             await page.keyboard.press("Backspace");
-            await page.waitForTimeout(200);
+            await waitForEditorSettled(page);
         }
     }
     else {
@@ -212,9 +229,9 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
     if (frame.frameType == "funccall") {
         // Have to remove default brackets:
         await page.keyboard.press("Delete");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
     }
-    
+
     for (let i = 0; i < frame.slotContent.length; i++){
         const slotType = getFrameDefType(frame.frameType).labels.filter((l) => l.showSlots ?? true)[i].allowedSlotContent ?? AllowedSlotContent.TERMINAL_EXPRESSION;
         const s = frame.slotContent[i];
@@ -222,8 +239,9 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         await checkFrameXorTextCursor(page, false, "Slot of frame " + frame.frameType);
         const enterable = slotType == AllowedSlotContent.FREE_TEXT_DOCUMENTATION || slotType == AllowedSlotContent.LIBRARY_ADDRESS ? s : s.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
         await typeIndividually(page, enterable);
+        await dismissAutocompleteIfShowing(page);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
     }
     if (beforeBody) {
         await beforeBody();
@@ -232,9 +250,9 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         if (frame.frameType == "classdef") {
             // Need to remove the default constructor:
             await page.keyboard.press("Delete");
-            await page.waitForTimeout(200);
+            await waitForEditorSettled(page);
         }
-        
+
         for (const s of frame.body) {
             await checkFrameXorTextCursor(page, true, "Body of frame " + frame.frameType);
             await enterFrame(page, s, frame.disabled ?? false);
@@ -242,12 +260,12 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         if (frame.joint && frame.joint.length > 0) {
             // We enter the next joint frame, and make any others a joint part of that:
             const [head, ...tail] = frame.joint;
-            
+
             await enterFrame(page, {...head, joint: tail}, frame.disabled ?? false, frame.disabled && !parentDisabled && getFrameDefType(frame.frameType).isJointFrame ? () => disablePrev(page, true) : undefined);
         }
         else {
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(200);
+            await waitForEditorSettled(page);
             if (frame.disabled && getFrameDefType(frame.frameType).isJointFrame) {
                 await disablePrev(page, false);
             }
@@ -257,14 +275,15 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
     if (frame.disabled && !parentDisabled && !getFrameDefType(frame.frameType).isJointFrame) {
         // With shift, one press should select whole frame, including any joint frames:
         await page.keyboard.press("Shift+ArrowUp");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press(" ");
-        await page.waitForTimeout(500);
+        // No manual wait needed for the context menu to render -- click() below already waits for
+        // the menu item to become actionable:
         await page.getByRole("menuitem", { name: en.contextMenu.disable }).click();
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         // Now it's disabled, a single down press should skip the entire lot:
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
     }
     
     
@@ -371,11 +390,34 @@ async function getFramesFromDOM(page: Page) : Promise<FrameEntry[][]> {
 }
 
 async function newProject(page: Page) : Promise<void> {
-    // New is located in the menu, so we need to open it first, then find the link and click on it:
-    await page.click("#" + await strypeElIds.getEditorMenuUID());
-    await page.waitForTimeout(2000);
-    await page.click("#" + await strypeElIds.getNewProjectLinkId());
-    await page.waitForTimeout(2000);
+    // New is located in the menu, so we need to open it first, then find the link and click on it.
+    // Confirmed by direct reproduction: when this runs right after save() (as it always does in
+    // this file, via testSpecific/"Tests random entry"), the menu can open successfully and then
+    // auto-close itself again within ~300ms with no further interaction -- most likely the just-
+    // closed Save dialog returning focus in a way that trips App.vue's handleWholeEditorMouseDown
+    // (which closes the menu on any mousedown in the editor area). This is what was causing
+    // "waiting for locator('#newProjectLink') ... element was detached from the DOM, retrying"
+    // to hang until the whole test timed out -- Playwright was waiting for a target that had
+    // already vanished by the time it looked. Retry the open until the link is still there a
+    // moment later, rather than assuming one open attempt sticks:
+    const newProjectLink = page.locator("#" + await strypeElIds.getNewProjectLinkId());
+    for (let attempt = 0; attempt < 5; attempt++) {
+        await page.click("#" + await strypeElIds.getEditorMenuUID());
+        // Deliberately a real-time wait, not a settle-based one: we're giving the auto-close a
+        // window to (not) happen, not waiting for a specific state -- confirmed by direct
+        // reproduction that the auto-close (if it happens at all) lands within ~300ms:
+        await page.waitForTimeout(400);
+        if (await newProjectLink.isVisible()) {
+            break;
+        }
+    }
+    // Confirming "new project" triggers a full page reload (see resetStrypeProject in App.vue) --
+    // wait for the reloaded app to actually be ready, using the same signal beforeEach uses for
+    // the initial page load, rather than guessing how long the reload takes. noWaitAfter avoids a
+    // separate hang: the click handler synchronously unmounts this link (showMenu=false) right
+    // after scheduling the reload, which otherwise races Playwright's own post-click wait:
+    await newProjectLink.click({noWaitAfter: true});
+    await expect(page.locator(".frame-div")).toHaveCount(2);
 }
 
 async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: string) : Promise<void> {
@@ -386,7 +428,7 @@ async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: s
     
     if (projectDoc) {
         await page.keyboard.press("ArrowLeft");
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         const lines = projectDoc.split("\n");
         for (let i = 0; i < lines.length; i++) {
             if (i > 0) {
@@ -394,9 +436,9 @@ async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: s
             }
             await page.keyboard.type(lines[i]);
         }
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(500);
+        await waitForEditorSettled(page);
     }
 
     for (let section = 0; section < 3; section++) {
@@ -404,14 +446,13 @@ async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: s
             await enterFrame(page, sections[section][j], false);
         }
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
     }
     const dom = await getFramesFromDOM(page);
     expect(dom).toEqual(sections);
     const savePath = await save(page);
-    await page.waitForTimeout(2000);
     await newProject(page);
-    
+
     // Log for debugging purposes:
     try {
         const contents = readFileSync(savePath, "utf8");
@@ -453,10 +494,10 @@ test.describe("Enters, saves and loads random frame", () => {
             rng = prng.int32.bind(prng);
             if (genRandomInt(3) == 1) {
                 await page.keyboard.press("ArrowLeft");
-                await page.waitForTimeout(100);
+                await waitForEditorSettled(page);
                 await page.keyboard.type("Doc " + rng());
                 await page.keyboard.press("ArrowRight");
-                await page.waitForTimeout(100);
+                await waitForEditorSettled(page);
             }
             
             const frames = [[], [], []] as FrameEntry[][];
@@ -468,7 +509,7 @@ test.describe("Enters, saves and loads random frame", () => {
                     frames[section].push(f);
                 }
                 await page.keyboard.press("ArrowDown");
-                await page.waitForTimeout(100);
+                await waitForEditorSettled(page);
             }
             console.log(JSON.stringify(frames, null, 2));
             const dom = await getFramesFromDOM(page);

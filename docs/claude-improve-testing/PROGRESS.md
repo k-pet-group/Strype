@@ -42,7 +42,7 @@ deliberately kept, say why instead of checking it off as fully done.
 | [ ] | `tests/cypress/e2e/autocomplete-graphics-libs.cy.ts` | 29 | |
 | [ ] | `tests/cypress/e2e/media-literals.cy.ts` | 29 | |
 | [ ] | `tests/playwright/e2e/description-fields.spec.ts` | 27 | |
-| [ ] | `tests/playwright/e2e/load-save-random.spec.ts` | 23 | |
+| [x] | `tests/playwright/e2e/load-save-random.spec.ts` | 23 | Converted all 23, plus fixed a real app-interaction bug in newProject() -- see Log. Remaining flakiness is content-generation edge cases in the fuzzer, not waits -- see Log |
 | [ ] | `tests/playwright/e2e/load-save-dividers.spec.ts` | 21 | uses dividers.ts helper above |
 | [ ] | `tests/cypress/e2e/autocomplete-user-defined.cy.ts` | 21 | |
 | [x] | `tests/playwright/e2e/structured-expressions-selection.spec.ts` | 16 | Converted all 16, see Log |
@@ -990,3 +990,103 @@ deliberately left in place with a reason.
     throttle (67/67) given this file's history of being the worst
     flakiness offender in real CI. `eslint` and `vue-tsc --noEmit` both
     clean.
+
+- **2026-07-11**: Converted `tests/playwright/e2e/load-save-random.spec.ts`
+  (all 23 waits) -- the next-highest untouched file by CI flakiness
+  impact (19 occurrences in the run reviewed the day before). This one
+  had two genuinely different problems mixed together, and separating
+  them mattered:
+  - **Ordinary wait conversion** (as usual): `waitForEditorSettled` for
+    keypress-settle waits; deleted the redundant wait right after
+    `save()` in `testSpecific` (its own internal `page.waitForEvent`
+    already guarantees the download landed) and the redundant wait
+    before context-menu clicks in `disablePrev`/`enterFrame` (the
+    subsequent `getByRole("menuitem", ...).click()` already waits for
+    it -- the `@imengyu/vue3-context-menu` library only does a 0.1-0.2s
+    opacity fade, confirmed in its bundled CSS, which doesn't trip
+    Playwright's position/size-based stability check the way an
+    animated *slide* would).
+  - **`newProject()`'s two `page.waitForTimeout(2000)` calls (opening the
+    main menu, clicking "New project")**: these turned out to be masking
+    a real, reproducible app-interaction bug, not just slow rendering.
+    First pass removed them outright (reasoning: `vue3-burger-menu`'s
+    open is a plain `v-if`, and `click()` already waits for actionability)
+    -- this was wrong, and it took three iterations to find out why:
+    1. Local validation surfaced the *real* problem hard: nearly every
+       "Enters, saves and loads specific frames" test (not just the
+       fuzzer) hung for the full 180-240s test timeout on
+       `page.click("#newProjectLink")`, logging "element is not stable"
+       then "element was detached from the DOM, retrying" -- forever.
+    2. First hypothesis (wrong): the burger menu's slide-open transition
+       (confirmed 0.5s, JS-driven, in the library's bundled CSS) was
+       remounting DOM during the animation. Added a position-stability
+       poll before clicking, mirroring `dividers.ts`'s technique. This
+       made things *worse* (81 failed vs 56) and didn't touch the
+       symptom at all -- proof the animation wasn't the actual cause.
+    3. Second hypothesis (also wrong): the click triggers a page reload
+       (`window.location.href` in `resetStrypeProject`, App.vue) and
+       Menu.vue's handler synchronously unmounts the link
+       (`showMenu=false`) right after, so `click()`'s own post-action
+       wait was racing the teardown. Added `noWaitAfter: true`. Still
+       failed identically -- proof this wasn't post-click at all: a
+       trace inspection (`npx playwright show-trace`, then parsing
+       `0-trace.trace` directly) showed the hang happening during the
+       *pre*-click actionability wait, before any click had even fired.
+    4. Root cause, confirmed by direct reproduction (a throwaway spec
+       that called the app's real `save()` then opened the menu and
+       polled `#newProjectLink`'s visibility every 300ms): the menu opens
+       successfully, then **auto-closes itself within ~300ms with no
+       further interaction**, only when this runs right after `save()`.
+       Likely cause: the just-closed Save modal returning focus in a way
+       that trips `App.vue`'s `handleWholeEditorMouseDown` (which closes
+       the menu on any mousedown in the editor area) -- not confirmed all
+       the way to the BootstrapVueNext internals, but well-evidenced as
+       the trigger condition (save() → menu → auto-close, every time;
+       no save() → menu → stays open, every time).
+    5. Fix: retry the menu-open (up to 5 times) until `#newProjectLink`
+       is still visible ~400ms later, *then* click it with
+       `noWaitAfter: true` (still needed for the separate reload-races-
+       teardown issue from point 3). The 400ms is a deliberate real-time
+       wait, not a settle-based one -- it's giving the auto-close a
+       window to (not) happen, matching the empirically-observed timing,
+       not guessing how long a render takes.
+  - This bug is very likely responsible for a large share of this file's
+    historical CI flakiness on its own: it made *every* call to
+    `newProject()` (i.e. every single test in the file, fuzzer or not)
+    liable to hang for its full 180-240s timeout.
+  - Verified: `-g "For\+if"` alone went from timing out at 240s to
+    passing in 24s. Full "Enters, saves and loads specific frames"
+    describe block (42 tests, previously riddled with timeouts): 42/42
+    passing in 5.3 minutes. Full file including the "Tests random entry"
+    fuzzer, firefox+webkit (Chromium is skipped in this file already):
+    0 failed / 8 flaky / 86 passed in 14.1 minutes, then repeated:
+    0 failed / 7 flaky / 87 passed in 14.1 minutes -- consistent, not a
+    fluke. Compare to before this session's fix: the same scope
+    routinely took 1.2-2.3 *hours* and failed 56-81 tests.
+  - **Separately, and only partially addressed**: reviewing failure logs
+    at Neil's request surfaced a second, unrelated class of flakiness --
+    the fuzzer's `genRandomString`/`genRandomExpression` generate raw
+    identifier-like text, which can trigger the app's autocomplete
+    dropdown. While it's open, `LabelSlot.vue`'s `handleUpDown` consumes
+    ArrowUp/ArrowDown to navigate the dropdown instead of the editor,
+    which can leave the frame cursor somewhere `enterFrame` doesn't
+    expect (`checkFrameXorTextCursor` failures: "expected numFrameCursors
+    1, received 0"). Confirmed via `LabelSlot.vue`'s own keydown handling
+    that only Arrow/Enter/Escape/Tab are consumed while showing, and
+    confirmed circumstantially by two pre-existing patches in the
+    generator itself (`is  not` → `is not`, `> >` collapsing) for the
+    exact same class of "generated content gets reinterpreted by the
+    editor" problem. Added `dismissAutocompleteIfShowing()`, called after
+    typing each slot's content -- checks for
+    `.<acPopupContainerClassName>:visible` and only presses Escape when
+    it's actually open (pressing Escape when autocomplete is *not*
+    showing has its own side effect: `LabelSlot.vue`'s `onEscKeyUp` blurs
+    the slot entirely in that case, per its own code, which would trade
+    one source of cursor confusion for another). This measurably reduced
+    but did not eliminate the class of failure -- the remaining flaky
+    entries in the fuzzer are a mix of this (only guarded at one call
+    site) and genuine occasional slowness on very large generated frames.
+    Given the fuzzer's content space is open-ended, treating this as a
+    partial mitigation rather than a complete fix; noted here rather than
+    chased to zero today.
+  - `eslint` and `vue-tsc --noEmit` both clean.

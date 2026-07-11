@@ -1415,3 +1415,66 @@ deliberately left in place with a reason.
     entirely (a known-ish Playwright/WebKit-on-Windows gap) and, if so,
     feature-detecting/deferring that reference so app startup doesn't
     depend on it. Not investigated further -- out of scope here.
+- 2026-07-11 — Investigated and fixed the deferred "project name sometimes
+  doesn't update" app bug (see PLAN.md's "Known suspected app bugs"
+  section for the full writeup). Root cause: `doSetStateFromJSONStr`
+  (`store.ts`) didn't resolve its promise -- which `Menu.vue`'s
+  `onFileLoaded()` (sets `appStore.projectName`) waits on -- until a chain
+  of hard-coded, purely cosmetic splitter-panel-resize timers finished:
+  `resetPEACommmandsSplitterDefaultState()` (`Commands.vue`, bare
+  `setTimeout(resolve, 800)`) followed by `setDividerStates()` (`store.ts`,
+  up to 3 more nested `setTimeout`s, ~2.9s worst case total), none of it
+  tied to whether the splitter panes had actually finished resizing.
+  Neil's framing: the splitters genuinely do "jiggle around" for a while
+  after a size change (confirmed -- `splitpanes` panes have a real CSS
+  `transition: width .2s ease-out, height .2s ease-out`, and nested
+  splitters can cascade), and he preferred detecting real DOM settle over
+  decoupling the project-name update from settle-timing.
+  - Added `waitForPanesSettled()` (`src/helpers/editor.ts`): polls all
+    `.splitpanes__pane` bounding rects each animation frame, resolves once
+    unchanged for 150ms of **wall-clock** time (not frame count -- same
+    lesson as the Cypress `waitForEditorSettled` rewrite this session,
+    since rAF cadence isn't reliable under load either). Has a genuine
+    `setTimeout`-based hard backstop independent of `requestAnimationFrame`
+    itself, added after discovering rAF can stop firing altogether right
+    after a full page reload (which `newProject()` triggers) -- a pure rAF
+    loop with no such backstop could hang forever in that case.
+  - `resetPEACommmandsSplitterDefaultState()` now returns
+    `waitForPanesSettled()` directly instead of a fixed-delay Promise.
+  - `setDividerStates()` rewritten from callback-based nested `setTimeout`s
+    to a sequential `async`/`await` chain, calling `waitForPanesSettled()`
+    between each divider mutation instead of guessing increasing delays --
+    preserves the original ordering (later changes still wait for earlier
+    ones), since nested splitters' final geometry genuinely depends on
+    ordering, just replacing "guess long enough" with "wait for real".
+  - Verified via CDP 4x CPU throttle (matching how this bug actually
+    manifested on CI): loading `data-graph.spy` (the original failing
+    scenario) now succeeds reliably, 8/8, where the unfixed code would
+    have hung at the test's 30s bound. Full regression pass clean:
+    `graphics.spec.ts` 32/32 (chromium), `load-save-demos-books.spec.ts` +
+    `load-save-frozen-collapsed.spec.ts` + `storage-model.spec.ts` 50/50
+    (chromium), the originally-failing `get_clicked_actor` test 4/4 on
+    firefox+webkit (the browsers where this recurred on CI), and 20/20
+    clean runs of a dedicated `newProject()` → `load()` repro on
+    firefox+webkit. `eslint` and `vue-tsc --noEmit` both clean.
+  - **Found a second, separate bug while stress-testing**: running the
+    full `load-save-random.spec.ts` "Enters, saves and loads random frame"
+    describe block (which does `save()` → `newProject()` → `load()`)
+    repeatedly on firefox+webkit surfaced the *identical* `.project-name`
+    -stuck symptom at a low rate (~1-2 per ~94 test runs), but with zero
+    browser console output for the full 30s (unlike the fixed bug, where
+    content demonstrably loaded and only the name lagged). Ruled out
+    `waitForPanesSettled` as the cause -- it now has a hard backstop that
+    guarantees resolution within 5s, so a 30s silent hang means the
+    problem is earlier in the chain, likely in `Menu.vue`'s
+    `selectedFile()` (its `.then(() => onFileLoaded(...), () => {})` would
+    silently swallow any rejection with no trace). Confirmed via a direct
+    A/B comparison that this is **pre-existing, not introduced or left
+    unfixed by this change**: stashed the fix and reran the same test —
+    the original code showed the same failure at a comparable rate (1 in
+    94). A clean, deterministic `newProject()` → `load()` repro (no random
+    content) did not reproduce it in 20/20 runs, so whatever triggers it
+    needs the random-content test's specific conditions. Documented as a
+    new, separate deferred item in PLAN.md rather than folded into this
+    fix — Neil's call: land this fix now, track the second race
+    separately.

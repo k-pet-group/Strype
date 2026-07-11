@@ -368,18 +368,77 @@ completed):
   30s for `.project-name` to read `"data-graph"` -- it stays on `"My
   project"` the whole time, even though (per the one retry that got
   further) the file's *content* clearly did load (the console showed
-  actor-creation output from the loaded program). This suggests the
-  project name label specifically is failing to update in some cases,
-  independent of whether the load itself succeeded -- a real app-level
-  bug, not (or not only) a test-timing issue. Confirmed recurring, not
+  actor-creation output from the loaded program). Confirmed recurring, not
   a one-off flake: same exact signature on macOS+Firefox (final failure,
   twice) and Linux+WebKit (flaky).
-  - **Deliberately not fixing this now**: Neil wants this kept out of the
-    PR for the wait-conversion/timeout work, to keep that PR focused.
-    Revisit as a separate, dedicated investigation (likely needs to look
-    at what actually updates `.project-name` in the app and whether
-    there's a race between that update and the rest of the load
-    completing, rather than just widening the 30s bound in the test).
+  - **Root cause found and fixed 2026-07-11**: `doSetStateFromJSONStr`
+    (`store.ts`) doesn't resolve its promise -- the one `Menu.vue`'s
+    `onFileLoaded()` (which sets `appStore.projectName`) waits on -- until
+    a whole chain of hard-coded, purely cosmetic splitter-panel-resize
+    timers finishes: `resetPEACommmandsSplitterDefaultState()`
+    (`Commands.vue`) had a bare `setTimeout(resolve, 800)`, and
+    `setDividerStates()` (`store.ts`) chained up to 3 more nested
+    `setTimeout`s on top of that (~2.9s total in the worst case), all with
+    no relation to whether the divider panes had actually finished
+    resizing. Under CPU contention (the same "why this mostly shows up on
+    CI, not locally" pattern as the test-side waits) each fixed delay can
+    be pushed back arbitrarily, stacking up past the test's 30s bound.
+    Fixed by adding `waitForPanesSettled()` (`src/helpers/editor.ts`): it
+    polls all `.splitpanes__pane` bounding rects each animation frame and
+    resolves once they've stopped changing for 150ms wall-clock time
+    (Cypress's wall-clock-vs-frame-count lesson applied here too), with a
+    genuine `setTimeout`-based hard backstop (not dependent on
+    `requestAnimationFrame`, which can stop firing altogether right after
+    a full page reload) so it can never hang. `resetPEACommmandsSplitterDefaultState()`
+    and `setDividerStates()` (the latter rewritten from callback-based
+    nested timeouts to sequential `async`/`await` calls of this helper)
+    both now wait on the real DOM instead of guessing a delay. Validated:
+    under 4x CDP CPU throttle, the original failing scenario (load
+    `data-graph.spy`) now succeeds reliably (8/8, previously would hang at
+    the 30s bound); full regression pass clean (`graphics.spec.ts` 32/32,
+    `load-save-demos-books.spec.ts` + `load-save-frozen-collapsed.spec.ts`
+    + `storage-model.spec.ts` 50/50); the originally-failing
+    `get_clicked_actor` test passes on firefox and webkit (the browsers
+    where this recurred); 20/20 clean runs of a `newProject()` → `load()`
+    repro on firefox+webkit. See PROGRESS.md for the full writeup.
+  - **A second, separate, much rarer race with the identical symptom is
+    still open** -- see the new entry below.
+
+- **A second, rarer `.project-name` staleness race, distinct from the
+  divider-timing bug above and NOT fixed by it.** Found 2026-07-11 while
+  stress-testing `load-save-random.spec.ts`'s "Enters, saves and loads
+  random frame" tests (which do `save()` → `newProject()` → `load()`) on
+  firefox/webkit: `.project-name` gets permanently stuck on `"My project"`
+  with a full 30s timeout and *zero* browser console output the whole
+  time (no "Loaded packages", no errors, nothing) -- unlike the divider-
+  timing bug, where content demonstrably loaded and only the name lagged.
+  Confirmed this is pre-existing, not caused or left behind by the
+  divider-settle fix above: the same class of failure occurs at a
+  comparable rate (~1%, 1-2 out of ~94 runs) on the code *before* that fix
+  too. Also confirmed it's not `waitForPanesSettled` hanging -- that
+  helper now has a genuine `setTimeout` backstop that can't fail to fire,
+  so if it were the cause the promise would resolve within 5s regardless;
+  since `.project-name` never updates even after 30s, the hang must be
+  earlier in the chain, most likely in the file-selection/`change`-event
+  handling in `Menu.vue`'s `selectedFile()` after `newProject()`'s reload.
+  One plausible mechanism (not yet confirmed): `selectedFile()`'s JSON
+  branch does
+  `this.appStore.setStateFromJSONStr(...).then(() => this.onFileLoaded(...), () => {})`
+  -- if `setStateFromJSONStr`'s promise ever rejects for any reason, that
+  `() => {}` silently swallows it with no console output and no
+  `projectName` update, exactly matching what's observed. A clean,
+  deterministic repro of `newProject()` → `load()` alone (not the random-
+  content-generating test) did NOT reproduce this in 20/20 runs across
+  firefox+webkit, so it seems to need something about the random-content
+  test's specific conditions (larger/more complex saved state? timing
+  right after the reload?) that hasn't been isolated yet.
+  - **Deliberately not fixing this now**: separate, rare, and not part of
+    the divider-timing root cause just fixed. Revisit as its own
+    dedicated investigation -- likely needs to either find a reliable
+    repro (maybe by adding temporary instrumentation around
+    `selectedFile()`/`setStateFromJSONStr` rejection paths) or add
+    unconditional error logging so a real CI occurrence surfaces the
+    actual rejection reason instead of being silently swallowed.
 
 - **`waitForGraphicsSettled` (`tests/playwright/support/execution.ts`)
   doesn't work for tests with an ongoing animation/game loop.** Found in

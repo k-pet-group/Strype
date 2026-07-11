@@ -34,7 +34,7 @@ import {
 } from "@/store/analytics";
 export type { AnalyticsEvent, AnalyticsFlushReason } from "@/store/analytics";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-import { actOnGraphicsImport } from "@/helpers/editor";
+import { actOnGraphicsImport, waitForPanesSettled } from "@/helpers/editor";
 // #v-endif
 
 export function getEditorTabId() : string {
@@ -2532,63 +2532,60 @@ export const useStore = defineStore("app", {
             });
         },
 
-        setDividerStates(newEditorCommandsSplitterPane2Size: StrypeLayoutDividerSettings | undefined, newPEALayout: StrypePEALayoutMode, newPEACommandsSplitterPane2Size: StrypeLayoutDividerSettings | undefined, newPEASplitViewSplitterPane1Size: StrypeLayoutDividerSettings | undefined, newPEAExpandedSplitterPane2Size: StrypeLayoutDividerSettings | undefined, resolve: (value: (PromiseLike<void> | void)) => void, forceSetUndefined?: boolean) {
-            setTimeout(() => {
-                let chainedTimeOuts = 400;
-                // Now we can restore the backuped properties of the new state related to the layout.
-                // If any of the properties for layout changes was updated, the PEA 4:3 ratio isn't any longer meaningful.
-                if (forceSetUndefined || (newEditorCommandsSplitterPane2Size != undefined && newEditorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed] != undefined)) {
-                    this.editorCommandsSplitterPane2Size = newEditorCommandsSplitterPane2Size;
-                    // If this splitter was changed, the PEA needs to be resized once the splitter has updated
-                    setTimeout(() => {
-                        if (this.editorCommandsSplitterPane2Size != undefined && this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed] != undefined) {
-                            vueComponentsAPIHandler.appComponentAPI?.onStrypeCommandsSplitPaneResize({panes: [{}, {size: this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed]}]}, newPEALayout);
-                        }
-                    }, chainedTimeOuts);
-                }
-                if (this.peaLayoutMode != newPEALayout) {
-                    setTimeout(() => {
-                        this.peaLayoutMode = newPEALayout;
-                        // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-                        vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(newPEALayout);
-                        // #v-endif
-                    }, chainedTimeOuts += 200);
-                }
+        async setDividerStates(newEditorCommandsSplitterPane2Size: StrypeLayoutDividerSettings | undefined, newPEALayout: StrypePEALayoutMode, newPEACommandsSplitterPane2Size: StrypeLayoutDividerSettings | undefined, newPEASplitViewSplitterPane1Size: StrypeLayoutDividerSettings | undefined, newPEAExpandedSplitterPane2Size: StrypeLayoutDividerSettings | undefined, resolve: (value: (PromiseLike<void> | void)) => void, forceSetUndefined?: boolean): Promise<void> {
+            // Each divider change below can cascade into other panes resizing (they animate via a CSS
+            // transition), and a later change's correct end state depends on an earlier one having
+            // fully settled first -- so we wait for the actual DOM to stop moving between each step
+            // (see waitForPanesSettled()) instead of guessing a delay that's long enough.
+            await waitForPanesSettled();
 
-                if (forceSetUndefined || newPEACommandsSplitterPane2Size) {
-                    this.peaCommandsSplitterPane2Size = newPEACommandsSplitterPane2Size;
-                    // If this splitter was changed, the PEA needs to be resized once the splitter has updated
-                    if (forceSetUndefined || (newPEACommandsSplitterPane2Size && newPEACommandsSplitterPane2Size[newPEALayout] != undefined)) {
-                        setTimeout(() => {
-                            if (this.peaCommandsSplitterPane2Size && this.peaCommandsSplitterPane2Size[newPEALayout] != undefined) {
-                                vueComponentsAPIHandler.commandsComponentAPI?.onCommandsSplitterResize({panes: [{}, {size: this.peaCommandsSplitterPane2Size[newPEALayout]}]});
-                            }
-                        }, (chainedTimeOuts += 200));
+            // Now we can restore the backuped properties of the new state related to the layout.
+            // If any of the properties for layout changes was updated, the PEA 4:3 ratio isn't any longer meaningful.
+            if (forceSetUndefined || (newEditorCommandsSplitterPane2Size != undefined && newEditorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed] != undefined)) {
+                this.editorCommandsSplitterPane2Size = newEditorCommandsSplitterPane2Size;
+                // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                await waitForPanesSettled();
+                if (this.editorCommandsSplitterPane2Size != undefined && this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed] != undefined) {
+                    vueComponentsAPIHandler.appComponentAPI?.onStrypeCommandsSplitPaneResize({panes: [{}, {size: this.editorCommandsSplitterPane2Size[newPEALayout ?? StrypePEALayoutMode.tabsCollapsed]}]}, newPEALayout);
+                }
+            }
+            if (this.peaLayoutMode != newPEALayout) {
+                this.peaLayoutMode = newPEALayout;
+                // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
+                vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(newPEALayout);
+                // #v-endif
+                await waitForPanesSettled();
+            }
+
+            if (forceSetUndefined || newPEACommandsSplitterPane2Size) {
+                this.peaCommandsSplitterPane2Size = newPEACommandsSplitterPane2Size;
+                // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                if (forceSetUndefined || (newPEACommandsSplitterPane2Size && newPEACommandsSplitterPane2Size[newPEALayout] != undefined)) {
+                    await waitForPanesSettled();
+                    if (this.peaCommandsSplitterPane2Size && this.peaCommandsSplitterPane2Size[newPEALayout] != undefined) {
+                        vueComponentsAPIHandler.commandsComponentAPI?.onCommandsSplitterResize({panes: [{}, {size: this.peaCommandsSplitterPane2Size[newPEALayout]}]});
                     }
                 }
+            }
 
-                if (forceSetUndefined || (newPEASplitViewSplitterPane1Size != undefined && newPEALayout != undefined && newPEASplitViewSplitterPane1Size[newPEALayout] != undefined)) {
-                    this.peaSplitViewSplitterPane1Size = newPEASplitViewSplitterPane1Size;
-                }
+            if (forceSetUndefined || (newPEASplitViewSplitterPane1Size != undefined && newPEALayout != undefined && newPEASplitViewSplitterPane1Size[newPEALayout] != undefined)) {
+                this.peaSplitViewSplitterPane1Size = newPEASplitViewSplitterPane1Size;
+            }
 
-                if (forceSetUndefined || newPEAExpandedSplitterPane2Size != undefined) {
-                    this.peaExpandedSplitterPane2Size = newPEAExpandedSplitterPane2Size;
-                    // If this splitter was changed, the PEA needs to be resized once the splitter has updated
-
-                    if (forceSetUndefined || (newPEAExpandedSplitterPane2Size != undefined && newPEAExpandedSplitterPane2Size[newPEALayout] != undefined)) {
-                        setTimeout(() => {
-                            if (this.peaExpandedSplitterPane2Size != undefined && this.peaExpandedSplitterPane2Size[newPEALayout] != undefined) {
-                                vueComponentsAPIHandler.appComponentAPI?.onExpandedPythonExecAreaSplitPaneResize({panes: [{}, {size: this.peaExpandedSplitterPane2Size[newPEALayout]}]});
-                            }
-                        }, (chainedTimeOuts += 200));
+            if (forceSetUndefined || newPEAExpandedSplitterPane2Size != undefined) {
+                this.peaExpandedSplitterPane2Size = newPEAExpandedSplitterPane2Size;
+                // If this splitter was changed, the PEA needs to be resized once the splitter has updated
+                if (forceSetUndefined || (newPEAExpandedSplitterPane2Size != undefined && newPEAExpandedSplitterPane2Size[newPEALayout] != undefined)) {
+                    await waitForPanesSettled();
+                    if (this.peaExpandedSplitterPane2Size != undefined && this.peaExpandedSplitterPane2Size[newPEALayout] != undefined) {
+                        vueComponentsAPIHandler.appComponentAPI?.onExpandedPythonExecAreaSplitPaneResize({panes: [{}, {size: this.peaExpandedSplitterPane2Size[newPEALayout]}]});
                     }
                 }
+            }
 
-                // We can resolve the promise when all the changes for the UI have been done
-                setTimeout(() => {
-                    resolve();
-                }, chainedTimeOuts + 100);
-            }, 1000);
+            // We can resolve the promise when all the changes for the UI have been done
+            await waitForPanesSettled();
+            resolve();
         },
         
         doSetStateFromJSONStr(stateJSONStr: string): Promise<void>{
@@ -2621,8 +2618,8 @@ export const useStore = defineStore("app", {
 
                 vueComponentsAPIHandler.commandsComponentAPI?.resetPEACommmandsSplitterDefaultState().then(() => {
                     this.updateState(JSON.parse(JSON.stringify(newState)));
-                    // Wait a bit after we have reset everything for the UI to get ready, then affect backed up changes
-                    this.setDividerStates(newEditorCommandsSplitterPane2Size, newPEALayout ?? StrypePEALayoutMode.tabsCollapsed, newPEACommandsSplitterPane2Size, newPEASplitViewSplitterPane1Size, newPEAExpandedSplitterPane2Size, resolve, true);
+                    // Now the UI is ready (the splitters have settled), affect the backed-up changes
+                    void this.setDividerStates(newEditorCommandsSplitterPane2Size, newPEALayout ?? StrypePEALayoutMode.tabsCollapsed, newPEACommandsSplitterPane2Size, newPEASplitViewSplitterPane1Size, newPEAExpandedSplitterPane2Size, resolve, true);
                 });
                 // #v-else
                 this.updateState(JSON.parse(stateJSONStr));

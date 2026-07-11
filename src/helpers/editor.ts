@@ -1996,7 +1996,57 @@ export function setPythonExecAreaLayoutButtonPos(): void{
     }, 100);
 }
 
-/** 
+/**
+ * Waits until the splitpanes divider panes' sizes stop changing. Programmatically changing a pane's
+ * size (e.g. after loading a project) animates via a CSS transition and can cascade into other nested
+ * panes resizing too, so there's no fixed delay that reliably covers every case -- this polls the
+ * actual bounding rects of all panes each animation frame and resolves once they've been unchanged
+ * for stableMs, with timeoutMs as a safety net so a caller can never hang indefinitely on this.
+ */
+export function waitForPanesSettled(stableMs = 150, timeoutMs = 5000): Promise<void> {
+    return new Promise((resolve) => {
+        let settled = false;
+        const finish = () => {
+            if (!settled) {
+                settled = true;
+                resolve();
+            }
+        };
+        // requestAnimationFrame can stop firing altogether (e.g. right after a full page
+        // navigation, before the new document's first paint) rather than merely running slowly --
+        // in that case check() below would never run again, so timeoutMs would never be reached.
+        // This setTimeout doesn't depend on rAF at all, so it's a genuine backstop:
+        const hardTimeout = setTimeout(finish, timeoutMs);
+        const start = Date.now();
+        let stableSince = Date.now();
+        let lastSizes = "";
+        const check = () => {
+            if (settled) {
+                return;
+            }
+            const sizes = Array.from(document.getElementsByClassName("splitpanes__pane"))
+                .map((pane) => {
+                    const rect = pane.getBoundingClientRect();
+                    return Math.round(rect.width) + "x" + Math.round(rect.height);
+                })
+                .join(",");
+            const now = Date.now();
+            if (sizes !== lastSizes) {
+                stableSince = now;
+                lastSizes = sizes;
+            }
+            if (now - stableSince >= stableMs || now - start >= timeoutMs) {
+                clearTimeout(hardTimeout);
+                finish();
+                return;
+            }
+            requestAnimationFrame(check);
+        };
+        requestAnimationFrame(check);
+    });
+}
+
+/**
  * These methods are used to control the height of the "Add frame" commands,
  * to allow the commands to be displayed in columns when they can't be shown as one column.
  * See Commands.vue for the HTML template logics.

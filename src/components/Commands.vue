@@ -103,7 +103,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded, waitForPanesSettled } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesAction, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -831,16 +831,13 @@ export default defineComponent({
             // We need to make sure to be "as if" we were starting from a default project layout
             // before doing anything (otherwise we have issues with some layout related stuff that
             // are not saved, or some styling that gets messy).
-            return new Promise((resolve) => {
-                this.hasPEAExpanded = false;
-                this.isCommandsSplitterChanged = false;               
-                vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(StrypePEALayoutMode.tabsCollapsed);
-                // Once we have the flags set, we set a timer to wait for the splitter to update before returning from the promise
-                setTimeout(() => {
-                    resolve();
-                }, 800);   
-            });            
-        },        
+            this.hasPEAExpanded = false;
+            this.isCommandsSplitterChanged = false;
+            vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(StrypePEALayoutMode.tabsCollapsed);
+            // Wait for the splitter panes to actually finish resizing rather than guessing how long
+            // that takes -- see waitForPanesSettled().
+            return waitForPanesSettled();
+        },
 
         onCommandsSplitterResize(event: any) {
             // When the splitter is resized, we need to resize the frame commands container (wrap/unwrap)

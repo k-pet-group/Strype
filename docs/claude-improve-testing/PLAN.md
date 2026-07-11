@@ -358,7 +358,7 @@ completed):
   PROGRESS.md that shards split by spec-file weight — see PROGRESS.md's
   CI findings section for what this changes about the flakiness picture.)
 
-## Known suspected app bug (deliberately deferred, not in scope here)
+## Known suspected app bugs and unresolved test-helper bugs (deliberately deferred)
 
 - **Project name sometimes doesn't update even though the file otherwise
   loaded correctly.** Recurring CI signature (seen across at least 3
@@ -380,6 +380,77 @@ completed):
     at what actually updates `.project-name` in the app and whether
     there's a race between that update and the rest of the load
     completing, rather than just widening the 30s bound in the test).
+
+- **`waitForGraphicsSettled` (`tests/playwright/support/execution.ts`)
+  doesn't work for tests with an ongoing animation/game loop.** Found in
+  CI run [29149105784](https://github.com/neilccbrown/Strype/actions/runs/29149105784)
+  (commit `95d96483`, macOS+Chromium): `graphics.spec.ts` → "Check
+  graphics example responds to keyboard" failed *deterministically* --
+  identical 86.64% pixel diff on all 4 attempts (not random flakiness).
+  Root cause: the function's completion signal is "3 consecutive checks
+  with an *unchanged* redraw count" (see its definition and the
+  2026-07-10 log entry below for how that signal was chosen). That works
+  for single-draw tests (draw once, stop) but is fundamentally wrong for
+  tests whose Python code is a `while True: ... pace(N)` loop (this test,
+  plus "responds to mouse", the "in large view" variants, "monitors
+  mouse", `get_clicked_actor`) -- the redraw count *never* stops changing
+  while the loop keeps running, so the function always falls through to
+  its full 15s timeout and gives up without ever confirming the content
+  is actually ready. On a fast/lightly-loaded machine (e.g. local dev)
+  15s is usually enough margin regardless, masking the bug; on a slower
+  CI runner it isn't. This affects every test in the file using a
+  `while True` loop, not just the one that happened to fail outright here
+  -- the other loop-driven tests in this run's flaky list (turtle square,
+  turtle keyboard input, graphics example shows -- though note some of
+  those are actually single-draw, so may be unrelated CI noise) need
+  re-checking against this specific mechanism, not assumed to be the same
+  bug.
+  - **Fixed 2026-07-11**: added a second, fallback completion condition
+    to `waitForGraphicsSettled` alongside the existing stability check --
+    once at least 5 redraws have landed *and* at least 500ms of
+    wall-clock time has passed since the first one, that's accepted as
+    settled even if the count is still changing. This engages only after
+    real redraws are actually happening (not from the outset) and single-
+    draw callers still hit the faster stability path first in practice,
+    so it shouldn't regress the tests this mechanism already worked for.
+    Validated: full `graphics.spec.ts` (32/32); the specific failing test
+    plus its five "shared with turtle" siblings under CDP 4x CPU
+    throttle (6/6); the failing test alone, throttled,
+    `--repeat-each=3` (3/3). See PROGRESS.md for the full writeup.
+
+- **The Cypress port of `waitForEditorSettled` (`tests/cypress/support/test-support.ts`)
+  is still not reliable for large pastes, despite the 2026-07-10 fix.**
+  Found in the same CI push, Cypress run
+  [29149105785](https://github.com/neilccbrown/Strype/actions/runs/29149105785):
+  `paste-python.cy.ts` → "Allows pasting fixture file with main code"
+  failed again with the *same class* of error as before the fix, just
+  different numbers: `editor state should stabilise: stuck at 8
+  consecutive stable reads of ":-1:92" after 10000ms` (previously it was
+  "18" against a threshold of 30; the threshold is now 15, and this run
+  got stuck at 8 -- confirming the 2026-07-10 fix *is* live, and still
+  insufficient). The error format confirms the fixed code (the
+  self-driven `setTimeout(check, 30)` poll loop) is what's running, so
+  this isn't a stale-fix problem -- the loop's assumption that it can
+  reliably poll every ~30ms doesn't hold under real load: this fixture
+  pastes a 92-frame file (`frameCount:92` in the state string), and
+  heavy DOM re-rendering on Cypress's single-threaded, same-process
+  browser automation can block the poll callback itself for far longer
+  than 30ms per iteration, eating the entire 10s budget before 15
+  consecutive *fast* reads can land. Playwright's port doesn't have this
+  problem because it drives the poll from Node, out of the browser's
+  main thread.
+  - **Fixed 2026-07-11**: switched the stability check from counting
+    discrete poll iterations ("N consecutive stable reads") to tracking
+    actual wall-clock time the state has been unchanged (via `Date.now()`
+    deltas). This directly targets the root cause -- how long the state
+    has been stable is now answered correctly regardless of whether that
+    took 3 slow polls or 15 fast ones, since poll cadence is unreliable
+    under load but elapsed time isn't. Validated:
+    `paste-python.cy.ts` run twice (59/59 each, including the previously-
+    failing case), plus a broader spot-check across
+    `structured-expressions.cy.ts` (62/62), `autocomplete.cy.ts` (27/27),
+    `param-prompts.cy.ts` (64/64) for regressions in other callers of
+    this shared helper. See PROGRESS.md for the full writeup.
 
 ## Handover notes (read this if resuming on a new machine)
 

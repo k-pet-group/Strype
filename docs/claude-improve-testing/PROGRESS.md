@@ -1232,3 +1232,94 @@ deliberately left in place with a reason.
   - Verified: full file, all 3 browsers (81/81), full file
     `--repeat-each=3` (243/243). `eslint` and `vue-tsc --noEmit` both
     clean.
+
+- **2026-07-11**: Reviewed CI run
+  [29149105784](https://github.com/neilccbrown/Strype/actions/runs/29149105784)
+  (Playwright) /
+  [29149105785](https://github.com/neilccbrown/Strype/actions/runs/29149105785)
+  (Cypress), commit `95d96483` -- the first real CI run since the
+  2026-07-10 review, covering everything up to and including
+  `load-save-random.spec.ts` (the `slot-errors`/`storage-model`/
+  `load-save-demos-books`/`load-save-frozen-collapsed` conversions came
+  after this commit and aren't covered yet). Jobs: macOS+chromium and
+  macOS+webkit failed; ubuntu (all 3 shards) and macOS+firefox passed;
+  Cypress python-ubuntu shard 2 failed.
+  - **Two real, unresolved bugs in helpers this session already touched
+    and believed fixed** -- both now written up in detail in PLAN.md's
+    "Known suspected app bugs and unresolved test-helper bugs" section
+    rather than repeated here:
+    1. `waitForGraphicsSettled` (`execution.ts`) fails deterministically
+       (identical 86.64% pixel diff across all 4 attempts, not flaky) for
+       `graphics.spec.ts` tests whose Python code is an ongoing
+       `while True: ... pace(N)` loop -- the "3 consecutive unchanged
+       redraw counts" completion signal can never actually trigger while
+       such a loop keeps running, so the function always silently falls
+       through to its 15s timeout. Affects every loop-driven test in the
+       file, not just the one that failed outright here.
+    2. The Cypress `waitForEditorSettled` fix from 2026-07-10 is
+       confirmedly live (the error message format proves it) but still
+       insufficient: `paste-python.cy.ts`'s large (92-frame) paste test
+       got stuck at 8 consecutive stable reads (need 15) within the 10s
+       budget -- the self-driven `setTimeout(check, 30)` loop can't
+       actually maintain a ~30ms cadence when heavy DOM re-rendering
+       blocks the same main thread the poll runs on, unlike the
+       Playwright port which polls from Node, out-of-process.
+  - Both deliberately left unfixed per Neil's request to update the plan
+    first -- see PLAN.md for the reasoning on why each needs a proper
+    redesign rather than a quick numeric tweak.
+  - Everything else in the failure/flaky lists was either noise in files
+    not yet converted this session (`console-execution.spec.ts`'s
+    already-documented Firefox/Pyodide-slow-load pattern,
+    `structured-expressions-navigation.spec.ts`, one `match-statement.spec.ts`
+    flake) or a pre-existing flake in the *old*, not-yet-converted
+    version of `load-save-demos-books.spec.ts` (that file's conversion
+    postdates this CI run's commit, so it can't be related to it).
+
+- **2026-07-11**: Fixed both helper bugs logged above, at Neil's request
+  to go ahead and try.
+  - **`waitForGraphicsSettled` (`tests/playwright/support/execution.ts`)**:
+    added a fallback completion condition alongside the existing
+    stability check, specifically for tests whose Python code is an
+    ongoing `while True: ... pace(N)` loop (where the redraw count never
+    stabilises by design, so "3 consecutive unchanged reads" can never
+    fire). The fallback: once at least 5 redraws have landed *and* at
+    least 500ms of wall-clock time has passed since the first one, treat
+    that as settled even though the count is still changing. This only
+    engages once real redraws are actually happening -- it doesn't touch
+    the existing `cur > 0` guard from the 2026-07-10 fix -- and
+    single-draw callers (turtle square, matplotlib) still hit the faster
+    stability path first in the common case, since it's checked before
+    the fallback on every iteration.
+    - Verified: full `graphics.spec.ts`, chromium (32/32). Then, since
+      the original failure was CI-specific (never reproduced locally
+      un-throttled), added a temporary CDP 4x CPU throttle
+      (`Emulation.setCPUThrottlingRate`) to the file's `beforeEach` --
+      the best available local proxy for a slower/loaded CI runner -- and
+      re-ran: the failing test plus its five "shared with turtle"
+      siblings (6/6), then the failing test alone with
+      `--repeat-each=3` (3/3). Removed the temporary throttle code
+      afterwards (confirmed via `git diff` showing no `TEMP`/
+      `CPUThrottling` lines left). `eslint` and `vue-tsc --noEmit` both
+      clean.
+  - **Cypress `waitForEditorSettled` (`tests/cypress/support/test-support.ts`)**:
+    replaced the "N consecutive stable reads" counter with wall-clock
+    time tracking -- record the timestamp (`stableSince`) whenever the
+    observed state *changes*, and require `Date.now() - stableSince` to
+    reach the needed duration (450ms when blank, 0 when not) rather than
+    counting how many poll iterations happened to land during that
+    window. This is a direct fix for the diagnosed root cause: Cypress's
+    poll runs on the same main thread as the app's own rendering, so a
+    "fixed" `setTimeout(check, 30)` can't actually maintain a ~30ms
+    cadence under heavy DOM churn -- tracking real elapsed time instead
+    of iteration count means the answer is correct regardless of how
+    fast or slow the polling actually managed to run.
+    - Verified: `paste-python.cy.ts` (the file with the large 92-frame
+      paste that triggered this) run twice, 59/59 both times, including
+      the specific previously-failing test. Broader spot-check across
+      other callers of this shared helper for regressions:
+      `structured-expressions.cy.ts` (62/62), `autocomplete.cy.ts`
+      (27/27), `param-prompts.cy.ts` (64/64). `eslint` and
+      `vue-tsc --noEmit` both clean.
+  - Neither fix has a fresh CI run to confirm yet (would need a push);
+    local + throttled validation is the strongest evidence available
+    before that.

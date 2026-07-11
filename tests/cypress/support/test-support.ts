@@ -41,8 +41,18 @@ export function focusEditorAndClear(): void {
 // wall-clock interval: it slows down when the page is busy (e.g. re-rendering a large frame tree
 // after pasting a big file), so "N consecutive stable reads" could need far more than N * (nominal
 // interval) of real time and blow through the outer timeout despite the state genuinely having
-// stabilised. Driving our own setTimeout loop keeps the interval fixed regardless of page load,
-// matching the Playwright port's approach (which found 30ms/15 consecutive checks reliable).
+// stabilised.
+//
+// Driving our own setTimeout loop (matching the Playwright port's approach) helps, but doesn't
+// fully fix this: unlike Playwright (which drives its poll from Node, outside the browser),
+// Cypress's poll runs *inside* the same browser main thread that's doing the actual re-rendering,
+// so even a "fixed" setTimeout(check, 30) can't reliably fire every 30ms under heavy DOM churn --
+// confirmed via a real CI failure pasting a 92-frame file, where 8 consecutive checks (of a
+// required 15) ate the entire 10s budget because each check iteration itself was taking far
+// longer than 30ms. The fix: track how long the state has been unchanged by *wall-clock time*
+// (via Date.now()), not by counting how many poll iterations happened to land during that window
+// -- that way "has this been stable for ~450ms" is answered correctly whether that took 3 slow
+// polls or 15 fast ones.
 export function waitForEditorSettled(timeoutMs = 10000): void {
     // cy.then()'s own command timeout (default 4000ms) must be longer than our internal bound,
     // otherwise Cypress kills the wait before our own poll loop gets a chance to resolve on its
@@ -53,18 +63,16 @@ export function waitForEditorSettled(timeoutMs = 10000): void {
             const start = Date.now();
             let lastState: string | null = null;
             let lastFocusId = "";
-            let stableCount = 0;
+            let stableSince = Date.now();
             const check = () => {
                 const editorEl = win.document.querySelector("#editor");
                 const focusId = editorEl?.getAttribute("data-slot-focus-id") ?? "";
                 const cursor = editorEl?.getAttribute("data-slot-cursor") ?? "";
                 const frameCount = win.document.querySelectorAll(".frame-div").length;
                 const state = `${focusId}:${cursor}:${frameCount}`;
-                if (state === lastState) {
-                    stableCount++;
-                }
-                else {
-                    stableCount = 0;
+                const now = Date.now();
+                if (state !== lastState) {
+                    stableSince = now;
                 }
                 lastState = state;
                 lastFocusId = focusId;
@@ -75,15 +83,16 @@ export function waitForEditorSettled(timeoutMs = 10000): void {
                 // across many consecutive checks during the whole debounce window, which would
                 // otherwise fool this into passing mid-restructure. Frame-level pastes can
                 // legitimately end up blank too (a frame caret, not a slot), so we can't just
-                // refuse blank outright -- instead require more consecutive stable reads (~450ms)
-                // before trusting a blank state than a real one (~30ms), comfortably past the
-                // known debounce:
-                if (stableCount >= (lastFocusId === "" ? 15 : 1)) {
+                // refuse blank outright -- instead require the state to have been unchanged for
+                // longer (~450ms of wall-clock time) before trusting a blank state than a real one
+                // (no minimum wait), comfortably past the known debounce:
+                const requiredStableMs = lastFocusId === "" ? 450 : 0;
+                if (now - stableSince >= requiredStableMs) {
                     resolve();
                     return;
                 }
-                if (Date.now() - start > timeoutMs) {
-                    reject(new Error(`editor state should stabilise: stuck at ${stableCount} consecutive stable reads of "${state}" after ${timeoutMs}ms`));
+                if (now - start > timeoutMs) {
+                    reject(new Error(`editor state should stabilise: state "${state}" only stable for ${now - stableSince}ms (needed ${requiredStableMs}ms) after ${timeoutMs}ms`));
                     return;
                 }
                 setTimeout(check, 30);

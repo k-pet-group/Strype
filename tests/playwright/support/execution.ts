@@ -58,13 +58,33 @@ export async function setupGraphicsRedrawObserver(page: Page) : Promise<void> {
 // Requires the redraw count to stay unchanged for a short quiet window before concluding the
 // drawing has settled, since a drawing sequence (e.g. a turtle animating across the screen) can
 // span several redraws over time.
+//
+// That "stability" signal is right for a program that draws once and then stops (a turtle
+// animation, a single matplotlib render), but is structurally wrong for a program whose Python
+// code is an ongoing `while True: ... pace(N)` loop: such a loop keeps redrawing forever, so the
+// count never truly stabilises and "3 consecutive unchanged reads" would never trigger --
+// confirmed via a real, deterministic CI failure (not just flakiness) where this silently fell
+// through to the full timeout every time for a loop-driven test. For that case there's a second,
+// fallback condition: once several redraws have landed AND a bit of real time has passed since
+// the first one, that's good evidence the most recent action (e.g. a keypress) has had multiple
+// loop iterations' worth of opportunity to render, even though "stable" will never fire on its
+// own. The fallback only engages once real redraws are actually happening (not from the outset),
+// and single-draw callers almost always hit the faster "stable" path first regardless.
 export async function waitForGraphicsSettled(page: Page, timeoutMs = 15000) : Promise<void> {
     const start = Date.now();
     let last = await page.evaluate(() => (window as any).__strypeGraphicsRedrawCount ?? 0);
     let stableCount = 0;
+    let firstRedrawAt : number | null = last > 0 ? Date.now() : null;
+    let redrawsSinceFirst = 0;
     while (Date.now() - start < timeoutMs) {
         await page.waitForTimeout(100);
         const cur = await page.evaluate(() => (window as any).__strypeGraphicsRedrawCount ?? 0);
+        if (cur > last) {
+            if (firstRedrawAt === null) {
+                firstRedrawAt = Date.now();
+            }
+            redrawsSinceFirst += cur - last;
+        }
         if (cur === last) {
             stableCount++;
             // A redraw count that's stable at zero doesn't mean drawing has settled -- it just
@@ -79,5 +99,10 @@ export async function waitForGraphicsSettled(page: Page, timeoutMs = 15000) : Pr
             stableCount = 0;
         }
         last = cur;
+        // Fallback for a continuously-redrawing scene (see comment above): several redraws over
+        // a real-time window, regardless of whether the count has ever gone quiet:
+        if (firstRedrawAt !== null && redrawsSinceFirst >= 5 && Date.now() - firstRedrawAt >= 500) {
+            return;
+        }
     }
 }

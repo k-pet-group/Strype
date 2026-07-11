@@ -48,8 +48,7 @@ async function appendContent(page: Page, paramContent: string) {
     await page.keyboard.press("End");
     await page.keyboard.type("p\"" + paramContent);
     await page.keyboard.press("Enter");
-    await page.waitForTimeout(500);
-    // Sanity check it actually appeared:
+    // Sanity check it actually appeared (assertStartingPlus's own assertions already retry):
     await assertStartingPlus(page, paramContent);
 }
 
@@ -311,7 +310,6 @@ test.describe("Offer to reload unsaved backups", () => {
 
             await loadAndWaitForEditor(page1);
             await save(page1, true, "Project 1");
-            await page1.waitForTimeout(1000);
             const scssVars = await page1.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
             // Modify it and close it:
             const str1 = "Modifying state #1 ahead of closing";
@@ -331,14 +329,16 @@ test.describe("Offer to reload unsaved backups", () => {
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toBeVisible();
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toContainText("load it?");
             await save(page2, true, "Project 2");
-            await page2.waitForTimeout(1000);
-            
+
             // Now we modify, optionally save, and close:
             const str2 = "Modifying state #2 ahead of closing";
             await appendContent(page2, str2);
             if (state2Saved) {
                 await save(page2, false);
-                // Give it a moment to update the state:
+                // save() only waits for the download event; the autosave write to
+                // IndexedDB/localStorage that this test actually cares about here is a separate
+                // async operation with no exposed completion signal, so this is a deliberate
+                // real-time wait to give it a moment to land before we close the page:
                 await page2.waitForTimeout(1000);
             }
             await closePage(page2, browserName);
@@ -392,8 +392,7 @@ test.describe("Offer to reload unsaved backups", () => {
             
             // Clear all the states:
             await page5.locator("span", {hasText: "Clear all"}).click();
-            await page5.waitForTimeout(1000);
-            // Check this dialog is now empty:
+            // Check this dialog is now empty (assertRecentStatesShowing's own assertion retries):
             await assertRecentStatesShowing(page5, []);
             
             // Also check on a new page:
@@ -410,7 +409,6 @@ test.describe("Offer to reload unsaved backups", () => {
 
             await loadAndWaitForEditor(page1);
             await save(page1, true, "Project 1");
-            await page1.waitForTimeout(1000);
             const scssVars = await page1.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
             // Modify it and close it:
             const str1 = "Modifying state #1 ahead of closing";
@@ -430,17 +428,19 @@ test.describe("Offer to reload unsaved backups", () => {
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toBeVisible();
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).toContainText("load it?");
             await save(page2, true, "Project 2");
-            await page2.waitForTimeout(1000);
 
             // Now we modify, and optionally save:
             const str2 = "Modifying state #2 ahead of closing";
             await appendContent(page2, str2);
             if (state2Saved) {
                 await save(page2, false);
-                // Give it a moment to update the state:
+                // save() only waits for the download event; the autosave write to
+                // IndexedDB/localStorage that this test actually cares about here is a separate
+                // async operation with no exposed completion signal, so this is a deliberate
+                // real-time wait to give it a moment to land before we open the menu below:
                 await page2.waitForTimeout(1000);
             }
-            
+
             // We don't close the page, we use the new project from the menu
             await page2.locator("#" + await strypeElIds(page2).getEditorMenuUID()).click();
             await page2.locator("#" + await strypeElIds(page2).getNewProjectLinkId()).click();
@@ -448,10 +448,13 @@ test.describe("Offer to reload unsaved backups", () => {
                 // Need to click the confirmation dialog to go despite unsaved changes:
                 await page2.locator("*[id='confirmNewProjectModalDlg'] button", {hasText: "Continue"}).click();
             }
-            
-            // Wait a bit just to be sure it's all loaded:
-            await page2.waitForTimeout(3000);            
-            
+
+            // Deliberately a real-time wait, not a settle-based one: the check below is a negative
+            // assertion (banner should NOT be visible), so relying on its own retry wouldn't
+            // actually prove anything -- it would pass trivially before the banner had a chance to
+            // (wrongly) appear. Give it a moment to load first:
+            await page2.waitForTimeout(3000);
+
             // Now we check there's no banner:
             await expect(page2.locator("." + scssVars.messageBannerContainerClassName)).not.toBeVisible();
         });

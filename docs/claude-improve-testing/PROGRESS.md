@@ -50,7 +50,7 @@ deliberately kept, say why instead of checking it off as fully done.
 | [ ] | `tests/cypress/e2e/translation.cy.ts` | 13 | |
 | [x] | `tests/playwright/e2e/structured-expressions-copy-paste.spec.ts` | 12 | Converted all 12 call sites (67 generated test cases), see Log |
 | [ ] | `tests/playwright/e2e/frame-selection-manipulation.spec.ts` | 10 | |
-| [ ] | `tests/playwright/e2e/storage-model.spec.ts` | 9 | |
+| [x] | `tests/playwright/e2e/storage-model.spec.ts` | 9 | Converted 6/9; 3 kept as deliberate real-time waits (no exposed completion signal, or negative-assertion timing) -- see Log |
 | [ ] | `tests/cypress/e2e/autocomplete-more.cy.ts` | 8 | |
 | [x] | `tests/playwright/e2e/slot-errors.spec.ts` | 7 | Converted all 7, see Log |
 | [ ] | `tests/playwright/e2e/scroll-into-view.spec.ts` | 7 | |
@@ -1138,3 +1138,44 @@ deliberately left in place with a reason.
     frame exit behaviour), 14/14. WebKit `--repeat-each=5` (35/35), since
     that's where this file's CI flakiness was concentrated. `eslint` and
     `vue-tsc --noEmit` both clean.
+
+- **2026-07-11**: Converted `tests/playwright/e2e/storage-model.spec.ts`
+  (6 of 9 waits; 3 kept deliberately). This file tests cross-tab/cross-
+  reload storage behaviour with multiple browser contexts and pages, so
+  several waits genuinely aren't page-state-observable in the usual way:
+  - Deleted 4 waits sitting directly after `save(page, true, ...)`
+    (the modal-showing path) -- confirmed via the same repro technique
+    used for the `load-save-random.spec.ts` Menu.vue investigation that
+    the save modal is already fully closed by the time `save()` returns,
+    so these were pure guesses with nothing left to wait for. Also
+    deleted 2 more sitting directly before an assertion that already
+    retries (`assertStartingPlus`/`assertRecentStatesShowing`).
+  - Kept 2 waits after `save(page, false)` (the no-modal quick-resave
+    path), immediately before a page close or a menu interaction:
+    `save()` only waits for the browser's `download` event, but the
+    autosave write to IndexedDB/localStorage this test actually cares
+    about is a separate async operation with no exposed completion
+    signal -- genuinely can't observe it from the test side, so these
+    stay as deliberate real-time waits (comment updated to explain why,
+    replacing the vaguer original "Give it a moment to update the
+    state").
+  - Kept 1 wait immediately before a *negative* assertion
+    (`not.toBeVisible()` on the message banner) -- relying on the
+    assertion's own retry would pass trivially before the banner had a
+    chance to (wrongly) appear, so this needs to stay a real-time wait
+    by design (same reasoning as similar cases in `graphics.spec.ts` and
+    `rename-identifiers.spec.ts` earlier this session).
+  - **Validation detour**: first full-file run showed 16/51 failing with
+    `page.goto: Could not connect to the server` / `NS_ERROR_CONNECTION_REFUSED`
+    on Firefox+WebKit only, reproducing identically across a dev-server
+    restart and `--workers=1`, including on tests this session never
+    touched (e.g. "Check dialog doesn't show on fresh project", which
+    fails at its very first `page.goto`, before any of this file's code
+    runs) -- ruled out as anything to do with these wait changes. Root
+    cause: `closePage()` navigates to `http://localhost:8089/` as a
+    Firefox/WebKit-specific workaround for `.close()` not behaving, and
+    that asset server (`npm run test:cypress:serve-assets`) was never
+    started this session -- earlier files in this session's queue didn't
+    exercise `closePage()`, so the gap went unnoticed until now. Started
+    it and reran: 51/51, twice.
+  - `eslint` and `vue-tsc --noEmit` both clean.

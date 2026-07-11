@@ -42,7 +42,7 @@ deliberately kept, say why instead of checking it off as fully done.
 | [ ] | `tests/cypress/e2e/autocomplete-graphics-libs.cy.ts` | 29 | |
 | [ ] | `tests/cypress/e2e/media-literals.cy.ts` | 29 | |
 | [ ] | `tests/playwright/e2e/description-fields.spec.ts` | 27 | |
-| [x] | `tests/playwright/e2e/load-save-random.spec.ts` | 23 | Converted all 23, plus fixed a real app-interaction bug in newProject() -- see Log. Remaining flakiness is content-generation edge cases in the fuzzer, not waits -- see Log |
+| [x] | `tests/playwright/e2e/load-save-random.spec.ts` | 23 | Converted all 23; found+fixed a real app bug (stale setTimeout in Menu.vue) that was causing most of this file's flakiness -- see Log. Remaining flakiness is content-generation edge cases in the fuzzer, not waits -- see Log |
 | [ ] | `tests/playwright/e2e/load-save-dividers.spec.ts` | 21 | uses dividers.ts helper above |
 | [ ] | `tests/cypress/e2e/autocomplete-user-defined.cy.ts` | 21 | |
 | [x] | `tests/playwright/e2e/structured-expressions-selection.spec.ts` | 16 | Converted all 16, see Log |
@@ -1033,36 +1033,63 @@ deliberately left in place with a reason.
        `0-trace.trace` directly) showed the hang happening during the
        *pre*-click actionability wait, before any click had even fired.
     4. Root cause, confirmed by direct reproduction (a throwaway spec
-       that called the app's real `save()` then opened the menu and
-       polled `#newProjectLink`'s visibility every 300ms): the menu opens
-       successfully, then **auto-closes itself within ~300ms with no
-       further interaction**, only when this runs right after `save()`.
-       Likely cause: the just-closed Save modal returning focus in a way
-       that trips `App.vue`'s `handleWholeEditorMouseDown` (which closes
-       the menu on any mousedown in the editor area) -- not confirmed all
-       the way to the BootstrapVueNext internals, but well-evidenced as
-       the trigger condition (save() → menu → auto-close, every time;
-       no save() → menu → stays open, every time).
-    5. Fix: retry the menu-open (up to 5 times) until `#newProjectLink`
-       is still visible ~400ms later, *then* click it with
-       `noWaitAfter: true` (still needed for the separate reload-races-
-       teardown issue from point 3). The 400ms is a deliberate real-time
-       wait, not a settle-based one -- it's giving the auto-close a
-       window to (not) happen, matching the empirically-observed timing,
-       not guessing how long a render takes.
-  - This bug is very likely responsible for a large share of this file's
-    historical CI flakiness on its own: it made *every* call to
-    `newProject()` (i.e. every single test in the file, fuzzer or not)
-    liable to hang for its full 180-240s timeout.
-  - Verified: `-g "For\+if"` alone went from timing out at 240s to
-    passing in 24s. Full "Enters, saves and loads specific frames"
-    describe block (42 tests, previously riddled with timeouts): 42/42
-    passing in 5.3 minutes. Full file including the "Tests random entry"
-    fuzzer, firefox+webkit (Chromium is skipped in this file already):
-    0 failed / 8 flaky / 86 passed in 14.1 minutes, then repeated:
-    0 failed / 7 flaky / 87 passed in 14.1 minutes -- consistent, not a
-    fluke. Compare to before this session's fix: the same scope
-    routinely took 1.2-2.3 *hours* and failed 56-81 tests.
+       that called the app's real `save()`, then instrumented every
+       `click`/`focusin`/`focusout`/`mousedown` on `document` before
+       opening the menu): the menu opens successfully, then
+       **auto-closes itself within ~300ms with no further interaction**,
+       only when this runs right after `save()`. The instrumentation
+       caught the actual trigger directly -- a spurious `click` event on
+       `#saveStrypeFileNameInput` (the *already-closed* Save dialog's
+       filename input) firing on its own, ~270-280ms after the menu was
+       opened. Traced to `Menu.vue`'s `onStrypeMenuShownModalDlg`: when
+       the Save dialog is shown, it schedules a `setTimeout(..., 500)`
+       that calls `.focus()` and `.click()` on the filename input (a
+       deliberate, self-documented workaround for a Bootstrap focus
+       quirk). That timeout was never cancelled if the dialog closed
+       before it fired -- which `save()`'s automated fill-and-click flow
+       always does well within 500ms -- so it fires later regardless,
+       against a stale/hidden input, and the spurious `.click()` trips
+       `App.vue`'s `handleWholeEditorMouseDown` (closes the menu on any
+       mousedown in the editor area), closing whatever menu happens to
+       be open at that moment.
+    5. This is a genuine, if narrow, **application bug** (Neil confirmed
+       via direct discussion): a real user saving quickly (finishing the
+       dialog in under 500ms) and then reopening the menu in that same
+       window would hit the same silent, unexplained menu-closing
+       behaviour. Fixed at the source in `src/components/Menu.vue`:
+       store the `setTimeout` handle (`saveDialogFocusTimeoutId`) and
+       `clearTimeout` it in `onStrypeMenuHideModalDlg` if the save dialog
+       closes before it fires. Confirmed via the same instrumented repro
+       that the spurious click no longer fires after the app fix.
+  - Since the app bug is fixed at the root, the test-side workaround
+    (retrying the menu-open) was rolled back to a single attempt, per
+    Neil's steer once the root cause was confirmed and fixed -- no point
+    keeping defensive retry logic for a race that can no longer happen.
+    `noWaitAfter: true` on the click is still needed and kept: it's an
+    unrelated issue (the click handler synchronously unmounts the link
+    it was just clicked on, right after scheduling the page reload,
+    which otherwise races Playwright's own post-click actionability
+    wait) -- confirmed independently via the trace inspection in step 3
+    above, nothing to do with the stale-timeout bug.
+  - This bug (both the app-level stale timeout and the test-level hang
+    it caused) is very likely responsible for a large share of this
+    file's historical CI flakiness on its own: it made *every* call to
+    `newProject()` following a `save()` (i.e. every single test in the
+    file, fuzzer or not) liable to hang for its full 180-240s timeout.
+  - Verified end to end with the app fix + simplified (non-retry) test
+    code: `-g "For\+if"` alone went from timing out at 240s to passing
+    in 24s. Full "Enters, saves and loads specific frames" describe
+    block (42 tests, previously riddled with timeouts): 42/42 passing in
+    5.3 minutes. Full file including the "Tests random entry" fuzzer,
+    firefox+webkit (Chromium is skipped in this file already): 0 failed
+    / 8 flaky / 86 passed in 14.1 minutes; repeated: 0 failed / 7 flaky
+    / 87 passed in 14.1 minutes; after the app fix + simplification:
+    0 failed / 10 flaky / 84 passed in 15.6 minutes, then 0 failed / 7
+    flaky / 87 passed in 13.7 minutes -- consistently 0 hard failures
+    across every run, remaining flakiness confined to the separate
+    autocomplete-interference issue below. Compare to before this
+    session's fix: the same scope routinely took 1.2-2.3 *hours* and
+    failed 56-81 tests.
   - **Separately, and only partially addressed**: reviewing failure logs
     at Neil's request surfaced a second, unrelated class of flakiness --
     the fuzzer's `genRandomString`/`genRandomExpression` generate raw

@@ -390,33 +390,14 @@ async function getFramesFromDOM(page: Page) : Promise<FrameEntry[][]> {
 }
 
 async function newProject(page: Page) : Promise<void> {
-    // New is located in the menu, so we need to open it first, then find the link and click on it.
-    // Confirmed by direct reproduction: when this runs right after save() (as it always does in
-    // this file, via testSpecific/"Tests random entry"), the menu can open successfully and then
-    // auto-close itself again within ~300ms with no further interaction -- most likely the just-
-    // closed Save dialog returning focus in a way that trips App.vue's handleWholeEditorMouseDown
-    // (which closes the menu on any mousedown in the editor area). This is what was causing
-    // "waiting for locator('#newProjectLink') ... element was detached from the DOM, retrying"
-    // to hang until the whole test timed out -- Playwright was waiting for a target that had
-    // already vanished by the time it looked. Retry the open until the link is still there a
-    // moment later, rather than assuming one open attempt sticks:
-    const newProjectLink = page.locator("#" + await strypeElIds.getNewProjectLinkId());
-    for (let attempt = 0; attempt < 5; attempt++) {
-        await page.click("#" + await strypeElIds.getEditorMenuUID());
-        // Deliberately a real-time wait, not a settle-based one: we're giving the auto-close a
-        // window to (not) happen, not waiting for a specific state -- confirmed by direct
-        // reproduction that the auto-close (if it happens at all) lands within ~300ms:
-        await page.waitForTimeout(400);
-        if (await newProjectLink.isVisible()) {
-            break;
-        }
-    }
+    // New is located in the menu, so we need to open it first, then find the link and click on it:
+    await page.click("#" + await strypeElIds.getEditorMenuUID());
     // Confirming "new project" triggers a full page reload (see resetStrypeProject in App.vue) --
     // wait for the reloaded app to actually be ready, using the same signal beforeEach uses for
     // the initial page load, rather than guessing how long the reload takes. noWaitAfter avoids a
-    // separate hang: the click handler synchronously unmounts this link (showMenu=false) right
-    // after scheduling the reload, which otherwise races Playwright's own post-click wait:
-    await newProjectLink.click({noWaitAfter: true});
+    // hang: the click handler synchronously unmounts this link (showMenu=false) right after
+    // scheduling the reload, which otherwise races Playwright's own post-click wait:
+    await page.click("#" + await strypeElIds.getNewProjectLinkId(), {noWaitAfter: true});
     await expect(page.locator(".frame-div")).toHaveCount(2);
 }
 

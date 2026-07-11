@@ -54,7 +54,7 @@ deliberately kept, say why instead of checking it off as fully done.
 | [ ] | `tests/cypress/e2e/autocomplete-more.cy.ts` | 8 | |
 | [x] | `tests/playwright/e2e/slot-errors.spec.ts` | 7 | Converted all 7, see Log |
 | [ ] | `tests/playwright/e2e/scroll-into-view.spec.ts` | 7 | |
-| [ ] | `tests/playwright/e2e/load-save-frozen-collapsed.spec.ts` | 7 | |
+| [x] | `tests/playwright/e2e/load-save-frozen-collapsed.spec.ts` | 7 | Converted all 7, see Log |
 | [ ] | `tests/cypress/e2e/paste-python.cy.ts` | 7 | uses paste-test-support.ts helper above |
 | [ ] | `tests/cypress/e2e/basics.cy.ts` | 6 | |
 | [x] | `tests/playwright/e2e/load-save-demos-books.spec.ts` | 5 | Converted all 5, see Log |
@@ -1199,4 +1199,36 @@ deliberately left in place with a reason.
   changing while it renders).
   - Verified: full file, all 3 browsers (18/18), chromium
     `--repeat-each=3` (18/18). `eslint` and `vue-tsc --noEmit` both
+    clean.
+
+- **2026-07-11**: Converted `tests/playwright/e2e/load-save-frozen-collapsed.spec.ts`
+  (all 7 waits) -- picked as a small file (7 waits) with genuine CI
+  flakiness history (flagged in the 2026-07-10 CI review: "Freeze Beta
+  part-folded", "Freeze top1 then cycle its visibility with toggle").
+  - 5 of the 7 waits were all the identical "Wait a moment for errors to
+    be checked" pattern, before deliberately attempting an action that
+    should be *refused* because the frame has a syntax error. Replaced
+    with a new `waitForErrorDetected()` helper that waits for
+    `Menu.vue`'s `.error-count-span` to become visible (that element's
+    parent is `v-if="errorCount > 0"`, so its visibility is a direct,
+    real signal that the app has actually registered the error) --
+    rather than guessing 2000ms and hoping the syntax check had finished
+    by then.
+  - The remaining 2 (in "Freezing prevents focusing the text slots with
+    clicking") were converted to `waitForEditorSettled`. First attempt
+    also added a new `checkFrameXorTextCursor(page, true)` assertion
+    after the click, reasoning it would make the test more precise --
+    this was a mistake caught by validation: it failed consistently
+    across all 3 browsers, and the screenshot/root-cause showed why --
+    clicking a *frozen* frame's text can still create a native browser
+    selection point even though the app correctly blocks entering edit
+    mode and shows a frame cursor instead, so both a "text cursor" and a
+    "frame cursor" can legitimately coexist in this one specific case.
+    `checkFrameXorTextCursor`'s XOR invariant doesn't hold here, and the
+    original test never claimed it did -- reverted to just the settle
+    wait, since asserting something the original author never verified
+    (however reasonable it seemed) risked encoding a wrong assumption
+    about app behaviour into the test.
+  - Verified: full file, all 3 browsers (81/81), full file
+    `--repeat-each=3` (243/243). `eslint` and `vue-tsc --noEmit` both
     clean.

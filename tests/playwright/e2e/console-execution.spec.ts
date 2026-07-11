@@ -1,6 +1,6 @@
 import { test, expect, Locator, Page } from "@playwright/test";
 import { enterCode } from "../support/editor";
-import { checkConsoleContent, runButtonShowsRun, runToFinish, startRunning } from "../support/execution";
+import { checkConsoleContent, runButtonShowsRun, runToFinish, setupGraphicsRedrawObserver, startRunning } from "../support/execution";
 import { load } from "../support/loading-saving";
 
 let scssVars: {[varName: string]: string};
@@ -361,6 +361,33 @@ while True:
             const lengthAfterStopping = consoleValue.length / 3;
             // Should have stopped printing soon after (within 4 seconds' worth)  (should be less, but CI can be slow...):
             expect(lengthAfterStopping).toBeLessThan(lengthWhileRunning + linesPerSecond * 4);
+        });
+
+        test(`Check graphics actor stops moving within seconds of stopping after running for ${runTime} seconds`, async ({page}) => {
+            // This is the same underlying bug as the console print tests above (async requests/updates
+            // queueing up faster than the main thread can service them, so that Stop doesn't take effect
+            // for a long time), but for sprite/graphics updates: those are sent on their own dedicated
+            // MessagePort (see self.updatePort in python-execution.ts) rather than through the throttled
+            // makeRequest/makeRawRequest path, so a tight movement loop is a more direct way to provoke it.
+            await enterCode(page, ["from strype.graphics import *", "", `
+cat = Actor('cat-test.jpg')
+while True:
+    cat.move(5)`]);
+            await setupGraphicsRedrawObserver(page);
+            const runButton = await startRunning(page, true);
+            await page.waitForTimeout(runTime * 1000);
+            // We use the number of actual canvas redraws (see setupGraphicsRedrawObserver) as a proxy for
+            // "the actor visibly moved", since there's no printed output to inspect here:
+            const redrawsWhileRunning = await page.evaluate(() => (window as any).__strypeGraphicsRedrawCount ?? 0);
+            const redrawsPerSecond = redrawsWhileRunning / runTime;
+            // Now we stop:
+            await runButton.click();
+            await runButtonShowsRun(runButton, true);
+            // Wait to see if it keeps moving after we've stopped (it shouldn't):
+            await page.waitForTimeout(10_000);
+            const redrawsAfterStopping = await page.evaluate(() => (window as any).__strypeGraphicsRedrawCount ?? 0);
+            // Should have stopped moving within seconds of stopping (should be less, but CI can be slow...):
+            expect(redrawsAfterStopping).toBeLessThan(redrawsWhileRunning + redrawsPerSecond * 4);
         });
     }
 });

@@ -148,23 +148,31 @@ const executePython = pyodideExpose(async (
     // be answered after the previous async requests have all been processed.
     //
     // To avoid problems with many consecutive async requests, we count them, and every 50 requests
-    // we do a dummy sync request just to make sure we haven't gotten too far ahead of the main thread:
+    // we do a dummy sync request just to make sure we haven't gotten too far ahead of the main thread.
+    // Note that sprite/graphics updates (see self.spriteManager below) are sent on an entirely separate
+    // MessagePort (self.updatePort) rather than via makeRawRequest, for speed, but a tight loop of those
+    // (e.g. "while True: actor.move(5)") can queue up just as unboundedly as a tight print loop can.  So
+    // we share this same counter and catch-up logic with sprite updates, to bound how many messages of
+    // *either* kind can be outstanding at once:
     let numConsecutiveAsyncRequests = 0;
+    const catchUpWithMainThreadIfNeeded = () => {
+        numConsecutiveAsyncRequests += 1;
+        if (numConsecutiveAsyncRequests >= 50) {
+            // To avoid racing too far ahead of the main thread, we do a quick catch-up:
+            makeRawRequest({kind: "sync", request: {request: "dummy"}});
+            const reply = extras.readMessage() as (SyncStrypePyodideWorkerResponse | {request: string, error: string});
+            if (reply.request != "dummy") {
+                throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for dummy`);
+            }
+            numConsecutiveAsyncRequests = 0;
+        }
+    };
     const makeRequest = (req: SyncOrAsyncStrypePyodideWorkerRequest) => {
         if (req.kind === "sync") {
             numConsecutiveAsyncRequests = 0;
         }
         else {
-            numConsecutiveAsyncRequests += 1;
-            if (numConsecutiveAsyncRequests >= 50) {
-                // To avoid racing too far ahead of the main thread, we do a quick catch-up:
-                makeRawRequest({kind: "sync", request: {request: "dummy"}});
-                const reply = extras.readMessage() as (SyncStrypePyodideWorkerResponse | {request: string, error: string});
-                if (reply.request != "dummy") {
-                    throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for dummy`);
-                }
-                numConsecutiveAsyncRequests = 0;
-            }
+            catchUpWithMainThreadIfNeeded();
         }
         // All requests are ultimately sent on:
         makeRawRequest(req);
@@ -381,7 +389,10 @@ runner`);
         // Set the global fields used by Javascript code (and by the pyodide cloud file mounting, just below): 
         self.syncStrypePyodideWorkerBridge = bridgeSync;
         self.asyncStrypePyodideWorkerBridge = (r) => makeRequest({kind: "async", request: r});
-        self.spriteManager = new SpriteManager((u) => self.updatePort.postMessage(u));
+        self.spriteManager = new SpriteManager((u) => {
+            catchUpWithMainThreadIfNeeded();
+            self.updatePort.postMessage(u);
+        });
         self.pyodide = pyodide;
         
 

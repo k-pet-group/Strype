@@ -140,6 +140,9 @@ runs/deeper log parsing later.
   retries in one sampled job — it's plausible this one is a genuine timing
   assertion (not just an arbitrary wait) that needs rethinking rather than
   a simple wait→condition swap.
+  **RESOLVED 2026-07-10**, see dated log entry below — this was a real bug
+  in `terminateAndRestartPyodide()`/the async-request throttle, not a test
+  problem, so no wait→condition rewrite was needed here.
 - **Cypress's slowest specs**, from the durations `cypress-split` already
   records at `tests/cypress/timings/timings-python.json` (real recorded
   run times, no CI log parsing needed — reuse this file directly instead of
@@ -1323,3 +1326,92 @@ deliberately left in place with a reason.
   - Neither fix has a fresh CI run to confirm yet (would need a push);
     local + throttled validation is the strongest evidence available
     before that.
+
+- **2026-07-10/11**: Investigated and fixed the recurring flake noted above
+  in `console-execution.spec.ts` → "Check console prints don't queue up
+  after stopping" ("time" variant). This was **not** a wait/assertion
+  problem -- it was a real app bug, so no wait→condition rewrite applied
+  here; noting it in this log anyway since it's the same "Stop doesn't
+  take effect promptly" family of bug and the fix touches app code that
+  future test-flake investigations in this area should know about.
+  - **Repro strengthened**: added a third test alongside the two existing
+    "time"/"literal" print-flood variants -- `strype.graphics` with
+    `Actor.move()` in a tight `while True` loop, checked via the existing
+    `setupGraphicsRedrawObserver`/`__strypeGraphicsRedrawCount` proxy (no
+    printed output to inspect for graphics, so redraw count stands in for
+    "did it keep moving after Stop"). This is more reliable at provoking
+    the underlying class of bug because sprite/graphics updates go out on
+    their own dedicated `MessagePort` (`self.updatePort` in
+    `python-execution.ts`), entirely bypassing the existing 50-request
+    async throttle that only covered `makeRequest`/`makeRawRequest`.
+  - **Root cause #1** (unbounded sprite queue): fixed by sharing the same
+    "count to 50, then do a blocking dummy sync round-trip" throttle
+    between `makeRequest`'s async branch and the sprite manager's
+    `notify` callback (extracted into `catchUpWithMainThreadIfNeeded()` in
+    `python-execution.ts`).
+  - **Root cause #2** (the actual flake, WebKit-specific per the user):
+    `terminateAndRestartPyodide()` (`main_thread_python_handler.ts`)
+    always called `worker.terminate()` directly. Without cross-origin
+    isolation (no `SharedArrayBuffer`; Strype deliberately avoids COOP/COEP
+    since it'd break Google Drive), the periodic dummy catch-up blocks the
+    worker in a *synchronous XHR* (`sync-message` library's
+    `serviceWorker` channel type). Some browsers -- WebKit in particular --
+    don't reliably abort an in-flight synchronous XHR just because
+    `worker.terminate()` was called, so the worker (and its printing/sprite
+    updates) can keep going for several seconds after Stop, until that
+    poll naturally resolves. This never showed up before the 50-request
+    throttle existed (e7b18d73) because before that fix the worker never
+    blocked on anything during a tight print loop, so `terminate()` always
+    hit it in a normal running state where it's reliable -- the throttle
+    fix (needed to bound the backlog) is what introduced this narrower
+    window.
+  - First attempted fix used `pythonClient.interrupt()` (the
+    comsync/pyodide-worker-runner library's built-in mechanism for exactly
+    this: unblocking a pending synchronous read). This technically worked
+    but was wrong: it makes the worker's blocked `readMessage()` throw a JS
+    `InterruptError`, which propagates through Pyodide as a Python
+    exception and gets displayed to the user as a genuine "Runtime error"
+    (plus prints a traceback to the console) -- confirmed by a reproducible
+    `NaN` failure in the "time" test once real. Reverted.
+  - **Actual fix**: added `outstandingSyncRequestKind` (a ref in
+    `main_thread_python_handler.ts`, set by `PythonExecutionArea.vue`'s
+    request handler to the `request` field of whichever sync request is
+    currently outstanding). When stopping, if the worker is blocked
+    (`state === "awaitingMessage"`) *and* we can tell for certain it's
+    blocked on our own internal "dummy" catch-up (not some other
+    genuinely-pending request like `input()`, which is left alone exactly
+    as before -- answering it with the wrong payload would itself surface
+    as a spurious error), we answer that specific request ourselves
+    directly via `pythonClient.writeMessage({request: "dummy", response:
+    true})` -- the exact same non-error response the normal machinery
+    would eventually send -- before calling `terminate()`. Capped with a
+    500ms `Promise.race` so a stuck write can never block the actual
+    terminate. `terminateAndRestartPyodide()` is now `async`; both call
+    sites use `void` (ESLint `no-floating-promises`) since neither needs
+    to await it.
+  - Verified: all 9 tests in the "queue up after stopping" describe block
+    (3 print + 3 literal + 3 new graphics, × runTime 3/10/30) pass on
+    chromium and firefox, including the previously-failing "time" variant
+    which had reproduced 100% of the time (even at runTime=3) once the
+    `.interrupt()` mistake was in place -- confirming that was the actual
+    bug, not pre-existing flakiness. Full `console-execution.spec.ts`
+    (32/32 chromium) and `graphics.spec.ts` (32/32 chromium) also clean, in
+    particular the two tests that click Stop while blocked on `input()`
+    and `time.sleep()` respectively (both assert zero errors shown) --
+    confirming the `outstandingSyncRequestKind` guard correctly leaves
+    those paths untouched. Could not verify on WebKit: Windows+WebKit
+    can't load the app at all in this environment (separate, pre-existing,
+    already-`skip()`-ed issue -- see below), though a bare WebKit page load
+    with no app works fine on Windows, so it's specific to this app.
+    `eslint` and `vue-tsc --noEmit` both clean.
+  - **Aside on Windows+WebKit** (`testInfo.skip(true, "Skipping on Windows
+    + WebKit due to unknown problems")` in both `console-execution.spec.ts`
+    and `graphics.spec.ts`): loading the real app under Playwright's
+    WebKit on Windows throws `ReferenceError: Can't find variable:
+    AudioBuffer` twice during startup and the app never mounts (0
+    `.frame-div` elements). `AudioBuffer` is referenced eagerly by
+    sound-related code (`sound_manager.ts`, `App.vue`); worth checking
+    whether Playwright's WebKit-on-Windows build lacks a Web Audio backend
+    entirely (a known-ish Playwright/WebKit-on-Windows gap) and, if so,
+    feature-detecting/deferring that reference so app startup doesn't
+    depend on it. Not investigated further -- out of scope here.

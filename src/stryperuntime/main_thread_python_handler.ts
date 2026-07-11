@@ -15,6 +15,12 @@ const serviceWorkerChannel = makeServiceWorkerChannel({scope: import.meta.env.BA
 
 export const renderer = new Renderer();
 export const isPythonWorkerReady = ref(false);
+// Set by PythonExecutionArea.vue to the "request" field of whichever sync request is currently
+// outstanding (i.e. the worker is blocked waiting for a response to it), or null if none.  This
+// lets terminateAndRestartPyodide() recognise specifically our own internal "dummy" catch-up
+// requests (see python-execution.ts) and answer them immediately when stopping, without
+// misinterpreting some other genuinely-pending request (e.g. input()) the same way.
+export const outstandingSyncRequestKind = ref<string | null>(null);
 // These two will get recreated when we restart Pyodide:
 // They will only be null if a special testing flag is used:
 let pythonWorker : Worker | null = makeNewPyodideWorker();
@@ -54,7 +60,35 @@ function makePyodideClient(pythonWorker: Worker) : PyodideClient {
 // cross-origin isolation which would break things like Google Drive.  So we must
 // terminate the worker.  It does mean the stop is instant and "clean" (next
 // execution won't carry over any state).
-export function terminateAndRestartPyodide() : void {
+export async function terminateAndRestartPyodide() : Promise<void> {
+    // The worker can be blocked waiting synchronously for a message from the main thread -- most
+    // commonly our own internal "dummy" catch-up request (see python-execution.ts) used to stop
+    // async requests/sprite updates queueing up in a tight loop.  Without SharedArrayBuffer, that
+    // wait is implemented (in the sync-message library) as a *synchronous* XMLHttpRequest inside
+    // the worker.  Some browsers -- WebKit/Safari in particular -- do not reliably abort an
+    // in-progress synchronous XHR just because worker.terminate() was called: the worker can keep
+    // running (and e.g. keep printing or moving sprites) until that blocking call naturally
+    // returns, which can take several seconds.
+    //
+    // If we can tell for certain that's what is happening (specifically our own dummy catch-up,
+    // as opposed to some other genuinely-pending request such as input() -- which we leave alone,
+    // since answering it with the wrong response would surface as a spurious runtime error), we
+    // answer it ourselves immediately, exactly as the normal machinery in PythonExecutionArea.vue
+    // would eventually answer it anyway, so the worker's blocking read returns straight away
+    // instead of us having to hope terminate() interrupts it.  We cap how long we wait for that
+    // (it should be near-instant) so a slow/stuck write can never stop us from terminating below:
+    if (pythonClient?.state === "awaitingMessage" && outstandingSyncRequestKind.value === "dummy") {
+        try {
+            await Promise.race([
+                pythonClient.writeMessage({request: "dummy", response: true}),
+                new Promise((resolve) => setTimeout(resolve, 500)),
+            ]);
+        }
+        catch (e) {
+            // Best-effort only; we terminate the worker regardless just below:
+            console.error("Error answering pending dummy request before terminating Pyodide worker: ", e);
+        }
+    }
     // This is apparently instant, so we can immediately assume Pyodide has stopped:
     pythonWorker?.terminate();
     // Then we must make a new Pyodide worker ready for a potential future run:

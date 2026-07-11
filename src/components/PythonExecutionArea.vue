@@ -84,7 +84,7 @@ import {PyodideErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/sha
 import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
-import {getPythonClient, isPythonWorkerReady, renderer, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
+import {getPythonClient, isPythonWorkerReady, outstandingSyncRequestKind, renderer, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {createOrGetAudioContext} from "@/helpers/audioContext";
 import {clearAllRuntimeErrors, computeFrameSnapshot} from "@/helpers/storeMethods";
@@ -508,7 +508,7 @@ export default defineComponent({
                 return;
             case PythonExecRunningState.Running:
                 soundManager?.stopAllSounds();
-                terminateAndRestartPyodide();
+                void terminateAndRestartPyodide();
                 useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                 return;
             case PythonExecRunningState.RunningAwaitingStop:
@@ -686,6 +686,10 @@ export default defineComponent({
                         }
                         else {
                             const req = asreq.request;
+                            // Recorded so that terminateAndRestartPyodide() can tell, if the worker is
+                            // currently blocked waiting for a response, whether it's safe to answer that
+                            // wait itself directly (see the comment there for why):
+                            outstandingSyncRequestKind.value = req.request;
                             const resp = syncBridgePromise(req);
                             if (req.request != resp.request) {
                                 console.error(`Internal error: request ${req.request} did not match the response ${resp.request}`);
@@ -698,6 +702,9 @@ export default defineComponent({
                                 catch (e) {
                                     console.error(e);
                                 }
+                                finally {
+                                    outstandingSyncRequestKind.value = null;
+                                }
                             }).catch(async (err) => {
                                 await serviceWorkerReadyAndInControl();
                                 try {
@@ -705,6 +712,9 @@ export default defineComponent({
                                 }
                                 catch (e) {
                                     console.error(e);
+                                }
+                                finally {
+                                    outstandingSyncRequestKind.value = null;
                                 }
                             });
                         }
@@ -724,7 +734,7 @@ export default defineComponent({
                     this.checkNonePrecompiledErrors();
                     soundManager?.stopAllSounds();
                     // We always restart Pyodide for a clean state:
-                    terminateAndRestartPyodide();
+                    void terminateAndRestartPyodide();
                 });
                 
                 // We make sure the number of errors shown in the interface is in line with the current state of the code

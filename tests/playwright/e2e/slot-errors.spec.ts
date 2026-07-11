@@ -1,7 +1,7 @@
 import {expect, Page, test} from "@playwright/test";
 import {addFakeClipboard} from "../support/clipboard";
 import fs from "fs";
-import {doPagePaste} from "../support/editor";
+import {doPagePaste, waitForEditorSettled} from "../support/editor";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
@@ -61,10 +61,9 @@ async function checkErrorAfterExitingSlot(page: Page, keypresses : string[] = ["
     await expect(page.locator(`#${slotId}`)).not.toContainClass("error-slot");
     for (const key of keypresses) {
         await page.keyboard.press(key);
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
     }
-    await page.waitForTimeout(300);
-    // Now should show an error:
+    // Now should show an error (toContainClass already retries, no need for a wait beforehand):
     await expect(page.locator(`#${slotId}`)).toContainClass("error-slot");
 }
 
@@ -109,17 +108,17 @@ test.describe("Check slots have errors", () => {
         // could show errors on function description slots, so we check that doesn't happen:
         // Class with method, where the method has header content "a, *"
         await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("cFoo");
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("dfoo(a,*");
         const paramId = await getFocusedId(page);
         // Move into the function description slot
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         const descriptionId = await getFocusedId(page);
         // Sanity check:
         expect(descriptionId).not.toEqual(paramId);
@@ -127,8 +126,7 @@ test.describe("Check slots have errors", () => {
         await expect(page.locator(`#${paramId}`)).not.toContainClass("error-slot");
         await expect(page.locator(`#${descriptionId}`)).not.toContainClass("error-slot");
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(500);
-        // Now should show an error in params but not description:
+        // Now should show an error in params but not description (toContainClass already retries):
         await expect(page.locator(`#${paramId}`)).toContainClass("error-slot");
         await expect(page.locator(`#${descriptionId}`)).not.toContainClass("error-slot");
     });

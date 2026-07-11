@@ -52,7 +52,7 @@ deliberately kept, say why instead of checking it off as fully done.
 | [ ] | `tests/playwright/e2e/frame-selection-manipulation.spec.ts` | 10 | |
 | [ ] | `tests/playwright/e2e/storage-model.spec.ts` | 9 | |
 | [ ] | `tests/cypress/e2e/autocomplete-more.cy.ts` | 8 | |
-| [ ] | `tests/playwright/e2e/slot-errors.spec.ts` | 7 | |
+| [x] | `tests/playwright/e2e/slot-errors.spec.ts` | 7 | Converted all 7, see Log |
 | [ ] | `tests/playwright/e2e/scroll-into-view.spec.ts` | 7 | |
 | [ ] | `tests/playwright/e2e/load-save-frozen-collapsed.spec.ts` | 7 | |
 | [ ] | `tests/cypress/e2e/paste-python.cy.ts` | 7 | uses paste-test-support.ts helper above |
@@ -1117,3 +1117,24 @@ deliberately left in place with a reason.
     partial mitigation rather than a complete fix; noted here rather than
     chased to zero today.
   - `eslint` and `vue-tsc --noEmit` both clean.
+
+- **2026-07-11**: Converted `tests/playwright/e2e/slot-errors.spec.ts`
+  (all 7 waits). Picked over `console-execution.spec.ts` (tied at 7 CI
+  occurrences) because a quick check of that file's actual CI failures
+  showed 5/7 were the already-documented "Firefox slow to reinitialise"
+  Pyodide-loading baseline (not wait-timing, not fixable by conversion),
+  whereas `slot-errors.spec.ts`'s failures (`element(s) not found` on a
+  slot ID) looked like genuine timing issues in the file's own waits.
+  - Ordinary conversions: the per-keypress waits inside
+    `checkErrorAfterExitingSlot`'s loop and the "No error on function
+    descriptions" test → `waitForEditorSettled`. Deleted (not converted)
+    the two waits that sat directly before a `toContainClass`/
+    `not.toContainClass` assertion -- Playwright's own assertion retry
+    (default 5s) already covers exactly this "wait for a class to
+    appear" case, so an explicit wait first was redundant regardless of
+    whether the underlying error-validation is synchronous or debounced.
+  - Verified: full file, firefox+webkit (file skips Chromium, pre-existing
+    and unrelated -- a documented Mac+Chromium-only quirk with comment
+    frame exit behaviour), 14/14. WebKit `--repeat-each=5` (35/35), since
+    that's where this file's CI flakiness was concentrated. `eslint` and
+    `vue-tsc --noEmit` both clean.

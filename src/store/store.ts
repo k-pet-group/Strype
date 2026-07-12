@@ -33,8 +33,9 @@ import {
     type AnalyticsFlushReason,
 } from "@/store/analytics";
 export type { AnalyticsEvent, AnalyticsFlushReason } from "@/store/analytics";
+import { waitForPanesSettled } from "@/helpers/editor";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-import { actOnGraphicsImport, waitForPanesSettled } from "@/helpers/editor";
+import { actOnGraphicsImport } from "@/helpers/editor";
 // #v-endif
 
 export function getEditorTabId() : string {

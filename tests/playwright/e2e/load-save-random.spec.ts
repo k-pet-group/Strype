@@ -378,7 +378,9 @@ async function newProject(page: Page) : Promise<void> {
     // hang: the click handler synchronously unmounts this link (showMenu=false) right after
     // scheduling the reload, which otherwise races Playwright's own post-click wait:
     await page.click("#" + await strypeElIds.getNewProjectLinkId(), {noWaitAfter: true});
-    await expect(page.locator(".frame-div")).toHaveCount(2);
+    // A full page reload is genuinely slower than the default 5s assertion timeout under load
+    // (same reasoning as the equivalent check in loading-saving.ts's load()):
+    await expect(page.locator(".frame-div")).toHaveCount(2, {timeout: 20000});
 }
 
 async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: string) : Promise<void> {

@@ -1550,3 +1550,58 @@ deliberately left in place with a reason.
     timeouts (`load-save-dividers.spec.ts`,
     `structured-expressions-navigation.spec.ts` -- 19/19 on firefox).
     `eslint` and `vue-tsc --noEmit` both clean across all touched files.
+
+- **2026-07-11/12**: Reviewed CI run on `d4eddb4b` (the divider-settle fix
+  above, pushed from another machine) via `gh` — 160 Cypress failures across
+  both microbit shards, plus 3 new Playwright failures in
+  `load-save-random.spec.ts` on macOS+Firefox. Neither is CI noise.
+  - **P0, fixed**: `waitForPanesSettled` (`src/helpers/editor.ts`) was
+    defined *inside* the `#v-ifdef STRYPE_PLATFORM ==
+    VITE_STANDARD_PYTHON_MODE` block that also guards `actOnGraphicsImport`
+    — i.e. it doesn't exist at all in a microbit build. `store.ts`'s
+    `setDividerStates()` calls it unconditionally (no platform guard), so
+    every microbit project load/save threw `ReferenceError:
+    waitForPanesSettled is not defined`, caught by Cypress as an uncaught
+    app exception and failing the test — this is what showed up as ~160
+    Cypress failures on both microbit shards, not flakiness. Confirmed the
+    mechanism directly: `npm run build:microbit` failed outright once
+    `store.ts`'s import was made unconditional
+    (`[MISSING_EXPORT] "waitForPanesSettled" is not exported by
+    "src/helpers/editor.ts"`), proving the function genuinely wasn't
+    compiled in for that platform. Fixed by moving `waitForPanesSettled`'s
+    definition above the `#v-ifdef` line in `editor.ts` (it's a generic
+    DOM/CSS helper — no dependency on anything Python-specific) and
+    splitting `store.ts`'s import into an unconditional one for
+    `waitForPanesSettled` plus the still-gated one for
+    `actOnGraphicsImport`. Verified: `npm run build:microbit` and
+    `npm run build:python` both succeed; `eslint`/`vue-tsc --noEmit` clean;
+    ran the actual previously-failing spec
+    (`tests/cypress/e2e/load-save.cy.ts`) against a real microbit dev
+    server — 36/36 passing (was failing on `standardBeforeEach`-adjacent
+    tests with the ReferenceError before the fix).
+  - **P1, root-caused and fixed**: 3 previously-passing named tests in
+    `load-save-random.spec.ts` (macOS+Firefox) failed with `.frame-div`
+    stuck at count 0 immediately after `newProject()`'s reload — *before*
+    any `load()` call, so distinct from the "second, rarer `.project-name`
+    staleness race" documented above. First ruled out `setDividerStates()`/
+    `waitForPanesSettled()` as the cause: traced `newProject()`'s reload
+    path (`?new_project` → `loadLocalStorageProjectOnStart(forceNewProject=true)`
+    in `App.vue`) and confirmed it never calls either — it takes a
+    synchronous `Promise.reject()` shortcut straight to a `cloneDeep` of the
+    initial state. Reproduced directly on real local hardware (no CPU
+    throttle needed): 2-3/4 repeats of "Complex image expression" failed on
+    firefox. A temporary `page.on("pageerror", ...)` listener caught
+    nothing — no JS exception. The auto-captured failure screenshot showed
+    the app fully mounted with the correct default content — not a hang or
+    crash, just the reload occasionally landing after the assertion's
+    default 5s window. This is the exact same "full page reload is slower
+    than typical DOM waits" lesson from this initiative's very first
+    session (`load-save-share.spec.ts`, which bumped its equivalent check
+    to 20s) — this particular `newProject()` copy just never got that
+    treatment. **Fixed**: added `{timeout: 20000}` to the `.frame-div`
+    assertion. Verified: all 3 originally-failing tests, 4 repeats each (16
+    total) on firefox, locally — 16/16 passed (was 2-3/4 failing on
+    "Complex image expression" alone before the fix). `eslint`/
+    `vue-tsc --noEmit` clean. See PLAN.md's "Known suspected app bugs"
+    section for the full writeup, including why this is confirmed distinct
+    from the sibling `.project-name` race rather than the same bug.

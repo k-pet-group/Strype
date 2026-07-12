@@ -439,6 +439,42 @@ completed):
     `selectedFile()`/`setStateFromJSONStr` rejection paths) or add
     unconditional error logging so a real CI occurrence surfaces the
     actual rejection reason instead of being silently swallowed.
+  - **Related-looking but turned out to be a different, much simpler bug --
+    found and fixed 2026-07-12**: CI run on `d4eddb4b` (macOS+Firefox) had 3
+    previously-passing `load-save-random.spec.ts` "Enters, saves and loads
+    specific frames" tests fail with `.frame-div` stuck at count 0 *inside
+    `newProject()`'s own post-reload check* (`load-save-random.spec.ts:404`),
+    i.e. strictly *before* any `load()` call, unlike the race above which
+    needs a `load()` in progress. Ruled out the divider-settle rewrite as
+    the cause first: traced `loadLocalStorageProjectOnStart(forceNewProject=true)`
+    (`App.vue`, reached via `?new_project`) and confirmed it takes the
+    `Promise.reject()` shortcut straight to a synchronous `cloneDeep` of the
+    initial state, never touching `setDividerStates`/`waitForPanesSettled`
+    at all -- ruling out a second bug in the same commit.
+    Reproduced directly on real (unthrottled) local hardware: 2-3 failures
+    out of 4 repeats of "Complex image expression" on firefox, no CPU
+    throttle needed. Added a temporary `page.on("pageerror", ...)` listener
+    -- caught nothing, no JS exception anywhere. The failure screenshot
+    (auto-captured by Playwright at the moment the assertion gave up) showed
+    the app **fully mounted and rendered**, default starter content
+    (`myString ⇐ "Hello from Strype"`) visible and correct -- i.e. this
+    isn't a hang or a crash, the reload just occasionally lands after the
+    assertion's 5s window. This is exactly the same "a full page reload is
+    genuinely slower than typical DOM waits" finding from this initiative's
+    very first practice-run session (2026-07-09,
+    `load-save-share.spec.ts`), which bumped its equivalent post-reload
+    check to a 20s timeout for the same reason -- this particular
+    `newProject()` copy (there's more than one across spec files) just
+    never got that treatment. **Fixed** by adding `{timeout: 20000}` to the
+    `.frame-div` assertion in `load-save-random.spec.ts`'s `newProject()`.
+    Verified: reran all 3 originally-failing tests, 4 repeats each (16
+    total) on firefox -- 16/16 passed, 0 failures (previously 2-3/4 failed
+    on "Complex image expression" alone). `eslint`/`vue-tsc --noEmit`
+    clean. Not the same bug as the still-open race above (that one shows
+    zero console output across a full 30s during a `load()`; this one has
+    the page visibly, successfully rendered a few seconds later) --
+    downgrading the "possibly-related" framing since they're now confirmed
+    distinct.
 
 - **`waitForGraphicsSettled` (`tests/playwright/support/execution.ts`)
   doesn't work for tests with an ongoing animation/game loop.** Found in

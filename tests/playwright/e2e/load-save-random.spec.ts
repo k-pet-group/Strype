@@ -13,7 +13,7 @@ import {checkFrameXorTextCursor, typeIndividually, waitForEditorSettled} from ".
 import {readFileSync} from "node:fs";
 import {createBrowserProxy} from "../support/proxy";
 import {load, save} from "../support/loading-saving";
-import { skipPyodideLoading } from "../support/general";
+import { setupStrypeTest } from "../support/general";
 
 let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
@@ -24,29 +24,9 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     // (pressing right out of a comment frame puts the cursor at the beginning and makes a frame cursor).
     // Since it works in the real browsers, and on Webkit and Firefox, we just skip the tests in Chromium
     test.skip(testInfo.project.name == "chromium", "Cannot run in Chromium");
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(240000); // 240 seconds
-    
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 240000, skipPyodide: true});
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
-    await skipPyodideLoading(page);
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
-    // Wait for content to load:
-    await expect(page.locator(".frame-div")).toHaveCount(2);
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
-    //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
 });
 
 

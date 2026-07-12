@@ -9,28 +9,13 @@ import {enterCode} from "../support/editor";
 import {dragDividerTo} from "../support/dividers";
 import {load, loadContent} from "../support/loading-saving";
 import {checkConsoleContent, runToFinish, setupGraphicsRedrawObserver, startRunning, waitForGraphicsSettled} from "../support/execution";
+import {setupStrypeTest} from "../support/general";
 
 let browser = "";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     browser = browserName;
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(240000); // 240 seconds
-    
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 240000});
 });
 
 enum ImageComparison {

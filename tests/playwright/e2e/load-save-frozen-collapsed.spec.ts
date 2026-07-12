@@ -3,28 +3,11 @@ import {loadContent, save} from "../support/loading-saving";
 import fs from "fs";
 import en from "@/localisation/en/en_main.json";
 import { CollapsedState } from "../../cypress/support/frame-types";
-import {addFakeClipboard} from "../support/clipboard";
 import { checkFrameXorTextCursor, waitForEditorSettled } from "../support/editor";
+import { setupStrypeTest } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(120_000); // 120 seconds
-
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
-    await addFakeClipboard(page);
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
-    
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120_000, fakeClipboard: true});
 });
 
 async function saveAndCheck(page: Page, expectedSPY: string) {

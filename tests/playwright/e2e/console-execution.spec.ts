@@ -2,28 +2,12 @@ import { test, expect, Locator, Page } from "@playwright/test";
 import { enterCode } from "../support/editor";
 import { checkConsoleContent, runButtonShowsRun, runToFinish, setupGraphicsRedrawObserver, startRunning } from "../support/execution";
 import { load } from "../support/loading-saving";
+import { setupStrypeTest } from "../support/general";
 
 let scssVars: {[varName: string]: string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(90000); // 90 seconds
-    
-    await page.goto("./", {waitUntil: "load"});
-    // Wait for content to load:
-    await expect(page.locator(".frame-div")).toHaveCount(2);
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 90000});
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
 });
 
 // Given a locator for a slot or frame header, checks if the nearest enclosing frame has an error showing

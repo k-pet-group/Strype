@@ -43,7 +43,7 @@ deliberately kept, say why instead of checking it off as fully done.
 | [ ] | `tests/cypress/e2e/media-literals.cy.ts` | 29 | |
 | [ ] | `tests/playwright/e2e/description-fields.spec.ts` | 27 | |
 | [x] | `tests/playwright/e2e/load-save-random.spec.ts` | 23 | Converted all 23; found+fixed a real app bug (stale setTimeout in Menu.vue) that was causing most of this file's flakiness -- see Log. Remaining flakiness is content-generation edge cases in the fuzzer, not waits -- see Log |
-| [ ] | `tests/playwright/e2e/load-save-dividers.spec.ts` | 21 | uses dividers.ts helper above |
+| [ ] | `tests/playwright/e2e/load-save-dividers.spec.ts` | 20 | uses dividers.ts helper above; the beforeEach's 20s wait was fixed as part of the 2026-07-12 beforeEach unification (see Log), remaining 20 are in test bodies |
 | [ ] | `tests/cypress/e2e/autocomplete-user-defined.cy.ts` | 21 | |
 | [x] | `tests/playwright/e2e/structured-expressions-selection.spec.ts` | 16 | Converted all 16, see Log |
 | [ ] | `tests/cypress/e2e/autocomplete.cy.ts` | 15 | |
@@ -1478,3 +1478,75 @@ deliberately left in place with a reason.
     new, separate deferred item in PLAN.md rather than folded into this
     fix — Neil's call: land this fix now, track the second race
     separately.
+- 2026-07-12 — Unified all 22 Playwright spec files' `beforeEach` blocks
+  (everything except `storage-model.spec.ts`, which deliberately doesn't
+  navigate in `beforeEach` at all -- see RECIPES.md) into a single shared
+  `setupStrypeTest()` helper (`tests/playwright/support/general.ts`).
+  Prompted by Neil noticing that some CI failures (e.g.
+  `structured-expressions-copy-paste.spec.ts`) trace back to `beforeEach`
+  waiting for `page.waitForSelector("body")` rather than the app's content
+  actually rendering, unlike files such as `console-execution.spec.ts`
+  that correctly wait for `.frame-div` count -- and noting most spec files
+  had similar but subtly different `beforeEach` blocks worth consolidating.
+  - Surveyed all 23 files' `beforeEach` blocks first (see RECIPES.md's new
+    "standard beforeEach setup" section for the full breakdown) before
+    writing anything, to separate the true common core (Windows+WebKit
+    skip, `testInfo.setTimeout`, console forwarding, `page.goto`,
+    readiness wait, `window.Playwright = true`) from genuine per-file
+    variation (`skipPyodideLoading`, `addFakeClipboard`, `goto`'s
+    `waitUntil` strategy, extra skip conditions for specific browser/OS
+    combinations, extra locator setup).
+  - `setupStrypeTest(page, browserName, testInfo, options)` replaces the
+    `page.waitForSelector("body")`-only pattern everywhere with
+    `expect.poll(() => page.locator(".frame-div").count(), {timeout:
+    readyTimeoutMs}).toBeGreaterThanOrEqual(minFrameCount)` -- `>=` rather
+    than `==` and driven by the new `DEFAULT_STARTING_FRAME_COUNT` constant
+    (currently 2), per Neil's specific ask, since a forthcoming change may
+    increase the default project's starting frame count. `readyTimeoutMs`
+    defaults to 20s (not Playwright's tight 5s `expect` default) since this
+    wait covers the whole app bootstrapping, which is slower than the
+    `<body>`-exists check it replaces -- matching the existing 20s
+    convention already used elsewhere in this codebase for "wait for the
+    app to finish mounting" (`load-save-share.spec.ts`). Bumped to 60s for
+    `structured-expressions-navigation.spec.ts` specifically, which has its
+    own pre-existing comment noting page load alone has been seen to take
+    >30s on CI.
+  - Confirmed with Neil before touching anything beyond what was asked:
+    (1) `expect.poll` is fine for the ">=" check: yes; (2) found
+    `load-save-dividers.spec.ts` has a raw `page.waitForTimeout(20*1000)`
+    sitting in its `beforeEach` -- fixed as part of this pass (the file's
+    other 20 waits, in test bodies, remain for its own future conversion,
+    see PROGRESS.md's tracking table); (3) found
+    `structured-expressions-copy-paste.spec.ts` and
+    `structured-expressions-selection.spec.ts` never set
+    `window.Playwright = true` unlike every other file (looked like an
+    oversight) -- the shared helper now sets it unconditionally for all
+    callers, including these two; (4) `storage-model.spec.ts` -- left
+    fully separate, per Neil's choice, since it deliberately doesn't
+    navigate in `beforeEach`.
+  - Extra per-file skip conditions that don't fit the shared helper stayed
+    as explicit lines in each file, before the `setupStrypeTest` call:
+    Linux+WebKit for `frame-selection-manipulation.spec.ts` (paste doesn't
+    work there), Firefox for `package-installation.spec.ts` (slow on CI),
+    Chromium for `load-save-random.spec.ts`/`slot-errors.spec.ts` (known
+    cursor-placement quirk) and for `structured-expressions-media.spec.ts`
+    (headless Chromium blocks non-text clipboard writes). The three
+    clipboard-focused `structured-expressions-*` files pass a more specific
+    `skipWindowsWebkitReason` (clipboard permissions) instead of the
+    generic "can't load the page" message, since it's the same
+    Windows+WebKit condition but a different, more accurate cause for
+    those particular suites.
+  - Validated in 5 batches against a local dev server (avoiding running too
+    many concurrently, which caused one transient false failure from local
+    resource contention -- confirmed by re-running that single test 3x in
+    isolation, all passed): 147+1(retested clean)/148 + 85/85 + 224/224 on
+    chromium (essentially the whole touched set), plus firefox+webkit spot
+    checks on the chromium-skipped files (`load-save-random.spec.ts`,
+    `slot-errors.spec.ts` -- 108 passed, 7 failed, all in
+    `load-save-random.spec.ts`'s already-documented-flaky "Enters, saves
+    and loads random frame" describe block, matching the exact
+    already-known failure signatures from the 2026-07-11 investigation
+    above, not a new regression) and the two files with special-cased
+    timeouts (`load-save-dividers.spec.ts`,
+    `structured-expressions-navigation.spec.ts` -- 19/19 on firefox).
+    `eslint` and `vue-tsc --noEmit` both clean across all touched files.

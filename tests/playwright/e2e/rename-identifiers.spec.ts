@@ -1,7 +1,7 @@
 import {test, expect, Locator} from "@playwright/test";
 import {readFileSync} from "node:fs";
 import {save} from "../support/loading-saving";
-import {skipPyodideLoading} from "../support/general";
+import {setupStrypeTest} from "../support/general";
 import {doPagePaste, getDefaultStrypeProjectDocumentationFullLine, pressN, waitForEditorSettled} from "../support/editor";
 
 const defaultStandardStrypeProjectDocLiteral = getDefaultStrypeProjectDocumentationFullLine();
@@ -146,25 +146,8 @@ const wordWiseNavigationLeft = process.platform == "darwin" ? "Alt+ArrowLeft" : 
 const wordWiseNavigationRight = process.platform == "darwin" ? "Alt+ArrowRight" : "Control+ArrowRight";
 let scssVars: {[varName: string]: string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(240000); // 240 seconds
-
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
-    await skipPyodideLoading(page);
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 240000, skipPyodide: true});
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
     renameButton = page.locator(`.${scssVars.renameIdentifierPopoverClassName} button:visible`);
     openedPopoverLocator = page.locator(`.popover.show:has(.${scssVars.renameIdentifierPopoverClassName})`);
 });

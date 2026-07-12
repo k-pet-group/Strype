@@ -272,3 +272,58 @@ identifier"). For these:
    replacement (or a small variant of it) applies.
 3. Do the whole file in one pass rather than one wait at a time — much
    faster than treating each of the 139 occurrences as a fresh puzzle.
+
+## Case: standard beforeEach setup (Playwright)
+
+Every Playwright spec file's `beforeEach` used to hand-roll the same
+sequence with small, mostly-accidental variations (some waited for
+`page.waitForSelector("body")` before touching the editor -- satisfied long
+before the app has mounted any content -- while others correctly waited for
+`.frame-div` to have count 2; the Windows+WebKit skip reason and message
+varied; `testInfo.setTimeout` values, `skipPyodideLoading`/`addFakeClipboard`
+usage and `page.goto`'s `waitUntil` strategy were all copy-pasted per file).
+This is now unified into `setupStrypeTest(page, browserName, testInfo, options)`
+in `tests/playwright/support/general.ts` -- new spec files should call this
+in their `beforeEach` rather than reimplementing it:
+
+```ts
+test.beforeEach(async ({ page, browserName }, testInfo) => {
+    await setupStrypeTest(page, browserName, testInfo, {
+        timeoutMs: 90000,       // omit to keep Playwright's 30s default
+        skipPyodide: true,      // for tests that don't execute Python code
+        fakeClipboard: true,    // for tests that read/write the clipboard
+        gotoWaitUntil: "domcontentloaded", // default is "load"
+    });
+    // any extra per-file setup (scssVars, strypeElIds, locators) goes after
+});
+```
+
+It handles: the Windows+WebKit skip (most suites can't load the app there
+at all -- pass `skipWindowsWebkit: false` if the suite already covers that
+combination as part of a broader condition, or `skipWindowsWebkitReason` to
+give a more specific message, e.g. for clipboard-permission-related suites),
+`testInfo.setTimeout`, forwarding browser console output, optionally
+skipping Pyodide/installing the fake clipboard, navigating, and waiting for
+`.frame-div` to reach `DEFAULT_STARTING_FRAME_COUNT` (currently 2) via
+`expect.poll(...).toBeGreaterThanOrEqual(...)` rather than an exact-match
+`toHaveCount` -- deliberately ">=" rather than "==" so a future change
+adding more starting frames to the default project doesn't need updating at
+every call site. Extra per-suite skip conditions (e.g. a specific browser/OS
+combination known to be flaky for that suite alone, or a whole-browser skip
+via `test.skip`) stay in the calling file, before the `setupStrypeTest` call,
+since they're suite-specific rather than shared.
+
+`storage-model.spec.ts` deliberately does not use this helper: its tests
+manage their own page navigation individually (it tests multi-tab/reload
+storage-recovery scenarios), so `page` isn't even a `beforeEach` parameter
+there -- only `skipWindowsWebkit`'s underlying skip condition and
+`testInfo.setTimeout` would apply, and it wasn't judged worth extracting
+just that much for one file.
+
+Note `DEFAULT_STARTING_FRAME_COUNT` only fixes the *readiness check*. Other
+call sites bake in the assumption of exactly 2 starting frames structurally,
+not just as a readiness signal, and would need separate updates whenever the
+default project's frame count actually changes: `support/editor.ts`'s
+`enterCode()` (deletes the first 2 default frames via `ArrowDown ×2,
+Backspace ×2`), `storage-model.spec.ts`'s `assertStartingProject`, and
+`load-save-random.spec.ts`'s local `newProject()` post-reload check.

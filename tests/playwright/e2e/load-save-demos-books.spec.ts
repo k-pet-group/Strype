@@ -1,7 +1,7 @@
 import {test, expect} from "@playwright/test";
 import {save} from "../support/loading-saving";
 import {readFileSync} from "node:fs";
-import {skipPyodideLoading} from "../support/general";
+import {setupStrypeTest} from "../support/general";
 import {createBrowserProxy} from "../support/proxy";
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "@/helpers/sharedIdCssWithTests";
 import {doPagePaste} from "../support/editor";
@@ -9,26 +9,9 @@ import {doPagePaste} from "../support/editor";
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
 let scssVars: {[varName: string]: string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-    testInfo.setTimeout(240_000);
-
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
-    await skipPyodideLoading(page);
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
-    // Wait for content to load:
-    await expect(page.locator(".frame-div")).toHaveCount(2);
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 240_000, skipPyodide: true});
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
 });
 
 test.describe("Load/save book projects", () => {

@@ -10,12 +10,14 @@ import { defineConfig, devices } from "@playwright/test";
 
 export const BASE_URL = process.env.BASE_URL || "http://localhost:8081/editor/";
 const specFilter = process.env.SPEC;
+const grepFilter = process.env.GREP;
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
     testDir: "./tests/playwright/e2e",
-    testMatch: specFilter ? [specFilter] : ["**/*.spec.ts"], // default fallback    
+    testMatch: specFilter ? [specFilter] : ["**/*.spec.ts"], // default fallback
+    grep: grepFilter ? new RegExp(grepFilter) : undefined,
     // Folder for test artifacts such as screenshots, videos, traces, etc.
     outputDir: "./tests/playwright/test-results",
     /* Fail the build on CI if you accidentally left test.only in the source code. */

@@ -550,12 +550,24 @@ while True  :
         await load(page, "tests/cypress/fixtures/data-graph.spy");
         await setupGraphicsRedrawObserver(page);
         await startRunning(page);
+        // waitForGraphicsSettled() isn't reliable here: prepare_display() draws in one long burst
+        // (title + all elec/gas points and line segments + button), and that burst contains a real
+        // multi-second stall around the elec-to-gas transition (allocating the 800x600 dpImg for
+        // the segment lines) that comfortably exceeds the "quiet for 300ms" settle threshold --
+        // so waitForGraphicsSettled() can return while prepare_display() is still only partway
+        // done, well before the "button" actor we're about to click even exists. Instead, wait for
+        // prepare_display()'s own last print, which is a precise signal that setup has truly
+        // finished (the console textarea still receives this text even while the console tab isn't
+        // the one currently showing):
+        await expect(page.locator("#peaConsole")).toHaveValue(/added button actor/, {timeout: 15000});
         await waitForGraphicsSettled(page);
         const g = page.locator("#peaGraphicsContainerDiv");
         const bb = await g.boundingBox();
         expect(bb).not.toBeNull();
         // Click near top right:
         await g.click({position: {x: (bb?.width ?? 0) - 10, y: 10}});
+        // The code only checks for clicks once a second, so we need to wait 2 seconds:
+        await page.waitForTimeout(2000);
         await waitForGraphicsSettled(page);
         await page.click("#consolePEATab");
         await checkConsoleContent(page, /\nClicked: button\s*$/s);

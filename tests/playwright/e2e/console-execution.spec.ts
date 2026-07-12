@@ -158,6 +158,28 @@ except Exception:
         await checkConsoleContent(page, /.*TypeError: object of type 'NoneType' has no len\(\).*/);
         await expectHasVisibleErrorIcon(page.locator("span", {hasText: "This will cause an error:"}));
     });
+
+    test("Check error shows correctly when a funcdef with documentation follows a multiline comment", async ({page}) => {
+        test.setTimeout(120000);
+        // This fixture has a method with a documentation string directly under its header ("def ...:" then
+        // a docstring on the next line), coming straight after a multiline comment. Locating the frame position
+        // for such a funcdef/classdef used to be computed *after* accounting for the docstring's own line count,
+        // so the line number recorded for the statement was that of its docstring rather than its own header line.
+        // That, in turn, made the line-to-frame lookup miss both the exact line and the "EOF" fallback line for an
+        // error reported on the header itself, throwing an uncaught exception instead of reporting the error -
+        // which left the Run button stuck showing "Stop" forever. This is a regression test for that:
+        const pageErrors: string[] = [];
+        page.on("pageerror", (err) => pageErrors.push(err.message));
+        await load(page, "tests/cypress/fixtures/astroids.spy");
+        await runToFinish(page, true);
+        // No uncaught JS exception should occur while tracing the error back to its frame:
+        expect(pageErrors).toEqual([]);
+        // The fixture has a genuine bug (the "self" parameter is both automatically added and manually
+        // typed on the same method), which should be correctly flagged rather than silently swallowed:
+        const errSlot = page.locator(".error-slot");
+        await expect(errSlot).toHaveCount(1);
+        await expect(errSlot).toHaveText("self");
+    });
 });
 
 test.describe("Test assets filesystem", () => {

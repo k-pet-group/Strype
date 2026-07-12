@@ -1605,3 +1605,61 @@ deliberately left in place with a reason.
     `vue-tsc --noEmit` clean. See PLAN.md's "Known suspected app bugs"
     section for the full writeup, including why this is confirmed distinct
     from the sibling `.project-name` race rather than the same bug.
+
+- 2026-07-12/13 — Investigated the same `d4eddb4b` CI run's remaining
+  genuine (4/4, non-recovering) failure: `graphics.spec.ts` → "Test
+  get_clicked_actor returns the right item" (macOS+Firefox). Neil had
+  already manually committed (`39d91ea7`) a fix for the test's setup-timing
+  gap (waiting for `prepare_display()`'s own `/added button actor/` console
+  print instead of trusting `waitForGraphicsSettled()`, which isn't
+  reliable across that function's multi-second internal stall). That same
+  commit also added a new flat `page.waitForTimeout(2000)` after the click,
+  to cover the fixture's `pace(1)` click-check cadence (confirmed in
+  `data-graph.spy`), followed by `checkConsoleContent`'s existing fixed
+  3000ms timeout -- not enough combined margin once CI/Firefox overruns
+  even one `pace(1)` cycle, i.e. the same "fixed wait + tight timeout"
+  pattern this whole initiative targets.
+  - **Fix**: removed the flat 2s wait entirely; gave `checkConsoleContent`
+    (`tests/playwright/support/execution.ts`) an optional `timeoutMs`
+    parameter (default 3000, so other callers are unaffected) and passed
+    10000ms at this call site -- `toHaveValue` already polls, so this
+    keeps the common case fast and only pays out the extra bound when the
+    app is genuinely slow to notice the click.
+  - Verified: 5/5 on firefox (the browser this failed on in CI), full
+    `graphics.spec.ts` 32/32 on chromium (regression check). `eslint`
+    clean.
+  - See PLAN.md's "Known suspected app bugs" section for the full writeup.
+
+- 2026-07-13 — Continued reviewing the same `d4eddb4b` CI run (macOS+Firefox
+  job) for the next most flaky test now that the 4 genuine failures above
+  are fixed. Among the run's 39 recovered-on-retry ("flaky") tests,
+  `tests/playwright/e2e/media-literal-edit.spec.ts`'s "Media literal
+  resizing" test stood out as by far the most prevalent: 5 of the 39 flaky
+  entries were different size/percentage parameterisations of this single
+  test (one needed 2 retries, matching the worst severity in the whole
+  flaky list), each timing out at a different point (OK-button click,
+  `getAttribute`, `spans.count`) -- i.e. not one flaky assertion but the
+  whole test intermittently running out of room.
+  - **This file isn't in the wait-count table above at all** -- it has no
+    flat `waitForTimeout`s to convert; every wait already uses
+    `expect.poll`/`expect(...)` with real timeouts (5s for the "Loading"
+    spinner, 15s for the resized `src=` to land). So this isn't a
+    wait-conversion case, it's a missing per-test timeout: its `beforeEach`
+    called `setupStrypeTest()` with no `timeoutMs` option, leaving
+    Playwright's global 30s default test timeout unchanged -- tight for a
+    test that pastes an image, opens a dialog, waits up to 5s for it to
+    load, moves a slider, clicks OK, then polls up to 15s for the resize to
+    land, all inside that one 30s budget. Other slower spec files in this
+    suite (e.g. `structured-expressions-navigation.spec.ts`) already bump
+    this via `setupStrypeTest`'s `timeoutMs` option for exactly this
+    reason; this file had just never been given one.
+  - **Fix**: added `{timeoutMs: 60000}` to this file's `setupStrypeTest()`
+    call (`tests/playwright/e2e/media-literal-edit.spec.ts`'s
+    `beforeEach`), doubling the available budget without touching any of
+    the file's own (already-correct) internal poll timeouts.
+  - Verified: full file, all 30 size/percentage combinations, firefox --
+    30/30 passing (2.5min). `eslint` clean.
+  - Worth adding this file to the tracking table above if it turns out to
+    need actual wait-conversion work later -- for now it's fully addressed
+    by the timeout fix, so leaving it untracked rather than adding a
+    misleading "0 waits" row.

@@ -22,10 +22,10 @@ export async function runToFinish(page: Page, extraTimeout?: boolean) : Promise<
     await runButtonShowsRun(button, extraTimeout);
 }
 
-export async function checkConsoleContent(page: Page, expectedContent : string | RegExp) : Promise<void> {
+export async function checkConsoleContent(page: Page, expectedContent : string | RegExp, timeoutMs = 3000) : Promise<void> {
     const consoleLoc = page.locator("#peaConsole");
     await expect(consoleLoc).toHaveCount(1);
-    await expect(consoleLoc).toHaveValue(expectedContent, {timeout: 3000});
+    await expect(consoleLoc).toHaveValue(expectedContent, {timeout: timeoutMs});
 }
 
 // There's no dedicated test hook for "the graphics canvas just redrew" (turtle/strype.graphics

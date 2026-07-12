@@ -547,6 +547,33 @@ completed):
     `param-prompts.cy.ts` (64/64) for regressions in other callers of
     this shared helper. See PROGRESS.md for the full writeup.
 
+- **`graphics.spec.ts` → "Test get_clicked_actor returns the right item"
+  failed 4/4 attempts (no retry recovered it) in the CI run on `d4eddb4b`**
+  (macOS+Firefox, run 29165893501) -- the worst single result in that run,
+  worse than a merely-flaky test. Root cause: two separate timing gaps in
+  the same test, found by reading the actual job log rather than guessing:
+  (1) the click happened before `prepare_display()` had genuinely finished
+  drawing (its own multi-second stall around the elec/gas transition can
+  exceed `waitForGraphicsSettled()`'s "quiet for 300ms" threshold, so that
+  helper isn't a reliable readiness signal here); (2) a flat
+  `page.waitForTimeout(2000)` after the click, meant to cover the fixture's
+  `pace(1)` click-check cadence (confirmed via `data-graph.spy`'s own
+  `pace(1)`), followed by `checkConsoleContent`'s tight fixed 3000ms
+  timeout -- not enough combined margin once CI/Firefox is slow enough to
+  overrun even one `pace(1)` cycle.
+  - **Fixed 2026-07-12/13**: Neil's manual commit `39d91ea7` fixed gap (1)
+    by waiting for `prepare_display()`'s own last console print
+    (`/added button actor/`, bounded 15000ms) before clicking -- a precise
+    completion signal instead of a generic settle poll. Gap (2) was fixed
+    as a follow-up: removed the flat `waitForTimeout(2000)` entirely and
+    gave `checkConsoleContent` an optional `timeoutMs` parameter (default
+    3000, unchanged for other callers), passing 10000ms here -- since
+    `toHaveValue` is already a poll, not a flat sleep, this keeps the fast
+    case fast and only pays the extra bound when the app is genuinely slow
+    to notice the click.
+  - Verified: 5/5 on firefox (the browser this failed on), full
+    `graphics.spec.ts` 32/32 on chromium. `eslint` clean.
+
 ## Handover notes (read this if resuming on a new machine)
 
 - Start by reading `PROGRESS.md` for current status, then re-run the `rg`

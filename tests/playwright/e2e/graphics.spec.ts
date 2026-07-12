@@ -566,11 +566,13 @@ while True  :
         expect(bb).not.toBeNull();
         // Click near top right:
         await g.click({position: {x: (bb?.width ?? 0) - 10, y: 10}});
-        // The code only checks for clicks once a second, so we need to wait 2 seconds:
-        await page.waitForTimeout(2000);
         await waitForGraphicsSettled(page);
         await page.click("#consolePEATab");
-        await checkConsoleContent(page, /\nClicked: button\s*$/s);
+        // The Python code only checks for clicks once a second (pace(1) in data-graph.spy), and CI
+        // can be slow enough that even that one cycle overruns a short timeout, so give this a much
+        // longer bound than checkConsoleContent's default -- it's a poll, not a flat sleep, so the
+        // common case still resolves quickly:
+        await checkConsoleContent(page, /\nClicked: button\s*$/s, 10000);
     });
 });
 

@@ -7,13 +7,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # We would like to include windows-latest, but it seems to time out the tests
-        # My best guess is that somehow the keypresses are arriving at the terminal job
-        # as the terminal shows "Terminate batch job? (Y/N)" which suggests it is getting
-        # the ctrl-c keypress that is intended for the browser.  But for now, we take it out
-        # because testing on Mac and Ubuntu alone is better than no tests, or tests which
-        # always fail
-        os: [ubuntu-latest, macos-latest]
+        # Rather than running all three browser projects on every OS, we split them up:
+        # chromium everywhere, firefox on ubuntu/windows, webkit on macOS (the closest to
+        # real Safari). This keeps coverage of each browser engine without a full 3x3 matrix.
+        os: [ubuntu-latest, macos-latest, windows-latest]
         # For parallelising the tests:
         playwright_shard: [1, 2, 3]
     runs-on: ${{ matrix.os }}
@@ -30,7 +27,7 @@ jobs:
       if: ${{ matrix.os == 'ubuntu-latest' }}
       shell: bash
       run: |
-        jq ".scripts[\"playwright:run\"] = \"npx playwright test --shard=${{ matrix.playwright_shard }}/3\"" package.json > temp.json && mv temp.json package.json
+        jq ".scripts[\"playwright:run\"] = \"npx playwright test --project=chromium --project=firefox --shard=${{ matrix.playwright_shard }}/3\"" package.json > temp.json && mv temp.json package.json
         timeout 7200s npm run test:playwright || { echo "Test command exited or timed out"; exit 1; }
     - name: Run Playwright tests (MacOS)
       if: ${{ matrix.os == 'macos-latest' }}
@@ -38,8 +35,20 @@ jobs:
       run: |
         brew install coreutils
         brew install --quiet jq
-        jq ".scripts[\"playwright:run\"] = \"npx playwright test --shard=${{ matrix.playwright_shard }}/3\"" package.json > temp.json && mv temp.json package.json
+        jq ".scripts[\"playwright:run\"] = \"npx playwright test --project=chromium --project=webkit --shard=${{ matrix.playwright_shard }}/3\"" package.json > temp.json && mv temp.json package.json
         gtimeout 7200s npm run test:playwright || { echo "Test command exited or timed out"; exit 1; }
+    - name: Run Playwright tests (Windows)
+      if: ${{ matrix.os == 'windows-latest' }}
+      shell: pwsh
+      run: |
+        $pkg = Get-Content package.json -Raw | ConvertFrom-Json
+        $pkg.scripts.'playwright:run' = 'npx playwright test --project=chromium --project=firefox --shard=${{ matrix.playwright_shard }}/3'
+        $pkg | ConvertTo-Json -Depth 100 | Set-Content package.json
+        npm run test:playwright
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "Test command exited with a failure"
+          exit 1
+        }
     - name: Upload Playwright report
       if: always()
       uses: actions/upload-artifact@v7

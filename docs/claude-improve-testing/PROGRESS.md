@@ -1763,3 +1763,25 @@ deliberately left in place with a reason.
   Windows+Firefox teardown mystery, (4) WebKit's residual stop-slowness,
   (5) `graphics.spec.ts` get_clicked_actor (improved from hard-fail to
   flaky, not fully fixed).
+
+- 2026-07-13 — Two follow-ups per Neil's request after reviewing the above:
+  - **Worked around the Windows+Firefox worker-teardown mystery** rather
+    than continuing to chase its root cause: removed `windows-latest` +
+    `firefox` from `.github/workflows/run-playwright-tests.yml`'s matrix
+    (with a comment explaining why and pointing at the two CI runs that
+    showed it), added `macos-latest` + `firefox` in its place to keep
+    firefox coverage on a second OS. No app/test code changed, CI config
+    only.
+  - **Wrote `docs/claude-improve-testing/WEBKIT_STOP_INVESTIGATION.md`**,
+    a self-contained handoff doc for continuing the WebKit residual-
+    slowness investigation (item 4 above) from a real Mac with Safari/
+    WebKit available, since this environment (Windows) can't run WebKit at
+    all and the investigation so far has only been possible indirectly via
+    CI logs. Covers: why a Mac is needed, what's already fixed vs. still
+    open (with the before/after CI numbers table), the exact test/mechanism
+    involved, a concrete step-by-step investigation plan (reproduce
+    locally first, instrument to localise where the 9-12 minutes goes,
+    distinguish "interrupt itself slow to be noticed" from "something else
+    downstream is slow"), and pointers back to the relevant CI run IDs and
+    `PLAN.md` sections so it doesn't need re-deriving. Linked from
+    `PLAN.md`'s priority-4 item.

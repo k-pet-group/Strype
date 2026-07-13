@@ -709,9 +709,12 @@ completed):
       looks like a generic Windows+Firefox worker/browser-recycling flake
       (the browser process occasionally taking >30s to close, unrelated to
       which spec ran last) rather than something caused by any specific
-      spec file's code. Needs its own investigation -- likely at the
-      Playwright/Firefox-on-Windows driver level, possibly not fixable
-      from test or app code at all. Tracked as a new, separate open item.
+      spec file's code. Not root-caused, and not fixed -- **worked around
+      instead**: removed `windows-latest`+`firefox` from the CI matrix
+      (`.github/workflows/run-playwright-tests.yml`) and added
+      `macos-latest`+`firefox` in its place, so firefox coverage on a
+      second OS is retained without this job crying wolf on CI. Revisit if
+      the underlying cause ever gets identified.
     - **Cross-job flaky-test frequency analysis** (webkit: 18 flaky + 2
       failed; ubuntu+firefox: 13 flaky + 1 failed; windows+firefox: 15
       flaky), to prioritise what's next:
@@ -729,10 +732,15 @@ completed):
          file is already fully wait-converted per PROGRESS.md's table, so
          this points to a genuine Firefox-specific timing/race issue
          beyond simple wait conversion -- worth its own investigation.
-      3. The Windows+Firefox worker-teardown mystery above (infrastructure-
-         level, separate track).
+      3. ~~The Windows+Firefox worker-teardown mystery~~ -- worked around
+         (see above), no longer blocking.
       4. WebKit's remaining "stop" slowness (first-attempt 9-12 min
-         before succeeding) -- secondary to the fix already landed.
+         before succeeding) -- secondary to the fix already landed. This
+         needs a real macOS+Safari environment to make further progress
+         (Windows can't run WebKit at all) -- see the dedicated handoff
+         doc `docs/claude-improve-testing/WEBKIT_STOP_INVESTIGATION.md`,
+         written specifically so a session running on a Mac can pick this
+         up without re-deriving the above.
       5. `graphics.spec.ts` "get_clicked_actor returns the right item" --
          still appears as *flaky* (not hard-failing) on both Firefox jobs.
          Better than before this session's fix (was failing 4/4), but not

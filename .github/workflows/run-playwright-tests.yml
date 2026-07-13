@@ -31,8 +31,15 @@ jobs:
     - uses: volta-cli/action@v4
     - name: Install dependencies
       run: npm ci
+    - name: Cache Pyodide
+      id: cache-pyodide
+      uses: actions/cache@v4
+      with:
+        path: public/pyodide
+        key: ${{ runner.os }}-pyodide-${{ hashFiles('package-lock.json') }}
     - name: Install Pyodide
-      run: npm run build:download-pyodide-libs      
+      if: steps.cache-pyodide.outputs.cache-hit != 'true'
+      run: npm run build:download-pyodide-libs
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
     - name: Run Playwright tests (Unix)

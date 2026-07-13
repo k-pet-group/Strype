@@ -670,6 +670,74 @@ completed):
     an actual CI run on macOS+WebKit to confirm the ~2-hour job time comes
     down; that's the real test of this fix.
 
+  - **2026-07-13, verified against real CI (run 29255482751, commit
+    `e016c23a`): partial success -- confirmed real improvement, but not a
+    full fix.**
+    - **What improved**: macOS+WebKit dropped from 2h04m (killed by the
+      125-min workflow ceiling, having only completed 518/544 tests, with
+      3 "errors not part of any test" from worker-teardown timeouts) to
+      1h48m, completing all 544 tests within budget, with **zero**
+      teardown timeouts / orphan errors. `console-execution.spec.ts`'s
+      "don't queue up after stopping" tests, which previously either hung
+      for up to 16 minutes per attempt or exhausted all 3 retries, now
+      reliably recover within 1-2 retries -- confirming the interrupt
+      actually reaches and stops the worker now, where before it often
+      didn't.
+    - **What didn't fully resolve**: those same tests' *first* attempts
+      still take 9-12 minutes each on WebKit (vs 30-90s on Chromium)
+      before timing out and succeeding on retry. The catastrophic "worker
+      never dies" failure mode is fixed, but there's evidently a
+      secondary WebKit-specific slowness in how quickly the interrupt
+      signal actually gets noticed/relayed through the sync-message
+      service-worker channel -- not yet root-caused. Worth a follow-up
+      investigation, but no longer the thing threatening to blow the CI
+      timeout.
+    - Two tests genuinely failed (exhausted all 3 retries) on WebKit in
+      this run: `storage-model.spec.ts` "Load several states, save some
+      (2nd: true), then load new one" (a 5-tab test hitting Playwright's
+      300s per-test timeout mid multi-page-open sequence -- looks like
+      sheer WebKit slowness on an already-heavy test, not a new
+      regression) and one `structured-expressions-selection.spec.ts`
+      selection case. Neither looks related to this fix.
+    - **The Windows+Firefox "3 errors were not a part of any test" /
+      "Worker teardown timeout" mystery (see the entry above from
+      2026-07-12/13) is confirmed to persist, and is NOT tied to
+      `scroll-into-view.spec.ts`** as first suspected -- this run's three
+      teardown-timeout batches instead consistently ended in
+      `structured-expressions-copy-paste.spec.ts`/`storage-model.spec.ts`
+      tests. Since the trailing test differs between occurrences, this
+      looks like a generic Windows+Firefox worker/browser-recycling flake
+      (the browser process occasionally taking >30s to close, unrelated to
+      which spec ran last) rather than something caused by any specific
+      spec file's code. Needs its own investigation -- likely at the
+      Playwright/Firefox-on-Windows driver level, possibly not fixable
+      from test or app code at all. Tracked as a new, separate open item.
+    - **Cross-job flaky-test frequency analysis** (webkit: 18 flaky + 2
+      failed; ubuntu+firefox: 13 flaky + 1 failed; windows+firefox: 15
+      flaky), to prioritise what's next:
+      1. **`load-save-random.spec.ts`'s "Tests random entry #0-4"
+         (fuzzer)** -- appears in *all three* remaining flaky lists (5
+         entries each in two of them). The single most pervasive
+         remaining issue. Already flagged in this file's fuzzer-flakiness
+         entries above and in PROGRESS.md's tracking table as needing its
+         own dedicated repro investigation -- this CI data confirms it's
+         still the top priority.
+      2. **`structured-expressions-copy-paste.spec.ts`** (CUT_ONLY/
+         COPY_ONLY/CUT_REPASTE cases) -- heavy on Windows+Firefox (6 flaky
+         entries) and present on Ubuntu+Firefox (2 flaky + the one genuine
+         failure, "CUT_REPASTE in 123+(456*789)-0 from 14 + -4"). This
+         file is already fully wait-converted per PROGRESS.md's table, so
+         this points to a genuine Firefox-specific timing/race issue
+         beyond simple wait conversion -- worth its own investigation.
+      3. The Windows+Firefox worker-teardown mystery above (infrastructure-
+         level, separate track).
+      4. WebKit's remaining "stop" slowness (first-attempt 9-12 min
+         before succeeding) -- secondary to the fix already landed.
+      5. `graphics.spec.ts` "get_clicked_actor returns the right item" --
+         still appears as *flaky* (not hard-failing) on both Firefox jobs.
+         Better than before this session's fix (was failing 4/4), but not
+         fully eliminated -- worth a look once the above are done.
+
 ## Handover notes (read this if resuming on a new machine)
 
 - Start by reading `PROGRESS.md` for current status, then re-run the `rg`

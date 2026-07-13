@@ -1735,3 +1735,31 @@ deliberately left in place with a reason.
     by this change -- see PLAN.md). `eslint`/`vue-tsc --noEmit` clean.
   - Not yet verified against real WebKit (can't run WebKit on Windows) --
     pushing this and watching the next CI run is the actual test.
+
+- 2026-07-13 — Pushed the WebKit interrupt fix (rebased onto Neil's
+  concurrent upstream work -- `0e4f2cff`..`e016c23a`) and reviewed the
+  resulting CI run (29255482751). Verdict: real improvement, not a full
+  fix. macOS+WebKit: 2h04m (killed at the 125min ceiling, 518/544 tests,
+  3 orphan teardown-timeout errors) -> 1h48m (all 544 tests completed,
+  zero orphan errors, zero teardown timeouts). The "don't queue up after
+  stopping" tests now recover within 1-2 retries instead of hanging/
+  exhausting all 3 -- but first attempts are still 9-12 minutes each (vs
+  30-90s chromium), so there's a secondary, not-yet-root-caused WebKit
+  slowness left in how fast the interrupt is actually noticed. Two
+  unrelated-looking genuine failures on webkit (`storage-model.spec.ts`
+  5-tab test, one `structured-expressions-selection.spec.ts` case).
+  Windows+Firefox's "3 errors not part of any test"/worker-teardown-
+  timeout mystery persists, now confirmed NOT specific to
+  `scroll-into-view.spec.ts` (this run's trailing tests were
+  `structured-expressions-copy-paste.spec.ts`/`storage-model.spec.ts`
+  instead) -- looks like a generic Windows+Firefox browser-teardown flake,
+  tracked as its own open item. See PLAN.md's WebKit entry for the full
+  writeup and the cross-job flaky-frequency analysis used to set the next
+  priority order: (1) `load-save-random.spec.ts`'s fuzzer entries (most
+  pervasive, in all 3 remaining flaky lists), (2)
+  `structured-expressions-copy-paste.spec.ts` on Firefox (heavy on
+  Windows, one genuine failure on Ubuntu, already fully wait-converted so
+  this is a real timing bug not a wait-conversion gap), (3) the
+  Windows+Firefox teardown mystery, (4) WebKit's residual stop-slowness,
+  (5) `graphics.spec.ts` get_clicked_actor (improved from hard-fail to
+  flaky, not fully fixed).

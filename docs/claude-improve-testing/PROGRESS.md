@@ -1712,3 +1712,26 @@ deliberately left in place with a reason.
     resource exhaustion after many repeated runs, confirmed unrelated by
     retesting that single test alone, which passed). `eslint` clean;
     `vue-tsc --noEmit` clean for this file.
+
+- 2026-07-13 — Investigated and fixed the real product bug behind the
+  ~2-hour macOS+WebKit CI job time (vs ~40min for Chromium, same run
+  29232413370): `terminateAndRestartPyodide()`
+  (`src/stryperuntime/main_thread_python_handler.ts`) was using raw
+  `Worker.terminate()` instead of comsync's own `interrupt()`, which meant
+  a worker WebKit failed to preempt (blocked in a synchronous XHR) would
+  get "helpfully" unblocked with a normal answer and just keep running,
+  instead of actually stopping. Switched to `pythonClient.interrupt()`,
+  which answers any currently-blocked wait with `{interrupted: true}`,
+  causing comsync to throw a genuine `InterruptError` inside the worker
+  regardless of what it was blocked on. Also removed the now-unneeded
+  `outstandingSyncRequestKind` bookkeeping (`main_thread_python_handler.ts`,
+  `PythonExecutionArea.vue`) since `interrupt()` doesn't need to know what
+  kind of request was pending. See PLAN.md's "Known suspected app bugs"
+  section for the full root-cause writeup, the regression this introduced
+  (error icon shown after a deliberate Stop) and its fix, and the
+  HMR-staleness debugging pitfall hit along the way.
+  - Verified: full `console-execution.spec.ts` -- 32/32 chromium, 28/32
+    firefox (remaining 4 confirmed pre-existing/environmental, not caused
+    by this change -- see PLAN.md). `eslint`/`vue-tsc --noEmit` clean.
+  - Not yet verified against real WebKit (can't run WebKit on Windows) --
+    pushing this and watching the next CI run is the actual test.

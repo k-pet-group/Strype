@@ -574,6 +574,102 @@ completed):
   - Verified: 5/5 on firefox (the browser this failed on), full
     `graphics.spec.ts` 32/32 on chromium. `eslint` clean.
 
+- **Root-caused why macOS+WebKit CI jobs take ~2 hours vs ~40 minutes for
+  Chromium (run 29232413370) -- a genuine product bug, not just test
+  slowness.** `console-execution.spec.ts`'s "Check console prints don't
+  queue up after stopping" tests (which click Stop mid-tight-print-loop)
+  cost ~145 minutes of aggregate attempt/retry time in one WebKit job alone
+  -- individual attempts took 9-16 minutes each (vs 30-90s on Chromium)
+  before eventually failing or passing.
+  - **Root cause**: `terminateAndRestartPyodide()`
+    (`src/stryperuntime/main_thread_python_handler.ts`) bypassed comsync's
+    (`node_modules/comsync`) own `SyncClient.interrupt()`/`.terminate()`
+    and called the raw DOM `Worker.terminate()` directly. On WebKit
+    specifically (documented in the existing code comment), `terminate()`
+    doesn't reliably abort a worker blocked in a synchronous XHR (comsync's
+    mechanism for synchronous cross-thread communication, needed since we
+    don't use SharedArrayBuffer/cross-origin isolation) -- the worker keeps
+    running until that blocking call returns naturally. The existing code
+    had a narrow mitigation: if the worker happened to be blocked on its
+    own internal "dummy" catch-up request (used to throttle tight
+    print/sprite loops every 50 sends) *at the exact moment* Stop was
+    clicked, it proactively answered that one request -- but with a
+    *normal, successful* reply (`{response: true}`), not an interrupt. That
+    just let the worker's blocking call return and resume running from
+    where it left off, racing on to its *next* throttle checkpoint (or
+    whatever else it next blocks on), which nothing then answers --
+    letting it keep running indefinitely rather than actually stopping.
+    Confirmed via live instrumentation: `pythonClient.state` reads
+    `"awaitingMessage"` at the moment of Stop, and after the old fast-path
+    "answers" it, the worker measurably keeps producing new
+    prints/redraws.
+  - **Fix**: replaced the raw `pythonWorker.terminate()`-first approach
+    with `pythonClient.interrupt()` (bounded by the same 500ms race as
+    before). `comsync`'s `interrupt()` answers a currently-blocked wait
+    with `{interrupted: true}` instead of a normal reply -- its worker-side
+    `readMessage()` wrapper turns that into a genuine `InterruptError`
+    thrown *inside* the worker at the exact blocking point, regardless of
+    what kind of request it was waiting on (dummy catch-up, `input()`,
+    an image query, `time.sleep()`, etc.) -- so the worker actually stops,
+    rather than continuing, independent of whether the browser's own
+    `terminate()` is honored promptly. The unconditional
+    `pythonWorker?.terminate()` immediately after is kept as-is, both as
+    the actual OS-level cleanup and as the fallback for when nothing was
+    blocked (state `"idle"`/`"running"`) -- `interrupt()` itself already
+    degrades to `terminate()`-and-restart in that case (see comsync
+    source), which is harmless here since we always rebuild a fresh
+    worker/client right after regardless.
+  - Also removed `outstandingSyncRequestKind`
+    (`main_thread_python_handler.ts`/`PythonExecutionArea.vue`) -- it
+    existed solely to let the old code recognise "dummy, safe to fake-
+    answer" vs. "some other request, don't". `interrupt()`'s
+    `{interrupted: true}` signal is safe for *any* pending request kind
+    (it's a distinct marker checked before the request content, not a
+    fake answer), so the distinction, and the state it existed to compute,
+    is no longer needed.
+  - **Found and fixed a regression this introduced**: two tests
+    (`console-execution.spec.ts` → "Check output shows when asking for
+    input" / "...printing then sleeping") started failing with an error
+    icon shown after a deliberate Stop. The `InterruptError` thrown inside
+    the worker surfaces to Python as a real (if synthetic) exception --
+    `python_runner`'s own top-level handler catches *any* exception and
+    formats it as a displayable traceback (confirmed via instrumentation:
+    `possibleError` comes back as a `KeyboardInterrupt` traceback), which
+    `PythonExecutionArea.vue`'s completion handler then shows as a runtime
+    error -- correct for a genuine runtime error, wrong for a deliberate
+    Stop. Fixed by checking, at the top of that handler, whether
+    `pythonExecRunningState` is *already* `NotRunning` -- the Stop button's
+    click handler sets that synchronously, before `terminateAndRestartPyodide()`'s
+    interrupt has a chance to resolve the run's promise, so by the time the
+    completion handler runs, that state reliably distinguishes "user
+    already clicked Stop" from natural completion (which only sets
+    `NotRunning` *inside* that same handler, i.e. after the check). If so,
+    skip `handleErrorTrace` regardless of `possibleError`.
+  - **Debugging pitfall worth recording**: the first two attempts to
+    verify this regression fix both failed identically even after the fix
+    was applied -- traced to stale Vite HMR: this module holds top-level
+    mutable state (`pythonWorker`/`pythonClient`), and Vite's hot-reload
+    for plain (non-component) modules with such state doesn't always
+    re-apply cleanly. A full dev-server restart (not just saving the file)
+    was needed before the fix's effect was actually observable -- confirmed
+    by adding temporary `console.log`s that silently didn't appear at all
+    until after a full restart, then did. Worth doing a clean restart
+    before trusting a "still failing" result when editing this specific
+    file during future work.
+  - Verified after the clean restart: both regression tests pass
+    individually and as part of the full file (32/32 on chromium, 28/32 on
+    firefox with the 4 firefox failures independently confirmed as
+    pre-existing/environmental -- 3 were a stale service-worker 404 issue
+    reproducible against the pre-fix baseline too, already independently
+    fixed upstream by disabling that sound test on Firefox
+    (`55a832ed`/`5df304ea`); the 4th was a marginal redraw-count timing
+    assertion, not related to this change). `eslint`/`vue-tsc --noEmit`
+    clean.
+  - **Not yet verified on WebKit itself** (Windows can't run WebKit at all
+    in this environment -- pre-existing, unrelated limitation). This needs
+    an actual CI run on macOS+WebKit to confirm the ~2-hour job time comes
+    down; that's the real test of this fix.
+
 ## Handover notes (read this if resuming on a new machine)
 
 - Start by reading `PROGRESS.md` for current status, then re-run the `rg`

@@ -84,7 +84,7 @@ import {PyodideErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/sha
 import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
-import {getPythonClient, isPythonWorkerReady, outstandingSyncRequestKind, renderer, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
+import {getPythonClient, isPythonWorkerReady, renderer, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {createOrGetAudioContext} from "@/helpers/audioContext";
 import {clearAllRuntimeErrors, computeFrameSnapshot} from "@/helpers/storeMethods";
@@ -686,10 +686,6 @@ export default defineComponent({
                         }
                         else {
                             const req = asreq.request;
-                            // Recorded so that terminateAndRestartPyodide() can tell, if the worker is
-                            // currently blocked waiting for a response, whether it's safe to answer that
-                            // wait itself directly (see the comment there for why):
-                            outstandingSyncRequestKind.value = req.request;
                             const resp = syncBridgePromise(req);
                             if (req.request != resp.request) {
                                 console.error(`Internal error: request ${req.request} did not match the response ${resp.request}`);
@@ -702,9 +698,6 @@ export default defineComponent({
                                 catch (e) {
                                     console.error(e);
                                 }
-                                finally {
-                                    outstandingSyncRequestKind.value = null;
-                                }
                             }).catch(async (err) => {
                                 await serviceWorkerReadyAndInControl();
                                 try {
@@ -713,14 +706,18 @@ export default defineComponent({
                                 catch (e) {
                                     console.error(e);
                                 }
-                                finally {
-                                    outstandingSyncRequestKind.value = null;
-                                }
                             });
                         }
                     }))
                 ) as Promise<PyodideErrorDetails | null>).then((possibleError) => {
-                    if (possibleError != null) {
+                    // If the user clicked Stop, runClicked() (below) has already set this to NotRunning
+                    // *before* this callback fires (natural completion is the only other path, and that
+                    // only sets NotRunning just below, i.e. after we've had a chance to check it here).
+                    // Stopping deliberately interrupts the worker (see terminateAndRestartPyodide()),
+                    // which surfaces to the running Python code as a genuine (if synthetic) exception --
+                    // we don't want to show that to the user as if it were a real runtime error:
+                    const wasStoppedByUser = useStore().pythonExecRunningState === PythonExecRunningState.NotRunning;
+                    if (possibleError != null && !wasStoppedByUser) {
                         handleErrorTrace(possibleError.text, possibleError.traceback, (hadError) => {
                             if (hadError) {
                                 this.switchToConsoleTab("always");

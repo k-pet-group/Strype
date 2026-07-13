@@ -188,12 +188,12 @@ print(type(s.get_samples()))`]);
         await checkFrameErrorCount(page, 0);
     });
 
-    test("Create zero length Sound", async ({page}) => {
-        if (process.platform === "linux") {
-            // Something about playing the sound headless on Linux in Firefox doesn't seem to work (it does on Windows)
+    test("Create zero length Sound", async ({page, browserName}) => {
+        if (browserName === "firefox") {
+            // Something about playing sound headless in Firefox doesn't seem to work (it does in Chromium)
             return;
         }
-        
+
         await enterCode(page, ["from strype.sound import *", "", `
 s = Sound([])
 # Playing sound should not hang things:

@@ -10,8 +10,19 @@ jobs:
         # Rather than running all three browser projects on every OS (or relying on
         # Playwright's shard split lining up with project boundaries, which only worked
         # by coincidence when shard count == project count), each OS+browser pair below
-        # is its own job: chromium everywhere, firefox on ubuntu/windows, webkit on macOS
+        # is its own job: chromium everywhere, firefox on ubuntu/macOS, webkit on macOS
         # (the closest to real Safari).
+        #
+        # windows-latest + firefox is deliberately NOT included: it has a recurring,
+        # not-yet-root-caused issue where ~30% of runs report "N errors were not a part
+        # of any test" / "Worker teardown timeout of 30000ms exceeded" even when every
+        # test itself passes (see runs 29241500678, 29255482751) -- Playwright's own
+        # worker/browser-process teardown occasionally hangs on this OS+browser
+        # combination specifically, unrelated to which spec ran last (the trailing test
+        # differs between occurrences). This makes the job fail CI despite the app and
+        # tests being fine, so it's disabled here rather than have it cry wolf on every
+        # PR. macos-latest + firefox is enabled in its place to keep firefox coverage on
+        # a second OS. Re-enable windows+firefox once that teardown issue is root-caused.
         include:
           - os: ubuntu-latest
             browser: chromium
@@ -20,11 +31,11 @@ jobs:
           - os: macos-latest
             browser: chromium
           - os: macos-latest
+            browser: firefox
+          - os: macos-latest
             browser: webkit
           - os: windows-latest
             browser: chromium
-          - os: windows-latest
-            browser: firefox
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v6

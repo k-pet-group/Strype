@@ -80,7 +80,7 @@ export function checkDownloadedCodeEquals(fullCode: string, format: "py" | "spy"
 }
 
 // if expected is missing, use the original code
-export function testRoundTripPasteAndDownload(code: string, extraSetup?: string | (() => void), expected?: string, retainExisting?: boolean, format? : "py" | "spy", afterPaste?: () => void) : void {
+export function testRoundTripPasteAndDownload(code: string, extraSetup?: string | (() => void), expected?: string, retainExisting?: boolean, format? : "py" | "spy", afterPaste?: () => void, settleTimeoutMs?: number) : void {
     if (retainExisting) {
         focusEditor();
     }
@@ -106,7 +106,7 @@ export function testRoundTripPasteAndDownload(code: string, extraSetup?: string 
     }
     
     // We make sure our pasting has completed before saving, so that the save mechanism is based on an loaded file...
-    waitForEditorSettled();
+    waitForEditorSettled(settleTimeoutMs);
 
     checkDownloadedCodeEquals(expected ?? code, format ?? "py");
     // Refocus the editor and go to the bottom:

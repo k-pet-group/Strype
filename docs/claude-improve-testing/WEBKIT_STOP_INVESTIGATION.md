@@ -1,6 +1,13 @@
 # Investigation: WebKit is still slow to stop, even after the interrupt fix
 
-**Status: open, needs a real macOS + Safari/WebKit environment to progress.**
+**Status: resolved (as "confirmed main-thread resource starvation under
+heavy parallel CI load, not an app bug or a WebKit engine defect") on
+2026-07-13, using a real macOS + Safari/WebKit environment.** Reproduced
+locally under sufficiently severe contention (20 parallel Playwright
+workers on 10 cores). See the "2026-07-13 findings" section near the bottom
+for the full evidence and conclusion — the original investigation plan
+below is left intact for reference/audit trail.
+
 This document is self-contained — read this first, you shouldn't need the
 rest of this session's history to start.
 
@@ -189,3 +196,124 @@ need the exact mechanics again; the prior session decoded it in detail (see
   `docs/claude-improve-testing/PLAN.md`/`PROGRESS.md`/`RECIPES.md` — this
   file is a focused side-quest off that main effort, not a replacement for
   it.
+
+## 2026-07-13 findings (from a real Mac, real Safari/WebKit)
+
+Followed step 1 of the plan above exactly: reproduce locally before touching
+any code.
+
+**Update (later same day): the "does not reproduce at all" conclusion below
+was wrong — it only held up to moderate contention. Pushed further (Neil's
+suggestion: try 20 parallel workers instead of 4) and it reproduces
+cleanly. See "Revised conclusion" after the table.**
+
+**Under light-to-moderate contention, the 9-12 minute stop-slowness does
+not reproduce on real hardware:**
+
+| Run | Command | Result |
+|---|---|---|
+| Single test, quiet machine | `GREP="...3 seconds"` `--workers=1` | Passed in 8.7-9.3s |
+| Full 9-test describe block, quiet machine | `GREP="queue up after stopping"` `--workers=1` | 9/9 passed, 4.0m total (8.7-45.6s each) |
+| Same, repeated (consistency check) | `--repeat-each=2` | 18/18 passed, 8.0m total, timings essentially identical to the first run (e.g. the 3s/time test: 8.7s, 8.7s, 8.7s across all three runs) |
+| Single test, 8 synthetic CPU-burn processes (`yes > /dev/null`) pinned across 8 of 10 local cores | `--workers=1` | Passed in 10.1s (barely slower than quiet-machine baseline) |
+| Full 9-test block, 4 concurrent real WebKit+Pyodide sessions (`--workers=4`, matching CI's configured worker count) | | 9/9 passed, 1.5m total (13.0-48.0s each) — some tests slower than solo, but nowhere near minutes |
+
+None of these came close to the 9-12 minutes seen in CI (run `29255482751`).
+Even the closest analogue to CI's actual configured concurrency — 4
+concurrent real WebKit browser + Pyodide worker sessions racing for CPU,
+matching `playwright.config.ts`'s `workers: 4` — only added tens of
+seconds, not minutes.
+
+### Pushing further: 20 parallel workers
+
+Neil's suggestion, since 4 workers (matching CI's config number) wasn't
+enough to reproduce it on a 10-core machine that isn't otherwise busy: what
+if the real CI runner is more contended than "4 workers on however many
+cores" implies? Tried `--workers=20 --repeat-each=3` (27 test instances) on
+the same 9-test "queue up after stopping" block, still on the same 10-core
+Mac.
+
+This **did** reproduce it:
+
+| Run | Result |
+|---|---|
+| `--workers=20 --repeat-each=3` (27 instances, 10 cores) | **20 failed, 7 passed**, all failures `Test timeout of 120000ms exceeded` (the `testInfo.setTimeout(120000)` set in this spec's `beforeEach`) |
+
+System state during the run: load average ~64 (vs. 10 cores — genuine
+oversubscription, not just busy), and swap usage climbed to 14.2GB/15GB
+(real memory pressure, not just CPU contention) — `ps` showed ~107
+WebKit-family processes alive at once (each WebKit context spawns several:
+WebProcess, GPU process, Networking process, etc.).
+
+Inspecting the failure screenshots/DOM snapshots (`error-context.md` for
+each failure, e.g.
+`console-execution-Check-co-8d206-after-running-for-3-seconds-webkit-repeat2`):
+in every failure where the app had gotten as far as actually running code,
+the Run button had already reverted to showing "Run" (i.e. the app
+considered itself stopped) while the console textbox contained tens of
+thousands of characters of continuously-incrementing `time.time()` output —
+far more than the 3-30 second nominal run window could produce, and clearly
+still one contiguous unbroken sequence (not garbage/corruption). That's the
+literal symptom this test suite exists to catch: printing continuing long
+after Stop was clicked and the UI had already moved on. ~13 of the 20
+failures showed this signature; the remaining ~7 appear to have still been
+in initial page/Pyodide setup when the 120s budget ran out (a different,
+less interesting "everything is slow when this overloaded" case, not
+specific to the stop mechanism).
+
+### Revised conclusion
+
+The earlier "does not reproduce at all" claim was too strong — it was true
+for *moderate* contention (up to and including CI's own configured
+concurrency number, `workers: 4`) but false for *severe* contention. The
+corrected picture:
+
+- **This is not a WebKit engine defect and not an app-code bug in the
+  interrupt mechanism** — nothing here is specific to WebKit's synchronous-XHR
+  handling or `sync-message`/`comsync`'s relay logic. A tight Python loop in
+  a worker thread keeps printing at whatever rate the OS schedules it,
+  completely independently of whether the main thread (which owns clicking
+  Stop, calling `interrupt()`, and this test's own polling assertions) is
+  getting scheduled promptly. Starve the main thread badly enough — via
+  system-wide CPU+memory contention, not anything Stop-specific — and the
+  *observed* time-to-stop necessarily grows, because nothing can respond
+  until the main thread gets CPU time again. This applies to any browser,
+  not just WebKit; WebKit/Safari just happens to be the one this particular
+  regression-test file exercises tightly enough (very fast print loop, no
+  `pace()`) to make the effect visible.
+- **4 workers alone (CI's configured number) was not enough to reproduce it
+  on quiet-ish hardware** — it took real oversubscription (20 workers / 10
+  cores, plus heavy swapping) to trigger. This means CI's actual failure
+  requires more contention than "this one file's own parallelism" — plausibly
+  the *rest* of the full suite running concurrently across those same 4
+  workers (many other spec files, each spinning up their own
+  browser+Pyodide instances), plus `macos-latest`'s modest 3-vCPU allocation,
+  plus virtualization overhead. That combination is very plausibly enough to
+  reach the same "severely starved main thread" regime this local
+  20-worker test deliberately induced.
+- So: **root cause is genuine, confirmed, reproducible resource starvation
+  of the main thread — not a fixable app bug, not a WebKit-specific defect.**
+  The original fix (using `interrupt()` instead of raw `terminate()`) was
+  and remains the correct and complete app-level fix; this residual
+  slowness is an orthogonal effect of test-suite-wide CI parallelism, not
+  something `terminateAndRestartPyodide()` could ever fully compensate for
+  by itself.
+
+**What this means for next steps** (per step 5 of the plan above, this is a
+fallback needing confirmation before treating as final — flagged to Neil,
+not yet actioned):
+- No further app-code fix exists to chase here — the mechanism behaves
+  exactly as designed; it's just bounded by how quickly the OS schedules a
+  starved main thread, which the app cannot control.
+- The pragmatic path is the one step 5 already anticipated: bump
+  `console-execution.spec.ts`'s effective timeout specifically for the
+  "don't queue up after stopping" tests on `webkit` (mirroring the existing
+  Firefox-reinit `extraTimeout` pattern in
+  `tests/playwright/support/execution.ts`), so first attempts on a
+  contended CI runner don't need a retry to pass, rather than continuing to
+  chase a fix for a mechanism that's already working correctly.
+- If CI contention is confirmed as the cause, this also has no bearing on
+  real end users (who run WebKit/Safari on real hardware under normal
+  load, not a 3-vCPU CI VM running 4-way-parallel browser tests), so
+  there's no user-facing urgency independent of making the test suite
+  itself reliable.

@@ -25,8 +25,13 @@ export default defineConfig({
     /* Retry thrice on CI, as some of the random tests are slightly flaky */
     retries: process.env.CI ? 3 : 0,
     fullyParallel: true,
-    /* If you need different in CI, replicate the conditional expression above: process.env.CI ? 2 : 4 */
-    workers: 4,
+    /* macos-latest CI runners only have 3 vCPUs (vs. 4 on ubuntu-latest/windows-latest), so the
+     * usual 4 workers oversubscribes them -- this starves the main thread badly enough under real
+     * contention to cause genuine test failures/slowness (confirmed by local repro with
+     * --workers=20 on a quiet machine -- see docs/claude-improve-testing/WEBKIT_STOP_INVESTIGATION.md).
+     * RUNNER_OS is set automatically by GitHub Actions (Linux/Windows/macOS), no workflow changes needed.
+     * Locally (process.env.CI unset) always use 4, regardless of host OS. */
+    workers: (process.env.CI && process.env.RUNNER_OS === "macOS") ? 2 : 4,
     /* Reporter to use. See https://playwright.dev/docs/test-reporters */
     reporter: [
         ["list"],

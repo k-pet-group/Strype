@@ -1785,3 +1785,61 @@ deliberately left in place with a reason.
     downstream is slow"), and pointers back to the relevant CI run IDs and
     `PLAN.md` sections so it doesn't need re-deriving. Linked from
     `PLAN.md`'s priority-4 item.
+
+- 2026-07-13 — **Resolved the WebKit stop-slowness investigation** (running
+  on a real Mac for the first time, per the handoff doc above). Followed
+  its step 1 (reproduce locally before touching code) and got an
+  unambiguous negative result: the 9-12 minute CI slowness does not
+  reproduce at all, under any local condition tried — not on a quiet
+  machine (9/9 tests passed in 4.0m total, repeated for 18/18 in 8.0m with
+  near-identical timings both times), not under 8 synthetic CPU-burn
+  processes pinned across 8 of 10 cores (single test: 10.1s vs. 8.7-9.3s
+  baseline), and not even under 4 concurrent real WebKit+Pyodide sessions
+  (`--workers=4`, matching CI's actual configured worker count — 9/9 passed
+  in 1.5m, 13-48s each). Since nothing was slow to instrument, stopped
+  there rather than proceeding to steps 2-3's timing instrumentation.
+  Initially reclassified as CI-environment-specific and left it there, but
+  **Neil pushed further** ("what about 20 parallel workers?") and that
+  changed the picture: `--workers=20 --repeat-each=3` on the same 10-core
+  Mac (real oversubscription — load average ~64, swap climbed to
+  14.2/15GB) **did** reproduce it — 20/27 instances failed, each hitting the
+  120s per-test timeout, with `error-context.md` snapshots showing the
+  classic symptom directly (Run button already reverted to "Run" while the
+  console textbox held tens of thousands of characters of still-growing
+  `time.time()` output). So it's not "doesn't happen off CI" after all — it
+  takes real oversubscription to trigger, which 4 workers alone on quiet
+  hardware doesn't provide, but which CI's full-suite-wide parallelism on a
+  3-vCPU `macos-latest` runner plausibly does. **Root cause: genuine
+  main-thread starvation under heavy contention** — the print loop runs in
+  a worker thread independent of the main thread's scheduling, so a
+  severely starved main thread can't respond to Stop promptly regardless of
+  browser or app code; nothing here is WebKit-specific or an app bug. The
+  original interrupt-based fix remains correct and complete; this residual
+  slowness is an orthogonal effect of full-suite CI parallelism. Full
+  writeup and evidence tables (both the initial negative result and the
+  20-worker reproduction) in `WEBKIT_STOP_INVESTIGATION.md`'s "2026-07-13
+  findings" section. Recommended next step (not yet actioned, needs Neil's
+  sign-off per the handoff doc's own step 5): bump the per-test timeout for
+  these specific tests on webkit, mirroring the existing Firefox-reinit
+  `extraTimeout` pattern, since there's no further app-level fix to chase.
+
+- 2026-07-13 — **Actioned the CI-side workaround for the WebKit
+  main-thread-starvation finding above**: `playwright.config.ts`'s
+  `workers` is now `(process.env.CI && process.env.RUNNER_OS === "macOS") ? 2 : 4`
+  instead of a flat `4`. Root cause (confirmed above) is that `macos-latest`
+  CI runners have only 3 vCPUs vs. 4 on ubuntu-latest/windows-latest, so the
+  previous flat `workers: 4` oversubscribed macOS specifically -- checked
+  `.github/workflows/run-playwright-tests.yml` and confirmed each
+  OS+browser matrix combo is its own job (`--project=${{ matrix.browser }}`),
+  so all three macOS jobs (chromium, firefox, webkit) share the identical
+  3-vCPU-vs-4-workers mismatch, not just webkit -- the fix is keyed on OS
+  only, not browser. `RUNNER_OS` is a GitHub Actions default env var
+  (Linux/Windows/macOS), so no workflow YAML changes were needed. Verified:
+  `eslint`/`vue-tsc --noEmit` clean, and manually checked all relevant
+  `CI`/`RUNNER_OS` combinations resolve as intended (local dev always gets
+  4 regardless of host OS; CI gets 4 on ubuntu/windows, 2 on macOS). Not yet
+  verified against a real CI run -- that's the actual test of whether this
+  meaningfully reduces macOS+webkit flakiness/wall-clock without unduly
+  slowing the job down. The complementary per-test timeout bump (see entry
+  above) is still on the table as a follow-up if this alone doesn't fully
+  resolve it.

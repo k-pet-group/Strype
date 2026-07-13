@@ -734,13 +734,22 @@ completed):
          beyond simple wait conversion -- worth its own investigation.
       3. ~~The Windows+Firefox worker-teardown mystery~~ -- worked around
          (see above), no longer blocking.
-      4. WebKit's remaining "stop" slowness (first-attempt 9-12 min
-         before succeeding) -- secondary to the fix already landed. This
-         needs a real macOS+Safari environment to make further progress
-         (Windows can't run WebKit at all) -- see the dedicated handoff
-         doc `docs/claude-improve-testing/WEBKIT_STOP_INVESTIGATION.md`,
-         written specifically so a session running on a Mac can pick this
-         up without re-deriving the above.
+      4. ~~WebKit's remaining "stop" slowness~~ -- **resolved 2026-07-13**:
+         investigated on a real Mac. Doesn't reproduce under moderate
+         contention (quiet machine, synthetic CPU load, or 4 concurrent
+         real WebKit sessions matching CI's worker count) but **does**
+         reproduce under severe contention (`--workers=20`, real
+         oversubscription on 10 cores -- 20/27 instances failed with the
+         classic symptom). Root cause: genuine main-thread starvation under
+         heavy parallel load, not a WebKit engine defect or an app bug --
+         the original interrupt-based fix is correct and complete; this is
+         an orthogonal effect of full-suite CI parallelism on a 3-vCPU
+         `macos-latest` runner. No local fix to chase. See
+         `docs/claude-improve-testing/WEBKIT_STOP_INVESTIGATION.md`'s
+         "2026-07-13 findings" section for both the initial (moderate-load)
+         and revised (20-worker) results. Recommended fallback (bump the
+         per-test timeout for webkit on these specific tests) not yet
+         actioned -- needs Neil's sign-off first.
       5. `graphics.spec.ts` "get_clicked_actor returns the right item" --
          still appears as *flaky* (not hard-failing) on both Firefox jobs.
          Better than before this session's fix (was failing 4/4), but not

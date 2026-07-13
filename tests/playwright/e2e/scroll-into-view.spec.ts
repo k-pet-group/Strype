@@ -1,6 +1,6 @@
 import {ElementHandle, expect, JSHandle, Page, test} from "@playwright/test";
 import { checkConsoleContent, runButtonShowsRun, runToFinish, startRunning } from "../support/execution";
-import {checkFrameXorTextCursor, doPagePaste} from "../support/editor";
+import {checkFrameXorTextCursor, doPagePaste, pressN, waitForEditorSettled} from "../support/editor";
 import {save} from "../support/loading-saving";
 import {readFileSync} from "node:fs";
 import {setupStrypeTest} from "../support/general";
@@ -73,11 +73,11 @@ async function typeWithKeys(page: Page, input: string) {
 
         if (text) {
             await page.keyboard.type(text);
-            await page.waitForTimeout(100);
+            await waitForEditorSettled(page);
         }
-        
+
         await page.keyboard.press(key);
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
 
         lastIndex = match.index + match[0].length;
     }
@@ -95,13 +95,13 @@ test.describe("Runtime errors scroll into view", () => {
             // Enter 40 blanks then print(len(None)) then 40 blanks:
             for (let b = 0; b < 40; b++) {
                 await page.keyboard.press("Enter");
-                await page.waitForTimeout(50);
+                await waitForEditorSettled(page);
             }
             await page.keyboard.type("plen(None)");
             await page.keyboard.press("Enter");
             for (let b = 0; b < 40; b++) {
                 await page.keyboard.press("Enter");
-                await page.waitForTimeout(50);
+                await waitForEditorSettled(page);
             }
             await scrollToFraction(page, fraction);
             const visibleBefore = await isInsideViewport(await page.locator("span.label-slot-input", {hasText: /^None$/}).elementHandle());
@@ -140,10 +140,14 @@ test.describe("Undo scrolls location into view", () => {
             for (const [cursorIndex, toType] of actions) {
                 statesToUndoTo.push(readFileSync(await save(page, false), "utf-8"));                
                 await page.keyboard.press("Home");
-                for (let i = 0; i < cursorIndex; i++) {
-                    await page.waitForTimeout(10);
-                    await page.keyboard.press("ArrowDown");
-                }
+                // Settling after every individual ArrowDown (enforceWaitBetween) is far too costly
+                // over up to 80 repeats -- each settle-poll is its own page.evaluate() round trip,
+                // and under concurrent-worker CPU contention that overhead alone can exceed the
+                // whole test's budget. Plain cursor navigation doesn't trigger the kind of
+                // restructuring debounce waitForEditorSettled exists for, so fire the presses fast
+                // and settle once at the end, before reading/typing anything:
+                await pressN("ArrowDown", cursorIndex, false)(page);
+                await waitForEditorSettled(page);
                 await typeWithKeys(page, toType);
             }
             await scrollToFraction(page, scrollTo);
@@ -166,7 +170,9 @@ test.describe("Undo scrolls location into view", () => {
                 else {
                     await page.locator("input[title='Undo']").click();
                 }
-                await page.waitForTimeout(1000);
+                // Undo's own scroll-into-view (store.ts) runs inside a nextTick off the same state
+                // update that changes focus/cursor, so waiting for editor-settle also covers it:
+                await waitForEditorSettled(page);
                 // Check focus is in view:
                 const parent = await toParentElementHandle(await checkFrameXorTextCursor(page));
                 if (parent != null) {

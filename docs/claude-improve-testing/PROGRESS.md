@@ -53,7 +53,7 @@ deliberately kept, say why instead of checking it off as fully done.
 | [x] | `tests/playwright/e2e/storage-model.spec.ts` | 9 | Converted 6/9; 3 kept as deliberate real-time waits (no exposed completion signal, or negative-assertion timing) -- see Log |
 | [ ] | `tests/cypress/e2e/autocomplete-more.cy.ts` | 8 | |
 | [x] | `tests/playwright/e2e/slot-errors.spec.ts` | 7 | Converted all 7, see Log |
-| [ ] | `tests/playwright/e2e/scroll-into-view.spec.ts` | 7 | |
+| [x] | `tests/playwright/e2e/scroll-into-view.spec.ts` | 7 | Converted 6/7; 1 deliberately kept (see Log -- new poll-based replacement introduced flakiness of its own under contention in a test that was never actually observed flaky) |
 | [x] | `tests/playwright/e2e/load-save-frozen-collapsed.spec.ts` | 7 | Converted all 7, see Log |
 | [ ] | `tests/cypress/e2e/paste-python.cy.ts` | 7 | uses paste-test-support.ts helper above |
 | [ ] | `tests/cypress/e2e/basics.cy.ts` | 6 | |
@@ -1663,3 +1663,52 @@ deliberately left in place with a reason.
     need actual wait-conversion work later -- for now it's fully addressed
     by the timeout fix, so leaving it untracked rather than adding a
     misleading "0 waits" row.
+
+- 2026-07-13 — `tests/playwright/e2e/scroll-into-view.spec.ts` (7 waits) --
+  next most flaky item from the `d4eddb4b` CI run: both "Undo test" cases
+  (the file's only two tests, 100% of it) needed a retry, one of them the
+  worst severity (2 retries) of any test in the whole flaky list, both
+  timing out entirely inside `page.keyboard.press("ArrowDown")` despite an
+  already-generous 240s per-test budget.
+  - Converted 6 of the 7 waits: the two 40-iteration `Enter`-then-wait(50)
+    blank-line loops and `typeWithKeys`'s wait(100)s -> `waitForEditorSettled()`;
+    the post-undo wait(1000) -> `waitForEditorSettled()` (confirmed via
+    reading `store.ts` that undo's own scroll-into-view runs inside a
+    `nextTick()` off the same state update that changes focus/cursor, so
+    settling on those also covers the scroll).
+  - **First attempt at the `ArrowDown`-loop wait(10) was wrong and made
+    things worse, not better** -- converted it to
+    `pressN("ArrowDown", cursorIndex, true)`, which settles after *every*
+    individual press (up to 80 per action). Verified in isolation this
+    passed, just slower (2.6min for the lightest case) -- but running the
+    full file together (3 concurrent Playwright workers, matching real
+    local/CI conditions) made the two heavier Undo tests (cursorIndex up
+    to 80) time out completely inside the settle-poll's own
+    `page.evaluate()`, eating the whole 240s budget. Plain arrow-key
+    navigation doesn't trigger the restructuring debounce
+    `waitForEditorSettled()` exists for, so paying its full per-keystroke
+    poll cost 80 times over was pure waste that got worse, not better,
+    under contention. **Fixed** by firing all N presses with no per-press
+    wait (`pressN(..., false)`) and settling once at the end. This is the
+    clearest example yet in this initiative of "isolated-test verification
+    passing" not being enough -- the regression only showed up running the
+    full file together, which is the condition that actually matches CI.
+  - Left the 7th wait (`waitForTimeout(100)` in "Printing scrolls into
+    view", after typing each key while a `get_key()` Python loop echoes
+    it back) **deliberately unconverted**, after a genuine attempt: first
+    tried polling for the console's line count to actually increase
+    (a real completion signal, since the Python side has no `pace()`
+    throttling this echo), which is more rigorous than the original flat
+    wait -- but this test was never part of the CI flaky list to begin
+    with, and the new poll introduced a *new* failure mode of its own
+    under concurrent-worker contention (timed out at both 5s default and
+    a bumped 15s). Since the original flat wait wasn't observed broken,
+    reverted to it rather than risk shipping new flakiness in a
+    previously-fine test — out of scope for this pass.
+  - Verified: full file (all 13 tests, all three describe blocks) on
+    firefox, run together (not in isolation) to match the condition that
+    exposed the regression -- 13/13 passing (one apparent failure during
+    iteration was a `browserContext.newPage` timeout from local machine
+    resource exhaustion after many repeated runs, confirmed unrelated by
+    retesting that single test alone, which passed). `eslint` clean;
+    `vue-tsc --noEmit` clean for this file.

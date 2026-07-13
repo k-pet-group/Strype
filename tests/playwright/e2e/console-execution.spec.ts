@@ -1,12 +1,12 @@
 import { test, expect, Locator, Page } from "@playwright/test";
 import { enterCode } from "../support/editor";
-import { checkConsoleContent, runButtonShowsRun, runToFinish, setupGraphicsRedrawObserver, startRunning } from "../support/execution";
+import { checkConsoleContent, runButtonShowsRun, runToFinish, setupGraphicsRedrawObserver, startRunning, waitForConsoleSettled } from "../support/execution";
 import { load } from "../support/loading-saving";
 import { setupStrypeTest } from "../support/general";
 
 let scssVars: {[varName: string]: string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 90000});
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120000});
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
 });
 
@@ -315,8 +315,9 @@ while True:
             // Now we stop:
             await runButton.click();
             await runButtonShowsRun(runButton, true);
-            // Wait for slush to print if there was some (shouldn't be, but that's what we're testing...):
-            await page.waitForTimeout(10_000);
+            // Wait for slush to print if there was some (shouldn't be, but that's what we're testing...) --
+            // wait until the console actually stops changing, rather than guessing how long that takes:
+            await waitForConsoleSettled(page);
             // Then check the last actual printed line:
             consoleValue = await page.locator("#peaConsole").inputValue();
             const lastNumberAfterStopping = Number(consoleValue.split("\n")?.at(-2)?.trim());

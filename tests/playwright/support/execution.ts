@@ -106,3 +106,29 @@ export async function waitForGraphicsSettled(page: Page, timeoutMs = 15000) : Pr
         }
     }
 }
+
+// Waits for #peaConsole's text to stop changing, rather than blindly sleeping a fixed duration
+// for any queued-up prints to flush through (e.g. after clicking Stop on a tight print loop --
+// see "Check console prints don't queue up after stopping" below). Polls from Node, out-of-process
+// from the page's own rendering, so a plain "N consecutive unchanged reads" is reliable here
+// without needing the wall-clock-based tracking that the in-page Cypress equivalent needed.
+export async function waitForConsoleSettled(page: Page, timeoutMs = 20000) : Promise<void> {
+    const consoleLoc = page.locator("#peaConsole");
+    const start = Date.now();
+    let last = await consoleLoc.inputValue();
+    let stableCount = 0;
+    while (Date.now() - start < timeoutMs) {
+        await page.waitForTimeout(100);
+        const cur = await consoleLoc.inputValue();
+        if (cur === last) {
+            stableCount++;
+            if (stableCount >= 3) {
+                return;
+            }
+        }
+        else {
+            stableCount = 0;
+        }
+        last = cur;
+    }
+}

@@ -89,7 +89,6 @@ function removeFilesPlugin(isStandardPython) {
             const pathsToRemove = (isStandardPython)
                 ? [
                     "./dist/demos/microbit",
-                    "./dist/public_libraries/microbit",
                 ]
                 : [
                     "./dist/demos/console",

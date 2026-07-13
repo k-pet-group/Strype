@@ -29,13 +29,13 @@ import microbitDescriptions from "@/autocompletion/microbit.json";
 // If these files need update, replace "audio.pyi" in the root folder
 // by the one in /microbit/ because it seems reimports don't work well.
 // Remove "VERSIONS" as well.
-const mbPYIFolderPath = "/public/public_libraries/microbit/";
-const mbPYIContextFolderContext = import.meta.glob("/public/public_libraries/microbit/**/*", {eager: true, query: "?raw", import: "default"}); // can't use variable here... 
+const mbPYIFolderPath = "/pysrc/pyi/microbit/";
+const mbPYIContextFolderContext = import.meta.glob("/pysrc/pyi/microbit/**/*", {eager: true, query: "?raw", import: "default"}); // can't use variable here...
 const mbPYContextPaths = Object.keys(mbPYIContextFolderContext);
 mbPYContextPaths.forEach((mbPYContextPath) => {
     if(mbPYContextPath.endsWith("pyi")) {        
         const mbPYIAsModule = mbPYIContextFolderContext[mbPYContextPath] as string; // Immediately loads the module
-        // Module paths start with mbPYIFolderPath ("/public/public_libaries/microbit/") and finish with ".pyi", 
+        // Module paths start with mbPYIFolderPath ("/pysrc/pyi/microbit/") and finish with ".pyi",
         // to get the module name we scrap these off, change "/"
         // to "." and remove the file name altogether if we have "__init__".
         const moduleName = mbPYContextPath.slice(mbPYIFolderPath.length, -4).replaceAll("/", ".").replace(".__init__", "");

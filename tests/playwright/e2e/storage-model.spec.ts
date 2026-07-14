@@ -14,8 +14,10 @@ test.beforeEach(async ({ browserName }, testInfo) => {
         testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
     }
 
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(300000); // 300 seconds
+    // These tests can take longer than the default 30 seconds. The slowest observed (multi-tab
+    // load/save tests on a contended CI runner) take up to ~110s; 180s keeps generous headroom
+    // for CI without paying the full previous 300s on a genuine hang:
+    testInfo.setTimeout(180000); // 180 seconds
 });
 
 test.afterEach(async ({ context }, testInfo) => {

@@ -558,8 +558,11 @@ while True  :
         // done, well before the "button" actor we're about to click even exists. Instead, wait for
         // prepare_display()'s own last print, which is a precise signal that setup has truly
         // finished (the console textarea still receives this text even while the console tab isn't
-        // the one currently showing):
-        await expect(page.locator("#peaConsole")).toHaveValue(/added button actor/, {timeout: 15000});
+        // the one currently showing). Bumped from 15s to 60s: seen on a contended CI runner still
+        // only partway through the segment-printing burst (~22 "added segment actor" lines and
+        // still climbing) after the full 15s -- it's a poll, not a flat sleep, so the extra
+        // headroom costs nothing in the common case:
+        await expect(page.locator("#peaConsole")).toHaveValue(/added button actor/, {timeout: 60000});
         await waitForGraphicsSettled(page);
         const g = page.locator("#peaGraphicsContainerDiv");
         const bb = await g.boundingBox();

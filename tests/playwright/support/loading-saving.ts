@@ -32,9 +32,12 @@ export async function load(page: Page, filepath: string) : Promise<void> {
     // only called inside a separate, un-awaited .then() chain), so the overlay disappearing isn't
     // a reliable "load has finished" signal. Once onFileLoaded() does run, it sets
     // appStore.projectName from the loaded file's name, which the visible ".project-name" label
-    // mirrors -- wait for that instead, since it only updates once the new state is truly in place:
+    // mirrors -- wait for that instead, since it only updates once the new state is truly in place.
+    // Bumped from 30s to 60s: seen to genuinely exceed 30s on a contended CI runner (real CI
+    // failure, "data-graph" load, ubuntu-latest) -- it's a poll, not a flat sleep, so the extra
+    // headroom costs nothing in the common case:
     const expectedProjectName = path.basename(filepath, path.extname(filepath));
-    await expect(page.locator(".project-name")).toHaveText(expectedProjectName, {timeout: 30000});
+    await expect(page.locator(".project-name")).toHaveText(expectedProjectName, {timeout: 60000});
 }
 
 export async function loadContent(page: Page, spyToLoad: string) : Promise<void> {

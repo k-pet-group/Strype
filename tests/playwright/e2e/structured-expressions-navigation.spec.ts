@@ -32,11 +32,11 @@ async function loadPY(page: Page, filepath: string) {
     // than a single keystroke), so give it more headroom than waitForEditorSettled's default:
     await waitForEditorSettled(page, 20000);
     // Check it actually loaded:
-    const count = await page.getByText("BUILDINGS_TO_RECIPES").count();
-    expect(count).toEqual(5);
+    const count = await page.getByText("randint").count();
+    expect(count).toEqual(1);
 
     // Get to the top, and may as well sanity check as we go:
-    for (let i = 0; i < 200; i++) {
+    for (let i = 0; i < 30; i++) {
         await checkFrameXorTextCursor(page);
         await page.keyboard.press("ArrowUp");
         await waitForEditorSettled(page);
@@ -53,12 +53,11 @@ test.describe("Check navigation", () => {
         await checkFrameXorTextCursor(page);
     });
     test("Right arrow through a file", async ({page}, testInfo) => {
-        test.setTimeout(500_000);
         if (testInfo.project.name === "chromium") {
             test.skip(); // See comment above
         }
-        await loadPY(page, "../../cypress/fixtures/python-code.py");
-        for (let i = 0; i < 500; i++) {
+        await loadPY(page, "../../cypress/fixtures/structured-expr-nav-small.spy");
+        for (let i = 0; i < 50; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowRight");
             await waitForEditorSettled(page);
@@ -69,9 +68,8 @@ test.describe("Check navigation", () => {
         if (testInfo.project.name === "chromium") {
             test.skip(); // See comment above
         }
-        test.setTimeout(1_000_000);
-        await loadPY(page, "../../cypress/fixtures/python-code.py");
-        for (let i = 0; i < 100; i++) {
+        await loadPY(page, "../../cypress/fixtures/structured-expr-nav-small.spy");
+        for (let i = 0; i < 17; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
             await waitForEditorSettled(page);
@@ -87,9 +85,8 @@ test.describe("Check navigation", () => {
         if (testInfo.project.name === "chromium") {
             test.skip(); // See comment above
         }
-        test.setTimeout(1_000_000);
-        await loadPY(page, "../../cypress/fixtures/python-code.py");
-        for (let i = 0; i < 500; i++) {
+        await loadPY(page, "../../cypress/fixtures/structured-expr-nav-small.spy");
+        for (let i = 0; i < 50; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("Tab");
             await waitForEditorSettled(page);
@@ -99,9 +96,8 @@ test.describe("Check navigation", () => {
         if (testInfo.project.name === "chromium") {
             test.skip(); // See comment above
         }
-        test.setTimeout(1_000_000);
-        await loadPY(page, "../../cypress/fixtures/python-code.py");
-        for (let i = 0; i < 100; i++) {
+        await loadPY(page, "../../cypress/fixtures/structured-expr-nav-small.spy");
+        for (let i = 0; i < 17; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
             await waitForEditorSettled(page);

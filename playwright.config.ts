@@ -36,7 +36,11 @@ export default defineConfig({
     reporter: [
         ["list"],
         ["html", {"open": "never", "outputFolder": "./tests/playwright/html-report"}],
-        ["@estruyf/github-actions-reporter"],
+        // useDetails wraps each spec file's results in a collapsible <details> block.
+        // Blocks whose summary icon is fail/flaky (❌/⚠️) are then force-expanded by
+        // the "Expand failed/flaky sections" CI step, since this reporter doesn't
+        // support conditionally setting `open` on its own.
+        ["@estruyf/github-actions-reporter", { useDetails: true }],
     ],
     /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
     use: {

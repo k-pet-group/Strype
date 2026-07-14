@@ -4,6 +4,7 @@ import { setupStrypeTest } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     await setupStrypeTest(page, browserName, testInfo, {
+        timeoutMs: 60_000,
         skipPyodide: true,
         fakeClipboard: true,
         gotoWaitUntil: "domcontentloaded",

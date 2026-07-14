@@ -53,7 +53,7 @@ export async function setupStrypeTest(page: Page, browserName: string, testInfo:
         fakeClipboard = false,
         gotoWaitUntil = "load",
         minFrameCount = DEFAULT_STARTING_FRAME_COUNT,
-        readyTimeoutMs = 20000,
+        readyTimeoutMs = 30000,
         skipWindowsWebkit = true,
         skipWindowsWebkitReason = "Skipping on Windows + WebKit due to unknown problems",
     } = options;

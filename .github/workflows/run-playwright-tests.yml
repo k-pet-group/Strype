@@ -65,7 +65,18 @@ jobs:
       run: |
         brew install coreutils
         brew install --quiet jq
-        jq ".scripts[\"playwright:run\"] = \"npx playwright test --project=${{ matrix.browser }}\"" package.json > temp.json && mv temp.json package.json
+        if [ "${{ matrix.browser }}" = "webkit" ]; then
+          # console-execution.spec.ts and storage-model.spec.ts have both shown CI-only
+          # stop-slowness/flakiness on macOS+WebKit, suspected to be main-thread starvation
+          # caused by this job's normal multi-worker parallelism (see
+          # docs/claude-improve-testing/WEBKIT_STOP_INVESTIGATION.md). Run them alone first,
+          # single-worker, before the rest of the suite, to test that directly.
+          ISOLATED_SPECS="tests/playwright/e2e/console-execution.spec.ts,tests/playwright/e2e/storage-model.spec.ts"
+          RUN_CMD="SPEC=$ISOLATED_SPECS npx playwright test --project=webkit --workers=1 && EXCLUDE_SPEC=$ISOLATED_SPECS npx playwright test --project=webkit"
+        else
+          RUN_CMD="npx playwright test --project=${{ matrix.browser }}"
+        fi
+        jq --arg cmd "$RUN_CMD" '.scripts["playwright:run"] = $cmd' package.json > temp.json && mv temp.json package.json
         gtimeout 7200s npm run test:playwright || { echo "Test command exited or timed out"; exit 1; }
     - name: Run Playwright tests (Windows)
       if: ${{ matrix.os == 'windows-latest' }}

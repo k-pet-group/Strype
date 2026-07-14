@@ -9,14 +9,17 @@ import { defineConfig, devices } from "@playwright/test";
 // dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 export const BASE_URL = process.env.BASE_URL || "http://localhost:8081/editor/";
+// Both SPEC and EXCLUDE_SPEC accept a single spec path or a comma-separated list of them.
 const specFilter = process.env.SPEC;
 const grepFilter = process.env.GREP;
+const excludeSpecFilter = process.env.EXCLUDE_SPEC;
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
     testDir: "./tests/playwright/e2e",
-    testMatch: specFilter ? [specFilter] : ["**/*.spec.ts"], // default fallback
+    testMatch: specFilter ? specFilter.split(",") : ["**/*.spec.ts"], // default fallback
+    testIgnore: excludeSpecFilter ? excludeSpecFilter.split(",") : undefined,
     grep: grepFilter ? new RegExp(grepFilter) : undefined,
     // Folder for test artifacts such as screenshots, videos, traces, etc.
     outputDir: "./tests/playwright/test-results",

@@ -31,7 +31,7 @@ export default defineConfig({
      * --workers=20 on a quiet machine -- see docs/claude-improve-testing/WEBKIT_STOP_INVESTIGATION.md).
      * RUNNER_OS is set automatically by GitHub Actions (Linux/Windows/macOS), no workflow changes needed.
      * Locally (process.env.CI unset) always use 4, regardless of host OS. */
-    workers: (process.env.CI && process.env.RUNNER_OS === "macOS") ? 2 : 4,
+    workers: (process.env.CI && process.env.RUNNER_OS === "macOS") ? 3 : 4,
     /* Reporter to use. See https://playwright.dev/docs/test-reporters */
     reporter: [
         ["list"],

@@ -1,6 +1,6 @@
 import {Page, test, expect} from "@playwright/test";
 import path from "path";
-import {assertStateOfIfFrame, checkFrameXorTextCursor, checkTextSlotCursorPos, doPagePaste, getDefaultStrypeProjectDocumentationFullLine, pressN} from "../support/editor";
+import {assertStateOfIfFrame, checkFrameXorTextCursor, checkTextSlotCursorPos, doPagePaste, getDefaultStrypeProjectDocumentationFullLine, pressN, waitForEditorSettled} from "../support/editor";
 import fs from "fs";
 import {readFileSync} from "node:fs";
 import {save} from "../support/loading-saving";
@@ -28,17 +28,18 @@ async function loadPY(page: Page, filepath: string) {
     ]);
     await fileChooser.setFiles(path.join(__dirname, filepath));
 
-    // Wait for everything to settle:
-    await page.waitForTimeout(2000);
+    // Wait for everything to settle. This loads a whole project's worth of frames (much bigger
+    // than a single keystroke), so give it more headroom than waitForEditorSettled's default:
+    await waitForEditorSettled(page, 20000);
     // Check it actually loaded:
     const count = await page.getByText("BUILDINGS_TO_RECIPES").count();
     expect(count).toEqual(5);
-    
+
     // Get to the top, and may as well sanity check as we go:
     for (let i = 0; i < 200; i++) {
         await checkFrameXorTextCursor(page);
         await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(150);
+        await waitForEditorSettled(page);
     }
 }
 
@@ -60,7 +61,7 @@ test.describe("Check navigation", () => {
         for (let i = 0; i < 500; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowRight");
-            await page.waitForTimeout(200);
+            await waitForEditorSettled(page);
         }
     });
     // Down by itself won't go into slots, so we do down-down-left which should get to the end.
@@ -73,13 +74,13 @@ test.describe("Check navigation", () => {
         for (let i = 0; i < 100; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(200);
+            await waitForEditorSettled(page);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(200);
+            await waitForEditorSettled(page);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowLeft");
-            await page.waitForTimeout(200);
+            await waitForEditorSettled(page);
         }
     });
     test("Tab through a file", async ({page}, testInfo) => {
@@ -91,7 +92,7 @@ test.describe("Check navigation", () => {
         for (let i = 0; i < 500; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("Tab");
-            await page.waitForTimeout(150);
+            await waitForEditorSettled(page);
         }
     });
     test("Down-down-shift-tab through a file", async ({page}, testInfo) => {
@@ -103,13 +104,13 @@ test.describe("Check navigation", () => {
         for (let i = 0; i < 100; i++) {
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(150);
+            await waitForEditorSettled(page);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(150);
+            await waitForEditorSettled(page);
             await checkFrameXorTextCursor(page);
             await page.keyboard.press("Shift+Tab");
-            await page.waitForTimeout(150);
+            await waitForEditorSettled(page);
         }
     });
     test("Tab through two empty assignments", async ({page}, testInfo) => {
@@ -120,12 +121,12 @@ test.describe("Check navigation", () => {
         await page.keyboard.press("Delete");
         await page.keyboard.press("=");
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("=");
         await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         // We had a bug where tab needed to be pressed twice after coming out of the frame, so
         // we check explicitly here the ordering of text and frame.  Essentially, we start on frame cursor,
         // tab through both empty text slots then back to frame cursor.  Tab again at the end shouldn't change things:
@@ -133,7 +134,7 @@ test.describe("Check navigation", () => {
         for (let i = 0; i < expectedFrameCursor.length; i++) {
             await checkFrameXorTextCursor(page, expectedFrameCursor[i]);
             await page.keyboard.press("Tab");
-            await page.waitForTimeout(150);
+            await waitForEditorSettled(page);
         }
     });
 });
@@ -147,7 +148,7 @@ test.describe("Check clicking near image literal", () => {
         await page.keyboard.type("Actor(");
         const image = fs.readFileSync("src/assetsFilesystem/images/cat-test.jpg").toString("base64");
         await doPagePaste(page, image, "image/jpeg");
-        await page.waitForTimeout(500);
+        await waitForEditorSettled(page);
         const element = await page.$("." + scssVars.labelSlotMediaClassName);
         if (!element) {
             throw new Error("Element not found");
@@ -168,7 +169,7 @@ test.describe("Check clicking near image literal", () => {
 ${getDefaultStrypeProjectDocumentationFullLine()}#(=> Section:Imports
 #(=> Section:Definitions
 #(=> Section:Main
-Actor(load_image("data:image/jpeg;base64,${image}").foo) 
+Actor(load_image("data:image/jpeg;base64,${image}").foo)
 #(=> Section:End
 `.trimStart());
     });
@@ -180,17 +181,17 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         const strWithGraphemesSize = Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(strWithGraphemes)).length;
         // Adds a function call frame with empty literal
         await page.keyboard.type(" \"");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         // Types the content of the literal, with some grapheme clusters
         await page.keyboard.type(strWithGraphemes);
         // Gets back above that frame and in the frame
         await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         // Move right until the end of the literal (not past the closing quote, and we need +1 for passing the opening quote)
         await pressN("ArrowRight", 1 + strWithGraphemesSize, true)(page);
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         // Check the cursor position is as expected
         await checkTextSlotCursorPos(page, strWithGraphemes.length);
     });
@@ -200,17 +201,17 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         const strWithGraphemesSize = Array.from(new Intl.Segmenter("en", { granularity: "grapheme" }).segment(strWithGraphemes)).length;
         // Adds a function call frame with empty literal
         await page.keyboard.type(" \"");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         // Types the content of the literal, with some grapheme clusters
         await page.keyboard.type(strWithGraphemes);
         // Gets back below that frame and in the frame
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowLeft");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         // Move left until the start of the literal (not past the opening quote, and we need +3 for passing the brackets and closing quote)
         await pressN("ArrowLeft", 3 + strWithGraphemesSize, true)(page);
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         // Check the cursor position is as expected
         await checkTextSlotCursorPos(page, 0);
     });
@@ -222,19 +223,19 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
-        await page.waitForTimeout(100);                
+        await waitForEditorSettled(page);
         await page.keyboard.type(" \"");
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{}_“$”_{}");
         // Types the content of the literal, with some grapheme clusters
         await page.keyboard.type(strWithGraphemes);
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         // Gets back above that frame and in the frame (after the opening quote)
         await page.keyboard.press("ArrowUp");
         await pressN("ArrowRight", 2, true)(page);
         // Delete to keep "it's great"
         await pressN("Delete", strWithGraphemesSize - "it's great!".length, true)(page);
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         // Check the cursor position is as expected
         await checkTextSlotCursorPos(page, 0);
         // Check the content is as expected
@@ -248,19 +249,19 @@ test.describe("Check navigation around grapheme clusters in strings", () => {
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
-        await page.waitForTimeout(100);                
+        await waitForEditorSettled(page);
         await page.keyboard.type(" \"");
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{}_“$”_{}");
         // Types the content of the literal, with some grapheme clusters
         await page.keyboard.type(strWithGraphemes);
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         // Gets back below that frame and in the frame (before the closing quote)
         await page.keyboard.press("ArrowDown");
         await pressN("ArrowLeft", 2, true)(page);
         // Delete to keep "a"
         await pressN("Backspace", strWithGraphemesSize - 1, true)(page);
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         // Check the cursor position is as expected
         await checkTextSlotCursorPos(page, 1);
         // Check the content is as expected

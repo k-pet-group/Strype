@@ -553,3 +553,82 @@ test.describe("Pasting assignments at section boundaries", () => {
         });
     }
 });
+
+test.describe("Pasting a function with a leading self param removes it", () => {
+    // Strype adds "self" automatically to methods inside a class.  If pasted Python text for a function
+    // already has "self" as its first parameter (typically because it was copied from a method elsewhere),
+    // we end up with a duplicate "self, self" unless we strip the leading "self" from the pasted params.
+    // We do this whether the function is pasted into a class (where Strype re-adds self automatically) or
+    // as a top-level function (where a leading "self" doesn't belong either way).
+    const classDest = `class Dest:
+    def existing():
+        pass
+`;
+
+    test("Pasting a function with only a self param into a class removes self", async ({page}) => {
+        await testPaste(page, classDest, ["End", "ArrowUp", "ArrowUp"], "def foo(self):\n    return 6\n", makeStrypeFile(["", `class Dest  :
+    def existing (self, ) :
+        pass
+    def foo (self, ) :
+        return 6 
+`, ""]));
+    });
+
+    test("Pasting a function with a self param plus more params into a class removes self", async ({page}) => {
+        await testPaste(page, classDest, ["End", "ArrowUp", "ArrowUp"], "def foo(self, x, y):\n    return x+y\n", makeStrypeFile(["", `class Dest  :
+    def existing (self, ) :
+        pass
+    def foo (self,x,y ) :
+        return x+y 
+`, ""]));
+    });
+
+    test("Pasting a function with only a self param into top-level functions removes self", async ({page}) => {
+        await testPaste(page, "", ["ArrowUp"], "def foo(self):\n    return 6\n", makeStrypeFile(["", `def foo ( ) :
+    return 6 
+`, ""]));
+    });
+
+    test("Pasting a function with a self param plus more params into top-level functions removes self", async ({page}) => {
+        await testPaste(page, "", ["ArrowUp"], "def foo(self, x, y):\n    return x+y\n", makeStrypeFile(["", `def foo (x,y ) :
+    return x+y 
+`, ""]));
+    });
+
+    // These last two tests copy an actual Strype method frame (rather than pasting a string literal) and paste
+    // it elsewhere, to check the same fix applies when the "self, self" duplication would arise from a genuine
+    // Strype copy/paste rather than from pasting in external text.
+    const twoClasses = `class Src:
+    def bar(self, x):
+        return x*2
+class Dest:
+    def existing():
+        pass
+`;
+    // Selects the whole "def bar(self, x): return x*2" method (header and body) inside Src:
+    const selectBarMethod = ["End", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "Control+a"];
+
+    test("Copying a method and pasting it into another class removes self", async ({page}) => {
+        await testBeforeAfterPaste(page, twoClasses, selectBarMethod, "copy", ["ArrowDown", "ArrowDown"], makeStrypeFile(["", `class Src  :
+    def bar (self,x ) :
+        return x*2 
+class Dest  :
+    def bar (self,x ) :
+        return x*2 
+    def existing (self, ) :
+        pass
+`, ""]));
+    });
+
+    test("Copying a method and pasting it as a top-level function removes self", async ({page}) => {
+        await testBeforeAfterPaste(page, twoClasses, selectBarMethod, "copy", ["End"], makeStrypeFile(["", `class Src  :
+    def bar (self,x ) :
+        return x*2 
+class Dest  :
+    def existing (self, ) :
+        pass
+def bar (x ) :
+    return x*2 
+`, ""]));
+    });
+});

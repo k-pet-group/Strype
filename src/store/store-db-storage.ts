@@ -33,7 +33,7 @@ const MAX_SESSION_AGE_MILLIS_UNSAVED = 8 * 24 * 60 * 60 * 1000;
 const MAX_SESSION_AGE_MILLIS_SAVED = 1 * 24 * 60 * 60 * 1000;
 
 const DB_NAME = AutoSaveKeyNames.strypeIndexDatabaseName;
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 let STORE : string;
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 STORE = AutoSaveKeyNames.strypePythonDBStore;
@@ -64,9 +64,21 @@ export function openIndexedDBConnection(): Promise<IDBDatabase> {
 
         request.onupgradeneeded = () => {
             const db = request.result;
+              
+            // We always create both stores together, otherwise we cannot use one db for 2 stores.
+            let otherStore = AutoSaveKeyNames.strypeMicrobitDBStore;
+            // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
+            otherStore = AutoSaveKeyNames.strypePythonDBStore;
+            // #v-endif
 
             if (!db.objectStoreNames.contains(STORE)) {
                 db.createObjectStore(STORE, {
+                    keyPath: DatabaseFieldNames.tabId,
+                });
+            }
+
+            if (!db.objectStoreNames.contains(otherStore)) {
+                db.createObjectStore(otherStore, {
                     keyPath: DatabaseFieldNames.tabId,
                 });
             }

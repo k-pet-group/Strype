@@ -1741,18 +1741,18 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
         offsetAllIds(funcDefFrames, useStore().nextAvailableId);
         // There is one awkward case.  If we copy a function from a class, it gets copied as "def foo(self)"
         // because the user might be pasting it externally.  But when we paste back in to Strype, because we add self
-        // automatically, the function becomes "def foo(self, self)".
-        if (curLocation === STRYPE_LOCATION.IN_CLASSDEF) {
-            Object.values(funcDefFrames.frames).forEach((frame: FrameObject) => {
-                if (frame.frameType.type == AllFrameTypesIdentifier.funcdef) {
-                    const params = frame.labelSlotsDict[1];
-                    // We have to spot it by name as it may be a plain functino:
-                    if (isFieldBaseSlot(params.slotStructures.fields[0]) && params.slotStructures.fields[0].code === "self") {
-                        removeFirstFuncParam(params);
-                    }
+        // automatically, the function becomes "def foo(self, self)".  We strip it whether we're pasting into a class
+        // (where we add self automatically) or as a top-level function (where a leading "self" almost certainly came
+        // from copying a method, and doesn't belong on a plain function either way):
+        Object.values(funcDefFrames.frames).forEach((frame: FrameObject) => {
+            if (frame.frameType.type == AllFrameTypesIdentifier.funcdef) {
+                const params = frame.labelSlotsDict[1];
+                // We have to spot it by name as it may be a plain function:
+                if (isFieldBaseSlot(params.slotStructures.fields[0]) && params.slotStructures.fields[0].code === "self") {
+                    removeFirstFuncParam(params);
                 }
-            });
-        }
+            }
+        });
 
         const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: funcDefFrames, ignoreStateBackup});
         if (curLocation == STRYPE_LOCATION.DEFS_SECTION || curLocation == STRYPE_LOCATION.IN_CLASSDEF) {

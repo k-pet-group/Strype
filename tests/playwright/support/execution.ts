@@ -132,3 +132,7 @@ export async function waitForConsoleSettled(page: Page, timeoutMs = 20000) : Pro
         last = cur;
     }
 }
+
+export async function checkFrameErrorCount(page: Page, expectedCount: number) : Promise<void> {
+    await expect(page.locator(".err-icon:visible")).toHaveCount(expectedCount);
+}

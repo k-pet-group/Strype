@@ -1,9 +1,7 @@
-import { test, expect, Locator, Page } from "@playwright/test";
+import { test, expect } from "@playwright/test";
 import { enterCode } from "../support/editor";
-import { checkConsoleContent, runButtonShowsRun, runToFinish, startRunning } from "../support/execution";
-import { load } from "../support/loading-saving";
+import { checkConsoleContent, checkFrameErrorCount, runButtonShowsRun, runToFinish, startRunning } from "../support/execution";
 
-let scssVars: {[varName: string]: string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     if (browserName === "webkit" && process.platform === "win32") {
         // On Windows+Webkit it just can't seem to load the page for some reason:
@@ -12,11 +10,10 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 
     // These tests can take longer than the default 30 seconds:
     testInfo.setTimeout(90000); // 90 seconds
-    
+
     await page.goto("./", {waitUntil: "load"});
     // Wait for content to load:
     await expect(page.locator(".frame-div")).toHaveCount(2);
-    scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
     await page.evaluate(() => {
         (window as any).Playwright = true;
     });
@@ -25,24 +22,6 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         console.log("Browser log:", msg.text());
     });
 });
-
-// Given a locator for a slot or frame header, checks if the nearest enclosing frame has an error showing
-export async function expectHasVisibleErrorIcon(locator: Locator): Promise<void> {
-    const parent = locator.locator(
-        `xpath=ancestor::*[contains(concat(' ', normalize-space(@class), ' '), ' ${scssVars.frameHeaderClassName} ')][1]`
-    );
-
-    await expect(parent).toHaveCount(1);
-
-    const errIcon = parent.locator(".err-icon:visible");
-    await expect(errIcon).toHaveCount(1);
-    // Should only be one error:
-    await checkFrameErrorCount(locator.page(), 1);
-}
-
-export async function checkFrameErrorCount(page: Page, expectedCount: number) : Promise<void> {
-    await expect(page.locator(".err-icon:visible")).toHaveCount(expectedCount);
-}
 
 test.describe("Check console after execution", () => {
     test("Check default code works", async ({page}) => {
@@ -101,62 +80,6 @@ test.describe("Test stdin works", () => {
         // Then it should not be running again, because it has finished:
         await runButtonShowsRun(button);
         await checkFrameErrorCount(page, 0);
-    });
-});
-
-test.describe("Check errors show", () => {
-    test("Check error shows #1", async ({page}) => {
-        await enterCode(page, ["", "", "print(len(None))"]);
-        await runToFinish(page);
-        await checkConsoleContent(page, "< TypeError: object of type 'NoneType' has no len() >\n  From the highlighted call in your code");
-        await expectHasVisibleErrorIcon(page.locator("span", {hasText: "print"}));
-    });
-    test("Check error shows #2", async ({page}) => {
-        await enterCode(page, ["", "", "print('a'.foo())"]);
-        await runToFinish(page);
-        await checkConsoleContent(page, "< AttributeError: 'str' object has no attribute 'foo' >\n  From the highlighted call in your code");
-        await expectHasVisibleErrorIcon(page.locator("span", {hasText: "print"}));
-    });
-    test("Check error shows for file reading", async ({page}) => {
-        await enterCode(page, ["", "", "open(\"/does/not/exist.txt\", \"r\", encoding=\"utf-8\")"]);
-        await runToFinish(page);
-        await checkConsoleContent(page, "< FileNotFoundError: [Errno 44] No such file or directory: '/does/not/exist.txt' >\n  From the highlighted call in your code");
-        await expectHasVisibleErrorIcon(page.locator("span", {hasText: "open"}));
-    });
-    
-    // Check syntax error too, this use of global shows a syntax error:
-    test("Check error shows for global mis-use", async ({page}) => {
-        await enterCode(page, ["", `
-def test():
-    a = 2
-    global a
-`.trimStart(), "print(\"Hi!\")\n"]);
-        await runToFinish(page);
-        await checkConsoleContent(page, "< SyntaxError: name 'a' is assigned to before global declaration >\n  From the highlighted call in your code");
-        await expectHasVisibleErrorIcon(page.locator("div.frame-header-label", {hasText: "global"}));
-    });
-
-    test("Check error shows after manually printing", async ({page}) => {
-        await enterCode(page, ["import traceback", "", `
-try:
-    print(len(None))
-except Exception:
-    traceback.print_exc()
-`]);
-        await runToFinish(page);
-        // Should be an error, but only one:
-        await checkConsoleContent(page, /.*TypeError: object of type 'NoneType' has no len\(\).*/);
-        // Should not show any error counts because we caught it:
-        await checkFrameErrorCount(page, 0);
-    });
-    
-    test("Check error shows at right place when documentation parts have newlines", async ({page}) => {
-        await load(page, "tests/cypress/fixtures/project-documented-newlines.spy");
-        await runToFinish(page);
-        // Two separate checks to keep things clear, one for the expected lengths of each of the docs, one for the error:
-        await checkConsoleContent(page, /9\n6\n4\n11\n5\n.*/);
-        await checkConsoleContent(page, /.*TypeError: object of type 'NoneType' has no len\(\).*/);
-        await expectHasVisibleErrorIcon(page.locator("span", {hasText: "This will cause an error:"}));
     });
 });
 

@@ -337,6 +337,10 @@ export default class Parser {
     private parseStatement(statement: FrameObject, insideAClass : boolean, indentation = ""): string {
         let output = indentation;
         const labelSlotsPositionLengths: {[labelSlotsIndex: number]: LabelSlotsPositions} = {};
+        // Remember the line the statement itself starts on: processing its labels below (e.g. a funcdef/classdef's
+        // documentation label) can advance this.line to account for embedded newlines in doc content, but the frame
+        // mapping for this statement must still point at its own (first) line, not at wherever this.line ends up:
+        const statementStartLine = this.line;
         
         if(this.checkIfFrameHasError(statement) && !this.saveAsSPY){
             return "";
@@ -445,7 +449,7 @@ export default class Parser {
         
         output += "\n";
     
-        this.framePositionMap[this.line] =  {frameId: statement.id, labelSlotStartLengths: labelSlotsPositionLengths};
+        this.framePositionMap[statementStartLine] =  {frameId: statement.id, labelSlotStartLengths: labelSlotsPositionLengths};
         
         // We increment the line by 1 (next line) except when we are in an EMPTY block frame, as the empty "body" is replaced by "pass" in the parser,
         // that should be counted as a line (so we increment by 2)

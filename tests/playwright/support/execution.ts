@@ -27,3 +27,7 @@ export async function checkConsoleContent(page: Page, expectedContent : string |
     await expect(consoleLoc).toHaveCount(1);
     await expect(consoleLoc).toHaveValue(expectedContent, {timeout: 3000});
 }
+
+export async function checkFrameErrorCount(page: Page, expectedCount: number) : Promise<void> {
+    await expect(page.locator(".err-icon:visible")).toHaveCount(expectedCount);
+}

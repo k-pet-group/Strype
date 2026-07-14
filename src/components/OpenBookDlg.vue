@@ -143,6 +143,12 @@ async function changeBookDialogCategory(index: number) {
     const foundAssets = [];
     // Note async: will run each in background
     const content = await chapters[index].content;
+    if (selectedChapterIndex.value !== index) {
+        // The user has since picked a different chapter; a later call to this function
+        // will have already updated (or will soon update) the panes, so discard this
+        // now-stale response instead of overwriting what's currently selected.
+        return;
+    }
     for (const proj of content.demos) {
         let img: Promise<string | undefined>;
         if ("dataURL" in proj.image) {

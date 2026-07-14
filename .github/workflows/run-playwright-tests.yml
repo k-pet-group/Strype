@@ -23,6 +23,14 @@ jobs:
         # tests being fine, so it's disabled here rather than have it cry wolf on every
         # PR. macos-latest + firefox is enabled in its place to keep firefox coverage on
         # a second OS. Re-enable windows+firefox once that teardown issue is root-caused.
+        #
+        # macos-latest + webkit is further split into two jobs (webkitPart: single/multi)
+        # rather than one job running both phases back-to-back: console-execution.spec.ts
+        # and storage-model.spec.ts run single-worker in their own job (see the
+        # webkitPart == 'single' branch below for why), and the rest of the webkit suite
+        # runs at normal parallelism in a second job. Splitting lets the two phases run
+        # concurrently instead of serially, at the cost of paying setup (npm ci, browser
+        # install, Pyodide) twice.
         include:
           - os: ubuntu-latest
             browser: chromium
@@ -34,6 +42,10 @@ jobs:
             browser: firefox
           - os: macos-latest
             browser: webkit
+            webkitPart: single
+          - os: macos-latest
+            browser: webkit
+            webkitPart: multi
           - os: windows-latest
             browser: chromium
     runs-on: ${{ matrix.os }}
@@ -65,14 +77,18 @@ jobs:
       run: |
         brew install coreutils
         brew install --quiet jq
-        if [ "${{ matrix.browser }}" = "webkit" ]; then
+        ISOLATED_SPECS="tests/playwright/e2e/console-execution.spec.ts,tests/playwright/e2e/storage-model.spec.ts"
+        if [ "${{ matrix.browser }}" = "webkit" ] && [ "${{ matrix.webkitPart }}" = "single" ]; then
           # console-execution.spec.ts and storage-model.spec.ts have both shown CI-only
           # stop-slowness/flakiness on macOS+WebKit, suspected to be main-thread starvation
-          # caused by this job's normal multi-worker parallelism (see
-          # docs/claude-improve-testing/WEBKIT_STOP_INVESTIGATION.md). Run them alone first,
-          # single-worker, before the rest of the suite, to test that directly.
-          ISOLATED_SPECS="tests/playwright/e2e/console-execution.spec.ts,tests/playwright/e2e/storage-model.spec.ts"
-          RUN_CMD="SPEC=$ISOLATED_SPECS npx playwright test --project=webkit --workers=1 && EXCLUDE_SPEC=$ISOLATED_SPECS npx playwright test --project=webkit"
+          # caused by multi-worker parallelism (see
+          # docs/claude-improve-testing/WEBKIT_STOP_INVESTIGATION.md). Run them alone,
+          # single-worker, in their own job to test that directly -- separate from (and
+          # concurrent with) the rest of the webkit suite below, rather than running both
+          # phases serially in one job.
+          RUN_CMD="SPEC=$ISOLATED_SPECS npx playwright test --project=webkit --workers=1"
+        elif [ "${{ matrix.browser }}" = "webkit" ] && [ "${{ matrix.webkitPart }}" = "multi" ]; then
+          RUN_CMD="EXCLUDE_SPEC=$ISOLATED_SPECS npx playwright test --project=webkit"
         else
           RUN_CMD="npx playwright test --project=${{ matrix.browser }}"
         fi
@@ -107,6 +123,6 @@ jobs:
       if: always()
       uses: actions/upload-artifact@v7
       with:
-        name: playwright-report-${{ matrix.os }}-${{ matrix.browser }}
+        name: playwright-report-${{ matrix.os }}-${{ matrix.browser }}${{ matrix.webkitPart && format('-{0}', matrix.webkitPart) || '' }}
         path: tests/playwright/html-report/
         retention-days: 30

@@ -1843,3 +1843,73 @@ deliberately left in place with a reason.
   slowing the job down. The complementary per-test timeout bump (see entry
   above) is still on the table as a follow-up if this alone doesn't fully
   resolve it.
+
+- 2026-07-14 — Investigated the two Ubuntu+Firefox failures in CI run
+  29351662646 (testing `d05d78d2`, which already included same-day commits
+  `8a1d9a97` and `2455cf14` below). Pulled the HTML report's embedded
+  per-step trace JSON (via the `playwrightReportBase64` `<template>` in
+  `index.html`) for both, rather than relying on the raw log, since the
+  raw log's "list" reporter prints all failure/retry detail together at
+  the very end of the run (looks like one mass simultaneous timeout at
+  18:07:08 -- it isn't; that's just when the summary printed).
+  - **`storage-model.spec.ts` "Load several states, save some (2nd:
+    false)..."**: `8a1d9a97` (same day, below) cut this file's timeout
+    from 300s to 180s based on "slowest observed run ~110s". All 4 CI
+    attempts (initial + 3 retries) instead landed at 182-186s, each
+    making steady linear progress through all 6 sequential page loads
+    with no stalls -- a clean case of the new cap undershooting real
+    Firefox-CI reality, not a hang. Confirmed the file's page loads
+    already skip Pyodide on every one of the 6 pages (`loadAndWaitForEditor`
+    calls `skipPyodideLoading()` before every `goto`, and has done since
+    `919fdd87`, 2026-06-03) -- verified this is actually working, not just
+    present in code, by running the failing case locally on Firefox with
+    console listeners attached: "Skipping Pyodide as in testing mode"
+    logged for every page, test completed in 24.6s unloaded. So there was
+    no Pyodide-skip gap to close here; the CI slowness is pure runner
+    contention (the same page loads that take ~1-2s unloaded took 7-25s
+    in the CI trace). **Fix**: bumped the timeout back up to 240s (this
+    file's own `beforeEach`, not `setupStrypeTest`), matching the margin
+    `scroll-into-view.spec.ts` already uses for its heaviest tests.
+  - **`scroll-into-view.spec.ts` "Undo test #1"**: different mechanism,
+    not a timeout-budget miss -- erratic stalls, not linear slowness.
+    Across the 4 CI attempts, "Before Hooks" (browser/page setup) ranged
+    10.8-71.2s, and single `page.evaluate` calls (the initial 100-line
+    paste) ballooned to 17s/139s/115s/118s respectively -- one call alone
+    ate over half the 240s budget in three of the four attempts. This
+    matches the main-thread-starvation-under-full-suite-parallelism root
+    cause already diagnosed for WebKit (see the two entries above and
+    `WEBKIT_STOP_INVESTIGATION.md`), not a hang or app bug; this
+    particular test is the heaviest of the block's three parameterisations
+    (3 edit+undo cycles vs. 2 for #0/#2) so it's most exposed. **Tried**
+    splitting this file's single shared top-level `beforeEach` into
+    per-`describe` hooks so the "Undo scrolls location into view" block
+    (which never clicks Run) could pass `skipPyodide: true` while the
+    other two blocks (which do execute Python) kept it on -- **reverted**:
+    running the restructured file locally on Firefox regressed 5 tests
+    across all three describe blocks, including ones untouched by the
+    change (`Runtime errors scroll into view, starting at 0`), so
+    something about the restructuring itself broke shared state, not just
+    the Pyodide toggle. Neil confirmed this combination (scroll-into-view
+    + storage-model + skip-Pyodide) had already been tried and found
+    unsuitable earlier the same day, before this session -- reverted the
+    file back to its original single shared `beforeEach`, not yet
+    root-caused why the per-describe-block split broke unrelated tests.
+    **Fix instead**: per Neil's call, bumped this file's shared
+    `beforeEach` timeout from 240s to 360s as a pragmatic mitigation --
+    doesn't address the underlying contention, but the CI data shows the
+    "normal-but-slow" case (no extreme single-call stall) already needs
+    ~250-280s under contention, so 240s had almost no real margin left
+    even before accounting for a bad stall. Applies to the whole file (all
+    3 describe blocks share the one `beforeEach`), matching the precedent
+    of `storage-model.spec.ts`'s file-wide timeout below.
+  - `load-save-frozen-collapsed.spec.ts` is the one other file identified
+    during this session's file-wide Pyodide-skip audit that doesn't skip
+    Pyodide despite most of its tests not executing Python -- flagged but
+    not touched, since a handful of its tests (the runtime-error freeze/
+    fold cases) do click Run and need it, so this would need the same
+    kind of per-test/per-describe split that just proved unsafe above.
+  - The run's other 12 "flaky" (recovered-on-retry) entries are all
+    already-tracked items elsewhere in this file (load-save-random's
+    fuzzer flakiness, `structured-expressions-navigation.spec.ts`'s
+    just-shrunk tests from `2455cf14` below -- helped, not fully fixed,
+    now flaky instead of hard-failing) -- nothing new there.

@@ -6,7 +6,13 @@ import {readFileSync} from "node:fs";
 import {setupStrypeTest} from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 240000});
+    // "Undo test #1" (the heaviest of the "Undo scrolls location into view" block's three
+    // parameterisations) has been observed on contended Firefox CI stalling for 100+s inside a
+    // single page.evaluate() call (CI run 29351662646), consistent with the main-thread-starvation
+    // pattern already diagnosed for WebKit elsewhere in this suite -- not a hang, but under heavy
+    // full-suite parallelism even the previous 240s budget was cutting it close (one retry finished
+    // in 254.5s, just past it). Bumped for headroom; see docs/claude-improve-testing/PROGRESS.md.
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 360000});
 });
 
 async function scrollToFraction(page : Page, fraction: number) : Promise<void> {

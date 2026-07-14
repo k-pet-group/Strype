@@ -72,6 +72,30 @@ jobs:
       run: |
         jq ".scripts[\"playwright:run\"] = \"npx playwright test --project=${{ matrix.browser }}\"" package.json > temp.json && mv temp.json package.json
         timeout 7200s npm run test:playwright || { echo "Test command exited or timed out"; exit 1; }
+    - name: Start resource monitor (MacOS)
+      # Snapshots memory/swap/load/process-count every 15s for the duration of the job, so
+      # that if a test hangs (as opposed to just failing on its own timeout) we have some
+      # evidence of whether it coincided with genuine resource exhaustion on the runner --
+      # see docs/claude-improve-testing/WEBKIT_STOP_INVESTIGATION.md for the background: a
+      # prior macos-latest+webkit hang left no diagnostic trail on the runner, only the
+      # test's own (silent) stall. Runs detached so it keeps writing even if the test step
+      # itself is later cancelled or times out -- the log is uploaded unconditionally below.
+      if: ${{ matrix.os == 'macos-latest' }}
+      shell: bash
+      run: |
+        (
+          while true; do
+            echo "===== $(date -u +%Y-%m-%dT%H:%M:%SZ) ====="
+            uptime
+            vm_stat
+            sysctl vm.swapusage
+            echo "WebKit-family process count: $(pgrep -f -i webkit | wc -l | tr -d ' ')"
+            echo "Node process count: $(pgrep -f node | wc -l | tr -d ' ')"
+            echo "Total process count: $(ps -A | wc -l | tr -d ' ')"
+            sleep 15
+          done
+        ) > resource-monitor.log 2>&1 &
+        disown
     - name: Run Playwright tests (MacOS)
       if: ${{ matrix.os == 'macos-latest' }}
       shell: bash
@@ -127,3 +151,11 @@ jobs:
         name: playwright-report-${{ matrix.os }}-${{ matrix.browser }}${{ matrix.webkitPart && format('-{0}', matrix.webkitPart) || '' }}
         path: tests/playwright/html-report/
         retention-days: 30
+    - name: Upload resource monitor log (MacOS)
+      if: ${{ always() && matrix.os == 'macos-latest' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: resource-monitor-${{ matrix.os }}-${{ matrix.browser }}${{ matrix.webkitPart && format('-{0}', matrix.webkitPart) || '' }}
+        path: resource-monitor.log
+        retention-days: 30
+        if-no-files-found: ignore

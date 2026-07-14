@@ -794,6 +794,7 @@ export default defineComponent({
 
         togglePEALayout(layoutMode: StrypePEALayoutMode, userTriggeredAction?: boolean){           
             // Save the layout mode with the project
+            const previousLayoutMode = (this.appStore.peaLayoutMode ?? StrypePEALayoutMode.tabsCollapsed);
             this.appStore.peaLayoutMode = layoutMode;
               
             const newTabsLayout = (layoutMode == StrypePEALayoutMode.tabsCollapsed || layoutMode == StrypePEALayoutMode.tabsExpanded);
@@ -824,7 +825,14 @@ export default defineComponent({
                     && this.appStore.peaCommandsSplitterPane2Size && this.appStore.peaCommandsSplitterPane2Size[layoutMode] != undefined){
                     vueComponentsAPIHandler.commandsComponentAPI?.setCommandsSplitterPane2Size(this.appStore.peaCommandsSplitterPane2Size[layoutMode] as number);
                 }
-
+                // Retrieve potential divider value from previous mode if needs to persist in new layout
+                if(this.appStore.editorCommandsSplitterPane2Size){
+                    this.appStore.editorCommandsSplitterPane2Size[layoutMode] = this.appStore.editorCommandsSplitterPane2Size[previousLayoutMode];
+                }
+                if(tabsLayoutChanged && !expandLayoutChanged && this.appStore.peaCommandsSplitterPane2Size){
+                    this.appStore.peaCommandsSplitterPane2Size[layoutMode] = this.appStore.peaCommandsSplitterPane2Size[previousLayoutMode];
+                }
+                
                 // A delay can occur when we swap between the tabs / split layout or between split directions,
                 // so we need a delay to make sure the splitter has operated properly (we do it in any case)
                 const refreshUITimeout = 100;

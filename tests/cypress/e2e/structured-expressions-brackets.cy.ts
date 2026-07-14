@@ -4,7 +4,8 @@ require("cypress-terminal-report/src/installLogsCollector")();
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 
-import {testInsert, testMultiInsert, testBackspace, testPushBracket, PushBracketArrow} from "../support/expression-test-support";
+import {testInsert, testMultiInsert, testBackspace, testPushBracket, PushBracketArrow, focusEditor} from "../support/expression-test-support";
+import { assertState } from "../support/autocomplete-test-support";
 
 // We need this to prevent test failures.  I don't actually know what the error is for sure
 // (even if you log it, it is not visible), but I suspect it may be a Brython error that I
@@ -20,6 +21,14 @@ beforeEach(standardBeforeEach);
 describe("Test brackets", () => {
     it("Tests brackets", () => {
         testInsert("a+(b-c)", "{a}+{}_({b}-{c})_{$}");
+    });
+
+    it("Test brackets in a for frame LHS", () => {
+        focusEditor();
+        cy.get("body").type("f");
+        cy.wait(300);
+        cy.get("body").type("a,(b,c)");
+        assertState(3, "a,(b,c)$");
     });
 });
 

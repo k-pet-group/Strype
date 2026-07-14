@@ -10,8 +10,12 @@ jobs:
         # Rather than running all three browser projects on every OS (or relying on
         # Playwright's shard split lining up with project boundaries, which only worked
         # by coincidence when shard count == project count), each OS+browser pair below
-        # is its own job: chromium everywhere, firefox on ubuntu/macOS, webkit on macOS
+        # is its own job: chromium everywhere, firefox on ubuntu only, webkit on macOS
         # (the closest to real Safari).
+        #
+        # macos-latest + firefox was removed: it was mainly duplicating ubuntu-latest +
+        # firefox coverage at the cost of a slower, more expensive macOS runner, and
+        # Firefox is a minor target for us relative to Chromium/WebKit.
         #
         # windows-latest + firefox is deliberately NOT included: it has a recurring,
         # not-yet-root-caused issue where ~30% of runs report "N errors were not a part
@@ -21,8 +25,7 @@ jobs:
         # combination specifically, unrelated to which spec ran last (the trailing test
         # differs between occurrences). This makes the job fail CI despite the app and
         # tests being fine, so it's disabled here rather than have it cry wolf on every
-        # PR. macos-latest + firefox is enabled in its place to keep firefox coverage on
-        # a second OS. Re-enable windows+firefox once that teardown issue is root-caused.
+        # PR. Re-enable windows+firefox once that teardown issue is root-caused.
         #
         # macos-latest + webkit is further split into two jobs (webkitPart: single/multi)
         # rather than one job running both phases back-to-back: console-execution.spec.ts
@@ -38,8 +41,6 @@ jobs:
             browser: firefox
           - os: macos-latest
             browser: chromium
-          - os: macos-latest
-            browser: firefox
           - os: macos-latest
             browser: webkit
             webkitPart: single

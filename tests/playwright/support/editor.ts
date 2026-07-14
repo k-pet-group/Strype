@@ -98,10 +98,12 @@ export async function checkFrameXorTextCursor(page: Page, specificFrameCursor?: 
 }
 
 export async function checkTextSlotCursorPos(page: Page, expectedPos: number): Promise<void> {
-    const docSelectionFocusOffset = await page.evaluate(() =>{
-        return document?.getSelection()?.focusOffset;
-    });
-    expect(docSelectionFocusOffset).toEqual(expectedPos);
+    // A one-shot check here used to race against setDocumentSelection(): plain same-slot cursor
+    // moves (e.g. arrow-right within a string literal, see LabelSlotsStructure.vue's onLRKeyDown)
+    // only update the real DOM selection directly and don't touch the "data-slot-cursor" attribute
+    // that waitForEditorSettled() watches, so that wait gives no protection for this specific case.
+    // Poll the real selection instead of trusting a single snapshot.
+    await expect.poll(() => page.evaluate(() => document?.getSelection()?.focusOffset)).toEqual(expectedPos);
 }
 
 async function getSelection(page: Page) : Promise<{ id: string, cursorPos : number }> {

@@ -1913,3 +1913,48 @@ deliberately left in place with a reason.
     fuzzer flakiness, `structured-expressions-navigation.spec.ts`'s
     just-shrunk tests from `2455cf14` below -- helped, not fully fixed,
     now flaky instead of hard-failing) -- nothing new there.
+
+- 2026-07-14 — Classified all 12 flaky entries + 2 hard failures from the
+  same CI run (29351662646) by whether the failing attempt(s) hit the
+  enclosing test timeout (`status: "timedOut"` in the HTML report's JSON)
+  or a genuine assertion mismatch (`status: "failed"`, no timeout
+  involved), per Neil's request, using the same embedded-report-JSON
+  approach as above rather than guessing from the raw log:
+  - **Pure timeout (7 of 14)**: `storage-model.spec.ts` and
+    `scroll-into-view.spec.ts` (both fixed above),
+    `structured-expressions-navigation.spec.ts` (all 3 tests),
+    `structured-expressions-media.spec.ts` "Undo/redo pasting image over a
+    selection", `load-save-random.spec.ts` "Tests random entry #0".
+  - **Pure assertion failure (5 of 14)**: `console-execution.spec.ts`'s
+    two graphics-actor-stops-moving entries (`toBeLessThan` failed
+    outright, status `failed` not `timedOut` -- a real behavioural check,
+    not a stuck wait), `load-save-random.spec.ts` entries #2 and #4,
+    `check-error-locations.spec.ts` (status `failed` on **both** of its
+    two failing attempts, not just once -- worth a closer look separately,
+    not a one-off).
+  - **Ambiguous (2 of 14)**: `load-save-random.spec.ts` #1 (a custom
+    `"Element not found"` throw, not a Playwright timeout wrapper) and #3
+    (status `timedOut` but the captured error is a `toHaveText` mid-poll --
+    can't tell from the summary alone whether it was converging toward
+    passing or would have failed anyway; would need the trace/video).
+  - Per Neil's follow-up request, bumped the timeout for every "pure
+    timeout" file not already fixed above:
+    - `structured-expressions-navigation.spec.ts`: 120s -> 180s (shared
+      `beforeEach`, all 3 describe-block tests). First-attempt durations
+      in the CI data ran up to 136.8s against the 120s wall even after
+      `2455cf14`'s shrink.
+    - `structured-expressions-media.spec.ts`: 60s -> 120s (shared
+      `beforeEach`, file-wide). The failing test's two attempts both
+      exceeded 60s (one even reported the page/context closed mid-
+      `evaluate`) before passing in 18.7s on the third.
+    - `load-save-random.spec.ts`: 180s -> 300s (`test.setTimeout()` inside
+      the "Enters, saves and loads random frame" loop, all 5 parameterised
+      entries share this one call). Noted in a comment while there: this
+      describe block's retries (`test.describe.configure({retries: 3})`)
+      are a deliberate no-op -- the test body immediately returns if
+      `testInfo.retry > 0` ("Don't retry these tests; if they fail, we
+      want to know") -- so for a genuine timeout like this one, retrying
+      never helps regardless of cause; bumping the budget is the only
+      real fix.
+  - Not yet re-verified against a real CI run (that's the actual test);
+    `eslint` clean on all three files.

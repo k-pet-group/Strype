@@ -439,8 +439,12 @@ test.describe("Enters, saves and loads random frame", () => {
     test.describe.configure({ retries: 3 });
     for (let i = 0; i < 5; i++) {
         test("Tests random entry #" + i, async ({page}, testInfo) => {
-            // Increase test timeout:
-            test.setTimeout(180_000);
+            // Increase test timeout. 180s wasn't enough margin: CI run 29351662646 showed "entry
+            // #0" hit this wall inside a page.waitForTimeout. Note retries below are a no-op
+            // (immediate return) regardless of why the previous attempt failed, so for a genuine
+            // timeout like this one, bumping the budget is the only thing that actually helps --
+            // retrying just burns another attempt at the same limit:
+            test.setTimeout(300_000);
             // Don't retry these tests; if they fail, we want to know:
             if (testInfo.retry > 0) {
                 return;

@@ -9,7 +9,10 @@ import { setupStrypeTest } from "../support/general";
 let scssVars: {[varName: string]: string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     // On Github Actions, even loading the local page has been seen to take > 30s!
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120_000, skipPyodide: true, readyTimeoutMs: 60000});
+    // 120s wasn't enough margin even after 2455cf14's shrink: CI run 29351662646 showed all
+    // three of this describe block's tests needing a retry on Firefox, two of them twice, with
+    // first-attempt durations up to 136.8s against the 120s wall -- bumped for headroom.
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 180_000, skipPyodide: true, readyTimeoutMs: 60000});
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
 });
 

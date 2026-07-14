@@ -9,8 +9,12 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         // Chromium prevents writing non-text to clipboard during headless mode so we can't test image copying:
         testInfo.skip(true, "Skipping on Chromium due to clipboard permissions");
     }
+    // 60s wasn't enough margin: CI run 29351662646 showed "Undo/redo pasting image over a
+    // selection" needing 2 retries on Firefox, both attempts exceeding the 60s wall (one even
+    // reported the page/context closed mid-evaluate) before finally passing in 18.7s -- bumped
+    // for headroom.
     await setupStrypeTest(page, browserName, testInfo, {
-        timeoutMs: 60000,
+        timeoutMs: 120000,
         skipPyodide: true,
         fakeClipboard: true,
         gotoWaitUntil: "domcontentloaded",

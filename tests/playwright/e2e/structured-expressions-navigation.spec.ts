@@ -169,7 +169,7 @@ test.describe("Check clicking near image literal", () => {
 ${getDefaultStrypeProjectDocumentationFullLine()}#(=> Section:Imports
 #(=> Section:Definitions
 #(=> Section:Main
-Actor(load_image("data:image/jpeg;base64,${image}").foo)
+Actor(load_image("data:image/jpeg;base64,${image}").foo) 
 #(=> Section:End
 `.trimStart());
     });

@@ -306,7 +306,31 @@ export function setDocumentSelection(anchorCursorInfos: SlotCursorInfos, focusCu
             : Object.values(focusNode.childNodes).findIndex((node: any) => node.id === focusElement.id);
 
         document.getSelection()?.setBaseAndExtent(anchorNode, anchorOffset, focusNode, focusOffset);
-    }    
+    }
+}
+
+// Waits for an element with the given id to exist in the DOM, polling via Vue's nextTick() rather
+// than assuming a fixed number of ticks (or a fixed timer) is always enough. Some editor actions
+// change reactive state whose DOM update needs more than one render pass to land (e.g. a frame's
+// structure changing right before we need to find a slot inside it) -- code that only waits a
+// single nextTick() and then silently gives up if the element isn't there yet (e.g.
+// setDocumentSelection()'s no-op-if-missing behaviour) can leave the editor cursorless. Bounded by
+// both a retry count and a wall-clock time so a genuinely-never-appearing element (a real bug, not
+// just a slow render) can't hang the editor -- logs a warning rather than failing silently if the
+// bound is hit.
+export async function waitForElementId(id: string, maxRetries = 10, maxWaitMs = 5000): Promise<boolean> {
+    const start = Date.now();
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        await nextTick();
+        if (document.getElementById(id)) {
+            return true;
+        }
+        if (Date.now() - start >= maxWaitMs) {
+            break;
+        }
+    }
+    console.warn(`waitForElementId: gave up waiting for element "${id}" to appear in the DOM after ${Date.now() - start}ms`);
+    return false;
 }
 
 export function getFrameLabelSlotsStructureUID(frameId: number, labelIndex: number): string{

@@ -632,6 +632,10 @@ function clickMatplotlibProportionalPos(
 }
 
 test.describe("Test matplotlib", () => {
+    // Skip on Firefox in CI: these tests are 4-6x slower than on Chromium/WebKit and flaky there,
+    // costing ~15-20 minutes per CI job.
+    test.skip(({ browserName }) => browserName === "firefox", "Too slow/flaky on Firefox in CI");
+
     test("Test simple plot with matplotlib", async ({page}) => {
         await loadContent(page, `
 import matplotlib.pyplot

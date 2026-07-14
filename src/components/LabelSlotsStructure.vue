@@ -584,7 +584,7 @@ export default defineComponent({
         },
 
         forwardKeyEvent(event: KeyboardEvent) {
-            // The container div of this LabelSlotsStructure is editable. Editable divs capture the key events. 
+            // The container div of this LabelSlotsStructure is editable. Editable divs capture the key events.
             // We need to forward the event to the currently "focused" (editable) slot.
             // ** LEFT/RIGHT AND UP/DOWN ARROWS (without the meta key pressed for macOS) ARE TREATED SEPARATELY
             // BY THIS COMPONENT, we don't forward related events **

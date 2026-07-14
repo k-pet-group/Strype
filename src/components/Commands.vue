@@ -620,9 +620,16 @@ export default defineComponent({
                         else if(event.key == " " && this.appStore.selectedFrames.length == 0){
                             const currentStrypeLocation = findCurrentStrypeLocation().strypeLocation;
                             if(currentStrypeLocation == STRYPE_LOCATION.MAIN_CODE_SECTION || currentStrypeLocation == STRYPE_LOCATION.IN_FUNCDEF){
-                                // If ctrl/meta + space is activated on caret (in a function/class definition or in the main section), we add a new functional call frame and trigger the a/c
-                                this.appStore.addFrameWithCommand(this.addFrameCommands[eventKeyLowCase][0].type);
-                                this.$nextTick(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true})));
+                                // If ctrl/meta + space is activated on caret (in a function/class definition or in the main section), we add a new functional call frame and trigger the a/c.
+                                // We must wait for addFrameWithCommand() to fully finish -- including its internal
+                                // cursor placement into the new frame's first slot -- before re-dispatching ctrl-space:
+                                // a single $nextTick() isn't always enough (that placement can itself need more than
+                                // one tick, e.g. for a frame added deep inside a freshly-created class/method), and a
+                                // too-early redispatch finds no focused slot to forward to and is silently dropped,
+                                // leaving auto-complete never triggered.
+                                this.appStore.addFrameWithCommand(this.addFrameCommands[eventKeyLowCase][0].type).then(() => {
+                                    document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true}));
+                                });
                             }
                         }
                     }

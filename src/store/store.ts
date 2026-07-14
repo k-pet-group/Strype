@@ -2245,6 +2245,9 @@ export const useStore = defineStore("app", {
             // if the available positions are not passed as argument, we compute them from the DOM
             const availablePositions = payload.availablePositions??getAvailableNavigationPositions();
             let currentFramePosition: number;
+            // Set below when moving into a slot; awaited at the end so this function's own promise
+            // only resolves once the cursor is genuinely restored (see the comment at its assignment).
+            let cursorRestorePromise: Promise<void> | undefined;
 
             if (this.isEditing){ 
                 // Retrieve the slot that currently has focus in the current frame by looking up in the DOM
@@ -2327,25 +2330,30 @@ export const useStore = defineStore("app", {
                 // Restore the text cursor, the anchor is the same as the focus if we are not selecting text
                 // (the slot may not yet be rendered in the UI, for example when adding a new frame --
                 // waitForElementId polls for it rather than assuming a single tick is always enough, see
-                // its doc comment for why: a single tick used to be able to leave the editor cursorless)
+                // its doc comment for why: a single tick used to be able to leave the editor cursorless).
+                // This is awaited (not fire-and-forget) so that leftRightKey()'s own returned promise only
+                // resolves once the cursor is genuinely restored -- callers that chain off it (e.g.
+                // addFrameWithCommand(), and in turn Commands.vue's ctrl-space-at-a-frame-caret handler,
+                // which re-dispatches a synthetic ctrl-space after just one more tick) previously could run
+                // before this had finished, silently missing the newly-focused slot entirely.
                 // If we are reaching a comment frame, coming from the blue caret underneath, we neeed to check if there is a terminating line return:
                 // if that's the case, we do not get just after it, but before it; see LabelSlot.vue onEnterOrTabKeyUp() for why.
-                waitForElementId(getLabelSlotUID(nextSlotCoreInfos)).then(() => {
+                cursorRestorePromise = waitForElementId(getLabelSlotUID(nextSlotCoreInfos)).then(() => {
                     let textCursorPos = (directionDelta == 1) ? 0 : (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent?.replace(/\u200B/, "")?.length)??0;
                     const isCommentFrame = this.frameObjects[nextSlotCoreInfos.frameId as number].frameType.type == AllFrameTypesIdentifier.comment;
                     if(isCommentFrame && (document.getElementById(getLabelSlotUID(nextSlotCoreInfos))?.textContent??"").endsWith("\n") && directionDelta == -1){
                         textCursorPos--;
                     }
-                  
+
                     const anchorCursorInfos = (payload.isShiftKeyHold && payload.key != "Tab") ? this.anchorSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos};
-                    const focusCursorInfos = (multiSlotSelNotChanging) ? this.focusSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos}; 
+                    const focusCursorInfos = (multiSlotSelNotChanging) ? this.focusSlotCursorInfos : {slotInfos: nextSlotCoreInfos, cursorPos: textCursorPos};
                     this.setSlotTextCursors(anchorCursorInfos, focusCursorInfos);
                     setDocumentSelection(anchorCursorInfos as SlotCursorInfos, focusCursorInfos as SlotCursorInfos);
                     if(focusCursorInfos){
                         document.getElementById(getLabelSlotUID(focusCursorInfos.slotInfos))?.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
                     }
                 });
-                
+
                 // As we may have moved from a blue caret position, we make sure that we are always setting the caret position to the next available caret position possible.
                 // (which should be "below" for a statement frame, and "body" for a block frame)
                 this.currentFrame.caretPosition = (this.frameObjects[nextPosition.frameId].frameType.allowChildren) ? CaretPosition.body : CaretPosition.below;
@@ -2374,6 +2382,10 @@ export const useStore = defineStore("app", {
 
             //In any case change the current frame
             this.currentFrame.id = nextPosition.frameId;
+
+            // See the comment where cursorRestorePromise is assigned above -- awaited last so every
+            // other synchronous update in this function above still happens at the same point as before.
+            await cursorRestorePromise;
         },
 
         generateStateJSONStrWithCheckpoint(compress?: boolean) : string {

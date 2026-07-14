@@ -10,7 +10,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     // (pressing right out of a comment frame puts the cursor at the beginning and makes a frame cursor).
     // Since it works in the real browsers, and on Webkit and Firefox, we just skip the tests in Chromium
     test.skip(testInfo.project.name == "chromium", "Cannot run in Chromium");
-    await setupStrypeTest(page, browserName, testInfo, {fakeClipboard: true});
+    await setupStrypeTest(page, browserName, testInfo, {fakeClipboard: true, skipPyodide: true});
 });
 
 async function getFocusedId(page: Page) : Promise<string | null> {

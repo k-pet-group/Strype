@@ -7,7 +7,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     // Each test pastes and resizes an image (paste, dialog load, slider, OK-click, then up to a
     // 15s poll for the resized src= to land) -- comfortably inside Playwright's 30s default on a
     // fast local machine, but tight on a loaded CI runner where any one of those steps can be slow.
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 60000});
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 60000, skipPyodide: true});
 });
 
 /**

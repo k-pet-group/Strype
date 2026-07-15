@@ -16,9 +16,15 @@ test.beforeEach(async ({ browserName }, testInfo) => {
 
     // These tests can take longer than the default 30 seconds. 180s turned out not to be enough
     // headroom: CI run 29351662646 showed the heaviest (six-page-load) case consistently landing
-    // at 182-186s on Firefox under contention, failing all 4 attempts. 240s matches the margin
-    // scroll-into-view.spec.ts already uses for its own heaviest multi-step tests:
-    testInfo.setTimeout(240000); // 240 seconds
+    // at 182-186s on Firefox under contention, failing all 4 attempts. 240s matched the margin
+    // scroll-into-view.spec.ts uses for its own heaviest multi-step tests, but CI run 29398924054
+    // showed "(2nd: false)" still hitting the 240s wall on all 4 attempts, even on the macOS+WebKit
+    // job that runs this file single-worker/isolated specifically to rule out CPU contention --
+    // the resource-monitor log for that job showed load average around 3-5 on a 3-vCPU runner
+    // during the failures (not the 15-30 seen during job setup), so this isn't primarily
+    // contention. Bumped to 360s pending further investigation into why the "false" (autosave-
+    // recovery) branch is consistently slower than "true" (explicit save) -- see PROGRESS notes.
+    testInfo.setTimeout(360000); // 360 seconds
 });
 
 test.afterEach(async ({ context }, testInfo) => {

@@ -9,7 +9,10 @@ import {doPagePaste} from "../support/editor";
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
 let scssVars: {[varName: string]: string};
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 240_000, skipPyodide: true});
+    // CI run 29398704984 (macos-latest+chromium) showed "moving up 0 times" timing out at 240s
+    // waiting on the book-picker dialog to populate ("fireworks" entry never became clickable);
+    // siblings "moving up 1/2 times" hit the same wait but recovered on retry. Bumped for margin.
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 360_000, skipPyodide: true});
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
 });

@@ -26,7 +26,6 @@ describe("Test brackets", () => {
     it("Test brackets in a for frame LHS", () => {
         focusEditor();
         cy.get("body").type("f");
-        cy.wait(300);
         cy.get("body").type("a,(b,c)");
         assertState(3, "a,(b,c)$");
     });

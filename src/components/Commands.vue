@@ -103,7 +103,7 @@
 
 <script lang="ts">
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
-import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded } from "@/helpers/editor";
+import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded, waitForPanesSettled } from "@/helpers/editor";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesAction, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
@@ -620,9 +620,16 @@ export default defineComponent({
                         else if(event.key == " " && this.appStore.selectedFrames.length == 0){
                             const currentStrypeLocation = findCurrentStrypeLocation().strypeLocation;
                             if(currentStrypeLocation == STRYPE_LOCATION.MAIN_CODE_SECTION || currentStrypeLocation == STRYPE_LOCATION.IN_FUNCDEF){
-                                // If ctrl/meta + space is activated on caret (in a function/class definition or in the main section), we add a new functional call frame and trigger the a/c
-                                this.appStore.addFrameWithCommand(this.addFrameCommands[eventKeyLowCase][0].type);
-                                this.$nextTick(() => document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true})));
+                                // If ctrl/meta + space is activated on caret (in a function/class definition or in the main section), we add a new functional call frame and trigger the a/c.
+                                // We must wait for addFrameWithCommand() to fully finish -- including its internal
+                                // cursor placement into the new frame's first slot -- before re-dispatching ctrl-space:
+                                // a single $nextTick() isn't always enough (that placement can itself need more than
+                                // one tick, e.g. for a frame added deep inside a freshly-created class/method), and a
+                                // too-early redispatch finds no focused slot to forward to and is silently dropped,
+                                // leaving auto-complete never triggered.
+                                this.appStore.addFrameWithCommand(this.addFrameCommands[eventKeyLowCase][0].type).then(() => {
+                                    document.activeElement?.dispatchEvent(new KeyboardEvent("keydown",{key: " ", ctrlKey: true}));
+                                });
                             }
                         }
                     }
@@ -831,16 +838,13 @@ export default defineComponent({
             // We need to make sure to be "as if" we were starting from a default project layout
             // before doing anything (otherwise we have issues with some layout related stuff that
             // are not saved, or some styling that gets messy).
-            return new Promise((resolve) => {
-                this.hasPEAExpanded = false;
-                this.isCommandsSplitterChanged = false;               
-                vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(StrypePEALayoutMode.tabsCollapsed);
-                // Once we have the flags set, we set a timer to wait for the splitter to update before returning from the promise
-                setTimeout(() => {
-                    resolve();
-                }, 800);   
-            });            
-        },        
+            this.hasPEAExpanded = false;
+            this.isCommandsSplitterChanged = false;
+            vueComponentsAPIHandler.peaComponentAPI?.togglePEALayout(StrypePEALayoutMode.tabsCollapsed);
+            // Wait for the splitter panes to actually finish resizing rather than guessing how long
+            // that takes -- see waitForPanesSettled().
+            return waitForPanesSettled();
+        },
 
         onCommandsSplitterResize(event: any) {
             // When the splitter is resized, we need to resize the frame commands container (wrap/unwrap)

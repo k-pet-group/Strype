@@ -1,22 +1,13 @@
 import { test, expect } from "@playwright/test";
 import { PNG } from "pngjs";
 import { doPagePaste } from "../support/editor";
+import { setupStrypeTest } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
+    // Each test pastes and resizes an image (paste, dialog load, slider, OK-click, then up to a
+    // 15s poll for the resized src= to land) -- comfortably inside Playwright's 30s default on a
+    // fast local machine, but tight on a loaded CI runner where any one of those steps can be slow.
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 60000, skipPyodide: true});
 });
 
 /**
@@ -65,6 +56,11 @@ test.describe("Media literal resizing", async () => {
                 await page.keyboard.press("p");
                 await doPagePaste(page, srcImage, "image/png");
                 
+                // Get the old src=... attribute ready to wait for it to change later:
+                const before = await page.locator("img.label-slot-media").getAttribute("src");
+                if (!before?.startsWith("data:image/png")) {
+                    throw new Error("Expected a data:image/png image");
+                }
                 // Now hover over it and bring up the edit dialog:
                 await page.locator("img.label-slot-media").hover();
                 await page.locator(".MediaPreviewPopup-header-edit-button").click();
@@ -100,8 +96,11 @@ test.describe("Media literal resizing", async () => {
                 
                 // Now check it matches exactly the new size:
                 await page.locator(".btn.btn-primary", {hasText: "OK"}).filter({visible: true}).click();
-                // Give it a moment to update:
-                await page.waitForTimeout(4000);
+                // Wait for the src= to update by polling::
+                await expect.poll(
+                    async () => await page.locator("img.label-slot-media").getAttribute("src"),
+                    { timeout: 15000 }
+                ).not.toBe(before);
                 
                 await page.locator("img.label-slot-media").hover();
                 const newSizeText = await page.locator(".MediaPreviewPopup-header-text").textContent();

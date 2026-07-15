@@ -6,3 +6,4 @@
 // that involves Vue.
 export const WINDOW_STRYPE_SCSSVARS_PROPNAME = "StrypeSCSSVarsGlobals";
 export const WINDOW_STRYPE_HTMLIDS_PROPNAME = "StrypeHTMLELementsIDsGlobals";
+export const WINDOW_STRYPE_NEXTTICK_PROPNAME = "StrypeNextTickGlobal";

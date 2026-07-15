@@ -1,21 +1,15 @@
 import {Page, test, expect} from "@playwright/test";
-import {typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame} from "../support/editor";
-import {addFakeClipboard} from "../support/clipboard";
-import { skipPyodideLoading } from "../support/general";
+import {typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame, waitForEditorSettled} from "../support/editor";
+import { setupStrypeTest } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (process.platform === "win32" && browserName === "webkit") {
-        testInfo.skip(true, "Skipping on WebKit + Windows due to clipboard permission issues.");
-    }
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
+    await setupStrypeTest(page, browserName, testInfo, {
+        timeoutMs: 60_000,
+        skipPyodide: true,
+        fakeClipboard: true,
+        gotoWaitUntil: "domcontentloaded",
+        skipWindowsWebkitReason: "Skipping on WebKit + Windows due to clipboard permission issues.",
     });
-    await skipPyodideLoading(page);
-    await addFakeClipboard(page);
-    await page.goto("./", {waitUntil: "domcontentloaded"});
-    await page.waitForSelector("body");
-    //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
 });
 
 function testSelection(code : string, startIndex: number, endIndex: number, secondEntry : string | ((page: Page) => Promise<void>), expectedAfter : string, extraTitle?: string) : void {
@@ -23,32 +17,31 @@ function testSelection(code : string, startIndex: number, endIndex: number, seco
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, code);
         await doTextHomeEndKeyPress(page, false, false); // To handle the issue with macOS, see the method details (equivalent to "home").
         for (let i = 0; i < startIndex; i++) {
             await page.keyboard.press("ArrowRight");
-            await page.waitForTimeout(75);
+            await waitForEditorSettled(page);
         }
         while (startIndex < endIndex) {
             await page.keyboard.press("Shift+ArrowRight");
-            await page.waitForTimeout(75);
+            await waitForEditorSettled(page);
             startIndex += 1;
         }
         while (endIndex < startIndex) {
             await page.keyboard.press("Shift+ArrowLeft");
-            await page.waitForTimeout(75);
+            await waitForEditorSettled(page);
             startIndex -= 1;
         }
-        await page.waitForTimeout(100);
         if (typeof secondEntry == "string") {
             await typeIndividually(page, secondEntry);
         }
         else {
             await secondEntry(page);
         }
-        await page.waitForTimeout(500);
+        await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, expectedAfter);
     });
 }
@@ -69,34 +62,34 @@ function testCutCopy(code : string, stepsToBegin: number, stepsWhileSelecting: n
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, code);
         await doTextHomeEndKeyPress(page, false, false); // To handle the issue with macOS, see the method details.
         for (let i = 0; i < stepsToBegin; i++) {
             await page.keyboard.press("ArrowRight");
-            await page.waitForTimeout(75);
+            await waitForEditorSettled(page);
         }
         while (stepsWhileSelecting > 0) {
             await page.keyboard.press("Shift+ArrowRight");
-            await page.waitForTimeout(75);
+            await waitForEditorSettled(page);
             stepsWhileSelecting -= 1;
         }
         while (stepsWhileSelecting < 0) {
             await page.keyboard.press("Shift+ArrowLeft");
-            await page.waitForTimeout(75);
+            await waitForEditorSettled(page);
             stepsWhileSelecting += 1;
         }
-        await page.waitForTimeout(100);
         await page.keyboard.press(kind == CUT_COPY_TEST.COPY_ONLY ? "ControlOrMeta+c" : "ControlOrMeta+x");
-        await page.waitForTimeout(100);
-        const clipboardContent : string = await page.evaluate("navigator.clipboard.readText()");
-        expect(clipboardContent).toEqual(expectedClipboard);
+        // Writing to the OS clipboard is an async step outside the page with no page-side signal
+        // to wait on, so poll the read side instead of guessing how long the write takes:
+        await expect.poll(() => page.evaluate("navigator.clipboard.readText()")).toEqual(expectedClipboard);
         if (kind == CUT_COPY_TEST.CUT_REPASTE) {
             // Can't use shortcut because it doesn't read from our mock clipboard:
             //await page.keyboard.press("ControlOrMeta+v");
-            // So instead we must send our own paste event:
-            await doPagePaste(page, clipboardContent);
+            // So instead we must send our own paste event. The poll above already confirmed the
+            // clipboard holds exactly expectedClipboard, so re-use that instead of a fresh read:
+            await doPagePaste(page, expectedClipboard);
         }
         await assertStateOfIfFrame(page, expectedAfter);
     });

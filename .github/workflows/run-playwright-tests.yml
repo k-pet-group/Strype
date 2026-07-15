@@ -7,43 +7,155 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # We would like to include windows-latest, but it seems to time out the tests
-        # My best guess is that somehow the keypresses are arriving at the terminal job
-        # as the terminal shows "Terminate batch job? (Y/N)" which suggests it is getting
-        # the ctrl-c keypress that is intended for the browser.  But for now, we take it out
-        # because testing on Mac and Ubuntu alone is better than no tests, or tests which
-        # always fail
-        os: [ubuntu-latest, macos-latest]
-        # For parallelising the tests:
-        playwright_shard: [1, 2, 3]
+        # Rather than running all three browser projects on every OS (or relying on
+        # Playwright's shard split lining up with project boundaries, which only worked
+        # by coincidence when shard count == project count), each OS+browser pair below
+        # is its own job: chromium everywhere, firefox on ubuntu only, webkit on macOS
+        # (the closest to real Safari).
+        #
+        # macos-latest + firefox was removed: it was mainly duplicating ubuntu-latest +
+        # firefox coverage at the cost of a slower, more expensive macOS runner, and
+        # Firefox is a minor target for us relative to Chromium/WebKit.
+        #
+        # windows-latest + firefox is deliberately NOT included: it has a recurring,
+        # not-yet-root-caused issue where ~30% of runs report "N errors were not a part
+        # of any test" / "Worker teardown timeout of 30000ms exceeded" even when every
+        # test itself passes (see runs 29241500678, 29255482751) -- Playwright's own
+        # worker/browser-process teardown occasionally hangs on this OS+browser
+        # combination specifically, unrelated to which spec ran last (the trailing test
+        # differs between occurrences). This makes the job fail CI despite the app and
+        # tests being fine, so it's disabled here rather than have it cry wolf on every
+        # PR. Re-enable windows+firefox once that teardown issue is root-caused.
+        #
+        # macos-latest + webkit is further split into two jobs (webkitPart: single/multi)
+        # rather than one job running both phases back-to-back: console-execution.spec.ts
+        # and storage-model.spec.ts run single-worker in their own job (see the
+        # webkitPart == 'single' branch below for why), and the rest of the webkit suite
+        # runs at normal parallelism in a second job. Splitting lets the two phases run
+        # concurrently instead of serially, at the cost of paying setup (npm ci, browser
+        # install, Pyodide) twice.
+        include:
+          - os: ubuntu-latest
+            browser: chromium
+          - os: ubuntu-latest
+            browser: firefox
+          - os: macos-latest
+            browser: chromium
+          - os: macos-latest
+            browser: webkit
+            webkitPart: single
+          - os: macos-latest
+            browser: webkit
+            webkitPart: multi
+          - os: windows-latest
+            browser: chromium
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v6
     - uses: volta-cli/action@v4
     - name: Install dependencies
       run: npm ci
+    - name: Cache Pyodide
+      id: cache-pyodide
+      uses: actions/cache@v4
+      with:
+        path: public/pyodide
+        key: ${{ runner.os }}-pyodide-${{ hashFiles('package-lock.json') }}
     - name: Install Pyodide
-      run: npm run build:download-pyodide-libs      
+      if: steps.cache-pyodide.outputs.cache-hit != 'true'
+      run: npm run build:download-pyodide-libs
     - name: Install Playwright Browsers
       run: npx playwright install --with-deps
     - name: Run Playwright tests (Unix)
       if: ${{ matrix.os == 'ubuntu-latest' }}
       shell: bash
       run: |
-        jq ".scripts[\"playwright:run\"] = \"npx playwright test --shard=${{ matrix.playwright_shard }}/3\"" package.json > temp.json && mv temp.json package.json
+        jq ".scripts[\"playwright:run\"] = \"npx playwright test --project=${{ matrix.browser }}\"" package.json > temp.json && mv temp.json package.json
         timeout 7200s npm run test:playwright || { echo "Test command exited or timed out"; exit 1; }
+    - name: Start resource monitor (MacOS)
+      # Snapshots memory/swap/load/process-count every 15s for the duration of the job, so
+      # that if a test hangs (as opposed to just failing on its own timeout) we have some
+      # evidence of whether it coincided with genuine resource exhaustion on the runner --
+      # see WEBKIT_STOP_INVESTIGATION.md at commit e5c91b29 for the background: a
+      # prior macos-latest+webkit hang left no diagnostic trail on the runner, only the
+      # test's own (silent) stall. Runs detached so it keeps writing even if the test step
+      # itself is later cancelled or times out -- the log is uploaded unconditionally below.
+      if: ${{ matrix.os == 'macos-latest' }}
+      shell: bash
+      run: |
+        (
+          while true; do
+            echo "===== $(date -u +%Y-%m-%dT%H:%M:%SZ) ====="
+            uptime
+            vm_stat
+            sysctl vm.swapusage
+            echo "WebKit-family process count: $(pgrep -f -i webkit | wc -l | tr -d ' ')"
+            echo "Node process count: $(pgrep -f node | wc -l | tr -d ' ')"
+            echo "Total process count: $(ps -A | wc -l | tr -d ' ')"
+            sleep 15
+          done
+        ) > resource-monitor.log 2>&1 &
+        disown
     - name: Run Playwright tests (MacOS)
       if: ${{ matrix.os == 'macos-latest' }}
       shell: bash
       run: |
         brew install coreutils
         brew install --quiet jq
-        jq ".scripts[\"playwright:run\"] = \"npx playwright test --shard=${{ matrix.playwright_shard }}/3\"" package.json > temp.json && mv temp.json package.json
+        ISOLATED_SPECS="tests/playwright/e2e/console-execution.spec.ts,tests/playwright/e2e/storage-model.spec.ts"
+        if [ "${{ matrix.browser }}" = "webkit" ] && [ "${{ matrix.webkitPart }}" = "single" ]; then
+          # console-execution.spec.ts and storage-model.spec.ts have both shown CI-only
+          # stop-slowness/flakiness on macOS+WebKit, suspected to be main-thread starvation
+          # caused by multi-worker parallelism (see
+          # WEBKIT_STOP_INVESTIGATION.md at commit e5c91b29). Run them alone,
+          # single-worker, in their own job to test that directly -- separate from (and
+          # concurrent with) the rest of the webkit suite below, rather than running both
+          # phases serially in one job.
+          RUN_CMD="SPEC=$ISOLATED_SPECS npx playwright test --project=webkit --workers=1"
+        elif [ "${{ matrix.browser }}" = "webkit" ] && [ "${{ matrix.webkitPart }}" = "multi" ]; then
+          RUN_CMD="EXCLUDE_SPEC=$ISOLATED_SPECS npx playwright test --project=webkit"
+        else
+          RUN_CMD="npx playwright test --project=${{ matrix.browser }}"
+        fi
+        jq --arg cmd "$RUN_CMD" '.scripts["playwright:run"] = $cmd' package.json > temp.json && mv temp.json package.json
         gtimeout 7200s npm run test:playwright || { echo "Test command exited or timed out"; exit 1; }
+    - name: Run Playwright tests (Windows)
+      if: ${{ matrix.os == 'windows-latest' }}
+      shell: pwsh
+      run: |
+        $pkg = Get-Content package.json -Raw | ConvertFrom-Json
+        $pkg.scripts.'playwright:run' = 'npx playwright test --project=${{ matrix.browser }}'
+        $pkg | ConvertTo-Json -Depth 100 | Set-Content package.json
+        npm run test:playwright
+        if ($LASTEXITCODE -ne 0) {
+          Write-Host "Test command exited with a failure"
+          exit 1
+        }
+    - name: Expand failed/flaky sections in job summary
+      if: always()
+      shell: bash
+      run: |
+        node -e '
+          const fs = require("fs");
+          const path = process.env.GITHUB_STEP_SUMMARY;
+          if (path && fs.existsSync(path)) {
+            const content = fs.readFileSync(path, "utf-8");
+            const updated = content.replace(/<details><summary>(❌|⚠️)/g, "<details open><summary>$1");
+            fs.writeFileSync(path, updated, "utf-8");
+          }
+        '
     - name: Upload Playwright report
       if: always()
       uses: actions/upload-artifact@v7
       with:
-        name: playwright-report-${{ matrix.os }}-${{matrix.playwright_shard}}
+        name: playwright-report-${{ matrix.os }}-${{ matrix.browser }}${{ matrix.webkitPart && format('-{0}', matrix.webkitPart) || '' }}
         path: tests/playwright/html-report/
         retention-days: 30
+    - name: Upload resource monitor log (MacOS)
+      if: ${{ always() && matrix.os == 'macos-latest' }}
+      uses: actions/upload-artifact@v7
+      with:
+        name: resource-monitor-${{ matrix.os }}-${{ matrix.browser }}${{ matrix.webkitPart && format('-{0}', matrix.webkitPart) || '' }}
+        path: resource-monitor.log
+        retention-days: 30
+        if-no-files-found: ignore

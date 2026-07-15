@@ -1,0 +1,31 @@
+#(=> Strype:1:std
+#(=> Section:Imports
+from random import randint
+#(=> Section:Definitions
+class C  :
+    def __init__ (self,n ) :
+        self.n  = n
+    def go (self, ) :
+        ls  = [1,2,3]
+        d  = {"x":1}
+        for i  in ls  :
+            try :
+                d["x"]  = d["x"]+i
+            except   :
+                pass
+        t  = 0
+        while t<self.n  :
+            t  = t+1
+def f (a,b ) :
+    if a>b  :
+        return a
+    elif a==b  :
+        return 0
+    else :
+        return b
+#(=> Section:Main
+c  = C(3)
+c.go()
+print(f(1,2))
+print(f"n={c.n}")
+#(=> Section:End

@@ -306,7 +306,31 @@ export function setDocumentSelection(anchorCursorInfos: SlotCursorInfos, focusCu
             : Object.values(focusNode.childNodes).findIndex((node: any) => node.id === focusElement.id);
 
         document.getSelection()?.setBaseAndExtent(anchorNode, anchorOffset, focusNode, focusOffset);
-    }    
+    }
+}
+
+// Waits for an element with the given id to exist in the DOM, polling via Vue's nextTick() rather
+// than assuming a fixed number of ticks (or a fixed timer) is always enough. Some editor actions
+// change reactive state whose DOM update needs more than one render pass to land (e.g. a frame's
+// structure changing right before we need to find a slot inside it) -- code that only waits a
+// single nextTick() and then silently gives up if the element isn't there yet (e.g.
+// setDocumentSelection()'s no-op-if-missing behaviour) can leave the editor cursorless. Bounded by
+// both a retry count and a wall-clock time so a genuinely-never-appearing element (a real bug, not
+// just a slow render) can't hang the editor -- logs a warning rather than failing silently if the
+// bound is hit.
+export async function waitForElementId(id: string, maxRetries = 10, maxWaitMs = 5000): Promise<boolean> {
+    const start = Date.now();
+    for (let attempt = 0; attempt < maxRetries; attempt++) {
+        await nextTick();
+        if (document.getElementById(id)) {
+            return true;
+        }
+        if (Date.now() - start >= maxWaitMs) {
+            break;
+        }
+    }
+    console.warn(`waitForElementId: gave up waiting for element "${id}" to appear in the DOM after ${Date.now() - start}ms`);
+    return false;
 }
 
 export function getFrameLabelSlotsStructureUID(frameId: number, labelIndex: number): string{
@@ -1900,6 +1924,56 @@ export function getNumPrecedingBackslashes(content: string, cursorPos : number) 
 }
 
 /**
+ * Waits until the splitpanes divider panes' sizes stop changing. Programmatically changing a pane's
+ * size (e.g. after loading a project) animates via a CSS transition and can cascade into other nested
+ * panes resizing too, so there's no fixed delay that reliably covers every case -- this polls the
+ * actual bounding rects of all panes each animation frame and resolves once they've been unchanged
+ * for stableMs, with timeoutMs as a safety net so a caller can never hang indefinitely on this.
+ */
+export function waitForPanesSettled(stableMs = 150, timeoutMs = 5000): Promise<void> {
+    return new Promise((resolve) => {
+        let settled = false;
+        const finish = () => {
+            if (!settled) {
+                settled = true;
+                resolve();
+            }
+        };
+        // requestAnimationFrame can stop firing altogether (e.g. right after a full page
+        // navigation, before the new document's first paint) rather than merely running slowly --
+        // in that case check() below would never run again, so timeoutMs would never be reached.
+        // This setTimeout doesn't depend on rAF at all, so it's a genuine backstop:
+        const hardTimeout = setTimeout(finish, timeoutMs);
+        const start = Date.now();
+        let stableSince = Date.now();
+        let lastSizes = "";
+        const check = () => {
+            if (settled) {
+                return;
+            }
+            const sizes = Array.from(document.getElementsByClassName("splitpanes__pane"))
+                .map((pane) => {
+                    const rect = pane.getBoundingClientRect();
+                    return Math.round(rect.width) + "x" + Math.round(rect.height);
+                })
+                .join(",");
+            const now = Date.now();
+            if (sizes !== lastSizes) {
+                stableSince = now;
+                lastSizes = sizes;
+            }
+            if (now - stableSince >= stableMs || now - start >= timeoutMs) {
+                clearTimeout(hardTimeout);
+                finish();
+                return;
+            }
+            requestAnimationFrame(check);
+        };
+        requestAnimationFrame(check);
+    });
+}
+
+/**
  * Turtle  related bits for the editor
  */
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
@@ -1996,7 +2070,7 @@ export function setPythonExecAreaLayoutButtonPos(): void{
     }, 100);
 }
 
-/** 
+/**
  * These methods are used to control the height of the "Add frame" commands,
  * to allow the commands to be displayed in columns when they can't be shown as one column.
  * See Commands.vue for the HTML template logics.

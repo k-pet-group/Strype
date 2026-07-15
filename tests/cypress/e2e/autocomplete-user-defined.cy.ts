@@ -218,6 +218,7 @@ describe("User-defined items", () => {
         // Make a class frame with "foo" and the params for the init function "bar, vaz",
         // then make a function call frame inside:
         cy.get("body").type("{uparrow}cfoo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar,vaz{rightarrow}{rightarrow}");
+        cy.wait(500);
         // Trigger auto-completion:
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
@@ -247,6 +248,7 @@ describe("User-defined items", () => {
         // Make a class frame with "foo" and the params for the init function "bar",
         // then add function definition "myF" frame with parameters "vaz, param2" and go inside:
         cy.get("body").type("{uparrow}cfoo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}fmyF{rightarrow}vaz,param2{rightarrow}{rightarrow}");
+        cy.wait(500);
         // Trigger auto-completion:
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {

@@ -54,8 +54,39 @@ function makePyodideClient(pythonWorker: Worker) : PyodideClient {
 // cross-origin isolation which would break things like Google Drive.  So we must
 // terminate the worker.  It does mean the stop is instant and "clean" (next
 // execution won't carry over any state).
-export function terminateAndRestartPyodide() : void {
-    // This is apparently instant, so we can immediately assume Pyodide has stopped:
+export async function terminateAndRestartPyodide() : Promise<void> {
+    // The worker can be blocked waiting synchronously for a message from the main thread -- e.g.
+    // our own internal "dummy" catch-up request (see python-execution.ts) used to stop async
+    // requests/sprite updates queueing up in a tight loop, or a genuine input()/image query.
+    // Without SharedArrayBuffer, that wait is implemented (in the sync-message library) as a
+    // *synchronous* XMLHttpRequest inside the worker.  Some browsers -- WebKit/Safari in
+    // particular -- do not reliably abort an in-progress synchronous XHR just because
+    // worker.terminate() was called: the worker can keep running (and e.g. keep printing or
+    // moving sprites) until that blocking call naturally returns.
+    //
+    // Critically, if we make that blocking call return by answering it with a normal, successful
+    // reply (as we used to for the dummy case), the worker doesn't die -- it just resumes running
+    // from where it was blocked, races on to its *next* blocking wait, and so on indefinitely,
+    // since nothing is telling it to actually stop. comsync's own interrupt() avoids this: it
+    // answers a currently-blocked wait with an {interrupted: true} marker, which comsync's worker-side
+    // wrapper turns into a genuine InterruptError thrown *inside* the worker at that exact blocking
+    // point, regardless of what kind of request it was waiting on -- so the worker actually stops
+    // instead of continuing. We cap how long we wait for that (it should be near-instant) so a
+    // slow/stuck write can never stop us from terminating below:
+    if (pythonClient?.state === "awaitingMessage" || pythonClient?.state === "sleeping") {
+        try {
+            await Promise.race([
+                pythonClient.interrupt(),
+                new Promise((resolve) => setTimeout(resolve, 500)),
+            ]);
+        }
+        catch (e) {
+            // Best-effort only; we terminate the worker regardless just below:
+            console.error("Error interrupting Pyodide worker before terminating it: ", e);
+        }
+    }
+    // This is apparently instant on most browsers, so we can immediately assume Pyodide has
+    // stopped; the interrupt above is what makes that assumption hold on WebKit too:
     pythonWorker?.terminate();
     // Then we must make a new Pyodide worker ready for a potential future run:
     isPythonWorkerReady.value = false;

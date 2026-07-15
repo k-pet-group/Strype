@@ -9,11 +9,12 @@ export function skipPyodideLoading(page: Page) : Promise<Disposable> {
     });
 }
 
-// The number of frames present in a brand new/default Strype project (currently the imports
-// section and the definitions section). Centralised here so that when a future change adds more
-// starting frames, call sites that need "the default project has loaded" only need updating once --
-// and so that readiness checks use >= rather than an exact count that would then be wrong.
-export const DEFAULT_STARTING_FRAME_COUNT = 2;
+// The number of leaf frames present in a brand new/default Strype project: 2 default imports
+// (from strype.graphics import *, from strype.sound import *) plus the myString assignment and
+// print call in Main. Centralised here so that when a future change adds more starting frames,
+// call sites that need "the default project has loaded" only need updating once -- and so that
+// readiness checks use >= rather than an exact count that would then be wrong.
+export const DEFAULT_STARTING_FRAME_COUNT = 4;
 
 export interface StrypeTestSetupOptions {
     // Passed to testInfo.setTimeout(). Omit to keep Playwright's default (30s).

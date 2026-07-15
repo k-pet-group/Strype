@@ -288,17 +288,46 @@ export function getDefaultStrypeProjectDocumentationFullLine(): string {
     return "'''This is the default Strype starter project'''\n";
 }
 
-export async function enterCode(page: Page, codeSections : string[]) : Promise<void> {
-    await expect(page.locator(".frame-div")).toHaveCount(2);
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("Backspace");
-    await page.keyboard.press("Backspace");
-    // Backspace-deleting a frame can go through a delayed-removal debounce (LabelSlot.vue), so
-    // wait for the count to actually drop by 2 rather than a fixed guess:
+// Deletes every frame currently in Main, Definitions and Imports -- not just the default
+// project's frames (2 default imports plus the myString assignment and print call in Main), since
+// this is also used to clear out whatever a previous operation left behind, which can include
+// Definitions content that the default project never has -- leaving a genuinely blank editor
+// (0 frames) with the caret positioned at the top of Imports, ready for fresh content. Reads the
+// frame counts from the DOM rather than hard-coding them so this doesn't go stale if a section's
+// content changes shape.
+export async function clearDefaultProject(page: Page) : Promise<void> {
+    const mainCount = await page.locator("#frameContainer_-3 .frame-div").count();
+    const defsCount = await page.locator("#frameContainer_-2 .frame-div").count();
+    const importsCount = await page.locator("#frameContainer_-1 .frame-div").count();
+    // The default caret starts at the top of Main; deleting forward removes its frames one by one.
+    // Each deletion can go through a delayed-removal debounce (LabelSlot.vue), so settle after
+    // every single keypress rather than firing them all at once -- otherwise a later press (e.g.
+    // the ArrowUp navigation, or a Backspace in Definitions/Imports) can race ahead of a
+    // still-in-flight removal and land on/delete the wrong frame (or, worse, crash the app by
+    // deleting more times than there are frames left):
+    for (let i = 0; i < mainCount; i++) {
+        await page.keyboard.press("Delete");
+        await waitForEditorSettled(page);
+    }
+    // Navigate up one level at a time, deleting backward to clear Definitions then Imports:
+    await page.keyboard.press("ArrowUp");
+    await waitForEditorSettled(page);
+    for (let i = 0; i < defsCount; i++) {
+        await page.keyboard.press("Backspace");
+        await waitForEditorSettled(page);
+    }
+    await page.keyboard.press("ArrowUp");
+    await waitForEditorSettled(page);
+    for (let i = 0; i < importsCount; i++) {
+        await page.keyboard.press("Backspace");
+        await waitForEditorSettled(page);
+    }
+    // Belt-and-braces check that we truly ended up at 0, on top of the settling above:
     await expect(page.locator(".frame-div")).toHaveCount(0, {timeout: 4000});
-    await page.keyboard.press("ArrowUp");
-    await page.keyboard.press("ArrowUp");
+}
+
+export async function enterCode(page: Page, codeSections : string[]) : Promise<void> {
+    await clearDefaultProject(page);
     for (const codeSection of codeSections) {
         // doPagePaste already waits for the editor (including frame count) to settle:
         await doPagePaste(page, codeSection);

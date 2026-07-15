@@ -1,5 +1,5 @@
 import { test, Page } from "@playwright/test";
-import { doPagePaste } from "../support/editor";
+import { clearDefaultProject, doPagePaste } from "../support/editor";
 import { checkConsoleContent, runToFinish } from "../support/execution";
 import { setupStrypeTest } from "../support/general";
 
@@ -9,13 +9,9 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 });
 
 function deleteDefaultProject(): ((page: Page) => Promise<void>) {
-    return async (page) => {
-        await page.waitForTimeout(200);
-        await page.keyboard.press(process.platform == "darwin" ? "Meta+a" : "Control+a");
-        await page.waitForTimeout(200);
-        await page.keyboard.press("Backspace");
-        await page.waitForTimeout(200);
-    };
+    // Ctrl/Cmd+A only selects the current section (Main), not Imports too, so it can't be used to
+    // blank the whole starting project on its own -- use the shared helper instead:
+    return clearDefaultProject;
 }
 
 function copyAssetInTemp(assetPath: string, copyFileName: string): ((page: Page) => Promise<void>) {
@@ -27,7 +23,13 @@ with open("/tmp/${copyFileName}","wb")  as f2  :
 `;
     return async (page) => {
         await deleteDefaultProject()(page);
-        await doPagePaste(page, createAssetCopyCode);        
+        // deleteDefaultProject leaves the caret at the top of Imports; move to Main so this paste
+        // (and the test's own paste that immediately follows, with no navigation in between) both
+        // land in Main in the right order -- the test's code reads the file this writes, so it
+        // must run second:
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("ArrowDown");
+        await doPagePaste(page, createAssetCopyCode);
     };
 }
 

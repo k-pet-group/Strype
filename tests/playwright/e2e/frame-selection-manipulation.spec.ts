@@ -1,8 +1,7 @@
 import {Page, test, expect} from "@playwright/test";
 import { loadContent, save } from "../support/loading-saving";
 import { readFileSync } from "node:fs";
-import { skipPyodideLoading } from "../support/general";
-import {addFakeClipboard} from "../support/clipboard";
+import { setupStrypeTest } from "../support/general";
 import { checkFrameXorTextCursor, doPagePaste } from "../support/editor";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
@@ -11,21 +10,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         // and on Ubuntu+Webkit the paste doesn't seem to work (while it's fine on MacOS):
         testInfo.skip(true, "Skipping on Windows/Ubuntu + WebKit due to various problems");
     }
-
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(90000); // 90 seconds
-
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
-    await skipPyodideLoading(page);
-    await addFakeClipboard(page);
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 90000, skipPyodide: true, fakeClipboard: true, skipWindowsWebkit: false});
 });
 
 async function testBeforeAfterPaste(page: Page, before :string, selectionKeys: string[], operation: "cut" | "copy" | "delete" | "duplicate" | "duplicate2", moveToDestKeys: string[], afterPaste :string) {
@@ -567,4 +552,83 @@ test.describe("Pasting assignments at section boundaries", () => {
             await testPaste(page, "", keys, printFormatted + assignmentFormatted, makeStrypeFile(["", "", printFormatted + assignmentFormatted]));
         });
     }
+});
+
+test.describe("Pasting a function with a leading self param removes it", () => {
+    // Strype adds "self" automatically to methods inside a class.  If pasted Python text for a function
+    // already has "self" as its first parameter (typically because it was copied from a method elsewhere),
+    // we end up with a duplicate "self, self" unless we strip the leading "self" from the pasted params.
+    // We do this whether the function is pasted into a class (where Strype re-adds self automatically) or
+    // as a top-level function (where a leading "self" doesn't belong either way).
+    const classDest = `class Dest:
+    def existing():
+        pass
+`;
+
+    test("Pasting a function with only a self param into a class removes self", async ({page}) => {
+        await testPaste(page, classDest, ["End", "ArrowUp", "ArrowUp"], "def foo(self):\n    return 6\n", makeStrypeFile(["", `class Dest  :
+    def existing (self, ) :
+        pass
+    def foo (self, ) :
+        return 6 
+`, ""]));
+    });
+
+    test("Pasting a function with a self param plus more params into a class removes self", async ({page}) => {
+        await testPaste(page, classDest, ["End", "ArrowUp", "ArrowUp"], "def foo(self, x, y):\n    return x+y\n", makeStrypeFile(["", `class Dest  :
+    def existing (self, ) :
+        pass
+    def foo (self,x,y ) :
+        return x+y 
+`, ""]));
+    });
+
+    test("Pasting a function with only a self param into top-level functions removes self", async ({page}) => {
+        await testPaste(page, "", ["ArrowUp"], "def foo(self):\n    return 6\n", makeStrypeFile(["", `def foo ( ) :
+    return 6 
+`, ""]));
+    });
+
+    test("Pasting a function with a self param plus more params into top-level functions removes self", async ({page}) => {
+        await testPaste(page, "", ["ArrowUp"], "def foo(self, x, y):\n    return x+y\n", makeStrypeFile(["", `def foo (x,y ) :
+    return x+y 
+`, ""]));
+    });
+
+    // These last two tests copy an actual Strype method frame (rather than pasting a string literal) and paste
+    // it elsewhere, to check the same fix applies when the "self, self" duplication would arise from a genuine
+    // Strype copy/paste rather than from pasting in external text.
+    const twoClasses = `class Src:
+    def bar(self, x):
+        return x*2
+class Dest:
+    def existing():
+        pass
+`;
+    // Selects the whole "def bar(self, x): return x*2" method (header and body) inside Src:
+    const selectBarMethod = ["End", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "Control+a"];
+
+    test("Copying a method and pasting it into another class removes self", async ({page}) => {
+        await testBeforeAfterPaste(page, twoClasses, selectBarMethod, "copy", ["ArrowDown", "ArrowDown"], makeStrypeFile(["", `class Src  :
+    def bar (self,x ) :
+        return x*2 
+class Dest  :
+    def bar (self,x ) :
+        return x*2 
+    def existing (self, ) :
+        pass
+`, ""]));
+    });
+
+    test("Copying a method and pasting it as a top-level function removes self", async ({page}) => {
+        await testBeforeAfterPaste(page, twoClasses, selectBarMethod, "copy", ["End"], makeStrypeFile(["", `class Src  :
+    def bar (self,x ) :
+        return x*2 
+class Dest  :
+    def existing (self, ) :
+        pass
+def bar (x ) :
+    return x*2 
+`, ""]));
+    });
 });

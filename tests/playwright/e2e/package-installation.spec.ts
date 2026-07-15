@@ -1,29 +1,14 @@
 import { test } from "@playwright/test";
 import { enterCode } from "../support/editor";
 import { checkConsoleContent, runToFinish } from "../support/execution";
+import { setupStrypeTest } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
     if (browserName === "firefox") {
         // For some reasons these tests take ages on Firefox on CI, even though they work locally on Firefox:
         testInfo.skip(true, "Skipping on Firefox due to slowness");
     }
-
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(120000); // 120 seconds
-
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120000});
 });
 
 test.describe("Check in-built packages", () => {

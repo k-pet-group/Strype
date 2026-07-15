@@ -9,11 +9,11 @@ import en from "../../../src/localisation/en/en_main.json";
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "../../../src/helpers/sharedIdCssWithTests";
 import {Page, test, expect, ElementHandle, JSHandle} from "@playwright/test";
 import { rename } from "fs/promises";
-import {checkFrameXorTextCursor, typeIndividually} from "../support/editor";
+import {checkFrameXorTextCursor, typeIndividually, waitForEditorSettled} from "../support/editor";
 import {readFileSync} from "node:fs";
 import {createBrowserProxy} from "../support/proxy";
 import {load, save} from "../support/loading-saving";
-import { skipPyodideLoading } from "../support/general";
+import { setupStrypeTest } from "../support/general";
 
 let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
@@ -24,29 +24,9 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     // (pressing right out of a comment frame puts the cursor at the beginning and makes a frame cursor).
     // Since it works in the real browsers, and on Webkit and Firefox, we just skip the tests in Chromium
     test.skip(testInfo.project.name == "chromium", "Cannot run in Chromium");
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(240000); // 240 seconds
-    
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 240000, skipPyodide: true});
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
-    await skipPyodideLoading(page);
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
-    // Wait for content to load:
-    await expect(page.locator(".frame-div")).toHaveCount(2);
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
-    //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
 });
 
 
@@ -161,6 +141,22 @@ function genRandomFrame(fromFrames: string[], level : number): FrameEntry {
     };
 }
 
+async function dismissAutocompleteIfShowing(page: Page) : Promise<void> {
+    // The randomly-generated slot content often looks like an identifier, which can trigger the
+    // autocomplete dropdown (AutoCompletion.vue). While it's open, ArrowUp/ArrowDown are consumed
+    // by LabelSlot.vue's handleUpDown to navigate the dropdown instead of the editor (see its
+    // "showAC" check), which can leave later frame/body navigation acting on the wrong target --
+    // this is a likely cause of the "expected a frame cursor, found none" flakiness in this file.
+    // Escape closes the dropdown while staying in the slot, but pressing it when the dropdown
+    // ISN'T showing exits/blurs the slot entirely (see LabelSlot.vue's onEscKeyUp), which would be
+    // its own new source of unexpected cursor movement -- so we only press it when the dropdown is
+    // actually visible:
+    if (await page.locator(`.${scssVars.acPopupContainerClassName}:visible`).count() > 0) {
+        await page.keyboard.press("Escape");
+        await waitForEditorSettled(page);
+    }
+}
+
 async function disablePrev(page: Page, fromFollowingJoint: boolean) : Promise<void> {
     // We need to disable the frame just above us and it was joint.  We must do this by clicking
     // because we don't currently have keyboard support for disabling parts of
@@ -182,9 +178,10 @@ async function disablePrev(page: Page, fromFollowingJoint: boolean) : Promise<vo
     const targetX = box.x + (fromFollowingJoint ? -10: 10);
     const targetY = box.y - (fromFollowingJoint ? 35 : 10);
     await page.mouse.click(targetX, targetY, {button: "right"});
-    await page.waitForTimeout(200);
+    // No manual wait needed for the context menu to render -- click() below already waits for
+    // the menu item to become actionable:
     await page.getByRole("menuitem", {name: en.contextMenu.disable}).click();
-    await page.waitForTimeout(100);
+    await waitForEditorSettled(page);
 }
 
 async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolean, beforeBody?: () => Promise<void>) : Promise<void> {
@@ -196,13 +193,13 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         else {
             await page.keyboard.type(shortcut);
         }
-        await page.waitForTimeout(400);
+        await waitForEditorSettled(page);
         if (frame.frameType == "try") {
             // We delete the except which automatically gets generated, then add our own:
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(200);
+            await waitForEditorSettled(page);
             await page.keyboard.press("Backspace");
-            await page.waitForTimeout(200);
+            await waitForEditorSettled(page);
         }
     }
     else {
@@ -212,18 +209,19 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
     if (frame.frameType == "funccall") {
         // Have to remove default brackets:
         await page.keyboard.press("Delete");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
     }
-    
+
     for (let i = 0; i < frame.slotContent.length; i++){
         const slotType = getFrameDefType(frame.frameType).labels.filter((l) => l.showSlots ?? true)[i].allowedSlotContent ?? AllowedSlotContent.TERMINAL_EXPRESSION;
         const s = frame.slotContent[i];
         console.log("Entering slot:   <<<" + s + ">>> into " + frame.frameType);
         await checkFrameXorTextCursor(page, false, "Slot of frame " + frame.frameType);
         const enterable = slotType == AllowedSlotContent.FREE_TEXT_DOCUMENTATION || slotType == AllowedSlotContent.LIBRARY_ADDRESS ? s : s.replaceAll(/[“”]/g, "\"").replaceAll(/[‘’]/g, "'");
-        await typeIndividually(page, enterable, 100);
+        await typeIndividually(page, enterable);
+        await dismissAutocompleteIfShowing(page);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
     }
     if (beforeBody) {
         await beforeBody();
@@ -232,9 +230,9 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         if (frame.frameType == "classdef") {
             // Need to remove the default constructor:
             await page.keyboard.press("Delete");
-            await page.waitForTimeout(200);
+            await waitForEditorSettled(page);
         }
-        
+
         for (const s of frame.body) {
             await checkFrameXorTextCursor(page, true, "Body of frame " + frame.frameType);
             await enterFrame(page, s, frame.disabled ?? false);
@@ -242,12 +240,12 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
         if (frame.joint && frame.joint.length > 0) {
             // We enter the next joint frame, and make any others a joint part of that:
             const [head, ...tail] = frame.joint;
-            
+
             await enterFrame(page, {...head, joint: tail}, frame.disabled ?? false, frame.disabled && !parentDisabled && getFrameDefType(frame.frameType).isJointFrame ? () => disablePrev(page, true) : undefined);
         }
         else {
             await page.keyboard.press("ArrowDown");
-            await page.waitForTimeout(200);
+            await waitForEditorSettled(page);
             if (frame.disabled && getFrameDefType(frame.frameType).isJointFrame) {
                 await disablePrev(page, false);
             }
@@ -257,14 +255,15 @@ async function enterFrame(page: Page, frame : FrameEntry, parentDisabled: boolea
     if (frame.disabled && !parentDisabled && !getFrameDefType(frame.frameType).isJointFrame) {
         // With shift, one press should select whole frame, including any joint frames:
         await page.keyboard.press("Shift+ArrowUp");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press(" ");
-        await page.waitForTimeout(500);
+        // No manual wait needed for the context menu to render -- click() below already waits for
+        // the menu item to become actionable:
         await page.getByRole("menuitem", { name: en.contextMenu.disable }).click();
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         // Now it's disabled, a single down press should skip the entire lot:
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
     }
     
     
@@ -373,9 +372,15 @@ async function getFramesFromDOM(page: Page) : Promise<FrameEntry[][]> {
 async function newProject(page: Page) : Promise<void> {
     // New is located in the menu, so we need to open it first, then find the link and click on it:
     await page.click("#" + await strypeElIds.getEditorMenuUID());
-    await page.waitForTimeout(2000);
-    await page.click("#" + await strypeElIds.getNewProjectLinkId());
-    await page.waitForTimeout(2000);
+    // Confirming "new project" triggers a full page reload (see resetStrypeProject in App.vue) --
+    // wait for the reloaded app to actually be ready, using the same signal beforeEach uses for
+    // the initial page load, rather than guessing how long the reload takes. noWaitAfter avoids a
+    // hang: the click handler synchronously unmounts this link (showMenu=false) right after
+    // scheduling the reload, which otherwise races Playwright's own post-click wait:
+    await page.click("#" + await strypeElIds.getNewProjectLinkId(), {noWaitAfter: true});
+    // A full page reload is genuinely slower than the default 5s assertion timeout under load
+    // (same reasoning as the equivalent check in loading-saving.ts's load()):
+    await expect(page.locator(".frame-div")).toHaveCount(2, {timeout: 20000});
 }
 
 async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: string) : Promise<void> {
@@ -386,7 +391,7 @@ async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: s
     
     if (projectDoc) {
         await page.keyboard.press("ArrowLeft");
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         const lines = projectDoc.split("\n");
         for (let i = 0; i < lines.length; i++) {
             if (i > 0) {
@@ -394,9 +399,9 @@ async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: s
             }
             await page.keyboard.type(lines[i]);
         }
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(500);
+        await waitForEditorSettled(page);
     }
 
     for (let section = 0; section < 3; section++) {
@@ -404,14 +409,13 @@ async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: s
             await enterFrame(page, sections[section][j], false);
         }
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
     }
     const dom = await getFramesFromDOM(page);
     expect(dom).toEqual(sections);
     const savePath = await save(page);
-    await page.waitForTimeout(2000);
     await newProject(page);
-    
+
     // Log for debugging purposes:
     try {
         const contents = readFileSync(savePath, "utf8");
@@ -435,8 +439,12 @@ test.describe("Enters, saves and loads random frame", () => {
     test.describe.configure({ retries: 3 });
     for (let i = 0; i < 5; i++) {
         test("Tests random entry #" + i, async ({page}, testInfo) => {
-            // Increase test timeout:
-            test.setTimeout(180_000);
+            // Increase test timeout. 180s wasn't enough margin: CI run 29351662646 showed "entry
+            // #0" hit this wall inside a page.waitForTimeout. Note retries below are a no-op
+            // (immediate return) regardless of why the previous attempt failed, so for a genuine
+            // timeout like this one, bumping the budget is the only thing that actually helps --
+            // retrying just burns another attempt at the same limit:
+            test.setTimeout(300_000);
             // Don't retry these tests; if they fail, we want to know:
             if (testInfo.retry > 0) {
                 return;
@@ -453,10 +461,10 @@ test.describe("Enters, saves and loads random frame", () => {
             rng = prng.int32.bind(prng);
             if (genRandomInt(3) == 1) {
                 await page.keyboard.press("ArrowLeft");
-                await page.waitForTimeout(100);
+                await waitForEditorSettled(page);
                 await page.keyboard.type("Doc " + rng());
                 await page.keyboard.press("ArrowRight");
-                await page.waitForTimeout(100);
+                await waitForEditorSettled(page);
             }
             
             const frames = [[], [], []] as FrameEntry[][];
@@ -468,7 +476,7 @@ test.describe("Enters, saves and loads random frame", () => {
                     frames[section].push(f);
                 }
                 await page.keyboard.press("ArrowDown");
-                await page.waitForTimeout(100);
+                await waitForEditorSettled(page);
             }
             console.log(JSON.stringify(frames, null, 2));
             const dom = await getFramesFromDOM(page);

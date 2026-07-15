@@ -52,7 +52,11 @@ describe("Python round-trip", () => {
         cy.fixture("python-bubble.py").then((py) => testRoundTripPasteAndDownload(py, "{uparrow}", defaultProjectDocFullLine + py));
     });
     it("Allows pasting fixture file with main code", () => {
-        cy.fixture("python-code.py").then((py) => testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + py));
+        // This is the largest of the paste fixtures (92 lines/frames), so settling after the paste
+        // can take longer than the default budget on a loaded CI runner -- give it more headroom
+        // than waitForEditorSettled's default 10s (seen timing out at ~10s with the state genuinely
+        // still converging, not stuck).
+        cy.fixture("python-code.py").then((py) => testRoundTripPasteAndDownload(py, undefined, defaultProjectDocFullLine + py, undefined, undefined, undefined, 20000));
     });
     it("Allows importing fixture file with functions", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/python-functions.py");

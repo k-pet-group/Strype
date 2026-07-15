@@ -1,22 +1,14 @@
 import {Page, test} from "@playwright/test";
-import {typeIndividually, doTextHomeEndKeyPress, pressN, assertStateOfIfFrame} from "../support/editor";
-import {addFakeClipboard} from "../support/clipboard";
-import { skipPyodideLoading } from "../support/general";
+import {typeIndividually, doTextHomeEndKeyPress, pressN, assertStateOfIfFrame, waitForEditorSettled} from "../support/editor";
+import { setupStrypeTest } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (process.platform === "win32" && browserName === "webkit") {
-        testInfo.skip(true, "Skipping on WebKit + Windows due to clipboard permission issues.");
-    }
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
+    await setupStrypeTest(page, browserName, testInfo, {
+        skipPyodide: true,
+        fakeClipboard: true,
+        gotoWaitUntil: "domcontentloaded",
+        skipWindowsWebkitReason: "Skipping on WebKit + Windows due to clipboard permission issues.",
     });
-    await skipPyodideLoading(page);
-    await addFakeClipboard(page);
-    await page.goto("./", {waitUntil: "domcontentloaded"});
-    await page.waitForSelector("body");
-    //strypeElIds = await page.evaluate(() => (window as any)["StrypeHTMLELementsIDsGlobals"]);
-    
 });
 
 function testSelection(code : string, startIndex: number, endIndex: number, secondEntry : string | ((page: Page) => Promise<void>), expectedAfter : string, extraTitle?: string) : void {
@@ -24,32 +16,31 @@ function testSelection(code : string, startIndex: number, endIndex: number, seco
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, code);
         await doTextHomeEndKeyPress(page, false, false); // To handle the issue with macOS, see the method details (equivalent to "home").
         for (let i = 0; i < startIndex; i++) {
             await page.keyboard.press("ArrowRight");
-            await page.waitForTimeout(75);
+            await waitForEditorSettled(page);
         }
         while (startIndex < endIndex) {
             await page.keyboard.press("Shift+ArrowRight");
-            await page.waitForTimeout(75);
+            await waitForEditorSettled(page);
             startIndex += 1;
         }
         while (endIndex < startIndex) {
             await page.keyboard.press("Shift+ArrowLeft");
-            await page.waitForTimeout(75);
+            await waitForEditorSettled(page);
             startIndex -= 1;
         }
-        await page.waitForTimeout(100);
         if (typeof secondEntry == "string") {
             await typeIndividually(page, secondEntry);
         }
         else {
             await secondEntry(page);
         }
-        await page.waitForTimeout(500);
+        await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, expectedAfter);
     });
 }
@@ -59,12 +50,15 @@ function testSelectionThenDelete(code : string, doSelectKeys: (page: Page) => Pr
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, code);
         await doSelectKeys(page);
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("Delete");
+        // assertStateOfIfFrame takes a one-shot snapshot (no built-in retry), so make sure the
+        // deletion has actually settled before reading state:
+        await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, expectedAfterDeletion);
     });
 }
@@ -83,11 +77,11 @@ function testNavigation(code: string, navigate: (page: Page) => Promise<void>, e
         await page.keyboard.press("Backspace");
         await page.keyboard.press("Backspace");
         await page.keyboard.type("i");
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
         await typeIndividually(page, code);
         await navigate(page);
-        await page.waitForTimeout(100);
+        await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, expectedAfter);
     });
 }
@@ -117,6 +111,7 @@ test.describe("Shift-Home selects to the beginning of current level", () => {
     testSelectionThenDelete("a+c",async (page) => {
         await doTextHomeEndKeyPress(page, true, false); // equivalent to End
         await page.keyboard.press("ArrowLeft");
+        await waitForEditorSettled(page);
         await doTextHomeEndKeyPress(page, false, true); // equivalent to Shift+Home
     }, "{$c}");
 
@@ -131,6 +126,7 @@ test.describe("Shift-Home selects to the beginning of current level", () => {
     testSelectionThenDelete("a+min(b,c)",async (page) => {
         await doTextHomeEndKeyPress(page, true, false); // equivalent to End
         await page.keyboard.press("ArrowLeft");
+        await waitForEditorSettled(page);
         await doTextHomeEndKeyPress(page, false, true); // equivalent to Shift+Home
     }, "{a}+{min}_({$})_{}");
 });
@@ -145,34 +141,34 @@ test.describe("Shift-End selects to the end of current level", () => {
     testSelectionThenDelete("a+c",async (page) => {
         await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await doTextHomeEndKeyPress(page, true, true); // equivalent to Shift+End
     }, "{a$}");
 
     testSelectionThenDelete("abcdef",async (page) => {
         await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
         await page.keyboard.press("Shift+ArrowRight");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("Shift+ArrowRight");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
     }, "{$cdef}");
 
     testSelectionThenDelete("a+abs(b)",async (page) => {
         await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await doTextHomeEndKeyPress(page, true, true); // equivalent to Shift+End
     }, "{a$}");
     testSelectionThenDelete("a+math.sin(b)",async (page) => {
         await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await doTextHomeEndKeyPress(page, true, true); // equivalent to Shift+End
     }, "{a$}");
     testSelectionThenDelete("a+max(b,c)",async (page) => {
         await doTextHomeEndKeyPress(page, false, false); // equivalent to Home
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await doTextHomeEndKeyPress(page, true, true); // equivalent to Shift+End
     }, "{a$}");
     testSelectionThenDelete("a+min(b,c)",async (page) => {

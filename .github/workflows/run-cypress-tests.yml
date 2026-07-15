@@ -20,7 +20,14 @@ jobs:
       - name: NPM Install
         # ci is better than npm install for CI jobs, apparently (quicker + more predictable):
         run: npm ci
+      - name: Cache Pyodide
+        id: cache-pyodide
+        uses: actions/cache@v4
+        with:
+          path: public/pyodide
+          key: ${{ runner.os }}-pyodide-${{ hashFiles('package-lock.json') }}
       - name: Install Pyodide
+        if: steps.cache-pyodide.outputs.cache-hit != 'true'
         run: npm run build:download-pyodide-libs
       - name: NPM Build
         run: npm run build:${{ matrix.testtype }}

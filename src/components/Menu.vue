@@ -343,6 +343,10 @@ export default defineComponent({
         return {
             scssVars, // just to be able to use in template
             showMenu: false,
+            // Handle for the delayed focus/click on the save dialog's filename input (see
+            // onStrypeMenuShownModalDlg) -- cleared in onStrypeMenuHideModalDlg if the dialog
+            // closes before the delay fires, so it doesn't act on stale/hidden state later:
+            saveDialogFocusTimeoutId: undefined as ReturnType<typeof setTimeout> | undefined,
             // This flag is used to know if we've added the tabindex value for the closing "button", and get the number of indexes
             retrievedTabindexesCount: -1,
             // The tabindex of the currently focused element of the menu
@@ -956,7 +960,13 @@ export default defineComponent({
                 // Maybe because of internal Bootstrap behaviour, can't give focus to the input right now or in next ticks
                 // so we wait a bit to generate a focus/click in the input.
                 // We also check which target is selected to update target-depend UI in the modal.
-                setTimeout(() => {
+                // If the dialog is closed again before this fires (e.g. a quick save), we must
+                // cancel it -- otherwise it fires later regardless, against a stale/hidden input,
+                // and the spurious .click() it performs can trigger unrelated UI (e.g. closing
+                // whatever menu happens to be open at that moment via the editor's click-outside
+                // handler) -- see the matching clearTimeout in onStrypeMenuHideModalDlg:
+                this.saveDialogFocusTimeoutId = setTimeout(() => {
+                    this.saveDialogFocusTimeoutId = undefined;
                     this.onSaveTargetChanged();
                     const saveFileNameInputElement = (document.getElementById(this.saveFileNameInputId) as HTMLInputElement);
                     // If the save as is opened because the user requested to create a copy of a file name, we use the file stored in the save existing file infos
@@ -1126,6 +1136,12 @@ export default defineComponent({
             }
 
             if(dlgId == this.saveProjectModalDlgId){
+                // Cancel the delayed focus/click from onStrypeMenuShownModalDlg if it hasn't fired
+                // yet -- the dialog is closing now, so it must not act later on a stale input:
+                if(this.saveDialogFocusTimeoutId !== undefined){
+                    clearTimeout(this.saveDialogFocusTimeoutId);
+                    this.saveDialogFocusTimeoutId = undefined;
+                }
                 const saveExistingCloudProjectInfos = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getSaveExistingCloudProjectInfos();
                 if(saveExistingCloudProjectInfos){
                     vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.setSaveExistingCloudProjectInfos({...saveExistingCloudProjectInfos, isCopyFileRequested: false});  

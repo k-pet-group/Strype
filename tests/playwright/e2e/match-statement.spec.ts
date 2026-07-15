@@ -1,8 +1,8 @@
 import {test, expect} from "@playwright/test";
 import {readFileSync} from "node:fs";
 import {save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
-import {skipPyodideLoading} from "../support/general";
-import {getDefaultStrypeProjectDocumentationFullLine, pressN} from "../support/editor";
+import {setupStrypeTest} from "../support/general";
+import {getDefaultStrypeProjectDocumentationFullLine, pressN, waitForEditorSettled} from "../support/editor";
 
 const defaultStandardStrypeProjectDocLiteral = getDefaultStrypeProjectDocumentationFullLine();
 
@@ -30,24 +30,7 @@ print(myString)
 `;
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(240000); // 240 seconds
-
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
-    await skipPyodideLoading(page);
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 240000, skipPyodide: true});
 });
 
 test.describe("Add Match statement", () => {
@@ -58,21 +41,21 @@ test.describe("Add Match statement", () => {
 
     test("Add frame (with match expression and one guarded extra case)", async ({page}) => {
         await page.keyboard.press("m");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("foo");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("c");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("bar if x>0");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("r");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("\"hi\"");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         expect(readFileSync(await save(page), "utf-8")).toEqual(`
 #(=> Strype:1:std
 ${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports
@@ -91,172 +74,172 @@ print(myString)
 
     test("Add frame (complex case blocks)", async ({page}) => {
         await page.keyboard.press("m");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("value");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("#");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type(" 1. Literal patterns");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("c");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("0");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("r");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("\"Got zero\"");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await pressN("ArrowDown", 2, true)(page);
         await page.keyboard.press("c");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("1|2|3");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("r");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("\"Got a small number (1-3)\"");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await pressN("ArrowDown", 2, true)(page);
         await page.keyboard.press("#");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type(" 2. Type patterns");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("c");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("str()");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("r");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("f\"Got a string: {value}\"");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await pressN("ArrowDown", 2, true)(page);
         await page.keyboard.press("c");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("int()");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("r");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("f\"Got an integer: {value}\"");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await pressN("ArrowDown", 2, true)(page);
         await page.keyboard.press("#");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type(" 3. Sequence patterns");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("c");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("[x,y]");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("r");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("f\"Got a 2-item list: x={x}, y={y}");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await pressN("ArrowDown", 2, true)(page);   
         await page.keyboard.press("#");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type(" 4. Mapping patterns");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("c");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("{\"type\":\"point\",\"x\":x,\"y\":y}");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("r");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("f\"Got a point: ({x}, {y})");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await pressN("ArrowDown", 2, true)(page);
         await page.keyboard.press("#");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type(" 5. Class patterns");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("c");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("complex(real=r,imag=i)");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("r");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("f\"Complex number: real={r}, imag={i}");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await pressN("ArrowDown", 2, true)(page);
         await page.keyboard.press("#");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type(" 6. OR-patterns with structure");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("c");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("(\"yes\"|\"y\"|\"ok\")");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("r");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("\"Affirmative\"");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await pressN("ArrowDown", 2, true)(page);
         await page.keyboard.press("#");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type(" 7. Guard conditions");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("c");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("int(n) if n<0");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("r");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("\"Negative integer\"");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await pressN("ArrowDown", 2, true)(page);
         await page.keyboard.press("c");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("int(n) if n>100");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("r");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("\"Large integer\"");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await pressN("ArrowDown", 2, true)(page);
         await page.keyboard.press("#");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type(" 8. Default catch-all");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await pressN("ArrowDown", 2, true)(page);
         await page.keyboard.press("r");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("f\"Something else: {value}\"");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         // Note the following content is redacted from points 3 and 4 as we don't support rest patterns yet
         //# 3. Sequence patterns
         //case [x, y, *rest]  :
@@ -330,37 +313,36 @@ test.describe("Delete Match statement", () => {
         await page.keyboard.press("m");
         expect(readFileSync(await save(page), "utf-8")).toEqual(basicMatchLiteral.trimStart());
         await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("Delete");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         expect(readFileSync(await save(page, false), "utf-8")).toEqual(defaultProjectCodeLiteral.trimStart());
     });
 
     test("Backspace after Match", async ({page}) => {
         await page.keyboard.press("m");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         expect(readFileSync(await save(page), "utf-8")).toEqual(basicMatchLiteral.trimStart());
         await pressN("ArrowDown", 3, true)(page);
-        await page.waitForTimeout(200);
         await page.keyboard.press("Backspace");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         expect(readFileSync(await save(page, false), "utf-8")).toEqual(defaultProjectCodeLiteral.trimStart());
     });
 
     test("Backspace inside Match", async ({page}) => {
         await page.keyboard.press("m");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("Backspace");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         // This backspace should not delete anything
         expect(readFileSync(await save(page), "utf-8")).toEqual(basicMatchLiteral.trimStart());
         // Now delete the case, and see that backspace delete the match frame
         await page.keyboard.press("Delete");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("Backspace");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         expect(readFileSync(await save(page, false), "utf-8")).toEqual(defaultProjectCodeLiteral.trimStart());
     });
     
@@ -369,17 +351,17 @@ test.describe("Delete Match statement", () => {
         // Add a comment and an if in the case
         await pressN("ArrowDown", 2, true)(page);
         await page.keyboard.press("#");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("comment test");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("i");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await pressN("ArrowUp", 2, true)(page);
         // Try backspace: shouldn't change anything as case is not empty-like
         await page.keyboard.press("Backspace");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         expect(readFileSync(await save(page), "utf-8")).toEqual(`
 #(=> Strype:1:std
 ${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports
@@ -396,13 +378,13 @@ print(myString)
 `.trimStart());
         // Delete the if, and try again to backspace: we should delete the case and bring the comment up
         await page.keyboard.press("ArrowDown");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("Delete");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("Backspace");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         expect(readFileSync(await save(page, false), "utf-8")).toEqual(`
 #(=> Strype:1:std
 ${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports

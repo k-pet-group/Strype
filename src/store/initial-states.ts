@@ -16,7 +16,7 @@ const initialStates: StateAppObjects = {
         debugging: false,
         initialState: initialPythonState,
         showKeystroke: false,
-        nextAvailableId: 3,
+        nextAvailableId: 5,
     },
 
     "initialMicrobitState": {

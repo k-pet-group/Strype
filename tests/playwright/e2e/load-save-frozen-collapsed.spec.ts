@@ -3,34 +3,23 @@ import {loadContent, save} from "../support/loading-saving";
 import fs from "fs";
 import en from "@/localisation/en/en_main.json";
 import { CollapsedState } from "../../cypress/support/frame-types";
-import {addFakeClipboard} from "../support/clipboard";
-import { checkFrameXorTextCursor } from "../support/editor";
+import { checkFrameXorTextCursor, waitForEditorSettled } from "../support/editor";
+import { setupStrypeTest } from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(120_000); // 120 seconds
-
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
-    await addFakeClipboard(page);
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
-    
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 120_000, fakeClipboard: true});
 });
 
 async function saveAndCheck(page: Page, expectedSPY: string) {
     const path = await save(page, false);
     const saved = fs.readFileSync(path, "utf8");
     expect(saved).toEqual(expectedSPY);
+}
+
+async function waitForErrorDetected(page: Page) : Promise<void> {
+    // Menu.vue only shows this span (wrapped in v-if="errorCount > 0") once the app has actually
+    // detected a code error, so wait for it instead of guessing how long the check takes:
+    await expect(page.locator(".error-count-span")).toBeVisible();
 }
 
 async function clickFoldFor(page: Page, identifyingText: string) : Promise<void> {
@@ -347,9 +336,9 @@ test.describe("Saves collapsed state after icon clicks", () => {
     test("Freezing prevents focusing the text slots with clicking", async ({page}) => {
         await loadContent(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader"}));
         await page.locator("span", {hasText: "Alpha"}).click();
-        await page.waitForTimeout(3000);
+        await waitForEditorSettled(page);
         await page.keyboard.press("Backspace");
-        await page.waitForTimeout(3000);
+        await waitForEditorSettled(page);
         // That should put us before Alpha, then we press backspace it should delete top1 (line indexes 3 and 4):
         await saveAndCheck(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader"}).split(/\r?\n/).filter((_, i) => i < 3 || i > 4).join("\n"));
     });
@@ -381,8 +370,7 @@ Alpha(None)
 test.describe("Frozen state deals with errors", () => {
     test("Cannot freeze if there is a syntax error #1", async ({page}) => {
         await loadContent(page, inputWithBlank);
-        // Wait a moment for errors to be checked:
-        await page.waitForTimeout(2000);
+        await waitForErrorDetected(page);
         // Will Timeout when it doesn't find the menu item:
         await expect(makeFrozen(page, "Alpha")).rejects.toThrow(/Timeout/i);
         // Menu remains though so we need to dismiss it:
@@ -428,8 +416,7 @@ foo("Anon",7)
 
     test("Cannot freeze if there is a syntax error #2", async ({page}) => {
         await loadContent(page, inputWithTigerPythonError);
-        // Wait a moment for errors to be checked:
-        await page.waitForTimeout(2000);
+        await waitForErrorDetected(page);
         // Will Timeout when it doesn't find the menu item:
         await expect(makeFrozen(page, "def")).rejects.toThrow(/Timeout/i);
         // Menu remains though so we need to dismiss it:
@@ -442,8 +429,7 @@ foo("Anon",7)
 test.describe("Folding state deals with errors", () => {
     test("Cannot fold if there is a syntax error #1", async ({page}) => {
         await loadContent(page, inputWithBlank);
-        // Wait a moment for errors to be checked:
-        await page.waitForTimeout(2000);
+        await waitForErrorDetected(page);
         // Will Timeout when it doesn't find the menu item:
         await expect(foldViaMenu(page, "Alpha", CollapsedState.ONLY_HEADER_VISIBLE)).rejects.toThrow(/Timeout/i);
         // Menu remains though so we need to dismiss it:
@@ -492,8 +478,7 @@ foo("Anon",7)
 
     test("Cannot fold if there is a syntax error #2", async ({page}) => {
         await loadContent(page, inputWithTigerPythonError);
-        // Wait a moment for errors to be checked:
-        await page.waitForTimeout(2000);
+        await waitForErrorDetected(page);
         // Will Timeout when it doesn't find the menu item:
         await expect(foldViaMenu(page, "def", CollapsedState.HEADER_AND_DOC_VISIBLE)).rejects.toThrow(/Timeout/i);
         // Menu remains though so we need to dismiss it:
@@ -518,8 +503,7 @@ Alpha(None)
 
     test("Cannot fold if there is a syntax error #3", async ({page}) => {
         await loadContent(page, inputWithNestedTigerPythonError);
-        // Wait a moment for errors to be checked:
-        await page.waitForTimeout(2000);
+        await waitForErrorDetected(page);
         // Folding all children should not fold it:
         await clickFoldChildrenFor(page, "class");
         // We should then only have folded the one without an error:

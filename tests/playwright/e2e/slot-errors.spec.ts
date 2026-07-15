@@ -1,31 +1,16 @@
 import {expect, Page, test} from "@playwright/test";
-import {addFakeClipboard} from "../support/clipboard";
 import fs from "fs";
-import {doPagePaste} from "../support/editor";
+import {doPagePaste, waitForEditorSettled} from "../support/editor";
+import {setupStrypeTest} from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    if (browserName === "webkit" && process.platform === "win32") {
-        // On Windows+Webkit it just can't seem to load the page for some reason:
-        testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");
-    }
     // With regards to Chromium: several of these tests fail on Chromium in Playwright on Mac and
     // I can't figure out why.  I've tried them manually in Chrome and Chromium on the same
     // machine and it works fine, but I see in the video that the test fails in Playwright
     // (pressing right out of a comment frame puts the cursor at the beginning and makes a frame cursor).
     // Since it works in the real browsers, and on Webkit and Firefox, we just skip the tests in Chromium
     test.skip(testInfo.project.name == "chromium", "Cannot run in Chromium");
-
-    await addFakeClipboard(page);
-
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
+    await setupStrypeTest(page, browserName, testInfo, {fakeClipboard: true, skipPyodide: true});
 });
 
 async function getFocusedId(page: Page) : Promise<string | null> {
@@ -61,10 +46,9 @@ async function checkErrorAfterExitingSlot(page: Page, keypresses : string[] = ["
     await expect(page.locator(`#${slotId}`)).not.toContainClass("error-slot");
     for (const key of keypresses) {
         await page.keyboard.press(key);
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
     }
-    await page.waitForTimeout(300);
-    // Now should show an error:
+    // Now should show an error (toContainClass already retries, no need for a wait beforehand):
     await expect(page.locator(`#${slotId}`)).toContainClass("error-slot");
 }
 
@@ -109,17 +93,17 @@ test.describe("Check slots have errors", () => {
         // could show errors on function description slots, so we check that doesn't happen:
         // Class with method, where the method has header content "a, *"
         await page.keyboard.press("ArrowUp");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("cFoo");
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         await page.keyboard.type("dfoo(a,*");
         const paramId = await getFocusedId(page);
         // Move into the function description slot
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(200);
+        await waitForEditorSettled(page);
         const descriptionId = await getFocusedId(page);
         // Sanity check:
         expect(descriptionId).not.toEqual(paramId);
@@ -127,8 +111,7 @@ test.describe("Check slots have errors", () => {
         await expect(page.locator(`#${paramId}`)).not.toContainClass("error-slot");
         await expect(page.locator(`#${descriptionId}`)).not.toContainClass("error-slot");
         await page.keyboard.press("ArrowRight");
-        await page.waitForTimeout(500);
-        // Now should show an error in params but not description:
+        // Now should show an error in params but not description (toContainClass already retries):
         await expect(page.locator(`#${paramId}`)).toContainClass("error-slot");
         await expect(page.locator(`#${descriptionId}`)).not.toContainClass("error-slot");
     });

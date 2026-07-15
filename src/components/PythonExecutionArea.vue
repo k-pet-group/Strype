@@ -508,7 +508,7 @@ export default defineComponent({
                 return;
             case PythonExecRunningState.Running:
                 soundManager?.stopAllSounds();
-                terminateAndRestartPyodide();
+                void terminateAndRestartPyodide();
                 useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                 return;
             case PythonExecRunningState.RunningAwaitingStop:
@@ -710,7 +710,14 @@ export default defineComponent({
                         }
                     }))
                 ) as Promise<PyodideErrorDetails | null>).then((possibleError) => {
-                    if (possibleError != null) {
+                    // If the user clicked Stop, runClicked() (below) has already set this to NotRunning
+                    // *before* this callback fires (natural completion is the only other path, and that
+                    // only sets NotRunning just below, i.e. after we've had a chance to check it here).
+                    // Stopping deliberately interrupts the worker (see terminateAndRestartPyodide()),
+                    // which surfaces to the running Python code as a genuine (if synthetic) exception --
+                    // we don't want to show that to the user as if it were a real runtime error:
+                    const wasStoppedByUser = useStore().pythonExecRunningState === PythonExecRunningState.NotRunning;
+                    if (possibleError != null && !wasStoppedByUser) {
                         handleErrorTrace(possibleError.text, possibleError.traceback, (hadError) => {
                             if (hadError) {
                                 this.switchToConsoleTab("always");
@@ -724,7 +731,7 @@ export default defineComponent({
                     this.checkNonePrecompiledErrors();
                     soundManager?.stopAllSounds();
                     // We always restart Pyodide for a clean state:
-                    terminateAndRestartPyodide();
+                    void terminateAndRestartPyodide();
                 });
                 
                 // We make sure the number of errors shown in the interface is in line with the current state of the code

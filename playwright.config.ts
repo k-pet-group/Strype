@@ -9,13 +9,18 @@ import { defineConfig, devices } from "@playwright/test";
 // dotenv.config({ path: path.resolve(__dirname, '.env') });
 
 export const BASE_URL = process.env.BASE_URL || "http://localhost:8081/editor/";
+// Both SPEC and EXCLUDE_SPEC accept a single spec path or a comma-separated list of them.
 const specFilter = process.env.SPEC;
+const grepFilter = process.env.GREP;
+const excludeSpecFilter = process.env.EXCLUDE_SPEC;
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
 export default defineConfig({
     testDir: "./tests/playwright/e2e",
-    testMatch: specFilter ? [specFilter] : ["**/*.spec.ts"], // default fallback    
+    testMatch: specFilter ? specFilter.split(",") : ["**/*.spec.ts"], // default fallback
+    testIgnore: excludeSpecFilter ? excludeSpecFilter.split(",") : undefined,
+    grep: grepFilter ? new RegExp(grepFilter) : undefined,
     // Folder for test artifacts such as screenshots, videos, traces, etc.
     outputDir: "./tests/playwright/test-results",
     /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -23,13 +28,22 @@ export default defineConfig({
     /* Retry thrice on CI, as some of the random tests are slightly flaky */
     retries: process.env.CI ? 3 : 0,
     fullyParallel: true,
-    /* If you need different in CI, replicate the conditional expression above: process.env.CI ? 2 : 4 */
-    workers: 4,
+    /* macos-latest CI runners only have 3 vCPUs (vs. 4 on ubuntu-latest/windows-latest), so the
+     * usual 4 workers oversubscribes them -- this starves the main thread badly enough under real
+     * contention to cause genuine test failures/slowness (confirmed by local repro with
+     * --workers=20 on a quiet machine -- see WEBKIT_STOP_INVESTIGATION.md at commit e5c91b29).
+     * RUNNER_OS is set automatically by GitHub Actions (Linux/Windows/macOS), no workflow changes needed.
+     * Locally (process.env.CI unset) always use 4, regardless of host OS. */
+    workers: (process.env.CI && process.env.RUNNER_OS === "macOS") ? 3 : 4,
     /* Reporter to use. See https://playwright.dev/docs/test-reporters */
     reporter: [
         ["list"],
         ["html", {"open": "never", "outputFolder": "./tests/playwright/html-report"}],
-        ["@estruyf/github-actions-reporter"],
+        // useDetails wraps each spec file's results in a collapsible <details> block.
+        // Blocks whose summary icon is fail/flaky (❌/⚠️) are then force-expanded by
+        // the "Expand failed/flaky sections" CI step, since this reporter doesn't
+        // support conditionally setting `open` on its own.
+        ["@estruyf/github-actions-reporter", { useDetails: true }],
     ],
     /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
     use: {

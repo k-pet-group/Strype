@@ -1,8 +1,7 @@
 import {Page, test, expect} from "@playwright/test";
 import { loadContent, save } from "../support/loading-saving";
 import { readFileSync } from "node:fs";
-import { skipPyodideLoading } from "../support/general";
-import {addFakeClipboard} from "../support/clipboard";
+import { setupStrypeTest } from "../support/general";
 import { checkFrameXorTextCursor, doPagePaste } from "../support/editor";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
@@ -11,21 +10,7 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
         // and on Ubuntu+Webkit the paste doesn't seem to work (while it's fine on MacOS):
         testInfo.skip(true, "Skipping on Windows/Ubuntu + WebKit due to various problems");
     }
-
-    // These tests can take longer than the default 30 seconds:
-    testInfo.setTimeout(90000); // 90 seconds
-
-    // Make browser's console.log output visible in our logs (useful for debugging):
-    page.on("console", (msg) => {
-        console.log("Browser log:", msg.text());
-    });
-    await skipPyodideLoading(page);
-    await addFakeClipboard(page);
-    await page.goto("./", {waitUntil: "load"});
-    await page.waitForSelector("body");
-    await page.evaluate(() => {
-        (window as any).Playwright = true;
-    });
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 90000, skipPyodide: true, fakeClipboard: true, skipWindowsWebkit: false});
 });
 
 async function testBeforeAfterPaste(page: Page, before :string, selectionKeys: string[], operation: "cut" | "copy" | "delete" | "duplicate" | "duplicate2", moveToDestKeys: string[], afterPaste :string) {

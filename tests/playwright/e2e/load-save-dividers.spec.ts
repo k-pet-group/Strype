@@ -135,8 +135,9 @@ test.describe("Saves divider states", () => {
         await dragDividerTo(page, CODE_VS_SIDEBAR, 10, 300);
         await page.waitForTimeout(20 * 1000);
         
+        // Note: the "code vs sidebar" divider is now persistent after a subsequent layout changes
         await saveAndCheck(page, [
-            /editorCommandsSplitterPane2Size:\{"tabsCollapsed":21.94\}/,
+            /editorCommandsSplitterPane2Size:\{"tabsCollapsed":21.94,"tabsExpanded":21.94\}/,
             /peaLayoutMode:tabsExpanded/,
             /peaCommandsSplitterPane2Size:\{"tabsCollapsed":1[56].?[0-9]*\}/,
             /peaExpandedSplitterPane2Size:\{"tabsExpanded":87.01\}/,

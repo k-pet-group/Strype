@@ -76,24 +76,27 @@ Cypress.Commands.add("paste",
 export function testInsert(insertion : string, result : string, canBeTestedWithPaste?: boolean) : void {
     it("Tests " + insertion, () => {
         focusEditor();
-        cy.get("body").type("i");
-        assertState("{$}");
-        cy.get("body").type(" " + insertion);
-        assertState(result);
+        cy.get("body").type("i").then(() => {
+            assertState("{$}");
+            cy.get("body").type(" " + insertion)
+                .then(() => {
+                    assertState(result);
+                    // TODO test caret position mapping?
+                    // TODO test splitting the insert like in Java
 
-        // TODO test caret position mapping?
-        // TODO test splitting the insert like in Java
+                    // Default is true:
+                    if (canBeTestedWithPaste ?? true) {
+                        // Test that pasting the code as part of a whole if frame works:
+                        it("Tests pasting " + insertion, () => {
+                            focusEditor();
+                            (cy.get("body") as any).paste("if " + insertion + ":\n    pass");
+                            // Ignore the dollar because the cursor won't be in there at all:
+                            assertState(result.replace("$", ""));
+                        });
+                    }
+                });
+        });        
     });
-    // Default is true:
-    if (canBeTestedWithPaste ?? true) {
-        // Test that pasting the code as part of a whole if frame works:
-        it("Tests pasting " + insertion, () => {
-            focusEditor();
-            (cy.get("body") as any).paste("if " + insertion + ":\n    pass");
-            // Ignore the dollar because the cursor won't be in there at all:
-            assertState(result.replace("$", ""));
-        });
-    }
 }
 
 // Moves until the position within the slot is the given cursor pos, then executes the given function
@@ -243,29 +246,42 @@ export function testBackspace(originalInclBksp : string, expectedResult : string
             const before = originalInclBksp.substring(0, bkspIndex);
             const after = originalInclBksp.substring(bkspIndex + 1);
 
-            cy.get("body").type("i");
-            assertState("{$}");
-            if (before.length > 0) {
-                cy.get("body").type(before);
-            }
-            withSelection((posToInsert) => {
-                if (after.length > 0) {
-                    cy.get("body").type(after);
-                }
-
-                // Focus doesn't work, instead let's move the caret until we are in the right slot
-                withSelection((newPosToInsert) => {
-                    if(newPosToInsert.id != posToInsert.id){
-                        reachFrameLabelSlot( posToInsert.id, true);
+            cy.get("body").type("i")
+                .then(() => {
+                    assertState("{$}");                                
+                })
+                .then(() => {
+                    if (before.length > 0) {
+                        cy.get("body").type(before);
                     }
-                });
+                                
+                })
+                .then(() =>  {
+                    withSelection((posToInsert) => {
+                        const continueTest = () => {
+                            // Focus doesn't work, instead let's move the caret until we are in the right slot
+                            withSelection((newPosToInsert) => {
+                                if(newPosToInsert.id != posToInsert.id){
+                                    reachFrameLabelSlot( posToInsert.id, true);
+                                }
+                            });
 
-                // We are somewhere in the slot we wanted to be, just make sure we now get to the right position
-                moveToPositionThen(posToInsert.cursorPos, () => {
-                    cy.get("body").type("{backspace}");
-                    assertState(expectedResult);
+                            // We are somewhere in the slot we wanted to be, just make sure we now get to the right position
+                            moveToPositionThen(posToInsert.cursorPos, () => {
+                                cy.get("body").type("{backspace}");
+                                assertState(expectedResult);
+                            });
+                        };
+
+                        if (after.length > 0) {
+                            cy.get("body").type(after).then(continueTest);
+                        }
+                        else{
+                            continueTest();
+                        }                        
+                    });
                 });
-            });
+            
         });
     }
     if (bkspIndex > 0 && testDelete) {

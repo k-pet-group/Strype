@@ -24,16 +24,32 @@ London. See [README.md](README.md) for build/run basics.
   Playwright specs and shared helpers.
 - `tests/unit` — Vitest unit tests (not part of the initiative below).
 
-## Active initiative: de-flaking the e2e suites
+## Past initiative: de-flaking the e2e suites (paused, 2026-07-15)
 
-There is an ongoing effort to remove hard-coded timeouts (`cy.wait(1234)`,
+There was an effort to remove hard-coded timeouts (`cy.wait(1234)`,
 `page.waitForTimeout(1234)`) from the Cypress/Playwright suites and replace
-them with waits on an actual observable condition. This is a large,
-multi-session task — full plan, conversion recipes, and file-by-file
-progress tracking live in **[docs/claude-improve-testing/](docs/claude-improve-testing/)**.
+them with waits on an actual observable condition. It's paused, not
+finished — CI has been green recently, but per the tracking table roughly
+20 of ~35 spec files were still unconverted (including all of
+`autocomplete-*.cy.ts`, `structured-expressions-navigation.spec.ts`,
+`description-fields.spec.ts`, `frame-selection-manipulation.spec.ts`, and
+several `load-save-*` files), and CI-tuning work (macOS worker/job
+splitting, timeout adjustments, resource-usage logging for hang diagnosis)
+was still ongoing, when work stopped.
 
-If you're picking this task back up, read `docs/claude-improve-testing/PLAN.md`
-first, then `PROGRESS.md` to see what's already done, then `RECIPES.md` for
-the conversion patterns already worked out for this codebase. Update
-`PROGRESS.md` as you go so the next session (possibly on a different
-machine) can resume without re-deriving anything.
+The working docs (`PLAN.md`, `PROGRESS.md`, `RECIPES.md`,
+`WEBKIT_STOP_INVESTIGATION.md`) were removed from the repo at commit
+`e5c91b29` (the last commit where they're present). To resurrect them:
+
+```
+git checkout e5c91b29 -- docs/claude-improve-testing
+```
+
+`PROGRESS.md`'s file-by-file table and dated log are the best starting
+point for resuming — they record what's converted, what's deliberately
+left alone and why, and several real product bugs found along the way.
+`WEBKIT_STOP_INVESTIGATION.md` is also still cited by path (as of that same
+commit) three times — twice in `.github/workflows/run-playwright-tests.yml`
+(the isolated single-worker WebKit job, and the resource-monitor step) and
+once in `playwright.config.ts` (the macOS worker-count comment) — check
+those comments still match if this work resumes and the file's restored.

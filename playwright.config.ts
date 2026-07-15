@@ -31,7 +31,7 @@ export default defineConfig({
     /* macos-latest CI runners only have 3 vCPUs (vs. 4 on ubuntu-latest/windows-latest), so the
      * usual 4 workers oversubscribes them -- this starves the main thread badly enough under real
      * contention to cause genuine test failures/slowness (confirmed by local repro with
-     * --workers=20 on a quiet machine -- see docs/claude-improve-testing/WEBKIT_STOP_INVESTIGATION.md).
+     * --workers=20 on a quiet machine -- see WEBKIT_STOP_INVESTIGATION.md at commit e5c91b29).
      * RUNNER_OS is set automatically by GitHub Actions (Linux/Windows/macOS), no workflow changes needed.
      * Locally (process.env.CI unset) always use 4, regardless of host OS. */
     workers: (process.env.CI && process.env.RUNNER_OS === "macOS") ? 3 : 4,

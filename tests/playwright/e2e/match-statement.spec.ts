@@ -2,14 +2,15 @@ import {test, expect} from "@playwright/test";
 import {readFileSync} from "node:fs";
 import {save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
 import {setupStrypeTest} from "../support/general";
-import {getDefaultStrypeProjectDocumentationFullLine, pressN, waitForEditorSettled} from "../support/editor";
+import {getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, pressN, waitForEditorSettled} from "../support/editor";
 
 const defaultStandardStrypeProjectDocLiteral = getDefaultStrypeProjectDocumentationFullLine();
+const defaultStrypeProjectImportsLiteral = getDefaultStrypeProjectImportsFullLine();
 
 const basicMatchLiteral = `
 #(=> Strype:1:std
 ${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports
-#(=> Section:Definitions
+${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 match ___strype_blank  :
     case _  :
@@ -22,7 +23,7 @@ print(myString)
 const defaultProjectCodeLiteral = `
 #(=> Strype:1:std
 ${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports
-#(=> Section:Definitions
+${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 
@@ -59,7 +60,7 @@ test.describe("Add Match statement", () => {
         expect(readFileSync(await save(page), "utf-8")).toEqual(`
 #(=> Strype:1:std
 ${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports
-#(=> Section:Definitions
+${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 match foo  :
     case bar if x>0  :
@@ -250,7 +251,7 @@ print(myString)
         expect(readFileSync(await save(page), "utf-8")).toEqual(`
 #(=> Strype:1:std
 ${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports
-#(=> Section:Definitions
+${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 match value  :
     # 1. Literal patterns
@@ -297,7 +298,7 @@ print(myString)
         expect(readFileSync(await save(page), "utf-8")).toEqual(`
 #(=> Strype:1:std
 ${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports
-#(=> Section:Definitions
+${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 match ___strype_blank  :
     case _  :
@@ -365,7 +366,7 @@ test.describe("Delete Match statement", () => {
         expect(readFileSync(await save(page), "utf-8")).toEqual(`
 #(=> Strype:1:std
 ${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports
-#(=> Section:Definitions
+${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 match ___strype_blank  :
     case _  :
@@ -388,7 +389,7 @@ print(myString)
         expect(readFileSync(await save(page, false), "utf-8")).toEqual(`
 #(=> Strype:1:std
 ${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports
-#(=> Section:Definitions
+${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 match ___strype_blank  :
     pass

@@ -2,7 +2,7 @@
 // specifically around storing and restoring the state from browser storage.
 
 import { Page, expect, test } from "@playwright/test";
-import { skipPyodideLoading } from "../support/general";
+import { DEFAULT_STARTING_FRAME_COUNT, skipPyodideLoading } from "../support/general";
 import { save } from "../support/loading-saving";
 import {strypeElIds} from "../support/proxy";
 
@@ -40,13 +40,16 @@ test.afterEach(async ({ context }, testInfo) => {
 
 async function assertStartingProject(page: Page)  {
     // Checks the starting project is showing:
-    await expect(page.locator(".frame-div")).toHaveCount(2);
+    await expect(page.locator(".frame-div")).toHaveCount(DEFAULT_STARTING_FRAME_COUNT);
     await expect(page.locator("span", {hasText: "Hello from Strype"})).toHaveCount(1);
     await expect(page.locator("span", {hasText: "This is the default Strype starter project"})).toHaveCount(1);
 }
 
-async function assertStartingPlus(page: Page, paramContent: string) {
-    await expect(page.locator(".frame-div")).toHaveCount(3);
+// expectedFrameCount defaults to the current default project's frame count plus one, but tests
+// that load an old, frozen localStorage snapshot (captured before the default project's shape
+// last changed) need to pass the frame count that snapshot actually contains, not today's count:
+async function assertStartingPlus(page: Page, paramContent: string, expectedFrameCount = DEFAULT_STARTING_FRAME_COUNT + 1) {
+    await expect(page.locator(".frame-div")).toHaveCount(expectedFrameCount);
     await expect(page.locator("span", {hasText: "Hello from Strype"})).toHaveCount(1);
     await expect(page.locator("span", {hasText: "This is the default Strype starter project"})).toHaveCount(1);
     await expect(page.locator("span", {hasText: paramContent})).toHaveCount(1);
@@ -178,7 +181,9 @@ test.describe("Test migration from old system", () => {
         const page = await context.newPage();
         await loadAndWaitForEditor(page);
         // This is the content I used to make the above Unicode escaped version:
-        await assertStartingPlus(page, "Saved state from previous storage model");
+        // The snapshot predates the current default project's imports, so it has one fewer frame
+        // than DEFAULT_STARTING_FRAME_COUNT + 1 would now assume:
+        await assertStartingPlus(page, "Saved state from previous storage model", 3);
         // Check the key has gone:
         const keys = await page.evaluate(() => {
             const keys = [];
@@ -208,7 +213,9 @@ test.describe("Test migration from old system", () => {
         const page1 = await context.newPage();
         await loadAndWaitForEditor(page1);
         // This is the content I used to make the above Unicode escaped version:
-        await assertStartingPlus(page1, "Saved state from previous storage model");
+        // The snapshot predates the current default project's imports, so it has one fewer frame
+        // than DEFAULT_STARTING_FRAME_COUNT + 1 would now assume:
+        await assertStartingPlus(page1, "Saved state from previous storage model", 3);
 
         const page2 = await context.newPage();
         await loadAndWaitForEditor(page2);

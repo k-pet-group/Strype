@@ -1,4 +1,5 @@
 import { scssVars } from "../support/standard-setup";
+import { clearDefaultImports } from "../support/test-support";
 
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
@@ -19,7 +20,8 @@ describe("Graphics library", () => {
     it("Shows completions for graphics standalone functions", () => {
         focusEditorAC();
         // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        clearDefaultImports();
+        cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function frame and trigger auto-complete:
         cy.get("body").type(" ");
         cy.wait(500);
@@ -39,7 +41,8 @@ describe("Graphics library", () => {
     it("Shows completions for object constructor", () => {
         focusEditorAC();
         // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        clearDefaultImports();
+        cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function frame and trigger auto-complete:
         cy.get("body").type(" ");
         cy.wait(500);
@@ -53,7 +56,8 @@ describe("Graphics library", () => {
     it("Shows completions for return of graphics load_image", () => {
         focusEditorAC();
         // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        clearDefaultImports();
+        cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function call frame and trigger auto-complete:
         cy.get("body").type(" ");
         cy.wait(500);
@@ -67,7 +71,8 @@ describe("Graphics library", () => {
     it("Shows completions for return of graphics get_background", () => {
         focusEditorAC();
         // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        clearDefaultImports();
+        cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function call frame and trigger auto-complete:
         cy.get("body").type(" ");
         cy.wait(500);
@@ -81,7 +86,8 @@ describe("Graphics library", () => {
     it("Shows completions for return of sound load_sound", () => {
         focusEditorAC();
         // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}fstrype.sound{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        clearDefaultImports();
+        cy.get("body").type("fstrype.sound{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function call frame and trigger auto-complete:
         cy.get("body").type(" ");
         cy.wait(500);
@@ -96,7 +102,8 @@ describe("Graphics library", () => {
         cy.readFile("src/assetsFilesystem/images/cat-test.jpg", null).then((catJPEG) => {
             focusEditorAC();
             // Add graphics import:
-            cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+            clearDefaultImports();
+            cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
             // Add a function call frame and trigger auto-complete:
             cy.get("body").type(" {del}");
             cy.wait(500);
@@ -120,7 +127,8 @@ describe("Graphics library", () => {
         cy.readFile("src/assetsFilesystem/sounds/meow.wav", null).then((catWAV) => {
             focusEditorAC();
             // Add graphics import:
-            cy.get("body").type("{uparrow}{uparrow}fstrype.sound{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+            clearDefaultImports();
+            cy.get("body").type("fstrype.sound{rightarrow}*{rightarrow}{downarrow}{downarrow}");
             // Add a function call frame and trigger auto-complete:
             cy.get("body").type(" {del}");
             cy.wait(500);
@@ -140,7 +148,8 @@ describe("Graphics library", () => {
     it("Shows completions for Actor methods", () => {
         focusEditorAC();
         // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        clearDefaultImports();
+        cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Make an actor:
         cy.get("body").type("=a=Actor('cat-test.jpg'){rightarrow}");
         // Add a function frame and trigger auto-complete:
@@ -163,7 +172,8 @@ describe("Graphics library", () => {
     it("Shows completions for Image methods", () => {
         focusEditorAC();
         // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        clearDefaultImports();
+        cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Make an image:
         cy.get("body").type("=e=Image(100, 100){rightarrow}");
         // Add a function frame and trigger auto-complete:
@@ -183,7 +193,8 @@ describe("Graphics library", () => {
     it("Shows completions for Image methods on clone()", () => {
         focusEditorAC();
         // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        clearDefaultImports();
+        cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Make an image:
         cy.get("body").type("=e=Image(100, 100){rightarrow}");
         // Add a function frame and trigger auto-complete:
@@ -203,7 +214,8 @@ describe("Graphics library", () => {
     it("Shows completions for Image methods on Actor.get_image()", () => {
         focusEditorAC();
         // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        clearDefaultImports();
+        cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Make an image:
         cy.get("body").type("=a=Actor('blah'){rightarrow}");
         // Add a function frame and trigger auto-complete:
@@ -224,7 +236,8 @@ describe("Graphics library", () => {
         focusEditorAC();
 
         // Go up to imports, add library, add import, then trigger auto-complete:
-        cy.get("body").type("{uparrow}{uparrow}f");
+        clearDefaultImports();
+        cy.get("body").type("f");
         cy.wait(500);
         // Fill in time in the LHS then go across to the RHS:
         cy.get("body").type("strype.graphics{rightarrow}");
@@ -283,7 +296,8 @@ describe("Modules from libraries", () => {
     it("Offers auto-complete in import frames based on libraries", () => {
         focusEditorAC();
         // Go up to imports, add library, add import, then trigger auto-complete:
-        cy.get("body").type("{uparrow}{uparrow}lhttp://localhost:8089/test-library/{rightarrow}i");
+        clearDefaultImports();
+        cy.get("body").type("lhttp://localhost:8089/test-library/{rightarrow}i");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
@@ -296,7 +310,8 @@ describe("Modules from libraries", () => {
         focusEditorAC();
 
         // Go up to imports, add library, add import, then trigger auto-complete:
-        cy.get("body").type("{uparrow}{uparrow}lhttp://localhost:8089/test-library/{rightarrow}f");
+        clearDefaultImports();
+        cy.get("body").type("lhttp://localhost:8089/test-library/{rightarrow}f");
         cy.wait(500);
         // Fill in time in the LHS then go across to the RHS:
         cy.get("body").type("mediacomp{rightarrow}");
@@ -348,7 +363,8 @@ describe("Modules from libraries", () => {
     it("Offers auto-completion for imported modules", () => {
         focusEditorAC();
         // Go up to imports, add library, add import, then trigger auto-complete:
-        cy.get("body").type("{uparrow}{uparrow}lhttp://localhost:8089/test-library{rightarrow}i");
+        clearDefaultImports();
+        cy.get("body").type("lhttp://localhost:8089/test-library{rightarrow}i");
         cy.wait(500);
         // Trigger autocomplete, type "mediacom" then press enter to complete and right arrow to leave frame:
         cy.get("body").type("{ctrl} ");
@@ -371,7 +387,8 @@ describe("Modules from libraries", () => {
     it("Shows completions for return of makeSound", () => {
         focusEditorAC();
         // Add graphics import:
-        cy.get("body").type("{uparrow}{uparrow}lhttp://localhost:8089/test-library{rightarrow}fmediacomp{rightarrow}*{rightarrow}{downarrow}{downarrow}");
+        clearDefaultImports();
+        cy.get("body").type("lhttp://localhost:8089/test-library{rightarrow}fmediacomp{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function call frame and trigger auto-complete:
         cy.get("body").type(" ");
         cy.wait(500);

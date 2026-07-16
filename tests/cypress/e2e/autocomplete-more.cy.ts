@@ -1,4 +1,5 @@
 import { scssVars } from "../support/standard-setup";
+import { clearDefaultImports } from "../support/test-support";
 
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
@@ -87,7 +88,8 @@ describe("Overlapping imports", () => {
     it("Offers all imports from module even where is overlapping from import:", () => {
         focusEditorAC();
         // Add two imports: import math, and from math import sin, cos
-        cy.get("body").type("{uparrow}{uparrow}imath{downarrow}fmath{rightarrow}sin,cos{downarrow}{downarrow}{downarrow}");
+        clearDefaultImports();
+        cy.get("body").type("imath{downarrow}fmath{rightarrow}sin,cos{downarrow}{downarrow}{downarrow}");
         // Now we're back in main body, make a function call with math.:
         cy.get("body").type(" math.");
         cy.wait(500);
@@ -110,7 +112,8 @@ describe("Import of structured items", () => {
     it("Shows today in fully qualified date", () => {
         focusEditorAC();
         // Add import: from datetime import date
-        cy.get("body").type("{uparrow}{uparrow}fdatetime{rightarrow}date{downarrow}{downarrow}{downarrow}");
+        clearDefaultImports();
+        cy.get("body").type("fdatetime{rightarrow}date{downarrow}{downarrow}{downarrow}");
         // Now we're back in main body, make a function call with math.:
         cy.get("body").type(" ");
         cy.wait(500);
@@ -125,7 +128,8 @@ describe("Import of structured items", () => {
     it("Shows today in after date.", () => {
         focusEditorAC();
         // Add import: from datetime import date
-        cy.get("body").type("{uparrow}{uparrow}fdatetime{rightarrow}date{downarrow}{downarrow}{downarrow}");
+        clearDefaultImports();
+        cy.get("body").type("fdatetime{rightarrow}date{downarrow}{downarrow}{downarrow}");
         // Now we're back in main body, make a function call with math.:
         cy.get("body").type(" date.");
         cy.wait(500);

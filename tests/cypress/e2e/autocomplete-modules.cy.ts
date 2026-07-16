@@ -1,4 +1,5 @@
 import { scssVars } from "../support/standard-setup";
+import { clearDefaultImports } from "../support/test-support";
 
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
@@ -15,7 +16,8 @@ describe("Modules", () => {
     it("Offers auto-complete in import frames", () => {
         focusEditorAC();
         // Go up to imports, add one, then trigger auto-complete:
-        cy.get("body").type("{uparrow}{uparrow}i");
+        clearDefaultImports();
+        cy.get("body").type("i");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
@@ -79,7 +81,8 @@ describe("Modules", () => {
     it("Offers auto-complete in LHS of from...import frames", () => {
         focusEditorAC();
         // Go up to imports, add one, then trigger auto-complete:
-        cy.get("body").type("{uparrow}{uparrow}f");
+        clearDefaultImports();
+        cy.get("body").type("f");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
         withAC((acIDSel) => {
@@ -146,7 +149,8 @@ describe("Modules", () => {
         const targetDoc = Cypress.env("mode") == "microbit" ? "Offset ticks value by a given number, which can be either positive or negative." : "Convert seconds since the Epoch to a time tuple expressing UTC";
 
         // Go up to imports, add one, then trigger auto-complete:
-        cy.get("body").type("{uparrow}{uparrow}f");
+        clearDefaultImports();
+        cy.get("body").type("f");
         cy.wait(500);
         // Fill in time in the LHS then go across to the RHS:
         cy.get("body").type("time{rightarrow}");
@@ -220,7 +224,8 @@ describe("Modules", () => {
         // This works on microbit without using Skulpt because we have special cases to look up microbit in our precalculated JSON        
         focusEditorAC();
         // Go up to imports and add an import frame:
-        cy.get("body").type("{uparrow}{uparrow}i");
+        clearDefaultImports();
+        cy.get("body").type("i");
         cy.wait(500);
         // Trigger autocomplete, type "tim" then press enter to complete and right arrow to leave frame:
         cy.get("body").type("{ctrl} ");
@@ -256,7 +261,8 @@ describe("Modules", () => {
     it("Offers auto-completion for imported modules with a from import *", () => {
         focusEditorAC();
         // Go up to the imports and add a "from..import.." frame
-        cy.get("body").type("{uparrow}{uparrow}f");
+        clearDefaultImports();
+        cy.get("body").type("f");
         cy.wait(500);
         // Trigger autocomplete (in first section), type "tim" and hit enter to auto-complete, then right arrow to go across to the second part of the frame:
         cy.get("body").type("{ctrl} ");
@@ -322,7 +328,8 @@ describe("Nested modules", () => {
         // This works on microbit without using Skulpt because we have special cases to look up microbit in our precalculated JSON
         focusEditorAC();
         // Go up to imports and add an import frame:
-        cy.get("body").type("{uparrow}{uparrow}i");
+        clearDefaultImports();
+        cy.get("body").type("i");
         cy.wait(500);
         // Type whole module as one item:
         cy.get("body").type(targetModule);
@@ -342,7 +349,8 @@ describe("Nested modules", () => {
     it("Offers auto-completion for modules with names a.b when imported as a.b.* with from", () => {
         focusEditorAC();
         // Go up to imports and add a from import frame:
-        cy.get("body").type("{uparrow}{uparrow}f");
+        clearDefaultImports();
+        cy.get("body").type("f");
         cy.wait(500);
         // Type whole module as one item:
         cy.get("body").type(targetModule);
@@ -360,7 +368,8 @@ describe("Nested modules", () => {
     it("Offers auto-completion for modules with names a.b when imported as a.b.func with from", () => {
         focusEditorAC();
         // Go up to imports and add a from import frame:
-        cy.get("body").type("{uparrow}{uparrow}f");
+        clearDefaultImports();
+        cy.get("body").type("f");
         cy.wait(500);
         // Type whole module as one item:
         cy.get("body").type(targetModule);
@@ -426,7 +435,8 @@ describe("Imported items", () => {
     it("Offers auto-complete when module is imported", () => {
         focusEditorAC();
         // Go up to imports and add an import frame:
-        cy.get("body").type("{uparrow}{uparrow}i");
+        clearDefaultImports();
+        cy.get("body").type("i");
         cy.wait(500);
         // Type whole module as one item:
         cy.get("body").type(targetModule);
@@ -445,7 +455,8 @@ describe("Imported items", () => {
     it("Doesn't offer auto-complete on original name when module is imported using as", () => {
         focusEditorAC();
         // Go up to imports and add an import frame:
-        cy.get("body").type("{uparrow}{uparrow}i");
+        clearDefaultImports();
+        cy.get("body").type("i");
         cy.wait(500);
         // Space bar alone should give us the "as", so this imports as "t":
         cy.get("body").type(targetModule + " t{rightarrow}");
@@ -502,7 +513,8 @@ describe("Underscore handling", () => {
         // We use our own module because we know it has something with underscores in it:
         it("Does not offer underscore items on modules at all", () => {
             // Go up to imports and add a from time import *
-            cy.get("body").type("{uparrow}{uparrow}fstrype.graphics{rightarrow}*{rightarrow}");
+            clearDefaultImports();
+            cy.get("body").type("fstrype.graphics{rightarrow}*{rightarrow}");
             cy.get("body").type("{downarrow}{downarrow}");
 
             focusEditorAC();

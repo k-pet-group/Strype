@@ -288,6 +288,10 @@ export function getDefaultStrypeProjectDocumentationFullLine(): string {
     return "'''This is the default Strype starter project'''\n";
 }
 
+export function getDefaultStrypeProjectImportsFullLine(): string {
+    return "from strype.graphics import * \nfrom strype.sound import * \n";
+}
+
 // Deletes forward (Delete key) from the top of a container until it's empty. `maxPresses` is
 // expected to be a safe upper bound (a count that includes nested descendants, e.g. the
 // statements inside a function/class definition's body), not an exact number of presses needed --

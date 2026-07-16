@@ -230,6 +230,8 @@ if (Cypress.env("mode") == "microbit") {
 }
 else {
     defaultImports = [
+        /from\s+strype\.graphics\s+import\s*\*/,
+        /from\s+strype\.sound\s+import\s*\*/,
     ];
 
     defaultMyCode  = [

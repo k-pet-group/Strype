@@ -15,9 +15,29 @@ export function getDefaultStrypeProjectDocumentationFullLine(mode: string): stri
 }
 
 export function getDefaultStrypeProjectImportFullLine(mode: string): string {
-    return (mode == "microbit") 
+    return (mode == "microbit")
         ? "from microbit import *\n"
-        : "";
+        : "from strype.graphics import * \nfrom strype.sound import * \n";
+}
+
+// Navigates to the top of the code (the top of Imports) from wherever the caret currently is,
+// ready to type/paste a new import above whatever's already there. Implemented as repeated
+// {home}{uparrow} presses rather than a fixed {uparrow} count: {home} is a no-op once already at
+// the start of a line/frame and {uparrow} is a no-op once at the very top, so this reliably
+// reaches the top regardless of how many frames (including default imports) precede it -- unlike
+// an exact {uparrow} count, which breaks every time the starting project's shape changes.
+export function navigateToTopOfCode(): void {
+    cy.get("body").type("{home}{uparrow}{home}{uparrow}{home}{uparrow}");
+}
+
+// Navigates to the top of the code, then deletes whatever's currently in Imports (the 2 default
+// imports on a fresh project) so tests that are specifically about typing/pasting a *new* import
+// and checking autocomplete behave the same as when Imports started out empty, rather than having
+// to account for the defaults now being there too. Leaves the caret at the top of Imports, ready
+// for the test's own import to be typed/pasted.
+export function clearDefaultImports(): void {
+    navigateToTopOfCode();
+    cy.then(() => deleteFramesUpTo("#frameContainer_-1", Cypress.$("#frameContainer_-1 .frame-div").length));
 }
 
 // Presses Delete (forward) against `containerSelector`'s frame count, stopping as soon as the

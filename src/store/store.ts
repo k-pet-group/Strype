@@ -2117,13 +2117,13 @@ export const useStore = defineStore("app", {
                     if(!foundDisabledJointFrameToDelete) {
                         const indexOfCurrentInAvailables = availablePositions.findIndex((e)=> e.frameId === currentFrame.id && e.caretPosition === this.currentFrame.caretPosition);
                         // the "next" position of the current
-                        frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{id:-100, isSlotNavigationPosition: false};
+                        frameToDelete = availablePositions[indexOfCurrentInAvailables+1]??{frameId:-100, isSlotNavigationPosition: false};
                     }
                     // The only times to prevent deletion with 'delete' is when we are inside a body that has no children (except in Joint frames)
                     // or when the next position is a joint root's below OR a strict* block frame below - both enabled (* = that cannot take joint frame, like a function definition, a class definition or "with")
-                    if((framesIdToDelete.length==1 && this.frameObjects[framesIdToDelete[0]]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.isJointFrame 
+                    if((framesIdToDelete.length==1 && this.frameObjects[framesIdToDelete[0]]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.isJointFrame
                             && this.currentFrame.caretPosition == CaretPosition.body && this.frameObjects[framesIdToDelete[0]]?.childrenIds.length == 0)
-                        || (!this.frameObjects[frameToDelete.frameId].isDisabled && (!!this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren || (this.frameObjects[frameToDelete.frameId]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren))
+                        || (!this.frameObjects[frameToDelete.frameId]?.isDisabled && (!!this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren || (this.frameObjects[frameToDelete.frameId]?.frameType.allowChildren && !this.frameObjects[frameToDelete.frameId]?.frameType.allowJointChildren))
                             && (frameToDelete.caretPosition??"") === CaretPosition.below)){
                         frameToDelete.frameId = -100;
                     }

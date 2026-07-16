@@ -25,9 +25,9 @@ describe("Test brackets", () => {
 
     it("Test brackets in a for frame LHS", () => {
         focusEditor();
-        cy.get("body").type("f");
-        cy.get("body").type("a,(b,c)");
-        assertState(3, "a,(b,c)$");
+        cy.get("body").type("f").then(() => {
+            cy.get("body").type("a,(b,c)").then(() => assertState((Cypress.env("mode") == "microbit") ? 4 : 3, "a,(b,c)$"));
+        });
     });
 });
 

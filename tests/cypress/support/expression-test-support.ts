@@ -1,5 +1,6 @@
 // To avoid passing arguments in all the functions defined in this file, we fetch the shared IDs
 // and CSS class names of Strype (we only do it if they are not already saved in this file)
+// We also set the set the 'paste' command via standard-setup
 import { isMacOSPlatform } from "@/helpers/common";
 import {cleanFromHTML, waitForEditorSettled} from "../support/test-support";
 import { scssVars, strypeElIds } from "./standard-setup";
@@ -51,52 +52,27 @@ function withSelection(inner : (arg0: { id: string, cursorPos : number }) => voi
     });
 }
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-Cypress.Commands.add("paste",
-    {prevSubject : true},
-    ($element, data) => {
-        const clipboardData = new DataTransfer();
-        clipboardData.setData("text", data);
-        const pasteEvent = new ClipboardEvent("paste", {
-            bubbles: true,
-            cancelable: true,
-            clipboardData,
-        });
-
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        cy.get($element).then(() => {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            $element[0].dispatchEvent(pasteEvent);
-        });
-    });
-
 export function testInsert(insertion : string, result : string, canBeTestedWithPaste?: boolean) : void {
     it("Tests " + insertion, () => {
         focusEditor();
-        cy.get("body").type("i").then(() => {
-            assertState("{$}");
-            cy.get("body").type(" " + insertion)
-                .then(() => {
-                    assertState(result);
-                    // TODO test caret position mapping?
-                    // TODO test splitting the insert like in Java
+        cy.get("body").type("i");
+        assertState("{$}");
+        cy.get("body").type(" " + insertion);
+        assertState(result);
 
-                    // Default is true:
-                    if (canBeTestedWithPaste ?? true) {
-                        // Test that pasting the code as part of a whole if frame works:
-                        it("Tests pasting " + insertion, () => {
-                            focusEditor();
-                            (cy.get("body") as any).paste("if " + insertion + ":\n    pass");
-                            // Ignore the dollar because the cursor won't be in there at all:
-                            assertState(result.replace("$", ""));
-                        });
-                    }
-                });
-        });        
+        // TODO test caret position mapping?
+        // TODO test splitting the insert like in Java
     });
+    // Default is true:
+    if (canBeTestedWithPaste ?? true) {
+        // Test that pasting the code as part of a whole if frame works:
+        it("Tests pasting " + insertion, () => {
+            focusEditor();
+            (cy.get("body") as any).paste("if " + insertion + ":\n    pass");
+            // Ignore the dollar because the cursor won't be in there at all:
+            assertState(result.replace("$", ""));
+        });
+    }
 }
 
 // Moves until the position within the slot is the given cursor pos, then executes the given function
@@ -246,42 +222,29 @@ export function testBackspace(originalInclBksp : string, expectedResult : string
             const before = originalInclBksp.substring(0, bkspIndex);
             const after = originalInclBksp.substring(bkspIndex + 1);
 
-            cy.get("body").type("i")
-                .then(() => {
-                    assertState("{$}");                                
-                })
-                .then(() => {
-                    if (before.length > 0) {
-                        cy.get("body").type(before);
+            cy.get("body").type("i");
+            assertState("{$}");
+            if (before.length > 0) {
+                cy.get("body").type(before);
+            }
+            withSelection((posToInsert) => {
+                if (after.length > 0) {
+                    cy.get("body").type(after);
+                }
+
+                // Focus doesn't work, instead let's move the caret until we are in the right slot
+                withSelection((newPosToInsert) => {
+                    if(newPosToInsert.id != posToInsert.id){
+                        reachFrameLabelSlot( posToInsert.id, true);
                     }
-                                
-                })
-                .then(() =>  {
-                    withSelection((posToInsert) => {
-                        const continueTest = () => {
-                            // Focus doesn't work, instead let's move the caret until we are in the right slot
-                            withSelection((newPosToInsert) => {
-                                if(newPosToInsert.id != posToInsert.id){
-                                    reachFrameLabelSlot( posToInsert.id, true);
-                                }
-                            });
-
-                            // We are somewhere in the slot we wanted to be, just make sure we now get to the right position
-                            moveToPositionThen(posToInsert.cursorPos, () => {
-                                cy.get("body").type("{backspace}");
-                                assertState(expectedResult);
-                            });
-                        };
-
-                        if (after.length > 0) {
-                            cy.get("body").type(after).then(continueTest);
-                        }
-                        else{
-                            continueTest();
-                        }                        
-                    });
                 });
-            
+
+                // We are somewhere in the slot we wanted to be, just make sure we now get to the right position
+                moveToPositionThen(posToInsert.cursorPos, () => {
+                    cy.get("body").type("{backspace}");
+                    assertState(expectedResult);
+                });
+            });
         });
     }
     if (bkspIndex > 0 && testDelete) {

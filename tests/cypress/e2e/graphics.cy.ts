@@ -6,29 +6,8 @@ import failOnConsoleError from "cypress-fail-on-console-error";
 import { focusEditorAndClear } from "../support/test-support";
 failOnConsoleError();
 
+// Must clear all local storage between tests to reset the state, and set the 'paste' command:
 beforeEach(standardBeforeEach);
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-Cypress.Commands.add("paste",
-    {prevSubject : true},
-    ($element, data) => {
-        const clipboardData = new DataTransfer();
-        clipboardData.setData("text", data);
-        const pasteEvent = new ClipboardEvent("paste", {
-            bubbles: true,
-            cancelable: true,
-            clipboardData,
-        });
-
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        cy.get($element).then(() => {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            $element[0].dispatchEvent(pasteEvent);
-        });
-    });
 
 enum ImageComparison {
     COMPARE_TO_EXISTING,

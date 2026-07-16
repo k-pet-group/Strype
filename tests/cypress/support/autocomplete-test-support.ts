@@ -1,6 +1,6 @@
 // Must clear all local storage between tests to reset the state,
 // and also retrieve the shared CSS and HTML elements IDs exposed
-// by Strype via the Window object of the app.
+// by Strype via the Window object of the app, and set the 'paste' command.
 import {cleanFromHTML, waitForEditorSettled} from "../support/test-support";
 import { scssVars, standardBeforeEach, strypeElIds } from "./standard-setup";
 
@@ -16,35 +16,6 @@ chai.Assertion.addMethod("beLocaleSorted", function () {
     const expected = [...actual].sort((a, b) => a.localeCompare(b));
     expect(actual).to.deep.equal(expected);
 });
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-Cypress.Commands.add("paste",
-    {prevSubject : true},
-    ($element, data : string | Buffer, type : string) => {
-        const clipboardData = new DataTransfer();
-        if (typeof data === "string") {
-            clipboardData.setData(type, data);
-        }
-        else {
-            const file = new File([new Blob([new Uint8Array(data)], {type: type})], "anon", { type: type });
-            clipboardData.items.add(file);
-        }
-
-        const pasteEvent = new ClipboardEvent("paste", {
-            bubbles: true,
-            cancelable: true,
-            clipboardData,
-        });
-
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        cy.get($element).then(() => {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            $element[0].dispatchEvent(pasteEvent);
-        });
-    });
 
 export function withAC(inner : (acIDSel : string, frameId: number) => void, isInMyCodeFuncCallFrame:boolean, skipSortedCheck?: boolean) : void {
     // We need to make sure last DOM update has occurred:

@@ -78,7 +78,7 @@ const initialPythonState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         labelSlotsDict: {
-            0: {slotStructures: {operators: [], fields: [{code: "strype.graphics"}]}},
+            0: {slotStructures: {operators: [{code: "."}], fields: [{code: "strype"}, {code: "graphics"}]}},
             1: {slotStructures: {operators: [], fields: [{code: "*"}]}}},
         caretVisibility: CaretPosition.none,
     },
@@ -94,7 +94,7 @@ const initialPythonState: EditorFrameObjects = {
         jointParentId: 0,
         jointFrameIds: [],
         labelSlotsDict: {
-            0: {slotStructures: {operators: [], fields: [{code: "strype.sound"}]}},
+            0: {slotStructures: {operators: [{code: "."}], fields: [{code: "strype"}, {code: "sound"}]}},
             1: {slotStructures: {operators: [], fields: [{code: "*"}]}}},
         caretVisibility: CaretPosition.none,
     },

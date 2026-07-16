@@ -811,10 +811,12 @@ export default defineComponent({
         },
 
         handleSaveAsMenuClick(){
-            // This is used to set the "save as" flag, and open the modal; the saving mechanism is handled via the modal.
-            this.requestSaveAs = true;
-            eventBus.emit(CustomEventTypes.showStrypeModal, this.saveProjectModalDlgId);
-
+            // Don't do anything if "save as" is grayed out
+            if(this.isSynced){
+                // This is used to set the "save as" flag, and open the modal; the saving mechanism is handled via the modal.
+                this.requestSaveAs = true;
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.saveProjectModalDlgId);
+            }
         },
 
         openLoadProjectDlgAfterSaved(): void {

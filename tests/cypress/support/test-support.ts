@@ -20,14 +20,40 @@ export function getDefaultStrypeProjectImportFullLine(mode: string): string {
         : "";
 }
 
+// Presses Delete (forward) against `containerSelector`'s frame count, stopping as soon as the
+// container is actually empty rather than always pressing `maxPresses` times. `maxPresses` is
+// expected to be a safe upper bound (a count that includes nested descendants, e.g. the statements
+// inside a function/class definition's body), not an exact number of presses needed -- deleting a
+// top-level block frame removes its whole subtree in one press. Uses Delete rather than Backspace:
+// the app deliberately blocks Backspace from removing a function/class definition frame when the
+// caret is inside its body (to avoid merging the body into the wrong container), which
+// forward-Delete from above the frame doesn't hit, so Delete is the only one of the two that
+// reliably clears block frames with children. Recurses through cy.then() (not a plain JS loop) so
+// each check happens after the previous keypress has actually been applied to the DOM, rather than
+// synchronously queuing every press upfront against stale state. Cypress.$ (bundled jQuery) is
+// used to count rather than cy.get()/cy.find(), because both of those retry-and-fail if a selector
+// matches zero elements -- but that's exactly the "we're done" case this needs to detect.
+function deleteFramesUpTo(containerSelector: string, maxPresses: number): void {
+    if (maxPresses <= 0) {
+        return;
+    }
+    cy.then(() => {
+        if (Cypress.$(containerSelector + " .frame-div").length > 0) {
+            cy.get("body").type("{del}");
+            waitForEditorSettled();
+            deleteFramesUpTo(containerSelector, maxPresses - 1);
+        }
+    });
+}
+
 export function focusEditorAndClear(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
     cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();
     // Some callers invoke this right after another operation that changes the frame tree (e.g. a
     // file load), which can still be mid-render at this point -- settle first, otherwise the frame
-    // counts read below can be stale and this ends up pressing Delete/Backspace more times than
-    // there are actual frames, which crashes the app rather than just failing an assertion:
+    // counts read below can be stale and this ends up pressing Delete more times than there are
+    // actual frames, which crashes the app rather than just failing an assertion:
     waitForEditorSettled();
     // Deletes every frame currently in Main, Definitions and Imports -- not just the default
     // project's frames, since this is also used to clear out whatever a previous operation (e.g. a
@@ -35,49 +61,30 @@ export function focusEditorAndClear(): void {
     // has -- leaving a genuinely blank editor with the caret back at the top of Main, matching
     // where this helper has always left the caret, since most callers type/paste directly into
     // Main afterward (callers that instead want Imports, like enterImports() in
-    // media-literals.cy.ts, already do their own extra {uparrow}{uparrow} from here). Reads the
-    // frame counts from the DOM rather than hard-coding them so this doesn't go stale if a
-    // section's content changes shape. The default caret starts at the top of Main, where deleting
-    // forward removes its frames one by one; then navigating up one level at a time and deleting
-    // backward clears Definitions then Imports; then navigating back down returns to Main. Settles
-    // after every keypress -- deleting a frame can go through a delayed-removal debounce, so a
-    // later press can otherwise race ahead of a still-in-flight removal and land on/delete the
-    // wrong frame (or, worse, crash the app by deleting more times than there are frames left).
-    // Cypress.$ (bundled jQuery) is used to count rather than cy.get()/cy.find(), because both of
-    // those retry-and-fail if a selector matches zero elements -- but Definitions (and, depending
-    // on caller, Main/Imports too) is routinely empty, which is exactly the "0 iterations" case
-    // this needs to handle gracefully rather than treating as a failure. Cypress.$ queries the DOM
-    // synchronously and simply returns an empty result, with no such assertion built in.
+    // media-literals.cy.ts, already do their own extra {uparrow}{uparrow} from here).
     cy.then(() => {
-        const mainCount = Cypress.$("#frameContainer_-3 .frame-div").length;
-        for (let i = 0; i < mainCount; i++) {
-            cy.get("body").type("{del}");
-            waitForEditorSettled();
+        const totalCount = Cypress.$(".frame-div").length;
+        // Reach the very top of the whole document regardless of the current caret position or how
+        // deeply nested any block frame's content is. {uparrow} is a no-op once already at the
+        // top, so pressing it more times than could possibly be needed is harmless -- but a block
+        // frame's body is itself an extra caret stop beyond the one .frame-div element it counts
+        // as, so totalCount alone can undershoot for nested content; multiplying it gives enough
+        // headroom for that without needing to know the exact nesting depth:
+        for (let i = 0; i < totalCount * 3 + 10; i++) {
+            cy.get("body").type("{uparrow}");
         }
-    });
-    cy.get("body").type("{uparrow}");
-    waitForEditorSettled();
-    cy.then(() => {
-        const defsCount = Cypress.$("#frameContainer_-2 .frame-div").length;
-        for (let i = 0; i < defsCount; i++) {
-            cy.get("body").type("{backspace}");
-            waitForEditorSettled();
-        }
-    });
-    cy.get("body").type("{uparrow}");
-    waitForEditorSettled();
-    cy.then(() => {
-        const importsCount = Cypress.$("#frameContainer_-1 .frame-div").length;
-        for (let i = 0; i < importsCount; i++) {
-            cy.get("body").type("{backspace}");
-            waitForEditorSettled();
-        }
+        waitForEditorSettled();
+        // Clear top-down, container by container. {downarrow} from an empty/just-cleared container
+        // reliably lands at the top of the next one:
+        deleteFramesUpTo("#frameContainer_-1", totalCount);
+        cy.get("body").type("{downarrow}");
+        waitForEditorSettled();
+        deleteFramesUpTo("#frameContainer_-2", totalCount);
+        cy.get("body").type("{downarrow}");
+        waitForEditorSettled();
+        deleteFramesUpTo("#frameContainer_-3", totalCount);
     });
     cy.get(".frame-div").should("have.length", 0);
-    cy.get("body").type("{downarrow}");
-    waitForEditorSettled();
-    cy.get("body").type("{downarrow}");
-    waitForEditorSettled();
 }
 
 // Waits for the editor to settle after an action (typing, pasting, frame manipulation) rather

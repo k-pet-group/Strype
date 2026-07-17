@@ -169,28 +169,30 @@ from a.b.c import *
 `);
     });
     
-    it("Supports basic binary operator combinations", () => {
-        for (const op of sampleSize(binary_operators, 3)) {
-            for (const lhs of sampleSize(terminals, 2)) {
-                for (const rhs of sampleSize(terminals, 3)) {
-                    // Keep a space between operands only for keyword operators (they all contains "i")
-                    const operatorSpacing = (op.includes("i")) ? " " : ""; 
-                    // Since the default code contains a project doc, we need to include it to the code
-                    const code = "raise " + lhs + operatorSpacing + op + operatorSpacing + rhs + "\n";
-                    testRoundTripPasteAndDownload(code, undefined, defaultProjectDocFullLine + code);
-                }
+    // One it() per combination, rather than looping through all of them inside a single it() as
+    // this used to do: CI (ubuntu-latest) hit a Cypress/Electron "V8 process OOM" crash partway
+    // through the ~18 round-trip paste+download+compare cycles previously accumulating within one
+    // test. Splitting them like this matches the `basics` loop above, and each new it() gets its
+    // own beforeEach page reload (registered by the paste-test-support.ts import), which resets
+    // memory in between:
+    for (const op of sampleSize(binary_operators, 3)) {
+        for (const lhs of sampleSize(terminals, 2)) {
+            for (const rhs of sampleSize(terminals, 3)) {
+                // Keep a space between operands only for keyword operators (they all contains "i")
+                const operatorSpacing = (op.includes("i")) ? " " : "";
+                // Since the default code contains a project doc, we need to include it to the code
+                const code = "raise " + lhs + operatorSpacing + op + operatorSpacing + rhs + "\n";
+                it("Supports basic binary operator combination: " + code.trim(), () => testRoundTripPasteAndDownload(code, undefined, defaultProjectDocFullLine + code));
             }
         }
-    });
-    it("Supports basic n-ary operator combinations", () => {
-        for (const op of sampleSize(nary_operators, 5)) {
-            // Keep a space between operands only for keyword operators (they all contains "i")
-            const operatorSpacing = (["and", "or"].includes(op)) ? " " : "";
-            // Since the default code contains a project doc, we need to include it to the code
-            const code = "raise " + sampleSize(terminals, 5).join(operatorSpacing + op + operatorSpacing) + "\n";
-            testRoundTripPasteAndDownload(code, undefined, defaultProjectDocFullLine + code);
-        }
-    });
+    }
+    for (const op of sampleSize(nary_operators, 5)) {
+        // Keep a space between operands only for keyword operators (they all contains "i")
+        const operatorSpacing = (["and", "or"].includes(op)) ? " " : "";
+        // Since the default code contains a project doc, we need to include it to the code
+        const code = "raise " + sampleSize(terminals, 5).join(operatorSpacing + op + operatorSpacing) + "\n";
+        it("Supports basic n-ary operator combination: " + code.trim(), () => testRoundTripPasteAndDownload(code, undefined, defaultProjectDocFullLine + code));
+    }
     
     // Check that if you paste something that already has indent on every line, we manage to preserve
     // the relation among the lines correctly:

@@ -12,7 +12,10 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     // CI run 29398704984 (macos-latest+chromium) showed "moving up 0 times" timing out at 240s
     // waiting on the book-picker dialog to populate ("fireworks" entry never became clickable);
     // siblings "moving up 1/2 times" hit the same wait but recovered on retry. Bumped for margin.
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 360_000, skipPyodide: true});
+    // CI run 29564701756 (same job) still timed out at 360s on "moving up 2 times" (same symptom --
+    // the "fireworks" entry resolved, then went "detached from the DOM, retrying" until timeout,
+    // through all 4 attempts), so bumping again:
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 480_000, skipPyodide: true});
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
 });

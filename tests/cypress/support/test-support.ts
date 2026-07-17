@@ -37,14 +37,17 @@ export function navigateToTopOfCode(): void {
 // for the test's own import to be typed/pasted.
 export function clearDefaultImports(): void {
     navigateToTopOfCode();
-    cy.then(() => deleteFramesUpTo("#frameContainer_-1", Cypress.$("#frameContainer_-1 .frame-div").length));
+    cy.then(() => deleteFramesUpTo("#frameContainer_-1"));
 }
 
-// Presses Delete (forward) against `containerSelector`'s frame count, stopping as soon as the
-// container is actually empty rather than always pressing `maxPresses` times. `maxPresses` is
-// expected to be a safe upper bound (a count that includes nested descendants, e.g. the statements
-// inside a function/class definition's body), not an exact number of presses needed -- deleting a
-// top-level block frame removes its whole subtree in one press. Uses Delete rather than Backspace:
+// Presses Delete (forward) against `containerSelector` until it's actually empty. `maxPresses`
+// isn't a count of frames to remove -- the recursion always runs to an empty container, however
+// many presses that takes, since deleting a top-level block frame removes its whole subtree
+// (nested descendants included) in one press. It's purely a safety cap against infinite recursion
+// if a press ever failed to remove a frame (an app bug, a stuck focus, a debounce race): each call
+// passes `maxPresses - 1` down, so a genuinely stuck deletion still terminates -- with a failed
+// assertion below in the caller -- instead of hanging. Callers should not need to pass it; the
+// default is generous enough for any realistic number of frames. Uses Delete rather than Backspace:
 // the app deliberately blocks Backspace from removing a function/class definition frame when the
 // caret is inside its body (to avoid merging the body into the wrong container), which
 // forward-Delete from above the frame doesn't hit, so Delete is the only one of the two that
@@ -53,7 +56,7 @@ export function clearDefaultImports(): void {
 // synchronously queuing every press upfront against stale state. Cypress.$ (bundled jQuery) is
 // used to count rather than cy.get()/cy.find(), because both of those retry-and-fail if a selector
 // matches zero elements -- but that's exactly the "we're done" case this needs to detect.
-function deleteFramesUpTo(containerSelector: string, maxPresses: number): void {
+function deleteFramesUpTo(containerSelector: string, maxPresses = 100): void {
     if (maxPresses <= 0) {
         return;
     }
@@ -96,13 +99,13 @@ export function focusEditorAndClear(): void {
         waitForEditorSettled();
         // Clear top-down, container by container. {downarrow} from an empty/just-cleared container
         // reliably lands at the top of the next one:
-        deleteFramesUpTo("#frameContainer_-1", totalCount);
+        deleteFramesUpTo("#frameContainer_-1");
         cy.get("body").type("{downarrow}");
         waitForEditorSettled();
-        deleteFramesUpTo("#frameContainer_-2", totalCount);
+        deleteFramesUpTo("#frameContainer_-2");
         cy.get("body").type("{downarrow}");
         waitForEditorSettled();
-        deleteFramesUpTo("#frameContainer_-3", totalCount);
+        deleteFramesUpTo("#frameContainer_-3");
     });
     cy.get(".frame-div").should("have.length", 0);
 }

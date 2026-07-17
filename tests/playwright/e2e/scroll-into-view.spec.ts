@@ -139,8 +139,7 @@ test.describe("Undo scrolls location into view", () => {
             await clearDefaultProject(page);
             // clearDefaultProject leaves the caret at the top of Imports; return to Main, which
             // is where this test's content belongs:
-            await page.keyboard.press("ArrowDown");
-            await page.keyboard.press("ArrowDown");
+            await pressN("ArrowDown", 2)(page);
             await doPagePaste(page, Array.from({ length: 100 }, (_, i) => `print("Hello #${i + 1}")`).join("\n"));
             const [actions, scrollTo] = undoTests[testIndex];
             const statesToUndoTo = [];
@@ -207,8 +206,7 @@ test.describe("Printing scrolls into view", () => {
         await clearDefaultProject(page);
         // clearDefaultProject leaves the caret at the top of Imports; return to Main, which is
         // where this test's content belongs:
-        await page.keyboard.press("ArrowDown");
-        await page.keyboard.press("ArrowDown");
+        await pressN("ArrowDown", 2)(page);
         await doPagePaste(page, `
 from strype.graphics import get_key
 while (True):

@@ -1,5 +1,5 @@
 import { test, Page } from "@playwright/test";
-import { clearDefaultProject, doPagePaste } from "../support/editor";
+import { clearDefaultProject, doPagePaste, pressN } from "../support/editor";
 import { checkConsoleContent, runToFinish } from "../support/execution";
 import { setupStrypeTest } from "../support/general";
 
@@ -21,8 +21,7 @@ with open("/tmp/${copyFileName}","wb")  as f2  :
         // (and the test's own paste that immediately follows, with no navigation in between) both
         // land in Main in the right order -- the test's code reads the file this writes, so it
         // must run second:
-        await page.keyboard.press("ArrowDown");
-        await page.keyboard.press("ArrowDown");
+        await pressN("ArrowDown", 2)(page);
         await doPagePaste(page, createAssetCopyCode);
     };
 }

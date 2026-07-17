@@ -335,6 +335,11 @@ export async function clearDefaultProject(page: Page) : Promise<void> {
     for (let i = 0; i < totalCount * 3 + 10; i++) {
         await page.keyboard.press("ArrowUp");
     }
+    // Settling once here (rather than after every press, as the delete loop below does) is
+    // intentional: that loop needs a per-press settle because deletion is async and debounced and
+    // can race with the next press, but pure caret navigation isn't, so there's nothing to race --
+    // one settle after the whole burst is both correct and far cheaper than settling ~totalCount*3
+    // times:
     await waitForEditorSettled(page);
     // Clear top-down, container by container. ArrowDown from an empty/just-cleared container
     // reliably lands at the top of the next one (mirrored by the equivalent "return to Main"

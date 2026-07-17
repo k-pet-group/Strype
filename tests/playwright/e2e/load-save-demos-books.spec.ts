@@ -4,7 +4,7 @@ import {readFileSync} from "node:fs";
 import {setupStrypeTest} from "../support/general";
 import {createBrowserProxy} from "../support/proxy";
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "@/helpers/sharedIdCssWithTests";
-import {clearDefaultProject, doPagePaste} from "../support/editor";
+import {clearDefaultProject, doPagePaste, pressN} from "../support/editor";
 
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
 let scssVars: {[varName: string]: string};
@@ -53,8 +53,7 @@ test.describe("Load/save book projects", () => {
             // Main so the "move up i times" logic below still exercises pasting with the caret in
             // Main/Defs/Imports respectively, now that Imports itself has also been cleared of its
             // default content:
-            await page.keyboard.press("ArrowDown");
-            await page.keyboard.press("ArrowDown");
+            await pressN("ArrowDown", 2)(page);
             for (let j = 0; j < i; j++) {
                 await page.keyboard.press("ArrowUp");
             }

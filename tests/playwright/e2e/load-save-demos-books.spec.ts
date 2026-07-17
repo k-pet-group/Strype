@@ -58,3 +58,33 @@ test.describe("Load/save book projects", () => {
         });
     }
 });
+
+test.describe("Book dialog chapter selection survives dialog opening", () => {
+    // Regression test for the intermittent "fireworks entry never became clickable" CI failures
+    // above: the book dialog used to reset its chapter selection back to Chapter 1 from its
+    // modal's "shown" handler (fired once the dialog is already interactable), so a chapter
+    // picked in the brief window before "shown" actually fired got silently wiped out -- e.g.
+    // Chapter 2 was selected, "fireworks" appeared, then the dialog reverted to Chapter 1's
+    // projects underneath it. That's a genuine timing race (confirmed via CI's resource-monitor
+    // log showing normal, non-spiking load during the hangs -- this isn't runner overload). The
+    // fix moved the reset to the dialog's "show" event (fired before it's interactable), closing
+    // that window.
+    //
+    // This drives the dialog the normal way and checks the selection is still showing Chapter 2's
+    // projects after giving any pending reset every chance to run. It's exercising the same race
+    // as the "Load and save fireworks" tests above, just without the full load-and-save round
+    // trip, so -- like those -- it may not always land inside the window that used to trigger the
+    // bug; it's here as a faster, more targeted check of the same thing.
+    test("Selecting Chapter 2 in the Book dialog keeps showing its projects", async ({page}) => {
+        await page.click("#" + await strypeElIds.getEditorMenuUID());
+        await page.locator("." + scssVars.strypeMenuItemClassName, {hasText: "Book..."}).click();
+        await page.locator(".open-book-dlg-book-group-item", {hasText: "Chapter 2"}).click();
+        const fireworksEntry = page.locator(".open-book-dlg-name", {hasText: "fireworks"});
+        await expect(fireworksEntry).toBeVisible();
+
+        // Give the dialog's "shown" event (and anything it might still trigger) every chance to
+        // fire before checking the selection is still showing Chapter 2's projects:
+        await page.waitForTimeout(2000);
+        await expect(fireworksEntry).toBeVisible();
+    });
+});

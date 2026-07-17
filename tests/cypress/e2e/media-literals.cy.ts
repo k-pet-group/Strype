@@ -15,37 +15,8 @@ import { focusEditorAndClear, getDefaultStrypeProjectDocumentationFullLine } fro
 failOnConsoleError();
 
 
-// Must clear all local storage between tests to reset the state:
+// Must clear all local storage between tests to reset the state, and set the 'paste' command:
 beforeEach(standardBeforeEach);
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-Cypress.Commands.add("paste",
-    {prevSubject : true},
-    ($element, data : string | Buffer, type : string) => {
-        const clipboardData = new DataTransfer();
-        if (typeof data === "string") {
-            clipboardData.setData(type, data);
-        }
-        else {
-            const file = new File([new Blob([new Uint8Array(data)], {type: type})], "anon", { type: type });
-            clipboardData.items.add(file);
-        }
-        
-        const pasteEvent = new ClipboardEvent("paste", {
-            bubbles: true,
-            cancelable: true,
-            clipboardData,
-        });
-
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        cy.get($element).then(() => {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            $element[0].dispatchEvent(pasteEvent);
-        });
-    });
 
 enum ImageComparison {
     COMPARE_TO_EXISTING,

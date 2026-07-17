@@ -1,5 +1,6 @@
 // To avoid passing arguments in all the functions defined in this file, we fetch the shared IDs
 // and CSS class names of Strype (we only do it if they are not already saved in this file)
+// We also set the set the 'paste' command via standard-setup
 import { isMacOSPlatform } from "@/helpers/common";
 import {cleanFromHTML, waitForEditorSettled} from "../support/test-support";
 import { scssVars, strypeElIds } from "./standard-setup";
@@ -50,28 +51,6 @@ function withSelection(inner : (arg0: { id: string, cursorPos : number }) => voi
         inner({id : ed.getAttribute("data-slot-focus-id") || "", cursorPos : parseInt(ed.getAttribute("data-slot-cursor") || "-2")});
     });
 }
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-Cypress.Commands.add("paste",
-    {prevSubject : true},
-    ($element, data) => {
-        const clipboardData = new DataTransfer();
-        clipboardData.setData("text", data);
-        const pasteEvent = new ClipboardEvent("paste", {
-            bubbles: true,
-            cancelable: true,
-            clipboardData,
-        });
-
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        cy.get($element).then(() => {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            $element[0].dispatchEvent(pasteEvent);
-        });
-    });
 
 export function testInsert(insertion : string, result : string, canBeTestedWithPaste?: boolean) : void {
     it("Tests " + insertion, () => {

@@ -166,6 +166,15 @@ describe("Graphics library", () => {
             // Shouldn't show methods from top-level:
             checkNoItems(acIDSel, "stop()");
             checkNoItems(acIDSel, "pause(seconds)");
+            // Narrow down to exactly one method and check its documentation shows.
+            // (This is a regression test: documentation for methods on library classes
+            // like Actor used to be missing entirely, because the .py to .pyi conversion
+            // used to register strype.graphics with the autocomplete engine stripped out
+            // all docstrings.)
+            cy.get("body").type("set_loc");
+            cy.wait(600);
+            checkExactlyOneItem(acIDSel, null, "set_location(x, y)");
+            cy.get(acIDSel).contains("Set the location of the actor.");
         }, false);
     });
 

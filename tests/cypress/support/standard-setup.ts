@@ -29,4 +29,33 @@ export function standardBeforeEach() : void{
     // Wait for the starting project to load fully:
     cy.get(".frame-div", { timeout: 10000 })
         .should("have.length.at.least", 2);
+    
+    // Register the "paste" command (unified for all Cypress tests here)
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    Cypress.Commands.add("paste",
+        {prevSubject : true},
+        ($element, data: string | Buffer, type: string = "text/plain") => {
+            const clipboardData = new DataTransfer();
+            if (typeof data === "string") {
+                clipboardData.setData(type, data);
+            }
+            else {
+                const file = new File([new Blob([new Uint8Array(data)], {type: type})], "anon", { type: type });
+                clipboardData.items.add(file);
+            }
+            const pasteEvent = new ClipboardEvent("paste", {
+                bubbles: true,
+                cancelable: true,
+                clipboardData,
+            });
+
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+            cy.get($element).then(() => {
+            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+            // @ts-ignore
+                $element[0].dispatchEvent(pasteEvent);
+            });
+        });
 };

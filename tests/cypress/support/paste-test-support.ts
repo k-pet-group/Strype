@@ -8,30 +8,8 @@ import { focusEditorAndClear, waitForEditorSettled, waitForProjectNameOrTimeout 
 
 // Must clear all local storage between tests to reset the state,
 // and also retrieve the shared CSS and HTML elements IDs exposed
-// by Strype via the Window object of the app.
+// by Strype via the Window object of the app, and set the 'paste' command.
 beforeEach(standardBeforeEach);
-
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
-// @ts-ignore
-Cypress.Commands.add("paste",
-    {prevSubject : true},
-    ($element, data) => {
-        const clipboardData = new DataTransfer();
-        clipboardData.setData("text", data);
-        const pasteEvent = new ClipboardEvent("paste", {
-            bubbles: true,
-            cancelable: true,
-            clipboardData,
-        });
-
-        // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-        // @ts-ignore
-        cy.get($element).then(() => {
-            // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-            // @ts-ignore
-            $element[0].dispatchEvent(pasteEvent);
-        });
-    });
 
 export function checkDownloadedCodeEquals(fullCode: string, format: "py" | "spy" = "py") : void {
     const downloadsFolder = Cypress.config("downloadsFolder");

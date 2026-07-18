@@ -31,6 +31,20 @@ describe("Python round-trip", () => {
         "raise (1+2-3)==(4*5/6)\n",
         // ** binds tighter than unary -, hence the space before:
         "raise foo**-6.7**False**True**'bye'\n",
+        // Unary ~ (bitwise not) directly followed by a binary operator, with no
+        // parentheses to separate them -- regression test for a paste-import bug
+        // where parseNextTerm() didn't recognise "~" as a unary prefix, so it
+        // consumed "~" as a whole term on its own and then choked on the operand
+        // that follows, expecting an operator there instead:
+        "raise ~a&b\n",
+        "raise ~a\n",
+        // "lambda" has no semantic support (no parameter-list awareness) -- it's a
+        // pass-through prefix keyword operator, like "not". Regression coverage for
+        // a paste-import crash ("Unknown operator ... varargslist") since lambdef
+        // wasn't handled by parseNextTerm() at all:
+        "raise lambda n:-n\n",
+        "raise lambda :x\n",
+        "raise sorted(x,key= lambda n:-n,reverse=True)\n",
         "try:\n    x = 0\nexcept:\n    x = 1\n",
         // Expand operator:
         "f(*a)\n",

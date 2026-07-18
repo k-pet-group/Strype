@@ -110,7 +110,7 @@ function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string
     //     if the right-hand item is a round or square bracket (function call and list index, respectively)
     let valid = true;
     for (let i = 0; i < slots.operators.length; i++) {
-        if (slots.operators[i].code.trim() === "not" || slots.operators[i].code.trim() === "~") {
+        if (slots.operators[i].code.trim() === "not" || slots.operators[i].code.trim() === "~" || slots.operators[i].code.trim() === "lambda") {
             // Unary operators only valid at start of bracketed expression:
             if (i != 0) {
                 valid = false;

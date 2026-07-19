@@ -37,6 +37,20 @@ $strype-classname-error-slot: error-slot;
 $strype-classname-frame-string-slot: string-slot;
 $strype-classname-frame-string-slot-quote: string-slot-quote;
 $strype-classname-frame-operator-slot: operator-slot;
+// precedence-based operator spacing tiers (see src/helpers/operatorPrecedence.ts)
+$strype-classname-op-tier-dot: op-tier-dot;
+$strype-classname-op-tier-comma: op-tier-comma;
+$strype-classname-op-tier-equals: op-tier-equals;
+$strype-classname-op-tier-colon: op-tier-colon;
+$strype-classname-op-tier-keyword-high: op-tier-keyword-high;
+$strype-classname-op-tier-keyword-medium: op-tier-keyword-medium;
+$strype-classname-op-tier-keyword-low: op-tier-keyword-low;
+$strype-classname-op-tier-high: op-tier-high;
+$strype-classname-op-tier-medium: op-tier-medium;
+$strype-classname-op-tier-low: op-tier-low;
+// applied in addition to a tier class for unary-prefix operators (not, ~, lambda):
+// overrides the tier's leading margin to 0, since there's nothing meaningful to their left.
+$strype-classname-op-unary-prefix: op-unary-prefix;
 $strype-classname-frame-comment-slot: comment-slot;
 $strype-classname-frame-statement-comment-slot: statement-comment-slot;
 $strype-classname-frame-code-slot: code-slot;

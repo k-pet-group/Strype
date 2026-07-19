@@ -9,6 +9,7 @@ import { cloneDeep, isEqual } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
 import { $enum } from "ts-enum-util";
 import { getUserDefinedSignature } from "@/autocompletion/acManager";
+import { calculatePrecedenceTiers } from "@/helpers/operatorPrecedence";
 
 export const retrieveSlotFromSlotInfos = (slotCoreInfos: SlotCoreInfos): FieldSlot => {
     // Retrieve the slot from its id (used for UI), check generateFlatSlotBases() for IDs explanation    
@@ -73,6 +74,36 @@ export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotCo
         slotStructure = transformEachLevel(slotStructure, topLevel);
     }
 
+    // Walks backward from the field immediately preceding operators[index], skipping over
+    // blank operator/blank-field placeholder pairs -- these flank every bracket/string/media
+    // field (reserved for a potential "." insertion, e.g. "(x).y") and are otherwise blank
+    // like a genuine unary position, so they can't be told apart by looking at a single
+    // preceding field alone. Returns true as soon as a real operand is found -- a non-blank
+    // field, or a bracket/string/media field -- at any distance back; false if we instead
+    // reach the start of the level, or a non-blank operator (a real operator/keyword
+    // directly followed by a blank gap, e.g. "if -a"'s "-").
+    const hasRealOperandBefore = (index: number): boolean => {
+        for (let i = index; i >= 0; i--) {
+            const field = slotStructure.fields[i];
+            if (!isFieldBaseSlot(field) || field.code.trim() !== "") {
+                return true;
+            }
+            if (i === 0 || slotStructure.operators[i - 1].code !== "") {
+                return false;
+            }
+        }
+        return false;
+    };
+    // A "-"/"+" is a unary sign when it's sitting in an otherwise-blank operand position
+    // (the same rule the live-typing tokenizer and pythonToFrames.ts already use to tell
+    // unary from binary sign) -- passed into calculatePrecedenceTiers so a detected unary
+    // sign binds as tightly as "~" rather than sharing binary +/-'s much looser precedence.
+    const isUnarySignAt = slotStructure.operators.map((operatorSlot, index) =>
+        (operatorSlot.code === "-" || operatorSlot.code === "+") && !hasRealOperandBefore(index));
+    // Computed once per level (i.e. per bracketed/top-level expression), so that
+    // spacing scales with the operators actually present at that level only.
+    const precedenceTiers = calculatePrecedenceTiers(slotStructure.operators.map((operatorSlot) => operatorSlot.code), isUnarySignAt);
+
     slotStructure.operators.forEach((operatorSlot, index) => {
         // Add the precededing field
         currIndex++;
@@ -114,7 +145,7 @@ export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotCo
 
         // Add this operator only if it is not blank
         if(operatorSlot.code.length > 0) {
-            addFlatSlot({...operatorSlot, id: slotId, type: SlotType.operator}, false);
+            addFlatSlot({...operatorSlot, id: slotId, type: SlotType.operator, precedenceTier: precedenceTiers[index]}, false);
         }
     });
 

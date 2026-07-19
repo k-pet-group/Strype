@@ -92,6 +92,7 @@ import { isMacOSPlatform } from "@/helpers/common";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
 import { detectBrowser } from "@/helpers/browser";
+import { PrecedenceTier, UNARY_PREFIX_OPERATORS } from "@/helpers/operatorPrecedence";
 
 // Default time to keep in cache: 5 minutes.
 const soundPreviewImages = new Cache<LoadedMedia>({ defaultTtl: 5 * 60 * 1000 });
@@ -147,6 +148,10 @@ export default defineComponent({
         isEditableSlot: Boolean,
         isEmphasised: Boolean,
         isFrozen: Boolean,
+        precedenceTier: {
+            type: String as PropType<PrecedenceTier>,
+            required: false,
+        },
     },
     
     inject: ["editImageInDialog"],    
@@ -296,10 +301,37 @@ export default defineComponent({
             let codeTypeCSS = "";
             let boldClass = "";               
             switch(this.slotType){
-            case SlotType.operator:
-                // For commas, we add a right margin:
-                codeTypeCSS = scssVars.frameOperatorSlotClassName + ((this.code==",") ? " slot-right-margin" : "");
+            case SlotType.operator: {
+                // Spacing is driven by the operator's precedence tier (see operatorPrecedence.ts),
+                // computed once per bracketed/top-level expression in generateFlatSlotBases().
+                const tierClassNames: Record<PrecedenceTier, string> = {
+                    "dot": scssVars.opTierDotClassName,
+                    "comma": scssVars.opTierCommaClassName,
+                    "equals": scssVars.opTierEqualsClassName,
+                    "colon": scssVars.opTierColonClassName,
+                    "keyword-high": scssVars.opTierKeywordHighClassName,
+                    "keyword-medium": scssVars.opTierKeywordMediumClassName,
+                    "keyword-low": scssVars.opTierKeywordLowClassName,
+                    "high": scssVars.opTierHighClassName,
+                    "medium": scssVars.opTierMediumClassName,
+                    "low": scssVars.opTierLowClassName,
+                    // A detected unary "-"/"+" (see generateFlatSlotBases; it now binds as
+                    // tightly as "~", so "medium" is the loosest it practically reaches)
+                    // substitutes this in for "medium" -- same trailing spacing, reusing the
+                    // exact same CSS class, just also picked up by the unary-prefix check
+                    // below to suppress the leading margin ("high" needs no substitute: it's
+                    // already zero margin on both sides):
+                    "sign-medium": scssVars.opTierMediumClassName,
+                };
+                const tierClass = tierClassNames[this.precedenceTier ?? "high"];
+                // Unary-prefix operators (not, ~, lambda always; -/+ only when detected as a
+                // unary sign, indicated by the "sign-medium" tier) have nothing meaningful to
+                // their left -- suppress the tier's leading margin, keep its trailing one:
+                const isUnarySign = this.precedenceTier === "sign-medium";
+                const unaryPrefixClass = (UNARY_PREFIX_OPERATORS.has(this.code) || isUnarySign) ? " " + scssVars.opUnaryPrefixClassName : "";
+                codeTypeCSS = scssVars.frameOperatorSlotClassName + " " + tierClass + unaryPrefixClass;
                 break;
+            }
             case SlotType.string:
                 codeTypeCSS = scssVars.frameStringSlotClassName;
                 break;
@@ -1845,6 +1877,64 @@ export default defineComponent({
     color: blue !important;
 }
 
+// Precedence-based operator spacing tiers (see src/helpers/operatorPrecedence.ts):
+// tighter-binding operators get less visual space, looser-binding ones get more,
+// capped at a "low" tier so deeply-nested low-precedence chains don't keep growing.
+.#{$strype-classname-op-tier-dot} {
+    margin: 0;
+}
+
+.#{$strype-classname-op-tier-comma} {
+    margin: 0 0.3em 0 0;
+}
+
+.#{$strype-classname-op-tier-equals} {
+    margin: 0 0.3em;
+}
+
+.#{$strype-classname-op-tier-colon} {
+    margin: 0;
+}
+
+// Keyword operators get their own tighter-to-looser ladder, parallel to the symbol one
+// below, since a word-shaped operator can never visually collapse all the way to zero
+// space -- "keyword-medium" keeps the same value the old single flat "keyword" tier used,
+// so the common (unmixed) case looks unchanged; "keyword-high"/"keyword-low" only show up
+// once keyword operators of different precedence share the same expression, e.g.
+// "a not in b and c or d" spans all three.
+.#{$strype-classname-op-tier-keyword-high} {
+    margin: 0 0.3em;
+}
+
+.#{$strype-classname-op-tier-keyword-medium} {
+    margin: 0 0.5em;
+}
+
+.#{$strype-classname-op-tier-keyword-low} {
+    margin: 0 0.8em;
+}
+
+.#{$strype-classname-op-tier-high} {
+    margin: 0;
+}
+
+.#{$strype-classname-op-tier-medium} {
+    margin: 0 0.3em;
+}
+
+.#{$strype-classname-op-tier-low} {
+    margin: 0 0.6em;
+}
+
+// Applied in addition to a tier class for unary-prefix operators (not, ~, lambda):
+// there's nothing meaningful to their left (they're always preceded by a blank
+// field), so only the tier's trailing margin should show. Must come after the
+// tier rules above so it wins on equal specificity.
+.#{$strype-classname-op-unary-prefix} {
+    margin-left: 0;
+    margin-right: 0.1em;
+}
+
 .#{$strype-classname-frame-code-slot}{
     color: black !important; 
 }
@@ -1858,9 +1948,6 @@ export default defineComponent({
     color: $frame-statement-comment-slot-base-colour !important;
 }
 
-.slot-right-margin {
-    margin-right: 2px;
-}
 // end classes for slot type
 
 .error-popover {

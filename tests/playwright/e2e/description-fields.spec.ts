@@ -1,10 +1,46 @@
-import {test, expect} from "@playwright/test";
-import {checkFrameXorTextCursor, doTextHomeEndKeyPress} from "../support/editor";
+import {test, expect, Page} from "@playwright/test";
+import {checkFrameXorTextCursor, doTextHomeEndKeyPress, getDefaultStrypeProjectImportsFullLine} from "../support/editor";
 import {readFileSync} from "node:fs";
 import {loadContent, save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
 import { setupStrypeTest } from "../support/general";
 
 const defaultStandardStrypeProjectDocLiteralWithDotSpace = "This is the default Strype starter project. ";
+const defaultStrypeProjectImportsLiteral = getDefaultStrypeProjectImportsFullLine();
+
+// Reaches the project description field from wherever the caret currently is. Presses ArrowUp a
+// generous number of times (a no-op once already at the very top, so any excess is harmless) to
+// reach the top of Imports regardless of how many default imports currently exist there, then
+// ArrowLeft to enter the description field itself -- more robust than a fixed "ArrowUp x2" count,
+// which broke when the default project started including import frames.
+async function enterProjectDescriptionField(page: Page) : Promise<void> {
+    await page.keyboard.press("Home");
+    for (let i = 0; i < 20; i++) {
+        await page.keyboard.press("ArrowUp");
+    }
+    await page.keyboard.press("ArrowLeft");
+}
+
+// From the top of Imports (where ArrowRight leaves the description field), moves the caret down
+// into the empty Definitions section so a fresh function definition can be typed there. Checks the
+// actual caret location after each ArrowDown rather than assuming a fixed press count, since that
+// count depends on how many frames are currently in Imports (today: the 2 default imports) --
+// unlike the generous-ArrowUp trick in enterProjectDescriptionField, overshooting here would land
+// in Main (which has real content) rather than harmlessly stopping at the top, so a fixed count
+// that's merely "big enough" isn't safe to use.
+async function enterEmptyDefinitionsSection(page: Page): Promise<void> {
+    for (let i = 0; i < 20; i++) {
+        const inDefinitions = await page.evaluate(() => {
+            const scssVars = (window as any)["StrypeSCSSVarsGlobals"];
+            const caret = document.querySelector("." + scssVars.caretClassName + ":not(." + scssVars.invisibleClassName + ")");
+            return !!caret?.closest("#frameContainer_-2");
+        });
+        if (inDefinitions) {
+            return;
+        }
+        await page.keyboard.press("ArrowDown");
+    }
+    throw new Error("Could not reach the Definitions section");
+}
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 90000, skipPyodide: true});
@@ -15,16 +51,13 @@ test.describe("Project description selection", () => {
         await checkFrameXorTextCursor(page);
     });
     test("Enter project description by typing", async ({page}, testInfo) => {
-        await page.keyboard.press("Home");
-        await page.keyboard.press("ArrowUp");
-        await page.keyboard.press("ArrowUp");
-        await page.keyboard.press("ArrowLeft");
+        await enterProjectDescriptionField(page);
         await page.keyboard.type(". A project description");
         expect(readFileSync(await save(page), "utf-8")).toEqual(`
 #(=> Strype:1:std
 '''${defaultStandardStrypeProjectDocLiteralWithDotSpace}A project description'''
 #(=> Section:Imports
-#(=> Section:Definitions
+${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 
@@ -43,10 +76,7 @@ print(myString)
     for (const selectAll of selectAllCombinations) {
         for (const deleteCommand of [["Backspace"], ["Delete"], [/*no press, just overtype*/]]) {
             test("Replace project description via " + JSON.stringify(selectAll) + " then " + JSON.stringify(deleteCommand), async ({page}, testInfo) => {
-                await page.keyboard.press("Home");
-                await page.keyboard.press("ArrowUp");
-                await page.keyboard.press("ArrowUp");
-                await page.keyboard.press("ArrowLeft");
+                await enterProjectDescriptionField(page);
                 await page.keyboard.type(". Initial project description");
                 await page.waitForTimeout(2000);
                 for (const key of selectAll) {
@@ -68,7 +98,7 @@ print(myString)
 #(=> Strype:1:std
 '''The replacement'''
 #(=> Section:Imports
-#(=> Section:Definitions
+${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 
@@ -79,13 +109,10 @@ print(myString)
     }
 
     test("Enter project and function description with quotes in it", async ({page}, testInfo) => {
-        await page.keyboard.press("Home");
-        await page.keyboard.press("ArrowUp");
-        await page.keyboard.press("ArrowUp");
-        await page.keyboard.press("ArrowLeft");
+        await enterProjectDescriptionField(page);
         await page.keyboard.type(". \"This is in double quotes\" and ''this is in doubled single quotes'' and this is an unmatched apostrophe of someone's.");
         await page.keyboard.press("ArrowRight");
-        await page.keyboard.press("ArrowDown");
+        await enterEmptyDefinitionsSection(page);
         await page.keyboard.type("f");
         await page.keyboard.type("foo");
         await page.keyboard.press("ArrowRight");
@@ -95,7 +122,7 @@ print(myString)
 #(=> Strype:1:std
 '''${defaultStandardStrypeProjectDocLiteralWithDotSpace}"This is in double quotes" and \\'\\'this is in doubled single quotes\\'\\' and this is an unmatched apostrophe of someone\\'s.'''
 #(=> Section:Imports
-#(=> Section:Definitions
+${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 def foo ( ) :
     '''"This is in double quotes" and \\'\\'this is in doubled single quotes\\'\\' and this is also an unmatched apostrophe of someone\\'s.'''
     pass
@@ -107,17 +134,14 @@ print(myString)
     });
 
     test("Enter project and function description with newlines in it", async ({page}, testInfo) => {
-        await page.keyboard.press("Home");
-        await page.keyboard.press("ArrowUp");
-        await page.keyboard.press("ArrowUp");
-        await page.keyboard.press("ArrowLeft");
+        await enterProjectDescriptionField(page);
         await page.keyboard.type(". This has");
         await page.keyboard.press("Shift+Enter");
         await page.keyboard.type("three");
         await page.keyboard.press("Shift+Enter");
         await page.keyboard.type("lines.");
         await page.keyboard.press("ArrowRight");
-        await page.keyboard.press("ArrowDown");
+        await enterEmptyDefinitionsSection(page);
         await page.keyboard.type("f");
         await page.keyboard.type("foo");
         await page.keyboard.press("ArrowRight");
@@ -135,7 +159,7 @@ print(myString)
 three
 lines.'''
 #(=> Section:Imports
-#(=> Section:Definitions
+${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 def foo ( ) :
     '''This has
     four
@@ -150,16 +174,13 @@ print(myString)
     });
 
     test("Enter project description with triple quotes in it", async ({page}, testInfo) => {
-        await page.keyboard.press("Home");
-        await page.keyboard.press("ArrowUp");
-        await page.keyboard.press("ArrowUp");
-        await page.keyboard.press("ArrowLeft");
+        await enterProjectDescriptionField(page);
         await page.keyboard.type(". This has horrible quotes: \"\"\" ''' \"\"\" ''' and backslashes by quotes \\' and some doubles to end: '' ''");
         expect(readFileSync(await save(page), "utf-8")).toEqual(`
 #(=> Strype:1:std
 '''${defaultStandardStrypeProjectDocLiteralWithDotSpace}This has horrible quotes: """ \\'\\'\\' """ \\'\\'\\' and backslashes by quotes \\\\\\' and some doubles to end: \\'\\' \\'\\''''
 #(=> Section:Imports
-#(=> Section:Definitions
+${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 

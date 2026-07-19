@@ -119,6 +119,7 @@ export function checkAutocompleteSorted(acIDSel: string, isInFuncCallFrame: bool
         "neopixel",
         "time",
         "strype.graphics",
+        "strype.sound",
         BUILTIN,
     ];
     cy.get(acIDSel + " div.ac-module-header:not(." + scssVars.acEmptyResultsContainerClassName + ")")

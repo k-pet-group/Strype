@@ -3,7 +3,7 @@ import { load, save } from "../support/loading-saving";
 import { createBrowserProxy } from "../support/proxy";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME } from "@/helpers/sharedIdCssWithTests";
 import { readFileSync } from "node:fs";
-import { setupStrypeTest } from "../support/general";
+import { DEFAULT_STARTING_FRAME_COUNT, setupStrypeTest } from "../support/general";
 
 //let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
@@ -36,9 +36,9 @@ async function testLongRoundTripLoadShareNewLoadSave(page: Page, filepath: strin
     await page.waitForSelector("body");
     // Should be no need to tell it we want to discard changes, because unchanged since load
 
-    // Quick sanity check that it is a new project; should only be two frames. Give this a
-    // generous timeout since the reload above can take a while to finish mounting:
-    await expect(page.locator(".frame-header")).toHaveCount(2, { timeout: 20000 });
+    // Quick sanity check that it is a new project. Give this a generous timeout since the reload
+    // above can take a while to finish mounting:
+    await expect(page.locator(".frame-header")).toHaveCount(DEFAULT_STARTING_FRAME_COUNT, { timeout: 20000 });
 
     console.log("Visiting share link: " + shareLink.slice(0, 75));
     

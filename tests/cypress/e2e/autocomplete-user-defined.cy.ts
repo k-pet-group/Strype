@@ -1,4 +1,5 @@
 import { scssVars } from "../support/standard-setup";
+import { clearDefaultImports } from "../support/test-support";
 
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
@@ -69,9 +70,11 @@ describe("User-defined items", () => {
 
     it("Offers auto-complete for user-defined variables but inside functions", () => {
         focusEditorAC();
-        // Make an assignment frame that says "myVar=<string>", then make a function definition:
-        cy.get("body").type("=myVar=\"hello\"{enter}");
-        cy.get("body").type("{uparrow}{uparrow}ffoo{rightarrow}{rightarrow}{rightarrow} ");
+        // Make an assignment frame that says "myVar=<string>", then make a function definition.
+        // The 2 arrow-ups navigate from Main up into (empty) Definitions -- unaffected by Imports'
+        // content, since that path never passes through Imports, so this doesn't need clearing the
+        // default imports the way the import-focused tests below do:
+        cy.get("body").type("=myVar=\"hello\"{enter}{uparrow}{uparrow}ffoo{rightarrow}{rightarrow}{rightarrow} ");
         cy.wait(500);
         // Trigger auto-completion:
         cy.get("body").type("{ctrl} ");
@@ -294,7 +297,8 @@ describe("User-defined items", () => {
         const parentClassMethodWithoutParamsToTest = (isTestingMicrobitVersion) ? "clear()" : "remove()";
         focusEditorAC();
         // Add the right import to get Actor or NeoPixel
-        cy.get("body").type(`{uparrow}{uparrow}f${parentImport[0]}{rightarrow}${parentImport[1]}{downarrow}{downarrow}`);
+        clearDefaultImports();
+        cy.get("body").type(`f${parentImport[0]}{rightarrow}${parentImport[1]}{downarrow}{downarrow}`);
         // Make a class frame with "foo(<parent class>)" and delete the init function, add a function "myF", then go to my code
         cy.get("body").type(`cfoo(${parentClassName}{downarrow}{downarrow}{del}fmyF{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}`);
         // Trigger auto-completion on a function call frame:

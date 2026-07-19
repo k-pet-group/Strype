@@ -1,15 +1,20 @@
-import {test, expect, Locator} from "@playwright/test";
+import {test, expect, Locator, Page} from "@playwright/test";
 import {readFileSync} from "node:fs";
 import {save} from "../support/loading-saving";
 import {setupStrypeTest} from "../support/general";
-import {doPagePaste, getDefaultStrypeProjectDocumentationFullLine, pressN, waitForEditorSettled} from "../support/editor";
+import {doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, pressN, waitForEditorSettled} from "../support/editor";
 
 const defaultStandardStrypeProjectDocLiteral = getDefaultStrypeProjectDocumentationFullLine();
+const defaultStrypeProjectImportsLiteral = getDefaultStrypeProjectImportsFullLine();
+// One line per default import frame -- used to skip past them after Control+Home, which (unlike
+// PageUp) deterministically jumps to the very top of Imports rather than a viewport-dependent
+// position, so a count derived from the defaults' own current content is reliable here:
+const numberOfDefaultImportFrames = defaultStrypeProjectImportsLiteral.trim().split("\n").length;
 
 const initialProjectCodeLiteral = `
 #(=> Strype:1:std
 ${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports
-#(=> Section:Definitions
+${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 
@@ -152,6 +157,37 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     openedPopoverLocator = page.locator(`.popover.show:has(.${scssVars.renameIdentifierPopoverClassName})`);
 });
 
+// Most of the literals above are used both as the pasted clipboard content and (via the
+// .replaceAll() rename substitutions applied to them) as the basis for the expected saved-file
+// content -- but pasting a fixture whose own Imports section is empty doesn't touch Imports at all
+// (see pasteMixedPython in src/helpers/pythonToFrames.ts: a section with no parsed frames is simply
+// skipped), so the project's own starting default imports are what end up in the saved file, not
+// anything from the pasted text. Baking the defaults into the literal itself would have them
+// pasted too, duplicating them -- so instead this inserts them only on the expected-result side,
+// right after the literal's own (paste-time-empty) Imports section header. Also correct for
+// importCodeLiteral, whose paste *does* add its own import (datetime): that gets inserted at the
+// bottom of Imports (after the existing defaults), so the defaults still belong directly after the
+// header, ahead of it.
+function withDefaultImports(code: string): string {
+    return code.replace("#(=> Section:Imports\n", "#(=> Section:Imports\n" + defaultStrypeProjectImportsLiteral);
+}
+
+// PageUp, pressed while already showing a frame cursor (rather than while editing text), jumps the
+// caret straight to the very top of the document (top of Imports), not just up by one frame --
+// confirmed empirically by probing the app's live caret state, both with the current default
+// imports present and (by temporarily reverting to the pre-default-imports source) without them.
+// Tests below that use PageUp to reach a known point in a pasted Definitions/Main fixture were
+// written when Imports was empty, so PageUp landed directly at the top of Definitions; with
+// defaults now present, they need one extra ArrowDown per default import frame first -- tied to
+// the defaults' own current content (numberOfDefaultImportFrames) rather than a hardcoded number --
+// before their original navigation continues unchanged. (A naive fix here checked the caret's
+// current container and stopped as soon as it left Imports, but that overshoots: the boundary
+// transition into Definitions is itself the first step of each test's own original navigation, so
+// consuming it here caused those tests to land one frame too far.)
+async function skipPastImports(page: Page): Promise<void> {
+    await pressN("ArrowDown", numberOfDefaultImportFrames, true)(page);
+}
+
 test.describe("Basic interaction", () => {
     test("KB shortcut, change", async ({page}) => {
         await page.keyboard.press("ArrowRight");
@@ -288,7 +324,7 @@ test.describe("Variable changes in main section", () => {
         await page.keyboard.press(renameKBShortcut);
         await expect(renameButton).toBeHidden();
         // Check results
-        expect(readFileSync(await save(page), "utf-8")).toEqual(mainCodeMultiVarsCodeLiteral.replaceAll("myString", "_new_myString").replaceAll("anotherString","_new_anotherString").trimStart());
+        expect(readFileSync(await save(page), "utf-8")).toEqual(withDefaultImports(mainCodeMultiVarsCodeLiteral.replaceAll("myString", "_new_myString").replaceAll("anotherString","_new_anotherString")).trimStart());
     });
 
     test("Multi variables and one global one local in function", async ({page}) => {
@@ -321,7 +357,7 @@ test.describe("Variable changes in main section", () => {
             matchCounter++;
             return (matchCounter > 1) ? ("_new_" + match ): match;            
         });
-        expect(readFileSync(await save(page), "utf-8")).toEqual(modifiedCode.trimStart());
+        expect(readFileSync(await save(page), "utf-8")).toEqual(withDefaultImports(modifiedCode).trimStart());
     });
 
     test("For frame and one global one local in function", async ({page}) => {
@@ -373,7 +409,7 @@ test.describe("Variable changes in main section", () => {
             return (matchCounter > 1) ? ("_new_" + match ): match;            
         });
         modifiedCode = modifiedCode.replaceAll("iter2", "_new_iter2");
-        expect(readFileSync(await save(page), "utf-8")).toEqual(modifiedCode.trimStart());
+        expect(readFileSync(await save(page), "utf-8")).toEqual(withDefaultImports(modifiedCode).trimStart());
     });
 });
 
@@ -410,7 +446,7 @@ test.describe("Variable changes in functions", () => {
             matchCounter++;
             return (matchCounter < 2) ? ("_new_" + match ): match;            
         });
-        expect(readFileSync(await save(page), "utf-8")).toEqual(modifiedCode.trimStart());
+        expect(readFileSync(await save(page), "utf-8")).toEqual(withDefaultImports(modifiedCode).trimStart());
     });
 
     test("Global", async ({page}) => {
@@ -436,7 +472,7 @@ test.describe("Variable changes in functions", () => {
         await page.keyboard.press(renameKBShortcut);
         await expect(renameButton).toBeHidden();
         // Check results
-        expect(readFileSync(await save(page), "utf-8")).toEqual(withFunction1CodeLiteral.replaceAll("iter2", "_new_iter2").trimStart());
+        expect(readFileSync(await save(page), "utf-8")).toEqual(withDefaultImports(withFunction1CodeLiteral.replaceAll("iter2", "_new_iter2")).trimStart());
     });
 
     test("For frame (local)", async({page}) => {
@@ -470,7 +506,7 @@ test.describe("Variable changes in functions", () => {
             matchCounter++;
             return (matchCounter < 3) ? ("_new_" + match ): match;
         });
-        expect(readFileSync(await save(page), "utf-8")).toEqual(modifiedCode.trimStart());
+        expect(readFileSync(await save(page), "utf-8")).toEqual(withDefaultImports(modifiedCode).trimStart());
     });
 
     test("For frame (global)", async({page}) => {
@@ -497,7 +533,7 @@ test.describe("Variable changes in functions", () => {
         await page.keyboard.press(renameKBShortcut);
         await expect(renameButton).toBeHidden();
         // Check results
-        expect(readFileSync(await save(page), "utf-8")).toEqual(withFunction2CodeLiteral.replaceAll("iter", "_new_iter").trimStart());
+        expect(readFileSync(await save(page), "utf-8")).toEqual(withDefaultImports(withFunction2CodeLiteral.replaceAll("iter", "_new_iter")).trimStart());
     });
 });
 
@@ -508,6 +544,7 @@ test("Variable change in class", async({page}) => {
     // Rename import name binding
     await page.keyboard.press("PageUp");
     await waitForEditorSettled(page);
+    await skipPastImports(page);
     await pressN("ArrowDown", 2, true)(page);
     await page.keyboard.press("ArrowRight");
     await waitForEditorSettled(page);
@@ -524,9 +561,9 @@ test("Variable change in class", async({page}) => {
     modifiedCode = modifiedCode.replaceAll("var", (match) => {
         // Only the 3 first matches
         matchCounter++;
-        return (matchCounter < 3) ? ("_new_" + match ): match;            
+        return (matchCounter < 3) ? ("_new_" + match ): match;
     });
-    expect(readFileSync(await save(page), "utf-8")).toEqual(modifiedCode.trimStart());
+    expect(readFileSync(await save(page), "utf-8")).toEqual(withDefaultImports(modifiedCode).trimStart());
 });
 
 test.describe("Changes in import", () => {
@@ -537,8 +574,7 @@ test.describe("Changes in import", () => {
         // Rename import name binding
         await page.keyboard.press("Control+Home");
         await waitForEditorSettled(page);
-        await page.keyboard.press("ArrowDown");
-        await waitForEditorSettled(page);
+        await pressN("ArrowDown", numberOfDefaultImportFrames + 1, true)(page);
         await page.keyboard.press("ArrowLeft");
         await waitForEditorSettled(page);
         await page.keyboard.press(wordWiseNavigationLeft);
@@ -551,7 +587,7 @@ test.describe("Changes in import", () => {
         await page.keyboard.press(renameKBShortcut);
         await expect(renameButton).toBeHidden();
         // Check results
-        expect(readFileSync(await save(page), "utf-8")).toEqual(importCodeLiteral.replaceAll("dt", "_new_dt").trimStart());
+        expect(readFileSync(await save(page), "utf-8")).toEqual(withDefaultImports(importCodeLiteral.replaceAll("dt", "_new_dt")).trimStart());
     });
 
     test("Module name (before as : should NOT change", async({page}) => {
@@ -561,6 +597,7 @@ test.describe("Changes in import", () => {
         // Rename import name binding
         await page.keyboard.press("Control+Home");
         await waitForEditorSettled(page);
+        await pressN("ArrowDown", numberOfDefaultImportFrames, true)(page);
         await page.keyboard.press("ArrowRight");
         await waitForEditorSettled(page);
         await page.keyboard.type("_new_");
@@ -587,6 +624,7 @@ test.describe("Function change", () => {
         // Rename function
         await page.keyboard.press("PageUp");
         await waitForEditorSettled(page);
+        await skipPastImports(page);
         await page.keyboard.press("ArrowDown");
         await waitForEditorSettled(page);
         await page.keyboard.press("ArrowRight");
@@ -599,7 +637,7 @@ test.describe("Function change", () => {
         await page.keyboard.press(renameKBShortcut);
         await expect(renameButton).toBeHidden();
         // Check results
-        expect(readFileSync(await save(page), "utf-8")).toEqual(singleLocaleInFunctionCodeLiteral.replaceAll("testF", "_new_testF").trimStart());
+        expect(readFileSync(await save(page), "utf-8")).toEqual(withDefaultImports(singleLocaleInFunctionCodeLiteral.replaceAll("testF", "_new_testF")).trimStart());
     });
 
     test("Class function", async({page}) => {
@@ -627,7 +665,7 @@ test.describe("Function change", () => {
             matchCounter++;
             return (matchCounter < 2) ? ("_new_" + match ): match;
         });
-        expect(readFileSync(await save(page), "utf-8")).toEqual(modifiedCode.trimStart());
+        expect(readFileSync(await save(page), "utf-8")).toEqual(withDefaultImports(modifiedCode).trimStart());
     });
 
 });
@@ -639,6 +677,7 @@ test("Class change", async({page}) => {
     // Rename local variable
     await page.keyboard.press("PageUp");
     await waitForEditorSettled(page);
+    await skipPastImports(page);
     await page.keyboard.press("ArrowDown");
     await waitForEditorSettled(page);
     await page.keyboard.press("ArrowRight");
@@ -651,5 +690,5 @@ test("Class change", async({page}) => {
     await page.keyboard.press(renameKBShortcut);
     await expect(renameButton).toBeHidden();
     // Check results
-    expect(readFileSync(await save(page), "utf-8")).toEqual(classCodeLiteral.replaceAll("MyClass", "_new_MyClass").trimStart());
+    expect(readFileSync(await save(page), "utf-8")).toEqual(withDefaultImports(classCodeLiteral.replaceAll("MyClass", "_new_MyClass")).trimStart());
 });

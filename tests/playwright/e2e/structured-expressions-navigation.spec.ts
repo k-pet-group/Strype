@@ -1,6 +1,6 @@
 import {Page, test, expect} from "@playwright/test";
 import path from "path";
-import {assertStateOfIfFrame, checkFrameXorTextCursor, checkTextSlotCursorPos, doPagePaste, getDefaultStrypeProjectDocumentationFullLine, pressN, waitForEditorSettled} from "../support/editor";
+import {assertStateOfIfFrame, checkFrameXorTextCursor, checkTextSlotCursorPos, doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, pressN, waitForEditorSettled} from "../support/editor";
 import fs from "fs";
 import {readFileSync} from "node:fs";
 import {save} from "../support/loading-saving";
@@ -166,7 +166,7 @@ test.describe("Check clicking near image literal", () => {
         expect(contents).toEqual(`
 #(=> Strype:1:std
 ${getDefaultStrypeProjectDocumentationFullLine()}#(=> Section:Imports
-#(=> Section:Definitions
+${getDefaultStrypeProjectImportsFullLine()}#(=> Section:Definitions
 #(=> Section:Main
 Actor(load_image("data:image/jpeg;base64,${image}").foo) 
 #(=> Section:End

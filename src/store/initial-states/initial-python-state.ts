@@ -34,7 +34,7 @@ const initialPythonState: EditorFrameObjects = {
         isSelected: false,
         isVisible: true,
         parentId: 0,
-        childrenIds: [],
+        childrenIds: [1, 2],
         jointParentId: 0,
         jointFrameIds: [],
         labelSlotsDict: {},
@@ -60,7 +60,7 @@ const initialPythonState: EditorFrameObjects = {
         isSelected: false,
         isVisible: true,
         parentId: 0,
-        childrenIds: [1,2],
+        childrenIds: [3,4],
         jointParentId: 0,
         jointFrameIds: [],
         labelSlotsDict: {},
@@ -68,8 +68,40 @@ const initialPythonState: EditorFrameObjects = {
     },
 
     1: {
-        frameType: getFrameDefType(AllFrameTypesIdentifier.varassign),
+        frameType: getFrameDefType(AllFrameTypesIdentifier.fromimport),
         id: 1,
+        isDisabled: false,
+        isSelected: false,
+        isVisible: true,
+        parentId: -1,
+        childrenIds: [],
+        jointParentId: 0,
+        jointFrameIds: [],
+        labelSlotsDict: {
+            0: {slotStructures: {operators: [{code: "."}], fields: [{code: "strype"}, {code: "graphics"}]}},
+            1: {slotStructures: {operators: [], fields: [{code: "*"}]}}},
+        caretVisibility: CaretPosition.none,
+    },
+
+    2: {
+        frameType: getFrameDefType(AllFrameTypesIdentifier.fromimport),
+        id: 2,
+        isDisabled: false,
+        isSelected: false,
+        isVisible: true,
+        parentId: -1,
+        childrenIds: [],
+        jointParentId: 0,
+        jointFrameIds: [],
+        labelSlotsDict: {
+            0: {slotStructures: {operators: [{code: "."}], fields: [{code: "strype"}, {code: "sound"}]}},
+            1: {slotStructures: {operators: [], fields: [{code: "*"}]}}},
+        caretVisibility: CaretPosition.none,
+    },
+
+    3: {
+        frameType: getFrameDefType(AllFrameTypesIdentifier.varassign),
+        id: 3,
         isDisabled: false,
         isSelected: false,
         isVisible: true,
@@ -83,9 +115,9 @@ const initialPythonState: EditorFrameObjects = {
         caretVisibility: CaretPosition.none,
     },
 
-    2: {
+    4: {
         frameType: getFrameDefType(AllFrameTypesIdentifier.funccall),
-        id: 2,
+        id: 4,
         isDisabled: false,
         isSelected: false,
         isVisible: true,

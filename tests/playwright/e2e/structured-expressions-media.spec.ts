@@ -1,5 +1,5 @@
 import {test, expect} from "@playwright/test";
-import { typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame, checkFrameXorTextCursor, MEDIA_SLOT_PARSED_PLACEHOLDER, assertStateOfFuncCallFrame, waitForEditorSettled } from "../support/editor";
+import { typeIndividually, doPagePaste, doTextHomeEndKeyPress, assertStateOfIfFrame, checkFrameXorTextCursor, clearDefaultProject, MEDIA_SLOT_PARSED_PLACEHOLDER, assertStateOfFuncCallFrame, waitForEditorSettled } from "../support/editor";
 import fs from "fs";
 import { setupStrypeTest } from "../support/general";
 import { save } from "../support/loading-saving";
@@ -172,9 +172,13 @@ test.describe("Media literal copying", () => {
 
 test.describe("Media literal manipulation", () => {
     test("Test surrounding an image literal with brackets", async ({page}) => {
-        await page.keyboard.press("End");
-        await page.keyboard.press("Backspace");
-        await page.keyboard.press("Backspace");
+        // Also clears the default strype.graphics/strype.sound imports, not just Main: with
+        // strype.graphics in scope, "load_image" appears twice in autocomplete (once for the
+        // pasted media literal, once via the module's own general completion), which would
+        // otherwise make the "not visible" check below fail for reasons unrelated to this test:
+        await clearDefaultProject(page);
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("ArrowDown");
         await page.keyboard.type("i");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");
@@ -192,9 +196,13 @@ test.describe("Media literal manipulation", () => {
         await expect(page.locator("img[data-code^='load_image']")).toBeVisible();
     });
     test("Test surrounding a sound literal with brackets", async ({page}) => {
-        await page.keyboard.press("End");
-        await page.keyboard.press("Backspace");
-        await page.keyboard.press("Backspace");
+        // Also clears the default strype.graphics/strype.sound imports, not just Main: with
+        // strype.sound in scope, "load_sound" appears twice in autocomplete (once for the pasted
+        // media literal, once via the module's own general completion), which would otherwise
+        // make the "not visible" check below fail for reasons unrelated to this test:
+        await clearDefaultProject(page);
+        await page.keyboard.press("ArrowDown");
+        await page.keyboard.press("ArrowDown");
         await page.keyboard.type("i");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{$}");

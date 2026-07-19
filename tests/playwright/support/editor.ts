@@ -288,17 +288,80 @@ export function getDefaultStrypeProjectDocumentationFullLine(): string {
     return "'''This is the default Strype starter project'''\n";
 }
 
-export async function enterCode(page: Page, codeSections : string[]) : Promise<void> {
-    await expect(page.locator(".frame-div")).toHaveCount(2);
+export function getDefaultStrypeProjectImportsFullLine(): string {
+    return "from strype.graphics import * \nfrom strype.sound import * \n";
+}
+
+// Deletes forward (Delete key) from the top of a container until it's empty. `maxPresses` isn't a
+// count of frames to remove -- the recursion always runs to an empty container, however many
+// presses that takes, since deleting a top-level block frame removes its whole subtree (nested
+// descendants included) in one press. It's purely a safety cap against an infinite recursion if a
+// press ever failed to remove a frame (an app bug, a stuck focus, a debounce race): each call
+// passes `maxPresses - 1` down, so a genuinely stuck deletion still terminates -- with a failed
+// assertion below in the caller -- instead of hanging. Callers should not need to pass it; the
+// default is generous enough for any realistic number of frames. Uses Delete rather than
+// Backspace: the app deliberately blocks Backspace from removing a function/class definition
+// frame when the caret is inside its body (to avoid merging the body into the wrong container),
+// which forward-Delete from above the frame doesn't hit, so Delete is the only one of the two that
+// reliably clears block frames with children.
+async function deleteFramesUpTo(page: Page, containerSelector: string, maxPresses = 100) : Promise<void> {
+    if (maxPresses <= 0 || await page.locator(containerSelector + " .frame-div").count() === 0) {
+        return;
+    }
+    await page.keyboard.press("Delete");
+    // Deletion can go through a delayed-removal debounce (LabelSlot.vue), so settle after
+    // every single keypress rather than firing them all at once -- otherwise a later press can
+    // race ahead of a still-in-flight removal and land on/delete the wrong frame (or, worse,
+    // crash the app by deleting more times than there are frames left):
+    await waitForEditorSettled(page);
+    await deleteFramesUpTo(page, containerSelector, maxPresses - 1);
+}
+
+// Deletes every frame currently in Main, Definitions and Imports -- not just the default
+// project's frames (2 default imports plus the myString assignment and print call in Main), since
+// this is also used to clear out whatever a previous operation left behind, which can include
+// Definitions content that the default project never has -- leaving a genuinely blank editor
+// (0 frames) with the caret positioned at the top of Imports, ready for fresh content. Reads the
+// frame counts from the DOM rather than hard-coding them so this doesn't go stale if a section's
+// content changes shape.
+export async function clearDefaultProject(page: Page) : Promise<void> {
+    const totalCount = await page.locator(".frame-div").count();
+    // Reach the very top of the whole document regardless of the current caret position or how
+    // deeply nested any block frame's content is. ArrowUp is a no-op once already at the top, so
+    // pressing it more times than could possibly be needed is harmless -- but a block frame's body
+    // is itself an extra caret stop beyond the one .frame-div element it counts as, so totalCount
+    // alone can undershoot for nested content; multiplying it gives enough headroom for that
+    // without needing to know the exact nesting depth:
+    for (let i = 0; i < totalCount * 3 + 10; i++) {
+        await page.keyboard.press("ArrowUp");
+    }
+    // Settling once here (rather than after every press, as the delete loop below does) is
+    // intentional: that loop needs a per-press settle because deletion is async and debounced and
+    // can race with the next press, but pure caret navigation isn't, so there's nothing to race --
+    // one settle after the whole burst is both correct and far cheaper than settling ~totalCount*3
+    // times:
+    await waitForEditorSettled(page);
+    // Clear top-down, container by container. ArrowDown from an empty/just-cleared container
+    // reliably lands at the top of the next one (mirrored by the equivalent "return to Main"
+    // navigation used elsewhere once everything's been cleared):
+    await deleteFramesUpTo(page, "#frameContainer_-1");
     await page.keyboard.press("ArrowDown");
+    await waitForEditorSettled(page);
+    await deleteFramesUpTo(page, "#frameContainer_-2");
     await page.keyboard.press("ArrowDown");
-    await page.keyboard.press("Backspace");
-    await page.keyboard.press("Backspace");
-    // Backspace-deleting a frame can go through a delayed-removal debounce (LabelSlot.vue), so
-    // wait for the count to actually drop by 2 rather than a fixed guess:
+    await waitForEditorSettled(page);
+    await deleteFramesUpTo(page, "#frameContainer_-3");
+    // Belt-and-braces check that we truly ended up at 0, on top of the settling above:
     await expect(page.locator(".frame-div")).toHaveCount(0, {timeout: 4000});
+    // Return to the top of Imports, where callers of this function expect to end up:
     await page.keyboard.press("ArrowUp");
+    await waitForEditorSettled(page);
     await page.keyboard.press("ArrowUp");
+    await waitForEditorSettled(page);
+}
+
+export async function enterCode(page: Page, codeSections : string[]) : Promise<void> {
+    await clearDefaultProject(page);
     for (const codeSection of codeSections) {
         // doPagePaste already waits for the editor (including frame count) to settle:
         await doPagePaste(page, codeSection);

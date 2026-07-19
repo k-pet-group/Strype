@@ -43,17 +43,25 @@ export function checkDownloadedCodeEquals(fullCode: string, format: "py" | "spy"
     // cy.readFile already polls until the file exists (up to its own timeout), so no wait is
     // needed here beforehand:
     cy.readFile(path.join(downloadsFolder, "main." + format)).then((p : string) => {
-        // Before comparing, we fix up a few oddities of our generated code:
-        // Get rid of any spaces at end of lines:
-        p = p.replaceAll(/ +\n/g, "\n");
-        // Get rid of spaces before colons at end of line:
-        p = p.replaceAll(/ +:\n/g, ":\n");
-        // Get rid of spaces before closing brackets:
-        p = p.replace(/ +([)\]}])/g, "$1");
-        // Get rid of any multiple spaces between words:
-        p = p.replace(/([^ \n])  +([^ ])/g, "$1 $2");
+        // Before comparing, we fix up a few oddities of our generated code. These normalisations
+        // apply equally to expected literals that happen to be assembled from raw internal-format
+        // fragments (e.g. getDefaultStrypeProjectImportFullLine's trailing spaces) -- both sides go
+        // through the same cleanup so callers don't need format-specific (trailing-space-free)
+        // variants of shared fragments:
+        const normalise = (s: string): string => {
+            // Get rid of any spaces at end of lines:
+            s = s.replaceAll(/ +\n/g, "\n");
+            // Get rid of spaces before colons at end of line:
+            s = s.replaceAll(/ +:\n/g, ":\n");
+            // Get rid of spaces before closing brackets:
+            s = s.replace(/ +([)\]}])/g, "$1");
+            // Get rid of any multiple spaces between words:
+            s = s.replace(/([^ \n])  +([^ ])/g, "$1 $2");
+            return s;
+        };
+        p = normalise(p);
         // Print out full version in message (without escaped \n), to make it easier to diff:
-        expect(p, "Actual unescaped:\n" + p).to.equal(fullCode.replaceAll("\r\n", "\n"));
+        expect(p, "Actual unescaped:\n" + p).to.equal(normalise(fullCode.replaceAll("\r\n", "\n")));
     });
 }
 

@@ -9,11 +9,11 @@ import en from "../../../src/localisation/en/en_main.json";
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "../../../src/helpers/sharedIdCssWithTests";
 import {Page, test, expect, ElementHandle, JSHandle} from "@playwright/test";
 import { rename } from "fs/promises";
-import {checkFrameXorTextCursor, typeIndividually, waitForEditorSettled} from "../support/editor";
+import {checkFrameXorTextCursor, clearDefaultProject, typeIndividually, waitForEditorSettled} from "../support/editor";
 import {readFileSync} from "node:fs";
 import {createBrowserProxy} from "../support/proxy";
 import {load, save} from "../support/loading-saving";
-import { setupStrypeTest } from "../support/general";
+import { DEFAULT_STARTING_FRAME_COUNT, setupStrypeTest } from "../support/general";
 
 let scssVars: {[varName: string]: string};
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
@@ -380,15 +380,14 @@ async function newProject(page: Page) : Promise<void> {
     await page.click("#" + await strypeElIds.getNewProjectLinkId(), {noWaitAfter: true});
     // A full page reload is genuinely slower than the default 5s assertion timeout under load
     // (same reasoning as the equivalent check in loading-saving.ts's load()):
-    await expect(page.locator(".frame-div")).toHaveCount(2, {timeout: 20000});
+    await expect(page.locator(".frame-div")).toHaveCount(DEFAULT_STARTING_FRAME_COUNT, {timeout: 20000});
 }
 
 async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: string) : Promise<void> {
-    await page.keyboard.press("Delete");
-    await page.keyboard.press("Delete");
-    await page.keyboard.press("ArrowUp");
-    await page.keyboard.press("ArrowUp");
-    
+    // Clears every default frame (Imports and Main), leaving the caret at the top of Imports --
+    // exactly where the section-by-section loop below needs to start:
+    await clearDefaultProject(page);
+
     if (projectDoc) {
         await page.keyboard.press("ArrowLeft");
         await waitForEditorSettled(page);
@@ -450,10 +449,9 @@ test.describe("Enters, saves and loads random frame", () => {
                 return;
             }
             
-            await page.keyboard.press("Delete");
-            await page.keyboard.press("Delete");
-            await page.keyboard.press("ArrowUp");
-            await page.keyboard.press("ArrowUp");
+            // Clears every default frame (Imports and Main), leaving the caret at the top of
+            // Imports -- exactly where the section-by-section loop below needs to start:
+            await clearDefaultProject(page);
 
             const seed = Math.random().toString();
             console.log(`Seed: "${seed}"`);

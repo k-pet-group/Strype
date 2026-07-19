@@ -1,6 +1,6 @@
 import {ElementHandle, expect, JSHandle, Page, test} from "@playwright/test";
 import { checkConsoleContent, runButtonShowsRun, runToFinish, startRunning } from "../support/execution";
-import {checkFrameXorTextCursor, doPagePaste, pressN, waitForEditorSettled} from "../support/editor";
+import {checkFrameXorTextCursor, clearDefaultProject, doPagePaste, pressN, waitForEditorSettled} from "../support/editor";
 import {save} from "../support/loading-saving";
 import {readFileSync} from "node:fs";
 import {setupStrypeTest} from "../support/general";
@@ -136,8 +136,10 @@ test.describe("Undo scrolls location into view", () => {
     ];
     for (let testIndex = 0; testIndex < undoTests.length; testIndex++) {
         test(`Undo test #${testIndex}`, async ({page}) => {
-            await page.keyboard.press("Delete");
-            await page.keyboard.press("Delete");
+            await clearDefaultProject(page);
+            // clearDefaultProject leaves the caret at the top of Imports; return to Main, which
+            // is where this test's content belongs:
+            await pressN("ArrowDown", 2)(page);
             await doPagePaste(page, Array.from({ length: 100 }, (_, i) => `print("Hello #${i + 1}")`).join("\n"));
             const [actions, scrollTo] = undoTests[testIndex];
             const statesToUndoTo = [];
@@ -201,8 +203,10 @@ test.describe("Undo scrolls location into view", () => {
 
 test.describe("Printing scrolls into view", () => {
     test("Pressing keys repeatedly scrolls into view", async ({page}) => {
-        await page.keyboard.press("Delete");
-        await page.keyboard.press("Delete");
+        await clearDefaultProject(page);
+        // clearDefaultProject leaves the caret at the top of Imports; return to Main, which is
+        // where this test's content belongs:
+        await pressN("ArrowDown", 2)(page);
         await doPagePaste(page, `
 from strype.graphics import get_key
 while (True):

@@ -4,7 +4,7 @@ import {readFileSync} from "node:fs";
 import {setupStrypeTest} from "../support/general";
 import {createBrowserProxy} from "../support/proxy";
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "@/helpers/sharedIdCssWithTests";
-import {doPagePaste} from "../support/editor";
+import {clearDefaultProject, doPagePaste, pressN} from "../support/editor";
 
 let strypeElIds: {[varName: string]: (...args: any[]) => Promise<string>};
 let scssVars: {[varName: string]: string};
@@ -12,7 +12,10 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     // CI run 29398704984 (macos-latest+chromium) showed "moving up 0 times" timing out at 240s
     // waiting on the book-picker dialog to populate ("fireworks" entry never became clickable);
     // siblings "moving up 1/2 times" hit the same wait but recovered on retry. Bumped for margin.
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 360_000, skipPyodide: true});
+    // CI run 29564701756 (same job) still timed out at 360s on "moving up 2 times" (same symptom --
+    // the "fireworks" entry resolved, then went "detached from the DOM, retrying" until timeout,
+    // through all 4 attempts), so bumping again:
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 480_000, skipPyodide: true});
     strypeElIds = createBrowserProxy(page, WINDOW_STRYPE_HTMLIDS_PROPNAME);
     scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
 });
@@ -45,8 +48,12 @@ test.describe("Load/save book projects", () => {
         test(`Paste fireworks after moving up ${i} times`, async ({page}) => {
             // Check same as above but with pasting:
             const original = readFileSync("public/book_projects/chapter02/fireworks.spy", "utf8").replace(/\r\n/g, "\n");
-            await page.keyboard.press("Delete");
-            await page.keyboard.press("Delete");
+            await clearDefaultProject(page);
+            // clearDefaultProject leaves the caret at the top of (now empty) Imports; return to
+            // Main so the "move up i times" logic below still exercises pasting with the caret in
+            // Main/Defs/Imports respectively, now that Imports itself has also been cleared of its
+            // default content:
+            await pressN("ArrowDown", 2)(page);
             for (let j = 0; j < i; j++) {
                 await page.keyboard.press("ArrowUp");
             }

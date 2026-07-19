@@ -242,7 +242,7 @@ describe("Locale persistence", () => {
         });        
            
 
-        // 2) the locale is correct (usual test + the function call placeholder text, which is in frame 4 for normal editor, and 5 for microbit because of import)
+        // 2) the locale is correct (usual test + the function call placeholder text exists somewhere in the code)
         checkTranslationsForLocale(localeForTest);
         cy.get("span[placeholder='" + getLocalisedString("frame.defaultText.funcCall", localeForTest) + "']").should("exist");
             

@@ -1,6 +1,6 @@
 
 
-import {cleanFromHTML, waitForEditorSettled} from "./test-support";
+import {cleanFromHTML, clearDefaultImports, waitForEditorSettled} from "./test-support";
 import {Signature, SignatureArg} from "tigerpython-parser";
 import { scssVars, standardBeforeEach, strypeElIds } from "./standard-setup";
 
@@ -212,6 +212,14 @@ function insertKeyboardTypingToImport(keyboardTypingToImport: string | undefined
     // As we don't have an exact way to know when such case arises in func.keyboardTypingToImport,
     // we just delay all key hit reasonably.
     if (keyboardTypingToImport) {
+        // A "{uparrow}{uparrow}" prefix means the rest of the string is meant to be typed at the
+        // top of Imports (assumed empty) -- clear the 2 default imports there first instead of
+        // just navigating past them, so the typed content still ends up in an empty Imports
+        // section exactly as this was written to expect:
+        if (keyboardTypingToImport.startsWith("{uparrow}{uparrow}")) {
+            clearDefaultImports();
+            keyboardTypingToImport = keyboardTypingToImport.slice("{uparrow}{uparrow}".length);
+        }
         cy.get("body").type(keyboardTypingToImport, {delay: 100});
     }
 }

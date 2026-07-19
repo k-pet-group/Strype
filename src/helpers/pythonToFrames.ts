@@ -648,6 +648,16 @@ function concatSlots(lhs: SlotsStructure, operator: string, rhs: SlotsStructure)
     return joined;
 }
 
+// Whether a parsed expression is "simple" enough that re-using it as an operand
+// (as we do when expanding an augmented assignment like "a += b" into "a = a + b")
+// doesn't need extra brackets to stay unambiguous: a single token, a single function
+// call, or a single member/method-call chain. All of those only ever join sub-parts
+// with a blank ("") or a "." operator; anything else (a real binary/unary operator)
+// means brackets are needed to preserve the original semantics.
+function isSimpleAugAssignOperand(slots: SlotsStructure) : boolean {
+    return slots.operators.every((op) => op.code === "" || op.code === ".");
+}
+
 // Dig down the tree and find the actual value.  Skips down through
 // all parents with a single child.  If there is no value or no children,
 // an error will be thrown.  This shouldn't happen for the items we are
@@ -1047,11 +1057,27 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
     case Sk.ParseTables.sym.expr_stmt:
         if (p.children) {
             const index = p.children.findIndex((x) => x.value === "=");
+            const augIndex = p.children.findIndex((x) => x.type === Sk.ParseTables.sym.augassign);
             if (index >= 0) {
                 checkValidMatchContent(s.parent?.frameType.type, p.lineno);
                 // An assignment
                 const lhs = toSlots({...p, children: p.children.slice(0, index)});
                 const rhs = toSlots({...p, children: p.children.slice(index + 1)});
+                s = addFrame(makeFrame(AllFrameTypesIdentifier.varassign, {0: {slotStructures: lhs}, 1: {slotStructures: rhs}}, s.isSPY), p.lineno, s);
+            }
+            else if (augIndex >= 0) {
+                checkValidMatchContent(s.parent?.frameType.type, p.lineno);
+                // Strype has no dedicated frame for augmented assignment (e.g. "a += b"), so we
+                // expand it into the equivalent "a = a + b" instead. This isn't behaviour-compliant
+                // for targets with side effects (e.g. "a().x += b" would evaluate "a()" twice) but
+                // that's an accepted, unlikely-to-occur limitation.
+                const lhs = toSlots({...p, children: p.children.slice(0, augIndex)});
+                const rhsOperand = toSlots({...p, children: p.children.slice(augIndex + 1)});
+                // Strip the trailing "=" from e.g. "+=" to get the underlying operator "+":
+                const op = digValue(p.children[augIndex]).slice(0, -1);
+                const bracketedRhsOperand = isSimpleAugAssignOperand(rhsOperand) ? rhsOperand :
+                    {fields: [{code: ""}, {...rhsOperand, openingBracketValue: "("}, {code: ""}], operators: [{code: ""}, {code: ""}]};
+                const rhs = concatSlots(cloneDeep(lhs), op, bracketedRhsOperand);
                 s = addFrame(makeFrame(AllFrameTypesIdentifier.varassign, {0: {slotStructures: lhs}, 1: {slotStructures: rhs}}, s.isSPY), p.lineno, s);
             }
             else {

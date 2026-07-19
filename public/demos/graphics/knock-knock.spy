@@ -1,5 +1,6 @@
 #(=> Strype:1:std
-'''A basic story template'''
+'''Strype example program: knock-knock. A basic story template.
+Authors: Neil Brown, Pierre Weill-Tessier'''
 #(=> Section:Imports
 from strype.graphics import * 
 #(=> Section:Definitions

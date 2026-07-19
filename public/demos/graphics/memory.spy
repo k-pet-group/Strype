@@ -1,7 +1,10 @@
 #(=> Strype:1:std
-#(=> editorCommandsSplitterPane2Size:{"tabsCollapsed":52.16}
-#(=> peaCommandsSplitterPane2Size:{"tabsCollapsed":82.81}
-'''This memory game shows you how to use OOP in Strype and handle click on an Actor.'''
+#(=> peaCommandsSplitterPane2Size:{"splitCollapsed":94.39}
+#(=> peaExpandedSplitterPane2Size:{"tabsExpanded":80.59}
+'''Memory - a Strype example program.
+This memory game shows you how to use OOP in Strype and handle click on an Actor.
+
+Author: Pierre Weill-Tessier'''
 #(=> Section:Imports
 from strype.graphics import * 
 import random as rd 

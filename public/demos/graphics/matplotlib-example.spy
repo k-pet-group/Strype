@@ -1,7 +1,9 @@
 #(=> Strype:1:std
 #(=> editorCommandsSplitterPane2Size:{"tabsCollapsed":39.91}
 #(=> peaCommandsSplitterPane2Size:{"tabsCollapsed":64.53}
-'''This is an example of plotting and handling clicks in matplotlib in Strype.
+'''Strype example program:
+This project shows how to plot data using the \'numpy\' and \'matplotlib\' libraries.
+It also shows processing of mouse clicks on the plot (clicking on a graph in the legend switches the display on/off).
 
 It is adapted from a matplotlib example here: https://matplotlib.org/stable/gallery/event_handling/legend_picking.html'''
 #(=> Section:Imports

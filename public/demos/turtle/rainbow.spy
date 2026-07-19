@@ -1,10 +1,12 @@
 #(=> Strype:1:std
-'''Draw a rainbow pattern with Turtle'''
+'''Strype example program: rainbow-spriral
+Draw a rainbow pattern with turtle graphics.'''
 #(=> Section:Imports
 import turtle 
 #(=> Section:Definitions
 # Helper to generate RGB color from a counter
 def get_rgb_color (n ) :
+    '''Separate a single integer into three numbers (for r,g,b values). Return the three numbers.'''
     n  = n%256*6 
     if n<256  :
         return n,0,255 

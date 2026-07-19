@@ -1,15 +1,19 @@
 #(=> Strype:1:std
-'''Get your best shot at guessing the programme's number'''
+'''A Strype example program: number guessing 
+Guess a number between 0 and 100. You have seven guesses.
+Author: Michael Kölling'''
 #(=> Section:Imports
 import random 
 #(=> Section:Definitions
 def getGuess ( ) :
+    '''Get the next guess from the user'''
     global numGuesses 
     numGuesses  = numGuesses+1 
     guess  = int(input("Your number: ")) 
     return guess 
 def gameOver ( ) :
-    return ___strype_invalid_u0067u0075u0065u0073u0073u0065u0064u0020u006fu0072(numGuesses>7) 
+    '''Check whether it\'s game over. Return True if it is (False otherwise).'''
+    return ___strype_invalid_u0067u0075u0065u0073u0073u0065u0064u0020u006fu0072(numGuesses>6) 
 #(=> Section:Main
 print("Welcome to the Number Guessing Game (NGG)") 
 number  = random.randint(0,100) 
@@ -17,17 +21,17 @@ numGuesses  = 0
 guessed  = False 
 print("Guess a number between 0 and 100") 
 while not gameOver()  :
-    guess  = getGuess()
+    guess  = getGuess() 
     if guess==number  :
         print("You got it!") 
         guessed  = True 
     elif guess<number  :
         print("You're too low...  Try again.") 
     else :
-        print("You're too high. Try again.")  
+        print("You're too high. Try again.") 
 
 if guessed  :
-    print(___strype_opsinvalid(f,___strype_operator_,"Well done - you won. You needed {numGuesses} guesses",___strype_operator_,___strype_blank)) 
+    print(f"Well done - you won. You needed {numGuesses} guesses") 
 else :
     print("Sorry, you are out of guesses. You lose.") 
 #(=> Section:End

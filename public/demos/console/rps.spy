@@ -1,18 +1,23 @@
 #(=> Strype:1:std
-'''Play the classic hand game... against Strype'''
+'''Strype example program: Rock, paper, scissors.
+Play the classic hand game... against Strype
+Authors: Neil Brown, Pierre Weil-Tessier'''
 #(=> Section:Imports
 import random 
 #(=> Section:Definitions
 def get_computer_choice ( ) :
+    '''Randomly pick a game option.'''
     return random.choice(["rock","paper","scissors"]) 
 def get_user_choice ( ) :
+    '''Ask the user for their choice and return it as a string.'''
     choice  = input("Enter rock, paper, or scissors: ").lower() 
     while choice not in ["rock","paper","scissors"]  :
         print("Invalid input. Enter rock, paper or scissors.") 
         choice  = input("Enter rock, paper, or scissors: ").lower() 
     return choice 
 def determine_winner (user,computer ) :
-    print(___strype_invalid_u0066u0022u005cu006eu0059u006fu0075u0020u0063u0068u006fu0073u0065u0020u007bu0075u0073u0065u0072u007du002cu0020u0063u006fu006du0070u0075u0074u0065u0072u0020u0063u0068u006fu0073u0065u0020u007bu0063u006fu006du0070u0075u0074u0065u0072u007du002eu0022) 
+    '''Check who has won. Print out the result.'''
+    print(f"\nYou chose {user}, computer chose {computer}.") 
     
     if user==computer  :
         return "It's a tie!" 

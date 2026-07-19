@@ -1,22 +1,22 @@
 - name: Crab game
   description: Can the crab eat the worms before it is eaten by the lobster?
-  image: graphics-crab-game.png
-  file: graphics-crab-game.spy
+  image: crab-game.png
+  file: crab-game.spy
 
-- name: Sparks
-  description: Visual particle effects
+- name: Particles
+  description: Demo of a visual particle effect
   image: particles.png
   file: particles.spy
   
 - name: Knock knock
   description: A knock-knock joke
-  image: graphics-knock-knock.png
-  file: graphics-knock-knock.spy
+  image: knock-knock.png
+  file: knock-knock.spy
 
 - name: Memory game (OOP)
-  description: A simple memory game using OOP principles
-  image: oop.png
-  file: oop.spy
+  description: A simple memory game using OOP (classes and objects)
+  image: memory.png
+  file: memory.spy
 
 - name: Graphing
   description: An example of how to draw a graph using the numpy and matplotlib libraries

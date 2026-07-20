@@ -390,13 +390,21 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
             // We indent this to the largest of its indent,
             // and the (smallest of the indent before us and the indent after us).
             let nextIndent = "";
+            let nextIsJointContinuation = false;
             for (let j = i + 1; j < codeLines.length; j++) {
                 if (codeLines[j].trim() != "") {
                     nextIndent = getIndent(codeLines[j]);
+                    // If the next line is elif/else/except/finally, it's a continuation of the
+                    // compound statement the blank line is inside, not a new statement at its own
+                    // (shallower) indent.  Dedenting the blank line to match it would insert a
+                    // statement between the two parts of the compound statement, which Python
+                    // doesn't allow, so we must keep the blank line at the deeper indent instead:
+                    nextIsJointContinuation = /^\s*(elif|else|except|finally)\b/.test(codeLines[j]);
                     break;
                 }
             }
-            const smallestAdjIndent = mostRecentIndent.length <= nextIndent.length ? mostRecentIndent : nextIndent;
+            const smallestAdjIndent = nextIsJointContinuation ? mostRecentIndent
+                : (mostRecentIndent.length <= nextIndent.length ? mostRecentIndent : nextIndent);
             if (codeLines[i].length > smallestAdjIndent.length) {
                 transformedLines.push(codeLines[i] + STRYPE_WHOLE_LINE_BLANK);
             }

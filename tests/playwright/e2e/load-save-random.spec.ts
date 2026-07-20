@@ -929,6 +929,33 @@ test.describe("Enters, saves and loads specific frames", () => {
             }]]);
     });
 
+    // Regression test for the multi-level-nesting case of the blank-before-joint-continuation bug
+    // fixed alongside https://github.com/k-pet-group/Strype/issues/757 : the blank line here sits
+    // one level shallower than the enclosing if/elif chain's own body, but two levels deeper than
+    // the "else" that follows -- it belongs at the "for" body's own indent (matching "if"), not at
+    // either adjacent line's indent (the elif body's, nor the outer else's).
+    test("Tests blank line before an outer else, nested inside an if/elif chain", async ({page}) => {
+        await testSpecific(page, [[], [], [
+            {
+                "frameType": "for",
+                "slotContent": ["i", "myList"],
+                "body": [
+                    {
+                        "frameType": "if",
+                        "slotContent": ["a"],
+                        "body": [{"frameType": "raise", "slotContent": ["b"]}],
+                        "joint": [
+                            {"frameType": "elif", "slotContent": ["c"], "body": [{"frameType": "raise", "slotContent": ["d"]}]},
+                        ],
+                    },
+                    {"frameType": "blank", "slotContent": []},
+                ],
+                "joint": [
+                    {"frameType": "else", "slotContent": [], "body": [{"frameType": "raise", "slotContent": ["e"]}]},
+                ],
+            }]]);
+    });
+
     test("Tests blank and comment at start of disabled try", async ({page}) => {
         await testSpecific(page, [[], [], [
             {

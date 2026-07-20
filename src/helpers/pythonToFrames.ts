@@ -403,8 +403,34 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                     break;
                 }
             }
-            const smallestAdjIndent = nextIsJointContinuation ? mostRecentIndent
-                : (mostRecentIndent.length <= nextIndent.length ? mostRecentIndent : nextIndent);
+            let smallestAdjIndent : string;
+            if (nextIsJointContinuation && mostRecentIndent.length > nextIndent.length) {
+                // Dedenting all the way to the elif/else/except/finally's own indent would insert a
+                // statement between the two parts of that compound statement, which Python doesn't
+                // allow. But the blank may be nested several levels deeper than the joint continuation
+                // (e.g. inside an if-chain that's itself inside the body the elif/else is continuing),
+                // in which case only the immediate nesting matters -- so find the shallowest indent
+                // among the lines back to (but excluding) the joint continuation's own level, which is
+                // the indentation of the body that directly and immediately precedes it, and hence where
+                // the blank line actually belongs:
+                let directChildIndent : string | null = null;
+                for (let k = i - 1; k >= 0; k--) {
+                    if (codeLines[k].trim() === "") {
+                        continue;
+                    }
+                    const ind = getIndent(codeLines[k]);
+                    if (ind.length <= nextIndent.length) {
+                        break;
+                    }
+                    if (directChildIndent === null || ind.length < directChildIndent.length) {
+                        directChildIndent = ind;
+                    }
+                }
+                smallestAdjIndent = directChildIndent ?? mostRecentIndent;
+            }
+            else {
+                smallestAdjIndent = mostRecentIndent.length <= nextIndent.length ? mostRecentIndent : nextIndent;
+            }
             if (codeLines[i].length > smallestAdjIndent.length) {
                 transformedLines.push(codeLines[i] + STRYPE_WHOLE_LINE_BLANK);
             }

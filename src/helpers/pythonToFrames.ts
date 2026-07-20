@@ -1720,12 +1720,20 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
     }
     
     let posAfter = at;
-    
+    // Set to true if the main-code paste was rejected by insertFramesAtPosition (e.g. pasting a
+    // joint frame like "else" at a position where it wouldn't form legal code).  Only mainFrames
+    // can trigger this: imports/classDefs/funcDefs are never joint frames themselves, and a joint
+    // frame pasted without its parent if/try can only ever land in mainFrames (see
+    // splitLinesToSections), so insertFramesAtPosition's non-joint branch -- which never rejects --
+    // is the only one those three other groups can hit. In that case the frames were never
+    // actually added to the store, so we must not treat them as pasted below.
+    let pasteRejected = false;
+
     // The rule for cursor positions for pasting in other sections is the point closest to the frame cursor;
     // see individual comments below
-    
+
     if (importFrames.frameIds.length > 0) {
-        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IMPORTS_SECTION) 
+        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IMPORTS_SECTION)
             ? {...at}
             // If we're not in the imports, we know we're below it:
             : getLastCaretPosInsideParent(useStore().getImportsFrameContainerId);
@@ -1756,7 +1764,7 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
             // Adjust in case we also paste more in the defs:
             at = adjusted ?? at;
         }
-        
+
     }
     if (funcDefFrames.frameIds.length > 0) {
         let currentCaretContainerPosition: { id: number; caretPosition: CaretPosition };
@@ -1795,14 +1803,22 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
     }
     if (mainFrames.frameIds.length > 0) {
         // If we're not in the main section, closest cursor will be the top:
-        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) 
-            ? {...at} 
+        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION)
+            ? {...at}
             : {id : useStore().getMainCodeFrameContainerId, caretPosition: CaretPosition.body};
         offsetAllIds(mainFrames, useStore().nextAvailableId);
         const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: mainFrames, ignoreStateBackup});
-        if (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) {
-            posAfter = adjusted ?? posAfter;
+        if (adjusted == null) {
+            pasteRejected = true;
+            // Nothing was actually inserted, so make sure it's not treated as pasted below:
+            mainFrames.frames = {};
         }
+        else if (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) {
+            posAfter = adjusted;
+        }
+    }
+    if (pasteRejected) {
+        useStore().showMessage(MessageDefinitions.ForbiddenFramePaste, 10000);
     }
     if (!dontSetCaretAfter) {
         useStore().setCurrentFrame(posAfter, true);

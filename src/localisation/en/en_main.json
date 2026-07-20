@@ -245,7 +245,10 @@
     "importedModules": "Imported modules",
     "builtinFiles": "Built-in files",
     "invalidState": "No completion available",
-    "noDocumentation": "No documentation available"
+    "noDocumentation": "No documentation available",
+    "codeCompletion": "Code completion",
+    "codeCompletionFilePaths": "Code completion (file paths)",
+    "spaceKey": "space"
   },
   "commandTabs": {
     "0": "Add Frame"

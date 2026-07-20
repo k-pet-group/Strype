@@ -245,7 +245,10 @@
     "importedModules": "Modules importés",
     "builtinFiles": "Fichiers intégrés",
     "invalidState": "Aucune complétion disponible",
-    "noDocumentation": "Aucune documentation disponible"
+    "noDocumentation": "Aucune documentation disponible",
+    "codeCompletion": "Complétion de code",
+    "codeCompletionFilePaths": "Complétion de code (chemins de fichiers)",
+    "spaceKey": "espace"
   },
   "commandTabs": {
     "0": "Ajoute un cadre"

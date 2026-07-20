@@ -74,6 +74,22 @@ export default defineComponent({
     color: rgb(180, 180, 180);
 }
 
+.frame-cmd-container.text-editing-command,
+.frame-cmd-container.text-editing-command .frame-cmd-btn {
+    cursor: default;
+}
+
+.text-editing-command-keys-plus {
+    margin-right: 5px;
+}
+
+// Unlike the other frame-cmd-btn-large usages (e.g. the "space" symbol for the function call
+// shortcut), the code completion shortcut's key boxes aren't crammed into a row with many others,
+// so there's no need to condense the font horizontally to save space.
+.text-editing-command .frame-cmd-btn-large {
+    font-stretch: normal !important;
+}
+
 .frame-cmd-btn {
     margin-right: 5px;
     cursor: pointer;

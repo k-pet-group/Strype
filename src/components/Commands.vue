@@ -49,6 +49,16 @@
                                                         "
                                                     />
                                                 </p>
+                                                <p v-if="codeCompletionCommand">
+                                                    <div class="frame-cmd-container text-editing-command">
+                                                        <span class="text-editing-command-keys">
+                                                            <button class="frame-cmd-btn frame-cmd-btn-large">{{ codeCompletionCommand.ctrlSymbol }}</button>
+                                                            <span class="text-editing-command-keys-plus">+</span>
+                                                            <button class="frame-cmd-btn frame-cmd-btn-large">{{ codeCompletionCommand.spaceSymbol }}</button>
+                                                        </span>
+                                                        <span>{{ codeCompletionCommand.description }}</span>
+                                                    </div>
+                                                </p>
                                             <!-- this conditional rendering is only used for our code editor to see the closing <div> right -->
                                             <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
                                             </div>
@@ -105,7 +115,7 @@
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded, waitForPanesSettled } from "@/helpers/editor";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, PythonExecRunningState, SelectAllFramesAction, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, isSlotStringLiteralType, PythonExecRunningState, SelectAllFramesAction, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import { defineComponent } from "vue";
 import { mapStores } from "pinia";
@@ -281,6 +291,22 @@ export default defineComponent({
             }
 
             return this.appStore.generateAvailableFrameCommands(this.appStore.currentFrame.id, this.appStore.currentFrame.caretPosition);
+        },
+
+        // When a text cursor is focused inside a code or string slot (but not a comment/documentation slot),
+        // we show the code completion shortcut instead of the (then empty) list of add frame commands.
+        // Note this shortcut is Ctrl+Space on every platform, including macOS (not Cmd+Space).
+        codeCompletionCommand(): {ctrlSymbol: string; spaceSymbol: string; description: string} | null {
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            if(!this.appStore.isEditing || !focusSlotCursorInfos || focusSlotCursorInfos.slotInfos.slotType == SlotType.comment){
+                return null;
+            }
+
+            const description = (isSlotStringLiteralType(focusSlotCursorInfos.slotInfos.slotType))
+                ? this.$t("autoCompletion.codeCompletionFilePaths")
+                : this.$t("autoCompletion.codeCompletion");
+
+            return {ctrlSymbol: this.$t("contextMenu.ctrl"), spaceSymbol: this.$t("autoCompletion.spaceKey"), description};
         },
 
         progressPercentWidthStyle(): string {

@@ -59,6 +59,16 @@
                                                         <span>{{ codeCompletionCommand.description }}</span>
                                                     </div>
                                                 </p>
+                                                <p v-if="wrapSelectionCommands.length">
+                                                    <div
+                                                        v-for="wrapSelectionCommand in wrapSelectionCommands"
+                                                        :key="wrapSelectionCommand.symbol"
+                                                        class="frame-cmd-container text-editing-command"
+                                                    >
+                                                        <button class="frame-cmd-btn">{{ wrapSelectionCommand.symbol }}</button>
+                                                        <span>{{ wrapSelectionCommand.description }}</span>
+                                                    </div>
+                                                </p>
                                             <!-- this conditional rendering is only used for our code editor to see the closing <div> right -->
                                             <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
                                             </div>
@@ -115,7 +125,7 @@
 import AddFrameCommand from "@/components/AddFrameCommand.vue";
 import { computeAddFrameCommandContainerSize, CustomEventTypes, getActiveContextMenu, getAddFrameCmdElementUID, getCaretContainerUID, getCommandsContainerUID, getCommandsRightPaneContainerId, getCurrentFrameSelectAllAction, getFrameUID, getEditorMiddleUID, getMenuLeftPaneUID, hiddenShorthandFrames, notifyDragEnded, waitForPanesSettled } from "@/helpers/editor";
 import { useStore } from "@/store/store";
-import { AddFrameCommandDef, AllFrameTypesIdentifier, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, isSlotStringLiteralType, PythonExecRunningState, SelectAllFramesAction, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
+import { AddFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, CaretPosition, CollapsedState, defaultEmptyStrypeLayoutDividerSettings, FrameObject, isSlotStringLiteralType, PythonExecRunningState, SelectAllFramesAction, SlotType, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 import $ from "jquery";
 import { defineComponent } from "vue";
 import { mapStores } from "pinia";
@@ -307,6 +317,31 @@ export default defineComponent({
                 : this.$t("autoCompletion.codeCompletion");
 
             return {ctrlSymbol: this.$t("contextMenu.ctrl"), spaceSymbol: this.$t("autoCompletion.spaceKey"), description};
+        },
+
+        // When the user has a text selection inside a code slot (not a comment/documentation slot, and not
+        // a string literal slot -- wrapping a selection in quotes there wouldn't make sense), typing one of
+        // these bracket/quote characters wraps the selection with it. We show those shortcuts here as a hint.
+        wrapSelectionCommands(): {symbol: string; description: string}[] {
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
+            if(!this.appStore.isEditing || !focusSlotCursorInfos || !anchorSlotCursorInfos){
+                return [];
+            }
+
+            const hasSelection = !areSlotCoreInfosEqual(focusSlotCursorInfos.slotInfos, anchorSlotCursorInfos.slotInfos) || focusSlotCursorInfos.cursorPos != anchorSlotCursorInfos.cursorPos;
+            const slotType = focusSlotCursorInfos.slotInfos.slotType;
+            if(!hasSelection || slotType == SlotType.comment || isSlotStringLiteralType(slotType)){
+                return [];
+            }
+
+            return [
+                {symbol: "(", description: this.$t("autoCompletion.wrapRoundBrackets")},
+                {symbol: "[", description: this.$t("autoCompletion.wrapSquareBrackets")},
+                {symbol: "{", description: this.$t("autoCompletion.wrapCurlyBrackets")},
+                {symbol: "\"", description: this.$t("autoCompletion.wrapDoubleQuotes")},
+                {symbol: "'", description: this.$t("autoCompletion.wrapSingleQuotes")},
+            ];
         },
 
         progressPercentWidthStyle(): string {

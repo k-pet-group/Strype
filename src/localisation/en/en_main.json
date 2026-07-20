@@ -248,7 +248,12 @@
     "noDocumentation": "No documentation available",
     "codeCompletion": "Code completion",
     "codeCompletionFilePaths": "Code completion (file paths)",
-    "spaceKey": "space"
+    "spaceKey": "space",
+    "wrapRoundBrackets": "Wrap in round brackets",
+    "wrapSquareBrackets": "Wrap in square brackets",
+    "wrapCurlyBrackets": "Wrap in curly brackets",
+    "wrapDoubleQuotes": "Wrap in double quotes",
+    "wrapSingleQuotes": "Wrap in single quotes"
   },
   "commandTabs": {
     "0": "Add Frame"

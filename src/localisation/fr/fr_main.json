@@ -248,7 +248,12 @@
     "noDocumentation": "Aucune documentation disponible",
     "codeCompletion": "Complétion de code",
     "codeCompletionFilePaths": "Complétion de code (chemins de fichiers)",
-    "spaceKey": "espace"
+    "spaceKey": "espace",
+    "wrapRoundBrackets": "Entourer de parenthèses",
+    "wrapSquareBrackets": "Entourer de crochets",
+    "wrapCurlyBrackets": "Entourer d'accolades",
+    "wrapDoubleQuotes": "Entourer de guillemets doubles",
+    "wrapSingleQuotes": "Entourer de guillemets simples"
   },
   "commandTabs": {
     "0": "Ajoute un cadre"

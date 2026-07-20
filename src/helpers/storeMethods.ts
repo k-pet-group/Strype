@@ -145,7 +145,7 @@ export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotCo
 
         // Add this operator only if it is not blank
         if(operatorSlot.code.length > 0) {
-            addFlatSlot({...operatorSlot, id: slotId, type: SlotType.operator, precedenceTier: precedenceTiers[index]}, false);
+            addFlatSlot({...operatorSlot, id: slotId, type: SlotType.operator, operatorPrecedenceTier: precedenceTiers[index]}, false);
         }
     });
 

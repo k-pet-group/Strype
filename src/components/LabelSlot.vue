@@ -148,7 +148,7 @@ export default defineComponent({
         isEditableSlot: Boolean,
         isEmphasised: Boolean,
         isFrozen: Boolean,
-        precedenceTier: {
+        operatorPrecedenceTier: {
             type: String as PropType<PrecedenceTier>,
             required: false,
         },
@@ -323,11 +323,11 @@ export default defineComponent({
                     // already zero margin on both sides):
                     "sign-medium": scssVars.opTierMediumClassName,
                 };
-                const tierClass = tierClassNames[this.precedenceTier ?? "high"];
+                const tierClass = tierClassNames[this.operatorPrecedenceTier ?? "high"];
                 // Unary-prefix operators (not, ~, lambda always; -/+ only when detected as a
                 // unary sign, indicated by the "sign-medium" tier) have nothing meaningful to
                 // their left -- suppress the tier's leading margin, keep its trailing one:
-                const isUnarySign = this.precedenceTier === "sign-medium";
+                const isUnarySign = this.operatorPrecedenceTier === "sign-medium";
                 const unaryPrefixClass = (UNARY_PREFIX_OPERATORS.has(this.code) || isUnarySign) ? " " + scssVars.opUnaryPrefixClassName : "";
                 codeTypeCSS = scssVars.frameOperatorSlotClassName + " " + tierClass + unaryPrefixClass;
                 break;

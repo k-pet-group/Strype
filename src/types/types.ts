@@ -75,7 +75,7 @@ export interface FlatSlotBase extends BaseSlot {
     type: SlotType;
     // Only meaningful when type === SlotType.operator: the visual spacing tier
     // computed by calculatePrecedenceTiers(), used to pick the operator's CSS class.
-    precedenceTier?: PrecedenceTier;
+    operatorPrecedenceTier?: PrecedenceTier;
 }
 
 export function isFieldStringSlot(field: FieldSlot): field is StringSlot {

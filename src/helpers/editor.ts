@@ -74,6 +74,7 @@ export enum CustomEventTypes {
     closeOtherRenameIdentifierPopup = "closeOtherRenameIdentifierPopup",
     // The following events are used for our modal dialogs, a wrapping mechanism around Bootstrap modals
     showStrypeModal = "bv::show::modal", // request a modal opening, param is a dialog ID
+    strypeModalShow = "bv::modal::show", // event just before a modal is shown (before its content is interactable): param is a BvTriggerableEvent event
     strypeModalShown = "bv::modal::shown", // event after a modal is opened: param is a BvTriggerableEvent event
     hideStrypeModal = "bv::hide::modal", // request a modal closing, param is a BvTriggerableEvent event
     strypeModalHidden = "bv::modal::hidden", // event after a modal is closed: param is a BvTriggerableEvent event

@@ -422,8 +422,9 @@ export default defineComponent({
         );
 
         // The events from Bootstrap modal are registered on eventBus.
+        eventBus.on(CustomEventTypes.strypeModalShow, this.onStrypeMenuShowModalDlg);
         eventBus.on(CustomEventTypes.strypeModalShown, this.onStrypeMenuShownModalDlg);
-        eventBus.on(CustomEventTypes.strypeModalHidden, this.onStrypeMenuHideModalDlg);      
+        eventBus.on(CustomEventTypes.strypeModalHidden, this.onStrypeMenuHideModalDlg);
         
         // Event listener for saving project action completion
         eventBus.on(CustomEventTypes.saveStrypeProjectDoneForLoad, this.openLoadProjectDlgAfterSaved);
@@ -437,6 +438,7 @@ export default defineComponent({
 
     beforeUnmount(){
         // Just in case, we remove the Bootstrap modal event handler from eventBus
+        eventBus.off(CustomEventTypes.strypeModalShow, this.onStrypeMenuShowModalDlg);
         eventBus.off(CustomEventTypes.strypeModalShown, this.onStrypeMenuShownModalDlg);
         eventBus.off(CustomEventTypes.strypeModalHidden, this.onStrypeMenuHideModalDlg);
 
@@ -951,6 +953,27 @@ export default defineComponent({
             }
         },
 
+        onStrypeMenuShowModalDlg(event: BvTriggerableEvent) {
+            // This fires just before the dialog becomes visible/interactable (unlike
+            // onStrypeMenuShownModalDlg below, which fires just after). The Examples... and
+            // Book... dialogs reset their category/chapter selection to the first entry whenever
+            // they're opened -- that reset needs to happen here, before the dialog can be
+            // interacted with, rather than in the "shown" handler. Doing it on "shown" left a
+            // window where a fast click (or, in CI, Playwright) could select a different
+            // category/chapter while the dialog was already interactable but the "shown" event
+            // hadn't fired yet, only for that selection to be silently wiped out moments later
+            // when the reset ran -- e.g. clicking "Chapter 2" then having the list of projects
+            // revert back to Chapter 1's, so a project by name in another chapter was never
+            // found (see the regression test for this).
+            const dlgId = event.componentId;
+            if (dlgId == this.loadDemoProjectModalDlgId) {
+                vueComponentsAPIHandler.openDemoDlgComponentAPI?.shown();
+            }
+            else if (dlgId == this.loadBookProjectModalDlgId) {
+                (this.$refs.openBookDlg as InstanceType<typeof OpenBookDlg>).shown();
+            }
+        },
+
         onStrypeMenuShownModalDlg(event: BvTriggerableEvent) {
             const dlgId = event.componentId;
             // This method handles the workflow of the menu entries' related dialog
@@ -991,13 +1014,9 @@ export default defineComponent({
                     this.getSharingLink(defaultSharingProjectMode, true);
                 }, 2000);
             }
-            else if (dlgId == this.loadDemoProjectModalDlgId) {
-                vueComponentsAPIHandler.openDemoDlgComponentAPI?.shown();
-            }
-            else if (dlgId == this.loadBookProjectModalDlgId) {
-                (this.$refs.openBookDlg  as InstanceType<typeof OpenBookDlg>).shown();
-            }
-            else {
+            else if (dlgId != this.loadDemoProjectModalDlgId && dlgId != this.loadBookProjectModalDlgId) {
+                // (The Examples... and Book... dialogs' own "shown" work happens earlier, in
+                // onStrypeMenuShowModalDlg -- see its comment for why.)
                 // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
                 setTimeout(() => {
                     const targetToFocusButton =[...document.querySelectorAll(`#${dlgId} .${scssVars.projectTargetButtonClassName}`)].find((targetButton) => {

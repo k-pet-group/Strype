@@ -804,7 +804,7 @@ function replaceMediaLiteralsAndInvalidOps(s : SlotsStructure) : SlotsStructure 
                     s.fields.splice(i + 1, 0, {code: ""});
                 }
                 if (i == 0 || s.operators[i - 1].code) {
-                    s.operators.splice(i - 1, 0, {code: ""});
+                    s.operators.splice(Math.max(i - 1, 0), 0, {code: ""});
                     s.fields.splice(i, 0, {code: ""});
                 }
             }

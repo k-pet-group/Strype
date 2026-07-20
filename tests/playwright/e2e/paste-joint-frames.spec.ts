@@ -86,6 +86,25 @@ test.describe("Pasting else only succeeds at a valid position in an if/elif chai
         await assertMessageBanner(page, null);
         await expect(page.locator("#frameContainer_-3")).toContainText("else");
     });
+
+    test("Allows pasting else immediately below the whole if/elif chain", async ({page}) => {
+        // This is the caret position enterCode() naturally leaves the cursor at -- immediately
+        // below the whole chain, not nested inside the last branch's body. That's a distinct
+        // position from "top of the elif's body" above (same visual spot, different underlying
+        // target), and is where a user would most naturally try to paste a trailing "else" right
+        // after finishing typing/pasting the if/elif:
+        await enterCode(page, ["", "", ifElifCode]);
+        await doPagePaste(page, elseCode);
+        await assertMessageBanner(page, null);
+        await expect(page.locator("#frameContainer_-3")).toContainText("else");
+    });
+
+    test("Allows pasting elif immediately below a lone if with no existing joint children", async ({page}) => {
+        await enterCode(page, ["", "", "if True:\n    a()\n"]);
+        await doPagePaste(page, "elif True:\n    c()\n");
+        await assertMessageBanner(page, null);
+        await expect(page.locator("#frameContainer_-3")).toContainText("elif");
+    });
 });
 
 // Regression test for https://github.com/k-pet-group/Strype/issues/757 : a blank line immediately

@@ -32,6 +32,7 @@
                 :isEditableSlot="isEditableSlot(slotItem.type)"
                 :isFrozen="isFrozen"
                 :isEmphasised="isSlotEmphasised(slotItem)"
+                :operatorPrecedenceTier="slotItem.operatorPrecedenceTier"
                 @requestSlotsRefactoring="checkSlotRefactoring"
             />
     </div>

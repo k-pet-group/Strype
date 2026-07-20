@@ -697,7 +697,7 @@ function parseNextTerm(ps : ParseState) : SlotsStructure {
         ps.nextIndex += 1;
         return concatSlots({fields: [{code: ""}], operators: []}, nextVal, parseNextTerm(ps));
     }
-    if (nextVal === "not" || nextVal === ":" || nextVal === "*") {
+    if (nextVal === "not" || nextVal === ":" || nextVal === "*" || nextVal === "~" || nextVal === "lambda") {
         ps.nextIndex += 1;
         return concatSlots({fields: [{code: ""}], operators: []}, nextVal, parseNextTerm(ps));
     }

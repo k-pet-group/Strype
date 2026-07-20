@@ -2,6 +2,7 @@ import i18n from "@/i18n";
 import Compiler from "@/compiler/compiler";
 import { useStore } from "@/store/store";
 import scssVars from "@/assets/style/_export.module.scss";
+import { PrecedenceTier } from "@/helpers/operatorPrecedence";
 import quoteCircleProject from "@/assets/images/quote-circle/quote-circle-project.png";
 import quoteCircleFuncdef from "@/assets/images/quote-circle/quote-circle-funcdef.png";
 import quoteCircleClass from "@/assets/images/quote-circle/quote-circle-class.png";
@@ -72,6 +73,9 @@ export interface MediaSlot extends BaseSlot {
 export interface FlatSlotBase extends BaseSlot {
     id: string;
     type: SlotType;
+    // Only meaningful when type === SlotType.operator: the visual spacing tier
+    // computed by calculatePrecedenceTiers(), used to pick the operator's CSS class.
+    operatorPrecedenceTier?: PrecedenceTier;
 }
 
 export function isFieldStringSlot(field: FieldSlot): field is StringSlot {

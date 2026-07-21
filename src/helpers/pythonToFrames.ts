@@ -279,11 +279,23 @@ function findStringEnd(line : string, startIndex : number, quoteType : string) :
 // and a list of transformed lines.  Comments are transformed to identifiers, as are blanks, so that
 // we can see them after Skulpt's parse.
 // Note the disabledLines are one-based, not zero-based
-function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") : {disabledLines : number[], frameStateLines : Map<number, SavedFrameState>, transformedLines : string[], strypeDirectives: Map<string, string>} { 
+// transformedLineOrigin[i] gives the (one-based) index into codeLines that transformedLines[i] came
+// from. A single codeLine can produce zero lines (lines fully inside a multi-line triple-quoted
+// string, which are collapsed onto the line where the string closes), one line, or two lines (code
+// with a trailing comment, which is moved onto its own line) -- so transformedLines.length does not
+// generally equal codeLines.length, and callers that need to map a Skulpt-reported line number back
+// to the original source must go through this array rather than assuming a 1:1 correspondence.
+function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") : {disabledLines : number[], frameStateLines : Map<number, SavedFrameState>, transformedLines : string[], transformedLineOrigin : number[], strypeDirectives: Map<string, string>} {
     codeLines = [...codeLines];
     const disabledLines : number[] = [];
     const frameStateLines : Map<number, SavedFrameState> = new Map<number, SavedFrameState>();
     const transformedLines : string[] = [];
+    // Parallel to transformedLines; see doc comment above.
+    const transformedLineOrigin : number[] = [];
+    const pushTransformedLine = (i : number, line : string) : void => {
+        transformedLines.push(line);
+        transformedLineOrigin.push(i + 1);
+    };
     const strypeDirectives: Map<string, string> = new Map<string, string>();
 
     // A reference to the lines containing a comment block (that is, consecutive comment lines), see inline-method below for details.
@@ -357,7 +369,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                 if (key == "LibraryDisabled") {
                     disabledLines.push(transformedLines.length + 1);
                 }
-                transformedLines.push(directiveIndent + STRYPE_LIBRARY_PREFIX + toUnicodeEscapes(value));
+                pushTransformedLine(i, directiveIndent + STRYPE_LIBRARY_PREFIX + toUnicodeEscapes(value));
                 // We know this is only whitespace because directiveMatch also matched:
                 mostRecentIndent = directiveIndent;
             }
@@ -373,7 +385,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                     }
                 }
                 // Push a blank to make line numbers match:
-                transformedLines.push("");
+                pushTransformedLine(i, "");
                 // +1 to mean the line after us:
                 frameStateLines.set(transformedLines.length + 1, composite);
             }
@@ -381,7 +393,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                 // Not one we have to deal with during parsing, probably a config setting, so record for later processing:
                 strypeDirectives.set(key, value);
                 // Push a blank to make line numbers match:
-                transformedLines.push("");
+                pushTransformedLine(i, "");
                 mostRecentIndent = "";
             }
         }
@@ -390,18 +402,52 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
             // We indent this to the largest of its indent,
             // and the (smallest of the indent before us and the indent after us).
             let nextIndent = "";
+            let nextIsJointContinuation = false;
             for (let j = i + 1; j < codeLines.length; j++) {
                 if (codeLines[j].trim() != "") {
                     nextIndent = getIndent(codeLines[j]);
+                    // If the next line is elif/else/except/finally, it's a continuation of the
+                    // compound statement the blank line is inside, not a new statement at its own
+                    // (shallower) indent.  Dedenting the blank line to match it would insert a
+                    // statement between the two parts of the compound statement, which Python
+                    // doesn't allow, so we must keep the blank line at the deeper indent instead:
+                    nextIsJointContinuation = /^\s*(elif|else|except|finally)\b/.test(codeLines[j]);
                     break;
                 }
             }
-            const smallestAdjIndent = mostRecentIndent.length <= nextIndent.length ? mostRecentIndent : nextIndent;
-            if (codeLines[i].length > smallestAdjIndent.length) {
-                transformedLines.push(codeLines[i] + STRYPE_WHOLE_LINE_BLANK);
+            let smallestAdjIndent : string;
+            if (nextIsJointContinuation && mostRecentIndent.length > nextIndent.length) {
+                // Dedenting all the way to the elif/else/except/finally's own indent would insert a
+                // statement between the two parts of that compound statement, which Python doesn't
+                // allow. But the blank may be nested several levels deeper than the joint continuation
+                // (e.g. inside an if-chain that's itself inside the body the elif/else is continuing),
+                // in which case only the immediate nesting matters -- so find the shallowest indent
+                // among the lines back to (but excluding) the joint continuation's own level, which is
+                // the indentation of the body that directly and immediately precedes it, and hence where
+                // the blank line actually belongs:
+                let directChildIndent : string | null = null;
+                for (let k = i - 1; k >= 0; k--) {
+                    if (codeLines[k].trim() === "") {
+                        continue;
+                    }
+                    const ind = getIndent(codeLines[k]);
+                    if (ind.length <= nextIndent.length) {
+                        break;
+                    }
+                    if (directChildIndent === null || ind.length < directChildIndent.length) {
+                        directChildIndent = ind;
+                    }
+                }
+                smallestAdjIndent = directChildIndent ?? mostRecentIndent;
             }
             else {
-                transformedLines.push(smallestAdjIndent + STRYPE_WHOLE_LINE_BLANK);
+                smallestAdjIndent = mostRecentIndent.length <= nextIndent.length ? mostRecentIndent : nextIndent;
+            }
+            if (codeLines[i].length > smallestAdjIndent.length) {
+                pushTransformedLine(i, codeLines[i] + STRYPE_WHOLE_LINE_BLANK);
+            }
+            else {
+                pushTransformedLine(i, smallestAdjIndent + STRYPE_WHOLE_LINE_BLANK);
             }
             checkRearrangeCommentsIdent();
         }
@@ -465,16 +511,18 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                         const after = line.slice(charIndex+1);
                         if (before.trim() == "") {
                             // Just a single line comment by itself:
-                            transformedLines.push(before + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(after));
+                            pushTransformedLine(i, before + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(after));
                             mostRecentIndent = before;
                             aCommentBlockLines.push(transformedLines.length-1);
                         }
                         else {
-                            // Code followed by comment, put comment on next line:
+                            // Code followed by comment, put comment on next line.  Both lines originate
+                            // from this same source line i, so both get the same origin entry -- this is
+                            // deliberately not a 1:1 push, see transformedLineOrigin's doc comment above:
                             mostRecentIndent = getIndent(before);
-                            transformedLines.push(before);
+                            pushTransformedLine(i, before);
                             checkRearrangeCommentsIdent();
-                            transformedLines.push(mostRecentIndent + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(after));
+                            pushTransformedLine(i, mostRecentIndent + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(after));
                         }
                         // Make sure we don't push the line again:
                         charIndex = -1;
@@ -488,7 +536,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
             }
             if (charIndex >= 0 && currentTripleQuoteString == null) {
                 // Got to the end without finding a comment, and we're not in a string (processed specially) so preserve it in full:
-                transformedLines.push(line);
+                pushTransformedLine(i, line);
                 mostRecentIndent = getIndent(line.trimEnd());
                 checkRearrangeCommentsIdent();
             }
@@ -501,7 +549,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
     // We might have comments at the end of the code, so we need to check their indentation:
     checkRearrangeCommentsIdent();
 
-    return { disabledLines, frameStateLines: frameStateLines, transformedLines, strypeDirectives };
+    return { disabledLines, frameStateLines: frameStateLines, transformedLines, transformedLineOrigin, strypeDirectives };
 }
 
 // Information about a set of "copied" frames.  This is the result of parsing
@@ -554,7 +602,6 @@ export function offsetAllIds(frames: CopiedFrames, offset: number) : CopiedFrame
 // has pasted in, return the string after turning it into frames.
 // If unsuccessful, throws CopyFailure with a string with some info about where the Python parse failed.
 function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>) : CopiedFrames {
-    const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
     const indents = new Map<number, string>();
     
     // Then find the common amount of indentation on non-blank lines and remove it:
@@ -587,6 +634,13 @@ function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: 
     }
 
     const transformed = transformCommentsAndBlanks(codeLines, format);
+    // A Skulpt-reported line number is an index into transformed.transformedLines, which doesn't
+    // correspond 1:1 with codeLines (see transformedLineOrigin's doc comment), so we must go via
+    // transformedLineOrigin to get back to a codeLines line number before applying linenoMapping:
+    const mapLineno = (lineno : number) : number => {
+        const originalLineno = transformed.transformedLineOrigin[lineno - 1] ?? lineno;
+        return linenoMapping ? linenoMapping[originalLineno] : originalLineno;
+    };
     const parsedBySkulpt = parseWithSkulpt(transformed.transformedLines, mapLineno);
     if (typeof parsedBySkulpt === "string") {
         throw new CopyFailure(parsedBySkulpt);
@@ -646,6 +700,16 @@ function concatSlots(lhs: SlotsStructure, operator: string, rhs: SlotsStructure)
         }
     }
     return joined;
+}
+
+// Whether a parsed expression is "simple" enough that re-using it as an operand
+// (as we do when expanding an augmented assignment like "a += b" into "a = a + b")
+// doesn't need extra brackets to stay unambiguous: a single token, a single function
+// call, or a single member/method-call chain. All of those only ever join sub-parts
+// with a blank ("") or a "." operator; anything else (a real binary/unary operator)
+// means brackets are needed to preserve the original semantics.
+function isSimpleAugAssignOperand(slots: SlotsStructure) : boolean {
+    return slots.operators.every((op) => op.code === "" || op.code === ".");
 }
 
 // Dig down the tree and find the actual value.  Skips down through
@@ -1047,11 +1111,27 @@ function copyFramesFromPython(p: ParsedConcreteTree, s : CopyState) : CopyState 
     case Sk.ParseTables.sym.expr_stmt:
         if (p.children) {
             const index = p.children.findIndex((x) => x.value === "=");
+            const augIndex = p.children.findIndex((x) => x.type === Sk.ParseTables.sym.augassign);
             if (index >= 0) {
                 checkValidMatchContent(s.parent?.frameType.type, p.lineno);
                 // An assignment
                 const lhs = toSlots({...p, children: p.children.slice(0, index)});
                 const rhs = toSlots({...p, children: p.children.slice(index + 1)});
+                s = addFrame(makeFrame(AllFrameTypesIdentifier.varassign, {0: {slotStructures: lhs}, 1: {slotStructures: rhs}}, s.isSPY), p.lineno, s);
+            }
+            else if (augIndex >= 0) {
+                checkValidMatchContent(s.parent?.frameType.type, p.lineno);
+                // Strype has no dedicated frame for augmented assignment (e.g. "a += b"), so we
+                // expand it into the equivalent "a = a + b" instead. This isn't behaviour-compliant
+                // for targets with side effects (e.g. "a().x += b" would evaluate "a()" twice) but
+                // that's an accepted, unlikely-to-occur limitation.
+                const lhs = toSlots({...p, children: p.children.slice(0, augIndex)});
+                const rhsOperand = toSlots({...p, children: p.children.slice(augIndex + 1)});
+                // Strip the trailing "=" from e.g. "+=" to get the underlying operator "+":
+                const op = digValue(p.children[augIndex]).slice(0, -1);
+                const bracketedRhsOperand = isSimpleAugAssignOperand(rhsOperand) ? rhsOperand :
+                    {fields: [{code: ""}, {...rhsOperand, openingBracketValue: "("}, {code: ""}], operators: [{code: ""}, {code: ""}]};
+                const rhs = concatSlots(cloneDeep(lhs), op, bracketedRhsOperand);
                 s = addFrame(makeFrame(AllFrameTypesIdentifier.varassign, {0: {slotStructures: lhs}, 1: {slotStructures: rhs}}, s.isSPY), p.lineno, s);
             }
             else {
@@ -1686,12 +1766,20 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
     }
     
     let posAfter = at;
-    
+    // Set to true if the main-code paste was rejected by insertFramesAtPosition (e.g. pasting a
+    // joint frame like "else" at a position where it wouldn't form legal code).  Only mainFrames
+    // can trigger this: imports/classDefs/funcDefs are never joint frames themselves, and a joint
+    // frame pasted without its parent if/try can only ever land in mainFrames (see
+    // splitLinesToSections), so insertFramesAtPosition's non-joint branch -- which never rejects --
+    // is the only one those three other groups can hit. In that case the frames were never
+    // actually added to the store, so we must not treat them as pasted below.
+    let pasteRejected = false;
+
     // The rule for cursor positions for pasting in other sections is the point closest to the frame cursor;
     // see individual comments below
-    
+
     if (importFrames.frameIds.length > 0) {
-        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IMPORTS_SECTION) 
+        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IMPORTS_SECTION)
             ? {...at}
             // If we're not in the imports, we know we're below it:
             : getLastCaretPosInsideParent(useStore().getImportsFrameContainerId);
@@ -1722,7 +1810,7 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
             // Adjust in case we also paste more in the defs:
             at = adjusted ?? at;
         }
-        
+
     }
     if (funcDefFrames.frameIds.length > 0) {
         let currentCaretContainerPosition: { id: number; caretPosition: CaretPosition };
@@ -1761,14 +1849,22 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
     }
     if (mainFrames.frameIds.length > 0) {
         // If we're not in the main section, closest cursor will be the top:
-        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) 
-            ? {...at} 
+        const currentCaretContainerPosition = (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION)
+            ? {...at}
             : {id : useStore().getMainCodeFrameContainerId, caretPosition: CaretPosition.body};
         offsetAllIds(mainFrames, useStore().nextAvailableId);
         const adjusted = useStore().insertFramesAtPosition({target: currentCaretContainerPosition, sourceFrames: mainFrames, ignoreStateBackup});
-        if (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) {
-            posAfter = adjusted ?? posAfter;
+        if (adjusted == null) {
+            pasteRejected = true;
+            // Nothing was actually inserted, so make sure it's not treated as pasted below:
+            mainFrames.frames = {};
         }
+        else if (curLocation == STRYPE_LOCATION.IN_FUNCDEF || curLocation == STRYPE_LOCATION.MAIN_CODE_SECTION) {
+            posAfter = adjusted;
+        }
+    }
+    if (pasteRejected) {
+        useStore().showMessage(MessageDefinitions.ForbiddenFramePaste, 10000);
     }
     if (!dontSetCaretAfter) {
         useStore().setCurrentFrame(posAfter, true);

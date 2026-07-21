@@ -119,6 +119,7 @@ describe("Python round-trip", () => {
 
     it("Shows an error for invalid code with wrong code", () => {
         // Since the default code contains a project doc, we need to include it to the code
+        // The fixture's invalidity comes from a "@" (matrix mult) operator, which Strype doesn't support
         testRoundTripImportAndDownload("tests/cypress/fixtures/python-invalid-hints-extract.py", defaultProjectDocFullLine);
         assertVisibleError(/invalid.*import.*operator.*line: 24/si);
     });

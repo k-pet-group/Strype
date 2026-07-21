@@ -2656,19 +2656,33 @@ export const useStore = defineStore("app", {
             const areFramesJoint = payload.sourceFrames.frames[payload.sourceFrames.frameIds[0]].frameType.isJointFrame;
             if (areFramesJoint) {
                 // Joint frames.  We can only paste if we're inside the body of the joint parent
-                // or one of its joint frames, at the last position of the body:
-                let parentId: number;
-                if (payload.target.caretPosition == CaretPosition.body) {
-                    parentId = payload.target.id;
+                // or one of its joint frames, at the last position of the body -- or immediately
+                // below the joint parent's own frame, which is where the caret naturally ends up
+                // once nothing follows its whole chain (e.g. pasting a trailing "else" right after
+                // finishing an if/elif with nothing else in the body).  That's the joint parent's
+                // own "below" position, not one of its children's, so it needs to append after any
+                // existing joint children rather than being treated as "top of its body":
+                let jointParentId: number;
+                let newIndex: number;
+                if (payload.target.caretPosition == CaretPosition.below
+                    && this.frameObjects[payload.target.id].frameType.allowJointChildren
+                    && !this.frameObjects[payload.target.id].frameType.isJointFrame) {
+                    jointParentId = payload.target.id;
+                    newIndex = this.frameObjects[jointParentId].jointFrameIds.length;
                 }
                 else {
-                    parentId = getParentOrJointParent(payload.target.id);
+                    let parentId: number;
+                    if (payload.target.caretPosition == CaretPosition.body) {
+                        parentId = payload.target.id;
+                    }
+                    else {
+                        parentId = getParentOrJointParent(payload.target.id);
+                    }
+
+                    const insideJointParentBody = !this.frameObjects[parentId].frameType.isJointFrame;
+                    newIndex = insideJointParentBody ? 0 : this.getIndexInParent(parentId) + 1;
+                    jointParentId = insideJointParentBody ? parentId : getParentOrJointParent(parentId);
                 }
-                
-                const insideJointParentBody = !this.frameObjects[parentId].frameType.isJointFrame;
-                const newIndex = insideJointParentBody ? 0 : this.getIndexInParent(parentId) + 1;
-                
-                const jointParentId = insideJointParentBody ? parentId : getParentOrJointParent(parentId);
                 if (!this.frameObjects[jointParentId].frameType.allowJointChildren) {
                     // This frame doesn't allow joint children; bail out instantly
                     return null;

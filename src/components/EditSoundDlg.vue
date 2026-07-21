@@ -41,6 +41,7 @@
         <span class="EditSoundDlg-sizeInfo">{{$t("media.soundAverageVolume")}} {{Math.round(volumeRMS * 10 * 100)}}%</span>
         <div class="EditSoundDlg-button-wrapper">
             <BButton class="EditSoundDlg-normalise-button EditSoundImageDlg-info-btn" @click="doNormaliseVolume">{{$t("media.soundNormaliseVolume")}}</BButton>
+            <BButton v-if="showReRecordButton" class="EditSoundDlg-rerecord-button EditSoundImageDlg-info-btn" @click="doReRecord"><i class="fa fa-microphone"></i> {{$t("media.reRecord")}}</BButton>
         </div>
     </ModalDlg>
 </template>
@@ -77,6 +78,10 @@ export default defineComponent({
         dlgId: String,
         dlgTitle: String,
         soundToEdit: {type: [AudioBuffer, null], default: null},
+        // Only true when this dialog was opened as part of the record-new-sound flow (see
+        // RecordSoundDlg.vue / App.vue::recordNewSoundInDialog); shows an extra button that
+        // discards the current capture and goes back to the record dialog instead of closing us.
+        showReRecordButton: Boolean,
     },
     
     data: function() {
@@ -153,6 +158,9 @@ export default defineComponent({
             if (this.stopPreview != null) {
                 this.stopPreview();
             }
+        },
+        doReRecord() {
+            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "reRecord", componentId: this.dlgId});
         },
         defaultSize({imageSize, visibleArea} : { imageSize: {width: number, height: number}, visibleArea : {width: number, height: number} }) {
             return {

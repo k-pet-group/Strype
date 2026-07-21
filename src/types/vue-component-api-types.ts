@@ -176,4 +176,12 @@ export type EditImageDlgComponentAPI = {
 export type EditSoundDlgComponentAPI = {
   getUpdatedMedia: () => Promise<{code: string; mediaType: string;}>,
 }
+
+export type RecordImageDlgComponentAPI = {
+  getCapturedImageDataURL: () => string | null,
+}
+
+export type RecordSoundDlgComponentAPI = {
+  getCapturedAudioBuffer: () => AudioBuffer | null,
+}
 // #v-end-if

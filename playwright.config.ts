@@ -1,4 +1,5 @@
 import { defineConfig, devices } from "@playwright/test";
+import path from "path";
 
 /**
  * Read environment variables from file.
@@ -13,6 +14,12 @@ export const BASE_URL = process.env.BASE_URL || "http://localhost:8081/editor/";
 const specFilter = process.env.SPEC;
 const grepFilter = process.env.GREP;
 const excludeSpecFilter = process.env.EXCLUDE_SPEC;
+
+// media-recording.spec.ts needs Chromium's fake-device flags (real getUserMedia access isn't
+// available/scriptable in CI), so it only runs under the dedicated "chromium-media-recording"
+// project below, not under the plain chromium/firefox/webkit projects:
+const mediaRecordingSpecPattern = "**/media-recording.spec.ts";
+const excludeMediaRecordingSpec = [...(excludeSpecFilter ? excludeSpecFilter.split(",") : []), mediaRecordingSpecPattern];
 /**
  * See https://playwright.dev/docs/test-configuration.
  */
@@ -62,6 +69,7 @@ export default defineConfig({
     projects: [
         {
             name: "chromium",
+            testIgnore: excludeMediaRecordingSpec,
             use: { ...devices["Desktop Chrome"], contextOptions: {
                 // chromium-specific permissions
                 permissions: ["clipboard-read"],
@@ -71,6 +79,7 @@ export default defineConfig({
 
         {
             name: "firefox",
+            testIgnore: excludeMediaRecordingSpec,
             use: { ...devices["Desktop Firefox"], launchOptions: {
                 firefoxUserPrefs: {
                     "dom.events.asyncClipboard.readText": true,
@@ -82,7 +91,27 @@ export default defineConfig({
 
         {
             name: "webkit",
+            testIgnore: excludeMediaRecordingSpec,
             use: { ...devices["Desktop Safari"], deviceScaleFactor: 1 },
+        },
+
+        // Chromium-only project for tests that need webcam/microphone access. Uses Chrome's
+        // fake-device flags to feed a canned video/audio file into getUserMedia, and
+        // --use-fake-ui-for-media-stream to auto-accept the permission prompt (which otherwise
+        // has no UI to click in a headless/CI context).
+        {
+            name: "chromium-media-recording",
+            testMatch: [mediaRecordingSpecPattern],
+            use: { ...devices["Desktop Chrome"], contextOptions: {
+                permissions: ["camera", "microphone"],
+            },
+            launchOptions: { args: [
+                "--use-fake-device-for-media-stream",
+                "--use-fake-ui-for-media-stream",
+                `--use-file-for-fake-video-capture=${path.resolve(process.cwd(), "tests/playwright/fixtures/fake-video.y4m")}`,
+                `--use-file-for-fake-audio-capture=${path.resolve(process.cwd(), "tests/playwright/fixtures/fake-audio.wav")}`,
+            ] },
+            },
         },
     ],
 });

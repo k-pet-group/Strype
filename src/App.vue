@@ -1757,15 +1757,20 @@ export default defineComponent({
             this.showImgPreview = showPreview;
 
             const editedImage = (event: BvTriggerableEvent) => {
-                const dlgId = event.componentId;
-                if((event.trigger == "ok" || event.trigger=="event") && dlgId == "editImageDlg"){
+                if (event.componentId != "editImageDlg") {
+                    return;
+                }
+                // Always unregister once the dialog closes, regardless of how it closed
+                // (previously this only happened on "ok"/"event", leaking a stale listener
+                // whenever the dialog was cancelled):
+                eventBus.off(CustomEventTypes.strypeModalHidden, editedImage);
+
+                // Reset the image to edit to make sure we always start from a good start when opening modals again
+                this.imgToEditInDialog = "";
+
+                if(event.trigger == "ok" || event.trigger=="event"){
                     // Call the callback:
                     editImageDlgComponentAPI?.getUpdatedMedia().then(callback);
-
-                    eventBus.off(CustomEventTypes.strypeModalHidden, editedImage);
-
-                    // Reset the image to edit to make sure we always start from a good start when opening modals again
-                    this.imgToEditInDialog = "";
                 }
             };
             eventBus.on(CustomEventTypes.strypeModalHidden, editedImage);
@@ -1777,15 +1782,20 @@ export default defineComponent({
             this.soundToEditInDialog = audioBuffer;
 
             const editedSound = (event: BvTriggerableEvent) => {
-                const dlgId = event.componentId;
-                if((event.trigger == "ok" || event.trigger=="event") && dlgId == "editSoundDlg"){
+                if (event.componentId != "editSoundDlg") {
+                    return;
+                }
+                // Always unregister once the dialog closes, regardless of how it closed
+                // (previously this only happened on "ok"/"event", leaking a stale listener
+                // whenever the dialog was cancelled):
+                eventBus.off(CustomEventTypes.strypeModalHidden, editedSound);
+
+                // Reset the sound to edit to make sure we always start from a good start when opening modals again
+                this.soundToEditInDialog = null;
+
+                if(event.trigger == "ok" || event.trigger=="event"){
                     // Call the callback:
                     editSoundDlgComponentAPI?.getUpdatedMedia().then(callback);
-
-                    eventBus.off(CustomEventTypes.strypeModalHidden, editedSound);
-
-                    // Reset the sound to edit to make sure we always start from a good start when opening modals again
-                    this.soundToEditInDialog = null;
                 }
             };
             eventBus.on(CustomEventTypes.strypeModalHidden, editedSound);

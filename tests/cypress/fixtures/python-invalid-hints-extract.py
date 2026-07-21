@@ -20,8 +20,8 @@ for filename in os.listdir("."):
                 rindex = len(row) - (1 if filename.startswith("Human") else 2)
                 while rindex >= 0 and ((not row[rindex].strip()) or row[rindex].strip() == "NA"):
                     rindex -= 1
-                
-                if rindex < 0:
+
+                if rindex @ 0 < 0:
                     continue  # Skip rows with no non-empty cells
 
                 if filename.startswith("Human"):

@@ -279,11 +279,23 @@ function findStringEnd(line : string, startIndex : number, quoteType : string) :
 // and a list of transformed lines.  Comments are transformed to identifiers, as are blanks, so that
 // we can see them after Skulpt's parse.
 // Note the disabledLines are one-based, not zero-based
-function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") : {disabledLines : number[], frameStateLines : Map<number, SavedFrameState>, transformedLines : string[], strypeDirectives: Map<string, string>} { 
+// transformedLineOrigin[i] gives the (one-based) index into codeLines that transformedLines[i] came
+// from. A single codeLine can produce zero lines (lines fully inside a multi-line triple-quoted
+// string, which are collapsed onto the line where the string closes), one line, or two lines (code
+// with a trailing comment, which is moved onto its own line) -- so transformedLines.length does not
+// generally equal codeLines.length, and callers that need to map a Skulpt-reported line number back
+// to the original source must go through this array rather than assuming a 1:1 correspondence.
+function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") : {disabledLines : number[], frameStateLines : Map<number, SavedFrameState>, transformedLines : string[], transformedLineOrigin : number[], strypeDirectives: Map<string, string>} {
     codeLines = [...codeLines];
     const disabledLines : number[] = [];
     const frameStateLines : Map<number, SavedFrameState> = new Map<number, SavedFrameState>();
     const transformedLines : string[] = [];
+    // Parallel to transformedLines; see doc comment above.
+    const transformedLineOrigin : number[] = [];
+    const pushTransformedLine = (i : number, line : string) : void => {
+        transformedLines.push(line);
+        transformedLineOrigin.push(i + 1);
+    };
     const strypeDirectives: Map<string, string> = new Map<string, string>();
 
     // A reference to the lines containing a comment block (that is, consecutive comment lines), see inline-method below for details.
@@ -357,7 +369,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                 if (key == "LibraryDisabled") {
                     disabledLines.push(transformedLines.length + 1);
                 }
-                transformedLines.push(directiveIndent + STRYPE_LIBRARY_PREFIX + toUnicodeEscapes(value));
+                pushTransformedLine(i, directiveIndent + STRYPE_LIBRARY_PREFIX + toUnicodeEscapes(value));
                 // We know this is only whitespace because directiveMatch also matched:
                 mostRecentIndent = directiveIndent;
             }
@@ -373,7 +385,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                     }
                 }
                 // Push a blank to make line numbers match:
-                transformedLines.push("");
+                pushTransformedLine(i, "");
                 // +1 to mean the line after us:
                 frameStateLines.set(transformedLines.length + 1, composite);
             }
@@ -381,7 +393,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                 // Not one we have to deal with during parsing, probably a config setting, so record for later processing:
                 strypeDirectives.set(key, value);
                 // Push a blank to make line numbers match:
-                transformedLines.push("");
+                pushTransformedLine(i, "");
                 mostRecentIndent = "";
             }
         }
@@ -432,10 +444,10 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                 smallestAdjIndent = mostRecentIndent.length <= nextIndent.length ? mostRecentIndent : nextIndent;
             }
             if (codeLines[i].length > smallestAdjIndent.length) {
-                transformedLines.push(codeLines[i] + STRYPE_WHOLE_LINE_BLANK);
+                pushTransformedLine(i, codeLines[i] + STRYPE_WHOLE_LINE_BLANK);
             }
             else {
-                transformedLines.push(smallestAdjIndent + STRYPE_WHOLE_LINE_BLANK);
+                pushTransformedLine(i, smallestAdjIndent + STRYPE_WHOLE_LINE_BLANK);
             }
             checkRearrangeCommentsIdent();
         }
@@ -499,16 +511,18 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
                         const after = line.slice(charIndex+1);
                         if (before.trim() == "") {
                             // Just a single line comment by itself:
-                            transformedLines.push(before + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(after));
+                            pushTransformedLine(i, before + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(after));
                             mostRecentIndent = before;
                             aCommentBlockLines.push(transformedLines.length-1);
                         }
                         else {
-                            // Code followed by comment, put comment on next line:
+                            // Code followed by comment, put comment on next line.  Both lines originate
+                            // from this same source line i, so both get the same origin entry -- this is
+                            // deliberately not a 1:1 push, see transformedLineOrigin's doc comment above:
                             mostRecentIndent = getIndent(before);
-                            transformedLines.push(before);
+                            pushTransformedLine(i, before);
                             checkRearrangeCommentsIdent();
-                            transformedLines.push(mostRecentIndent + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(after));
+                            pushTransformedLine(i, mostRecentIndent + STRYPE_COMMENT_PREFIX + toUnicodeEscapes(after));
                         }
                         // Make sure we don't push the line again:
                         charIndex = -1;
@@ -522,7 +536,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
             }
             if (charIndex >= 0 && currentTripleQuoteString == null) {
                 // Got to the end without finding a comment, and we're not in a string (processed specially) so preserve it in full:
-                transformedLines.push(line);
+                pushTransformedLine(i, line);
                 mostRecentIndent = getIndent(line.trimEnd());
                 checkRearrangeCommentsIdent();
             }
@@ -535,7 +549,7 @@ function transformCommentsAndBlanks(codeLines: string[], format: "py" | "spy") :
     // We might have comments at the end of the code, so we need to check their indentation:
     checkRearrangeCommentsIdent();
 
-    return { disabledLines, frameStateLines: frameStateLines, transformedLines, strypeDirectives };
+    return { disabledLines, frameStateLines: frameStateLines, transformedLines, transformedLineOrigin, strypeDirectives };
 }
 
 // Information about a set of "copied" frames.  This is the result of parsing
@@ -588,7 +602,6 @@ export function offsetAllIds(frames: CopiedFrames, offset: number) : CopiedFrame
 // has pasted in, return the string after turning it into frames.
 // If unsuccessful, throws CopyFailure with a string with some info about where the Python parse failed.
 function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: STRYPE_LOCATION, format: "py" | "spy", linenoMapping?: Record<number, number>) : CopiedFrames {
-    const mapLineno = (lineno : number) : number => linenoMapping ? linenoMapping[lineno] : lineno;
     const indents = new Map<number, string>();
     
     // Then find the common amount of indentation on non-blank lines and remove it:
@@ -621,6 +634,13 @@ function copyFramesFromParsedPython(codeLines: string[], currentStrypeLocation: 
     }
 
     const transformed = transformCommentsAndBlanks(codeLines, format);
+    // A Skulpt-reported line number is an index into transformed.transformedLines, which doesn't
+    // correspond 1:1 with codeLines (see transformedLineOrigin's doc comment), so we must go via
+    // transformedLineOrigin to get back to a codeLines line number before applying linenoMapping:
+    const mapLineno = (lineno : number) : number => {
+        const originalLineno = transformed.transformedLineOrigin[lineno - 1] ?? lineno;
+        return linenoMapping ? linenoMapping[originalLineno] : originalLineno;
+    };
     const parsedBySkulpt = parseWithSkulpt(transformed.transformedLines, mapLineno);
     if (typeof parsedBySkulpt === "string") {
         throw new CopyFailure(parsedBySkulpt);

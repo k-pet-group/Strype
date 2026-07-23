@@ -245,7 +245,15 @@
     "importedModules": "Modules importés",
     "builtinFiles": "Fichiers intégrés",
     "invalidState": "Aucune complétion disponible",
-    "noDocumentation": "Aucune documentation disponible"
+    "noDocumentation": "Aucune documentation disponible",
+    "codeCompletion": "Complétion de code",
+    "codeCompletionFilePaths": "Complétion de code (chemins d'accès de fichiers)",
+    "spaceKey": "espace",
+    "wrapRoundBrackets": "Entourer de ()",
+    "wrapSquareBrackets": "Entourer de []",
+    "wrapCurlyBrackets": "Entourer de {'{}'}",
+    "wrapDoubleQuotes": "Entourer de \"",
+    "wrapSingleQuotes": "Entourer de '"
   },
   "commandTabs": {
     "0": "Ajoute un cadre"

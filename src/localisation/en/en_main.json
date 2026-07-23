@@ -253,7 +253,10 @@
     "wrapSquareBrackets": "Wrap in []",
     "wrapCurlyBrackets": "Wrap in {'{}'}",
     "wrapDoubleQuotes": "Wrap in \"",
-    "wrapSingleQuotes": "Wrap in '"
+    "wrapSingleQuotes": "Wrap in '",
+    "shiftKey": "Shift",
+    "recordImageShortcut": "Record image",
+    "recordSoundShortcut": "Record sound"
   },
   "commandTabs": {
     "0": "Add Frame"

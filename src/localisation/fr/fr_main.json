@@ -253,7 +253,10 @@
     "wrapSquareBrackets": "Entourer de []",
     "wrapCurlyBrackets": "Entourer de {'{}'}",
     "wrapDoubleQuotes": "Entourer de \"",
-    "wrapSingleQuotes": "Entourer de '"
+    "wrapSingleQuotes": "Entourer de '",
+    "shiftKey": "Shift",
+    "recordImageShortcut": "Enregistrer une image",
+    "recordSoundShortcut": "Enregistrer un son"
   },
   "commandTabs": {
     "0": "Ajoute un cadre"

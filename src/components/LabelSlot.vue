@@ -945,6 +945,23 @@ export default defineComponent({
             // is already done before opening the large-image edit dialog on paste (see onCodePaste):
             this.appStore.ignoreBlurEditableSlot = true;
 
+            // If the user cancels (at either the record or the edit dialog) instead of confirming,
+            // nothing is inserted -- but real DOM focus has still moved to the modal throughout, so
+            // without this we'd be left showing the frame cursor instead of back in the slot. Restore
+            // the original selection exactly as it was before the shortcut was pressed:
+            const restoreOriginalCursor = () => {
+                const anchorCursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: selectionStart};
+                const focusCursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: selectionEnd};
+                nextTick(() => {
+                    setDocumentSelection(anchorCursorInfo, focusCursorInfo);
+                    this.appStore.setSlotTextCursors(anchorCursorInfo, focusCursorInfo);
+                    this.appStore.setFocusEditableSlot({
+                        frameSlotInfos: targetSlotInfos,
+                        caretPosition: this.appStore.getAllowedChildren(targetSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
+                    });
+                });
+            };
+
             const commitInsertion = (replacement: {code: string, mediaType: string}) => {
                 this.appStore.addNewSlot(targetSlotInfos, replacement.mediaType, lhsCode, rhsCode, SlotType.media, false, replacement.code);
                 // Explicitly place the cursor in the new trailing (empty) field right after the
@@ -972,10 +989,10 @@ export default defineComponent({
             };
 
             if (kind == "image") {
-                this.doRecordNewImageInDialog(commitInsertion);
+                this.doRecordNewImageInDialog(commitInsertion, restoreOriginalCursor);
             }
             else {
-                this.doRecordNewSoundInDialog(commitInsertion);
+                this.doRecordNewSoundInDialog(commitInsertion, restoreOriginalCursor);
             }
         },
 

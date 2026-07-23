@@ -168,16 +168,22 @@ test.describe("Record and insert an image", () => {
         await expect(page.locator("img[data-code^='load_image']")).toHaveCount(1);
     });
 
-    test("Cancelling the record dialog inserts nothing", async ({page}) => {
+    test("Cancelling the record dialog inserts nothing and restores the cursor to the slot", async ({page}) => {
         await openIfFrame(page);
         await page.keyboard.press("ControlOrMeta+Shift+I");
         await expect(page.locator(".RecordImageDlg-video-wrapper")).toBeVisible();
         await page.locator(".RecordImageDlg-cancel-button").click();
         await expect(page.locator(".RecordImageDlg-video-wrapper")).not.toBeVisible();
         await expect(page.locator("img[data-code^='load_image']")).toHaveCount(0);
+
+        // The text cursor should be back in the slot (not left on the frame cursor) -- if it
+        // wasn't, this keypress would do something other than extend the slot's own content:
+        await typeIndividually(page, "2");
+        await waitForEditorSettled(page);
+        await assertStateOfIfFrame(page, "{2$}", []);
     });
 
-    test("Cancelling the edit dialog after a capture inserts nothing", async ({page}) => {
+    test("Cancelling the edit dialog after a capture inserts nothing and restores the cursor to the slot", async ({page}) => {
         await openIfFrame(page);
         await page.keyboard.press("ControlOrMeta+Shift+I");
         await waitForFakeVideoPlaying(page);
@@ -187,6 +193,10 @@ test.describe("Record and insert an image", () => {
         await page.locator(".btn.btn-secondary", {hasText: "Cancel"}).filter({visible: true}).click();
         await expect(page.locator("span.EditImageDlg-sizeInfo").first()).not.toBeVisible();
         await expect(page.locator("img[data-code^='load_image']")).toHaveCount(0);
+
+        await typeIndividually(page, "2");
+        await waitForEditorSettled(page);
+        await assertStateOfIfFrame(page, "{2$}", []);
     });
 });
 
@@ -223,12 +233,18 @@ test.describe("Record and insert a sound", () => {
         await assertStateOfIfFrame(page, "{1}" + MEDIA_SLOT_PARSED_PLACEHOLDER.sound + "{}+{2$}", [{mediaType: "snd", endOfB64}]);
     });
 
-    test("Cancelling the record dialog inserts nothing", async ({page}) => {
+    test("Cancelling the record dialog inserts nothing and restores the cursor to the slot", async ({page}) => {
         await openIfFrame(page);
         await page.keyboard.press("ControlOrMeta+Shift+U");
         await expect(page.locator(".RecordSoundDlg-waveform")).toBeVisible();
         await page.locator(".RecordSoundDlg-cancel-button").click();
         await expect(page.locator(".RecordSoundDlg-waveform")).not.toBeVisible();
         await expect(page.locator("img[data-code^='load_sound']")).toHaveCount(0);
+
+        // The text cursor should be back in the slot (not left on the frame cursor) -- if it
+        // wasn't, this keypress would do something other than extend the slot's own content:
+        await typeIndividually(page, "2");
+        await waitForEditorSettled(page);
+        await assertStateOfIfFrame(page, "{2$}", []);
     });
 });

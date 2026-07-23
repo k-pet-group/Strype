@@ -1763,7 +1763,7 @@ export default defineComponent({
         getPeaComponent() {
             return (this.$refs[this.strypeCommandsRefId] as any).$refs[getPEAComponentRefId()];
         },
-        editImageInDialog(imageDataURL: string, showPreview: (dataURL: string) => void, callback: (replacement: {code: string, mediaType: string}) => void, recordOptions?: {onReRecord: () => void}) {
+        editImageInDialog(imageDataURL: string, showPreview: (dataURL: string) => void, callback: (replacement: {code: string, mediaType: string}) => void, recordOptions?: {onReRecord: () => void}, onCancelled?: () => void) {
             const editImageDlgComponentAPI = vueComponentsAPIHandler.editImageDlgComponentAPI;
             this.imgToEditInDialog = imageDataURL;
             this.showImgPreview = showPreview;
@@ -1801,13 +1801,14 @@ export default defineComponent({
                     if (recordOptions) {
                         this.isRecordingMediaFlowActive = false;
                     }
+                    onCancelled?.();
                 }
             };
             eventBus.on(CustomEventTypes.strypeModalHidden, editedImage);
 
             eventBus.emit(CustomEventTypes.showStrypeModal, "editImageDlg");
         },
-        editSoundInDialog(audioBuffer: AudioBuffer, callback: (replacement: {code: string, mediaType: string}) => void, recordOptions?: {onReRecord: () => void}) {
+        editSoundInDialog(audioBuffer: AudioBuffer, callback: (replacement: {code: string, mediaType: string}) => void, recordOptions?: {onReRecord: () => void}, onCancelled?: () => void) {
             const editSoundDlgComponentAPI = vueComponentsAPIHandler.editSoundDlgComponentAPI;
             this.soundToEditInDialog = audioBuffer;
             this.editSoundDlgShowReRecord = recordOptions != undefined;
@@ -1844,6 +1845,7 @@ export default defineComponent({
                     if (recordOptions) {
                         this.isRecordingMediaFlowActive = false;
                     }
+                    onCancelled?.();
                 }
             };
             eventBus.on(CustomEventTypes.strypeModalHidden, editedSound);
@@ -1851,18 +1853,19 @@ export default defineComponent({
             eventBus.emit(CustomEventTypes.showStrypeModal, "editSoundDlg");
         },
         // Public entry point for the record-new-image flow (Ctrl-Shift-I). callback is only ever
-        // called if the user completes the whole flow with "OK" on the edit dialog.
-        recordNewImageInDialog(callback: (replacement: {code: string, mediaType: string}) => void) {
+        // called if the user completes the whole flow with "OK" on the edit dialog; onCancelled is
+        // called instead if the user cancels at any point.
+        recordNewImageInDialog(callback: (replacement: {code: string, mediaType: string}) => void, onCancelled: () => void) {
             if (this.isRecordingMediaFlowActive) {
                 // A shortcut-triggered flow (or another modal) is already in progress; ignore:
                 return;
             }
             this.isRecordingMediaFlowActive = true;
-            this.startRecordImageDlg(callback);
+            this.startRecordImageDlg(callback, onCancelled);
         },
         // Internal: (re-)opens the record dialog without touching isRecordingMediaFlowActive, so
         // it can be safely called again from "Re-record" without the guard above rejecting it.
-        startRecordImageDlg(callback: (replacement: {code: string, mediaType: string}) => void) {
+        startRecordImageDlg(callback: (replacement: {code: string, mediaType: string}) => void, onCancelled: () => void) {
             const recordImageDlgComponentAPI = vueComponentsAPIHandler.recordImageDlgComponentAPI;
 
             const recorded = (event: BvTriggerableEvent) => {
@@ -1873,12 +1876,13 @@ export default defineComponent({
 
                 const capturedDataURL = event.trigger == "captured" ? recordImageDlgComponentAPI?.getCapturedImageDataURL() : null;
                 if (capturedDataURL) {
-                    this.editImageInDialog(capturedDataURL, () => {}, callback, {onReRecord: () => this.startRecordImageDlg(callback)});
+                    this.editImageInDialog(capturedDataURL, () => {}, callback, {onReRecord: () => this.startRecordImageDlg(callback, onCancelled)}, onCancelled);
                     // The flow continues into the edit dialog; isRecordingMediaFlowActive stays true.
                 }
                 else {
                     // Cancelled (or, defensively, no captured data somehow): the flow ends here.
                     this.isRecordingMediaFlowActive = false;
+                    onCancelled();
                 }
             };
             eventBus.on(CustomEventTypes.strypeModalHidden, recorded);
@@ -1886,14 +1890,14 @@ export default defineComponent({
             eventBus.emit(CustomEventTypes.showStrypeModal, "recordImageDlg");
         },
         // Public entry point for the record-new-sound flow (Ctrl-Shift-U). Mirrors recordNewImageInDialog.
-        recordNewSoundInDialog(callback: (replacement: {code: string, mediaType: string}) => void) {
+        recordNewSoundInDialog(callback: (replacement: {code: string, mediaType: string}) => void, onCancelled: () => void) {
             if (this.isRecordingMediaFlowActive) {
                 return;
             }
             this.isRecordingMediaFlowActive = true;
-            this.startRecordSoundDlg(callback);
+            this.startRecordSoundDlg(callback, onCancelled);
         },
-        startRecordSoundDlg(callback: (replacement: {code: string, mediaType: string}) => void) {
+        startRecordSoundDlg(callback: (replacement: {code: string, mediaType: string}) => void, onCancelled: () => void) {
             const recordSoundDlgComponentAPI = vueComponentsAPIHandler.recordSoundDlgComponentAPI;
 
             const recorded = (event: BvTriggerableEvent) => {
@@ -1904,10 +1908,11 @@ export default defineComponent({
 
                 const capturedAudioBuffer = event.trigger == "captured" ? recordSoundDlgComponentAPI?.getCapturedAudioBuffer() : null;
                 if (capturedAudioBuffer) {
-                    this.editSoundInDialog(capturedAudioBuffer, callback, {onReRecord: () => this.startRecordSoundDlg(callback)});
+                    this.editSoundInDialog(capturedAudioBuffer, callback, {onReRecord: () => this.startRecordSoundDlg(callback, onCancelled)}, onCancelled);
                 }
                 else {
                     this.isRecordingMediaFlowActive = false;
+                    onCancelled();
                 }
             };
             eventBus.on(CustomEventTypes.strypeModalHidden, recorded);

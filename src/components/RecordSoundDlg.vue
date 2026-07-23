@@ -17,8 +17,13 @@ import { BButton, BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
 import { CustomEventTypes } from "@/helpers/editor";
-import { decodeRecordedAudioBlob, startLiveWaveform, stopMediaStreamTracks } from "@/helpers/mediaCapture";
+import { decodeRecordedAudioBlob, drawScrollingWaveform, readAnalyserPeak, stopMediaStreamTracks, WaveformPeak } from "@/helpers/mediaCapture";
 import { createOrGetAudioContext } from "@/helpers/audioContext";
+
+// The live waveform always shows this many milliseconds of audio before a recording exceeds it,
+// at which point it switches to squashing the whole recording to fit instead (see
+// startWaveformLoop() below):
+const WAVEFORM_WINDOW_MS = 5000;
 
 export default defineComponent({
     name: "RecordSoundDlg",
@@ -40,7 +45,11 @@ export default defineComponent({
             isRecording: false,
             mediaRecorder: null as MediaRecorder | null,
             recordedChunks: [] as Blob[],
-            stopWaveform: null as (() => void) | null,
+            analyser: null as AnalyserNode | null,
+            analyserBuffer: null as Uint8Array<ArrayBuffer> | null,
+            waveformRafId: null as number | null,
+            peakHistory: [] as WaveformPeak[],
+            recordStartTime: null as number | null,
             capturedAudioBuffer: null as AudioBuffer | null,
         };
     },
@@ -74,6 +83,8 @@ export default defineComponent({
             // Fresh state every time the dialog is (re-)shown, e.g. via "Re-record":
             this.errorMessage = null;
             this.capturedAudioBuffer = null;
+            this.peakHistory = [];
+            this.recordStartTime = null;
             navigator.mediaDevices.getUserMedia({audio: true}).then((stream) => {
                 this.stream = stream;
                 // Live waveform monitoring starts as soon as we have the stream, independent of
@@ -83,10 +94,9 @@ export default defineComponent({
                 const source = audioContext.createMediaStreamSource(stream);
                 const analyser = audioContext.createAnalyser();
                 source.connect(analyser);
-                const canvas = this.$refs.waveformCanvas as HTMLCanvasElement | undefined;
-                if (canvas) {
-                    this.stopWaveform = startLiveWaveform(analyser, canvas);
-                }
+                this.analyser = analyser;
+                this.analyserBuffer = new Uint8Array(analyser.fftSize);
+                this.startWaveformLoop();
             }).catch((err) => {
                 if (err?.name === "NotAllowedError") {
                     this.errorMessage = this.$t("media.micPermissionDenied") as string;
@@ -115,10 +125,59 @@ export default defineComponent({
             }
             this.mediaRecorder = null;
             this.isRecording = false;
-            this.stopWaveform?.();
-            this.stopWaveform = null;
+            this.stopWaveformLoop();
+            this.analyser = null;
+            this.analyserBuffer = null;
             stopMediaStreamTracks(this.stream);
             this.stream = null;
+        },
+
+        // Samples the analyser once per animation frame and redraws the waveform. While not
+        // recording, shows a scrolling last-WAVEFORM_WINDOW_MS-worth of audio. Once a recording
+        // has been running for less than that long, the same scrolling window continues but with
+        // a marker line at the point recording started; once the recording exceeds that window
+        // (the marker would scroll off the left edge), we switch to squashing the whole recording
+        // (start to now) to fit the canvas instead, so none of it is ever lost off-screen -- this
+        // is a continuous transition, since at the switchover instant both formulas describe the
+        // same window.
+        startWaveformLoop() {
+            const canvas = this.$refs.waveformCanvas as HTMLCanvasElement | undefined;
+            const analyser = this.analyser;
+            const analyserBuffer = this.analyserBuffer;
+            if (!canvas || !analyser || !analyserBuffer) {
+                return;
+            }
+            const loop = () => {
+                this.waveformRafId = requestAnimationFrame(loop);
+                const now = performance.now();
+                this.peakHistory.push({time: now, peak: readAnalyserPeak(analyser, analyserBuffer)});
+                // Drop history we'll never draw again: while recording, we need everything back to
+                // recordStartTime (for the squash view); otherwise just the last window's worth:
+                const retainFrom = this.recordStartTime ?? (now - WAVEFORM_WINDOW_MS);
+                while (this.peakHistory.length > 0 && this.peakHistory[0].time < retainFrom) {
+                    this.peakHistory.shift();
+                }
+
+                let windowStart = now - WAVEFORM_WINDOW_MS;
+                let marker: number | undefined;
+                if (this.recordStartTime != null) {
+                    if (now - this.recordStartTime <= WAVEFORM_WINDOW_MS) {
+                        marker = this.recordStartTime;
+                    }
+                    else {
+                        windowStart = this.recordStartTime;
+                    }
+                }
+                drawScrollingWaveform(canvas, this.peakHistory, windowStart, now, marker);
+            };
+            loop();
+        },
+
+        stopWaveformLoop() {
+            if (this.waveformRafId != null) {
+                cancelAnimationFrame(this.waveformRafId);
+                this.waveformRafId = null;
+            }
         },
 
         doRecord() {
@@ -132,6 +191,7 @@ export default defineComponent({
             createOrGetAudioContext();
 
             this.recordedChunks = [];
+            this.recordStartTime = performance.now();
             const mediaRecorder = new MediaRecorder(this.stream);
             mediaRecorder.ondataavailable = (event: BlobEvent) => {
                 if (event.data.size > 0) {
@@ -163,6 +223,9 @@ export default defineComponent({
             };
             mediaRecorder.stop();
             this.isRecording = false;
+            // Freeze the waveform right where it is -- this is the same squashed view the edit
+            // dialog's static preview will show next, so nothing visually jumps between the two:
+            this.stopWaveformLoop();
         },
 
         doCancel() {

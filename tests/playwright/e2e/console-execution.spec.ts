@@ -67,6 +67,69 @@ test.describe("Test stdin works", () => {
     });
 });
 
+test.describe("Test stopping during a pending input doesn't break the next run (issue #927)", () => {
+    // sInput()'s cleanup of a stopped-but-still-pending input() call (removing its console
+    // keydown/composition listeners, see execPythonCode.ts) is driven by a 1-second polling
+    // interval rather than any DOM-observable event, so we wait a little over a second after
+    // stopping to give that cleanup a chance to run before starting the next execution -- that's
+    // exactly the race these tests are meant to cover (without the fix, the stale listeners are
+    // never removed no matter how long we wait).
+    const STALE_INPUT_CLEANUP_WAIT_MS = 1500;
+
+    test("Check console still accepts input after stopping with a second input still pending", async ({page}) => {
+        const code = "name = input('What is your name?\\n')\nprint('Hello ' + name)\nspecies = input('What is your species?\\n')\nprint('Hello ' + name + ' the ' + species)\n";
+        await enterCode(page, ["", "", code]);
+        let button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        // Validate the first input, leaving the second one pending:
+        await page.locator("#peaConsole").pressSequentially("George\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nGeorge\nHello George\nWhat is your species?\n");
+        await expect(button).toContainText("Stop");
+        // Stop while the second input is still pending:
+        await button.click();
+        await runButtonShowsRun(button);
+        await page.waitForTimeout(STALE_INPUT_CLEANUP_WAIT_MS);
+
+        // Run again, and check that typing into the console actually works this time:
+        button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        await page.locator("#peaConsole").pressSequentially("Amy\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nAmy\nHello Amy\nWhat is your species?\n");
+        await expect(button).toContainText("Stop");
+        await page.locator("#peaConsole").pressSequentially("dog\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nAmy\nHello Amy\nWhat is your species?\ndog\nHello Amy the dog\n");
+        await runButtonShowsRun(button);
+        await checkFrameErrorCount(page, 0);
+    });
+
+    test("Check Enter still validates input after stopping with an unvalidated input pending", async ({page}) => {
+        const code = "name = input('What is your name?\\n')\nprint('Hello ' + name)\n";
+        await enterCode(page, ["", "", code]);
+        let button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        // Type something but don't validate it with Enter:
+        await page.locator("#peaConsole").pressSequentially("Geo", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nGeo");
+        await expect(button).toContainText("Stop");
+        // Stop while the input is still pending and unvalidated:
+        await button.click();
+        await runButtonShowsRun(button);
+        await page.waitForTimeout(STALE_INPUT_CLEANUP_WAIT_MS);
+
+        // Run again, type something, and check Enter actually validates it this time:
+        button = await startRunning(page);
+        await expect(page.locator("#peaConsole")).toBeEnabled();
+        await expect(page.locator("#peaConsole")).toBeFocused();
+        await page.locator("#peaConsole").pressSequentially("Amy\n", {delay: 75});
+        await checkConsoleContent(page, "What is your name?\nAmy\nHello Amy\n");
+        await runButtonShowsRun(button);
+        await checkFrameErrorCount(page, 0);
+    });
+});
+
 test.describe("Test assets filesystem", () => {
     test("Check reading and processing book", async ({page}) => {
         await enterCode(page, ["", "", `

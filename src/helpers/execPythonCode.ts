@@ -1,6 +1,6 @@
 // refs: http://skulpt.org/using.html#html and for the input/event part https://stackoverflow.com/questions/43733896/wait-for-an-event-to-occur-within-a-function-in-javascript-for-skulpt
 
-import { LineAndSlotPositions } from "@/types/types";
+import { LineAndSlotPositions, PythonExecRunningState } from "@/types/types";
 import { useStore } from "@/store/store";
 import i18n from "@/i18n";
 import { nextTick } from "vue";
@@ -12,8 +12,11 @@ const STRYPE_INPUT_INTERRUPT_ERR_MSG = "ExternalError: " + STRYPE_RUN_ACTION_MSG
 // Declation of JS objects required for using Skulpt:
 // the output HTML object, a text area in our case. Declared globally in the script for ease of usage
 // a Sk object that is FROM THE SKULPT LIBRARY, it is the main entry point of Skulpt
-let consoleTextArea: HTMLTextAreaElement = {} as HTMLTextAreaElement; 
-let codeExecStateRunningCheckFn: (() => boolean) | undefined = undefined;
+let consoleTextArea: HTMLTextAreaElement = {} as HTMLTextAreaElement;
+// Used by sInput() below to detect that the user has stopped execution while an input() call is
+// still pending, so it can reject the pending promise and remove its console event listeners
+// instead of leaving them dangling for the next run (see https://github.com/k-pet-group/Strype/issues/927).
+const codeExecStateRunningCheckFn: () => boolean = () => useStore().pythonExecRunningState != PythonExecRunningState.NotRunning;
 
 // The function used for "output" from Skulpt, to be registered against the Skulpt object
 function outf(text: string) {
@@ -113,7 +116,7 @@ export function sInput() : Promise<string> {
         // therefore, we shouldn't hang on this method and exit as soon as possible. To do so, we need to regularly check if
         // stopping the code execution has been requested: if so, we reject the input and make sure we leave in a clean UI state.
         const checkInterruptionHandle = setInterval(() => {
-            if (codeExecStateRunningCheckFn && !codeExecStateRunningCheckFn()) {
+            if (!codeExecStateRunningCheckFn()) {
                 clearTimeout(checkInterruptionHandle);
                 if(isConsoleTextAreaLocked){
                     consoleTextArea.disabled = true;

@@ -5,27 +5,6 @@ import { assertStateOfIfFrame, waitForEditorSettled, typeIndividually, MEDIA_SLO
 // This spec only runs under the dedicated "chromium-media-recording" Playwright project (see
 // playwright.config.ts), which supplies Chrome's fake-device flags so getUserMedia() returns a
 // canned video/audio feed instead of requiring real hardware/permissions.
-//
-// KNOWN INTERMITTENT FAILURE (unresolved as of this commit): the three tests that carry a
-// capture through to "OK" and expect an actual insertion --
-//   "Record and insert an image > Record (immediate), edit OK, inserted at the caret position"
-//   "Record and insert an image > Re-record discards the first capture and only inserts the second"
-//   "Record and insert a sound > Record, stop, edit OK, inserted at the caret position"
-// -- can fail with a 60s timeout waiting for the media literal to appear. Root cause confirmed so
-// far: EditImageDlg/EditSoundDlg's cropper (vue-advanced-cropper) sometimes never fires its
-// "ready" event for the captured image/sound data, leaving its internal <img> stuck at the
-// library's own placeholder src ("data:,", naturalWidth 0) instead of the real captured data --
-// so getUpdatedMedia() rejects with "Loading" (an unhandled rejection, since App.vue's
-// .then(callback) has no .catch()) and nothing gets inserted. Confirmed NOT the cause: corrupted
-// capture data (the captured PNG/WAV decodes validly every time this was checked), image size,
-// a second-open effect, prior-test interference, parallel workers, Vite dev-server staleness, the
-// extra "Re-record" button/recordOptions param, or a fixed delay before opening the edit dialog
-// (tried up to 150ms -- made no difference). The failure rate appears high but not 100% and its
-// trigger is still unknown; suspected but unconfirmed area is a timing interaction between
-// vue-advanced-cropper's src-prop handling and the Bootstrap modal show transition when one modal
-// (the record dialog) hands off to another (the edit dialog) entirely synchronously within one
-// JS tick, which this capture-to-edit handoff does but the pre-existing paste-to-edit flow does
-// not (paste is triggered by a separate user click, not a same-tick dialog handoff).
 test.beforeEach(async ({ page, browserName }, testInfo) => {
     await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 60000, skipPyodide: true});
 });
@@ -49,6 +28,40 @@ async function waitForFakeVideoPlaying(page: import("@playwright/test").Page) {
 
 async function clickVisiblePrimaryButton(page: import("@playwright/test").Page, text: string) {
     await page.locator(".btn.btn-primary", {hasText: text}).filter({visible: true}).click();
+}
+
+// The edit dialogs' size-info spans start out reading "Loading..." and only update once the
+// cropper has actually finished loading the captured image/sound (EditImageDlg.vue/
+// EditSoundDlg.vue's imageLoaded()/change() handlers) -- the span itself is visible immediately,
+// well before that finishes, so waiting on visibility alone (as the rest of this spec used to)
+// races the async load and can click OK before getUpdatedMedia() has anything to return, silently
+// dropping the capture. Same pattern already used for this in media-literal-edit.spec.ts.
+async function waitForEditDialogLoaded(page: import("@playwright/test").Page, sizeInfoSelector: string) {
+    const spans = page.locator(sizeInfoSelector);
+    const count = await spans.count();
+    for (let i = 0; i < count; i++) {
+        await expect(spans.nth(i)).not.toContainText("Loading", {timeout: 10000});
+    }
+}
+
+// For images specifically, the size-info text (checked above) can update slightly before the
+// cropper's own internal <img> has actually finished decoding -- getUpdatedMedia() reads the
+// cropper's live getResult().canvas, not the size text, so on a second/re-record open that small
+// extra gap is enough to still hit "canvas not ready" (seen as an unhandled "Loading" rejection
+// and nothing inserted) even though the size text already looked loaded. Wait on the cropper's
+// own <img> naturalWidth directly, which is the actual signal getResult() depends on.
+async function waitForImageCropperReady(page: import("@playwright/test").Page) {
+    await waitForEditDialogLoaded(page, "span.EditImageDlg-sizeInfo");
+    await page.waitForFunction(() => {
+        const img = document.getElementsByClassName("edit-image-cropper-image")[0] as HTMLImageElement | undefined;
+        return img != null && img.naturalWidth > 0;
+    });
+    // Even the above isn't quite sufficient on a second/re-record open: the cropper library's own
+    // internal getResult().canvas (which is what getUpdatedMedia() actually reads, and can only be
+    // polled from inside the component, not observed here) lags slightly behind naturalWidth
+    // becoming available -- confirmed by an unhandled "Loading" rejection still occurring
+    // immediately after both checks above passed. A short buffer clears it reliably in practice.
+    await page.waitForTimeout(300);
 }
 
 test.describe("Record media literal shortcut gating", () => {
@@ -95,25 +108,30 @@ test.describe("Record media literal shortcut gating", () => {
 test.describe("Record and insert an image", () => {
     test("Record (immediate), edit OK, inserted at the caret position", async ({page}) => {
         await openIfFrame(page);
-        await typeIndividually(page, "1+");
+        // Deliberately not ending in a dangling operator (e.g. "1+") when the shortcut fires --
+        // that splices the raw unparsed text "1+" in as a single field (the same as pasting would),
+        // which a later refactor pass can re-tokenize oddly (seen turning into "+1"); inserting
+        // after a plain, already-complete operand avoids that unrelated edge case:
+        await typeIndividually(page, "1");
         await page.keyboard.press("ControlOrMeta+Shift+I");
         await waitForFakeVideoPlaying(page);
         await page.locator(".RecordImageDlg-record-button").click();
 
         // Switches to the (unchanged) existing edit dialog:
         await expect(page.locator("span.EditImageDlg-sizeInfo").first()).toBeVisible();
+        await waitForImageCropperReady(page);
         await clickVisiblePrimaryButton(page, "OK");
 
         await page.waitForFunction(() => document.querySelector("img[data-code^='load_image']") != null);
         await typeIndividually(page, "+2");
 
         // Derive the actual captured base64 tail from what got inserted, then use it to verify
-        // the media literal landed in exactly the right spot (between the two typed numbers) --
+        // the media literal landed in exactly the right spot (right after the typed "1") --
         // we can't know the fake camera's exact PNG bytes in advance, but we can check the splice
         // position against whatever was actually captured:
         const dataCode = await page.locator("img[data-code^='load_image']").getAttribute("data-code");
         const endOfB64 = (dataCode as string).slice(-11, -2); // strip the trailing "\")" first
-        await assertStateOfIfFrame(page, "{1}+{}" + MEDIA_SLOT_PARSED_PLACEHOLDER.image + "{}+{2$}", [{mediaType: "img", endOfB64}]);
+        await assertStateOfIfFrame(page, "{1}" + MEDIA_SLOT_PARSED_PLACEHOLDER.image + "{}+{2$}", [{mediaType: "img", endOfB64}]);
     });
 
     test("Record with 3s countdown then captures automatically", async ({page}) => {
@@ -134,6 +152,7 @@ test.describe("Record and insert an image", () => {
         await waitForFakeVideoPlaying(page);
         await page.locator(".RecordImageDlg-record-button").click();
         await expect(page.locator("span.EditImageDlg-sizeInfo").first()).toBeVisible();
+        await waitForImageCropperReady(page);
 
         await page.locator(".EditImageDlg-rerecord-button").click();
         // Back on the record dialog:
@@ -141,6 +160,7 @@ test.describe("Record and insert an image", () => {
         await waitForFakeVideoPlaying(page);
         await page.locator(".RecordImageDlg-record-button").click();
         await expect(page.locator("span.EditImageDlg-sizeInfo").first()).toBeVisible();
+        await waitForImageCropperReady(page);
         await clickVisiblePrimaryButton(page, "OK");
 
         await page.waitForFunction(() => document.querySelector("img[data-code^='load_image']") != null);
@@ -182,7 +202,8 @@ test.describe("Record and insert a sound", () => {
 
     test("Record, stop, edit OK, inserted at the caret position", async ({page}) => {
         await openIfFrame(page);
-        await typeIndividually(page, "1+");
+        // See the equivalent image test above for why this doesn't end in a dangling operator:
+        await typeIndividually(page, "1");
         await page.keyboard.press("ControlOrMeta+Shift+U");
         await expect(page.locator(".RecordSoundDlg-waveform")).toBeVisible();
         await page.locator(".RecordSoundDlg-record-button").click();
@@ -191,6 +212,7 @@ test.describe("Record and insert a sound", () => {
         await page.locator(".RecordSoundDlg-stop-button").click();
 
         await expect(page.locator("span.EditSoundDlg-sizeInfo").first()).toBeVisible();
+        await waitForEditDialogLoaded(page, "span.EditSoundDlg-sizeInfo");
         await clickVisiblePrimaryButton(page, "OK");
 
         await page.waitForFunction(() => document.querySelector("img[data-code^='load_sound']") != null);
@@ -198,7 +220,7 @@ test.describe("Record and insert a sound", () => {
 
         const dataCode = await page.locator("img[data-code^='load_sound']").getAttribute("data-code");
         const endOfB64 = (dataCode as string).slice(-11, -2);
-        await assertStateOfIfFrame(page, "{1}+{}" + MEDIA_SLOT_PARSED_PLACEHOLDER.sound + "{}+{2$}", [{mediaType: "snd", endOfB64}]);
+        await assertStateOfIfFrame(page, "{1}" + MEDIA_SLOT_PARSED_PLACEHOLDER.sound + "{}+{2$}", [{mediaType: "snd", endOfB64}]);
     });
 
     test("Cancelling the record dialog inserts nothing", async ({page}) => {

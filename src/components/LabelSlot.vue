@@ -947,7 +947,28 @@ export default defineComponent({
 
             const commitInsertion = (replacement: {code: string, mediaType: string}) => {
                 this.appStore.addNewSlot(targetSlotInfos, replacement.mediaType, lhsCode, rhsCode, SlotType.media, false, replacement.code);
-                nextTick(() => this.appStore.leftRightKey({key: "ArrowRight"}));
+                // Explicitly place the cursor in the new trailing (empty) field right after the
+                // inserted media, mirroring the same three calls onGetCaret() uses when a user
+                // clicks into a slot (setDocumentSelection + setSlotTextCursors +
+                // setFocusEditableSlot, see ~line 595 above). We can't rely on leftRightKey()'s
+                // *relative* navigation here (as paste's onCodePasteImpl does) because that
+                // depends on appStore.isEditing/focusSlotCursorInfos reflecting where we were
+                // focused, which is no longer valid after going through the record/edit dialogs:
+                // real DOM focus has been on dialog buttons throughout, not any text slot, so
+                // leftRightKey ends up navigating frame-caret-style from a stale/wrong position
+                // instead of moving within the slot text (observed: caret landing at the very
+                // start of the line rather than after the media).
+                const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(targetSlotInfos.slotId);
+                const rhsSlotInfos: SlotCoreInfos = {...targetSlotInfos, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + 2)};
+                const cursorInfo: SlotCursorInfos = {slotInfos: rhsSlotInfos, cursorPos: 0};
+                nextTick(() => {
+                    setDocumentSelection(cursorInfo, cursorInfo);
+                    this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
+                    this.appStore.setFocusEditableSlot({
+                        frameSlotInfos: rhsSlotInfos,
+                        caretPosition: this.appStore.getAllowedChildren(rhsSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
+                    });
+                });
             };
 
             if (kind == "image") {

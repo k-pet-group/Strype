@@ -249,11 +249,11 @@
     "codeCompletion": "Code completion",
     "codeCompletionFilePaths": "Code completion (file paths)",
     "spaceKey": "space",
-    "wrapRoundBrackets": "Wrap in round brackets",
-    "wrapSquareBrackets": "Wrap in square brackets",
-    "wrapCurlyBrackets": "Wrap in curly brackets",
-    "wrapDoubleQuotes": "Wrap in double quotes",
-    "wrapSingleQuotes": "Wrap in single quotes"
+    "wrapRoundBrackets": "Wrap in ()",
+    "wrapSquareBrackets": "Wrap in []",
+    "wrapCurlyBrackets": "Wrap in {'{}'}",
+    "wrapDoubleQuotes": "Wrap in \"",
+    "wrapSingleQuotes": "Wrap in '"
   },
   "commandTabs": {
     "0": "Add Frame"

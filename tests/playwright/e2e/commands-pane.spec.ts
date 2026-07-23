@@ -68,11 +68,11 @@ test.describe("Commands pane -- wrap-selection shortcuts", () => {
         const panel = page.locator("#addFramePanel");
         await getPlainCodeSlot(page).dblclick();
 
-        await expect(panel).toContainText("Wrap in round brackets");
-        await expect(panel).toContainText("Wrap in square brackets");
-        await expect(panel).toContainText("Wrap in curly brackets");
-        await expect(panel).toContainText("Wrap in double quotes");
-        await expect(panel).toContainText("Wrap in single quotes");
+        await expect(panel).toContainText("Wrap in ()");
+        await expect(panel).toContainText("Wrap in []");
+        await expect(panel).toContainText("Wrap in {}");
+        await expect(panel).toContainText("Wrap in \"");
+        await expect(panel).toContainText("Wrap in '");
 
         // Collapsing the selection back to a plain cursor should hide them again:
         await page.keyboard.press("ArrowRight");

@@ -151,22 +151,29 @@ export default defineComponent({
                 this.waveformRafId = requestAnimationFrame(loop);
                 const now = performance.now();
                 this.peakHistory.push({time: now, peak: readAnalyserPeak(analyser, analyserBuffer)});
-                // Drop history we'll never draw again: while recording, we need everything back to
-                // recordStartTime (for the squash view); otherwise just the last window's worth:
-                const retainFrom = this.recordStartTime ?? (now - WAVEFORM_WINDOW_MS);
-                while (this.peakHistory.length > 0 && this.peakHistory[0].time < retainFrom) {
-                    this.peakHistory.shift();
-                }
 
                 let windowStart = now - WAVEFORM_WINDOW_MS;
                 let marker: number | undefined;
                 if (this.recordStartTime != null) {
                     if (now - this.recordStartTime <= WAVEFORM_WINDOW_MS) {
+                        // Still within the first WAVEFORM_WINDOW_MS of the recording -- keep
+                        // scrolling the same as before Record was pressed (so the pre-record
+                        // audio stays visible, scrolling off to the left of the marker), just with
+                        // a marker added at the point recording started:
                         marker = this.recordStartTime;
                     }
                     else {
+                        // The marker would now be off the left edge -- switch to squashing the
+                        // whole recording (start to now) to fit instead, so it's never lost:
                         windowStart = this.recordStartTime;
                     }
+                }
+                // Drop history we'll never draw again. windowStart only ever moves forward (or
+                // holds still once squashed), so trimming below it is always safe -- trimming
+                // eagerly to recordStartTime here (an earlier bug) discarded the pre-record
+                // history the instant Record was pressed, blanking the marker's left side:
+                while (this.peakHistory.length > 0 && this.peakHistory[0].time < windowStart) {
+                    this.peakHistory.shift();
                 }
                 drawScrollingWaveform(canvas, this.peakHistory, windowStart, now, marker);
             };

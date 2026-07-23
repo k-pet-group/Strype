@@ -420,7 +420,9 @@ export default defineComponent({
     text-align: center;
 }
 .EditSoundDlg-button-wrapper {
-    text-align: center;
+    display: flex;
+    justify-content: center;
+    gap: 10px;
     margin: 5px;
 }
 .EditSoundDlg-img-red-line {

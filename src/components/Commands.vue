@@ -69,6 +69,21 @@
                                                         <span>{{ wrapSelectionCommand.description }}</span>
                                                     </div>
                                                 </p>
+                                                <p v-if="mediaRecordingCommands.length">
+                                                    <div
+                                                        v-for="mediaRecordingCommand in mediaRecordingCommands"
+                                                        :key="mediaRecordingCommand.description"
+                                                        class="frame-cmd-container text-editing-command"
+                                                    >
+                                                        <span class="text-editing-command-keys">
+                                                            <template v-for="(key, keyIndex) in mediaRecordingCommand.keys" :key="key">
+                                                                <span v-if="keyIndex > 0" class="text-editing-command-keys-plus">+</span>
+                                                                <button class="frame-cmd-btn frame-cmd-btn-large">{{ key }}</button>
+                                                            </template>
+                                                        </span>
+                                                        <span>{{ mediaRecordingCommand.description }}</span>
+                                                    </div>
+                                                </p>
                                             <!-- this conditional rendering is only used for our code editor to see the closing <div> right -->
                                             <!-- #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE -->
                                             </div>
@@ -341,6 +356,31 @@ export default defineComponent({
                 {symbol: "{", description: this.$t("autoCompletion.wrapCurlyBrackets")},
                 {symbol: "\"", description: this.$t("autoCompletion.wrapDoubleQuotes")},
                 {symbol: "'", description: this.$t("autoCompletion.wrapSingleQuotes")},
+            ];
+        },
+
+        // When a text cursor is focused inside a code slot (not a comment/documentation slot, and
+        // not a string literal slot -- recording media there wouldn't make sense either),
+        // Ctrl-Shift-I/U opens a dialog to record a new image/sound literal from the webcam/
+        // microphone. We show those shortcuts here as a hint, mirroring the same gating
+        // LabelSlot.vue's onKeyDown uses for the shortcut itself.
+        mediaRecordingCommands(): {keys: string[]; description: string}[] {
+            const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
+            if(!this.appStore.isEditing || !focusSlotCursorInfos){
+                return [];
+            }
+
+            const slotInfos = focusSlotCursorInfos.slotInfos;
+            const frameType = this.appStore.frameObjects[slotInfos.frameId]?.frameType.type;
+            if(slotInfos.slotType == SlotType.comment || isSlotStringLiteralType(slotInfos.slotType) || frameType == AllFrameTypesIdentifier.comment){
+                return [];
+            }
+
+            const ctrl = this.$t("contextMenu.ctrl");
+            const shift = this.$t("autoCompletion.shiftKey");
+            return [
+                {keys: [ctrl, shift, "I"], description: this.$t("autoCompletion.recordImageShortcut")},
+                {keys: [ctrl, shift, "U"], description: this.$t("autoCompletion.recordSoundShortcut")},
             ];
         },
 

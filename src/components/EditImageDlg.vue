@@ -33,6 +33,7 @@
             <BButton class="EditImageDlg-flip-horizontal-button EditSoundImageDlg-info-btn" @click="doFlipHorizontal"><i class="fa fa-arrows-h"></i> {{$t("media.imageFlipHorizontal")}}</BButton>
             <BButton class="EditImageDlg-flip-vertical-button EditSoundImageDlg-info-btn" @click="doFlipVertical"><i class="fa fa-arrows-v"></i> {{$t("media.imageFlipVertical")}}</BButton>
             <BButton class="EditImageDlg-rotate-button EditSoundImageDlg-info-btn" @click="doRotate90"><i class="fa fa-undo fa-flip-horizontal"></i> {{$t("media.imageRotate")}}</BButton>
+            <BButton v-if="showReRecordButton" class="EditImageDlg-rerecord-button EditSoundImageDlg-info-btn" @click="doReRecord"><i class="fa fa-camera"></i> {{$t("media.reRecord")}}</BButton>
         </div>
         <span class="EditImageDlg-header">{{$t("media.imageScale")}}</span>
         <div class="EditImageDlg-scale">
@@ -76,6 +77,10 @@ export default defineComponent({
         dlgTitle: String,
         imgToEdit: String, /* Base 64 string */
         showImgPreview:{type: Function, required: true}, /* Takes new base64 string as input, null to cancel preview */
+        // Only true when this dialog was opened as part of the record-new-image flow (see
+        // RecordImageDlg.vue / App.vue::recordNewImageInDialog); shows an extra button that
+        // discards the current capture and goes back to the record dialog instead of closing us.
+        showReRecordButton: Boolean,
     },
     
     data: function() {
@@ -141,6 +146,9 @@ export default defineComponent({
         isMacOSPlatform,
         onHideModalDlg(event: BvTriggerableEvent){
             this.showImgPreview(null);
+        },
+        doReRecord() {
+            eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "reRecord", componentId: this.dlgId});
         },
         updatePreview() {
             this.getUpdatedMedia().then((m) => this.showImgPreview(/"([^"]+)"/.exec(m.code)?.[1] ?? "")).catch((err) => {});

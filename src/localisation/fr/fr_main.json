@@ -253,7 +253,10 @@
     "wrapSquareBrackets": "Entourer de []",
     "wrapCurlyBrackets": "Entourer de {'{}'}",
     "wrapDoubleQuotes": "Entourer de \"",
-    "wrapSingleQuotes": "Entourer de '"
+    "wrapSingleQuotes": "Entourer de '",
+    "shiftKey": "Shift",
+    "recordImageShortcut": "Enregistrer une image",
+    "recordSoundShortcut": "Enregistrer un son"
   },
   "commandTabs": {
     "0": "Ajoute un cadre"
@@ -300,7 +303,17 @@
     "cursorTimeWin": "Temps (Ctrl-C pour copier) :",
     "cursorTimeMac": "Temps (⌘ C pour copier) :",
     "cursorHeightWin": "Hauteur (Ctrl-Maj-C pour copier) :",
-    "cursorHeightMac": "Hauteur (⇧ ⌘ C pour copier) :"
+    "cursorHeightMac": "Hauteur (⇧ ⌘ C pour copier) :",
+    "recordImageTitle": "Enregistrer une image",
+    "recordSoundTitle": "Enregistrer un son",
+    "record": "Enregistrer",
+    "recordCountdown": "Enregistrer (compte à rebours de 3 secondes)",
+    "stop": "Arrêt",
+    "reRecord": "Recommencer l'enregistrement",
+    "cameraPermissionDenied": "L'accès à la caméra a été refusé. Veuillez autoriser l'accès à la caméra pour enregistrer une image.",
+    "micPermissionDenied": "L'accès au microphone a été refusé. Veuillez autoriser l'accès au microphone pour enregistrer un son.",
+    "noCameraFound": "Aucune caméra n'a été trouvée sur cet appareil.",
+    "noMicFound": "Aucun microphone n'a été trouvé sur cet appareil."
   },
   "book": {
     "dialogTitle": "Manuel Strype"

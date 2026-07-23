@@ -1,4 +1,4 @@
-import { AppComponentAPI, AutoCompletionComponentAPI, CaretContainerComponentAPI, CloudDriveHandlerComponentAPI, CommandsComponentAPI, EditImageDlgComponentAPI, EditSoundDlgComponentAPI, FrameComponentAPI, FrameHeaderComponentAPI, GoogleDriveFilePickerComponentAPI, LabelSlotComponentAPI, LabelSlotsStructureComponentAPI, MediaPreviewPopupComponentAPI, MenuComponentAPI, OpenDemoDlgComponentAPI, PEAComponentAPI } from "@/types/vue-component-api-types";
+import { AppComponentAPI, AutoCompletionComponentAPI, CaretContainerComponentAPI, CloudDriveHandlerComponentAPI, CommandsComponentAPI, EditImageDlgComponentAPI, EditSoundDlgComponentAPI, FrameComponentAPI, FrameHeaderComponentAPI, GoogleDriveFilePickerComponentAPI, LabelSlotComponentAPI, LabelSlotsStructureComponentAPI, MediaPreviewPopupComponentAPI, MenuComponentAPI, OpenDemoDlgComponentAPI, PEAComponentAPI, RecordImageDlgComponentAPI, RecordSoundDlgComponentAPI } from "@/types/vue-component-api-types";
 
 /** Application-wide exposed Vue Components methods and accessors to data/computer props ( --> "API")
  * Done here because some of those Components are ALSO used in the store and in helpers scripts,
@@ -27,5 +27,7 @@ export const vueComponentsAPIHandler = {
     mediaPreviewPopupComponentAPI:null as null | MediaPreviewPopupComponentAPI,
     editImageDlgComponentAPI: null as null | EditImageDlgComponentAPI,
     editSoundDlgComponentAPI: null as null | EditSoundDlgComponentAPI,
+    recordImageDlgComponentAPI: null as null | RecordImageDlgComponentAPI,
+    recordSoundDlgComponentAPI: null as null | RecordSoundDlgComponentAPI,
     // #v-endif
 };

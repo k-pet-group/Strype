@@ -63,6 +63,34 @@ test.describe("Commands pane -- code completion shortcut", () => {
     });
 });
 
+test.describe("Commands pane -- record media shortcuts", () => {
+    test("shown while editing a plain code slot", async ({page}) => {
+        const panel = page.locator("#addFramePanel");
+        await getPlainCodeSlot(page).click();
+
+        await expect(panel).toContainText("Record image");
+        await expect(panel).toContainText("Record sound");
+    });
+
+    test("not shown while editing a string literal slot", async ({page}) => {
+        const panel = page.locator("#addFramePanel");
+        await getStringLiteralSlot(page).click();
+
+        await expect(panel).not.toContainText("Record image");
+        await expect(panel).not.toContainText("Record sound");
+    });
+
+    test("not shown while editing a comment", async ({page}) => {
+        const panel = page.locator("#addFramePanel");
+        await page.keyboard.press("#");
+        await waitForEditorSettled(page);
+        await page.keyboard.type("hello world");
+
+        await expect(panel).not.toContainText("Record image");
+        await expect(panel).not.toContainText("Record sound");
+    });
+});
+
 test.describe("Commands pane -- wrap-selection shortcuts", () => {
     test("shown for a selection inside a plain code slot", async ({page}) => {
         const panel = page.locator("#addFramePanel");

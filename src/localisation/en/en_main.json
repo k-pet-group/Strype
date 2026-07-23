@@ -253,7 +253,10 @@
     "wrapSquareBrackets": "Wrap in []",
     "wrapCurlyBrackets": "Wrap in {'{}'}",
     "wrapDoubleQuotes": "Wrap in \"",
-    "wrapSingleQuotes": "Wrap in '"
+    "wrapSingleQuotes": "Wrap in '",
+    "shiftKey": "Shift",
+    "recordImageShortcut": "Record image",
+    "recordSoundShortcut": "Record sound"
   },
   "commandTabs": {
     "0": "Add Frame"
@@ -300,7 +303,17 @@
     "cursorTimeWin": "Time (Ctrl-C to copy):",
     "cursorTimeMac": "Time (⌘ C to copy):",
     "cursorHeightWin": "Height (Ctrl-Shift-C to copy):",
-    "cursorHeightMac": "Height (⇧ ⌘ C to copy):"
+    "cursorHeightMac": "Height (⇧ ⌘ C to copy):",
+    "recordImageTitle": "Record image",
+    "recordSoundTitle": "Record sound",
+    "record": "Record",
+    "recordCountdown": "Record (3 second countdown)",
+    "stop": "Stop",
+    "reRecord": "Re-record",
+    "cameraPermissionDenied": "Camera access was denied. Please allow camera access to record an image.",
+    "micPermissionDenied": "Microphone access was denied. Please allow microphone access to record a sound.",
+    "noCameraFound": "No camera was found on this device.",
+    "noMicFound": "No microphone was found on this device."
   },
   "book": {
     "dialogTitle": "Strype textbook"

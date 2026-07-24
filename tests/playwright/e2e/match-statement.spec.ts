@@ -3,6 +3,7 @@ import {readFileSync} from "node:fs";
 import {save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
 import {setupStrypeTest} from "../support/general";
 import {getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, pressN, waitForEditorSettled} from "../support/editor";
+import {checkConsoleContent, runToFinish} from "../support/execution";
 
 const defaultStandardStrypeProjectDocLiteral = getDefaultStrypeProjectDocumentationFullLine();
 const defaultStrypeProjectImportsLiteral = getDefaultStrypeProjectImportsFullLine();
@@ -31,7 +32,7 @@ print(myString)
 `;
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
-    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 240000, skipPyodide: true});
+    await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 240000, skipPyodide: false});
 });
 
 test.describe("Add Match statement", () => {
@@ -403,4 +404,42 @@ print(myString)
 
 test("Round trip", async ({page}) => {
     await testPlaywrightRoundTripImportAndDownload(page, "tests/cypress/fixtures/project-match-statement.spy");
+});
+
+test.describe("Execute match statement", () => {
+    // Check match statement is matched when using the default case
+    // (see previous bug https://github.com/k-pet-group/Strype/issues/978 )
+    test("Use default case", async ({page}) => {
+        await page.keyboard.press("m");
+        await waitForEditorSettled(page);
+        await page.keyboard.type("\"1\"");
+        await waitForEditorSettled(page);
+        // Two arrow right should get us into the default case:
+        await pressN("ArrowRight", 2, true)(page);
+        // Then we must delete the backspace which is there by default:
+        await page.keyboard.press("Delete");
+        await waitForEditorSettled(page);
+        await page.keyboard.type("\"1\"");
+        await waitForEditorSettled(page);
+        // One more arrow right takes us to the body:
+        await page.keyboard.press("ArrowRight");
+        await waitForEditorSettled(page);
+        // Add a print("Matched"):
+        await page.keyboard.type("p\"Matched!\"");
+        // Run it:
+        await runToFinish(page);
+        await checkConsoleContent(page, "Matched!\nHello from Strype\n");
+        // Also check it saves to right form:
+        expect(readFileSync(await save(page, true), "utf-8")).toEqual(`#(=> Strype:1:std
+${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports
+${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
+#(=> Section:Main
+match "1"  :
+    case "1"  :
+        print("Matched!") 
+myString  = "Hello from Strype" 
+print(myString) 
+#(=> Section:End
+`);
+    });
 });

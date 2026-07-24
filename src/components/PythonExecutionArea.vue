@@ -36,6 +36,9 @@
                             @wheel.stop
                             @keydown.self.stop="handleKeyEvent"
                             @keyup.self="handleKeyEvent"
+                            @dragstart.prevent
+                            @dragover.prevent
+                            @drop.prevent
                             disabled
                             spellcheck="false"
                         >    

@@ -140,7 +140,7 @@ export default defineConfig(({mode}) => {
         },
 
         base: (process.env.VITE_GITHUB_PAGE)
-            ? "/Strype/"
+            ? (process.env.VITE_GITHUB_PAGE_BRANCH ? `/Strype/${process.env.VITE_GITHUB_PAGE_BRANCH}/` : "/Strype/")
             : ((isStandardPython)
                 ? "/editor/"
                 : "/microbit/"),

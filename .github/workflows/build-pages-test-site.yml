@@ -14,6 +14,8 @@ on:
 #     of the main branch to the root of the site, via GitHub's official Pages deployment.
 #   - true (opt-in, e.g. on a fork): every branch gets its own preview at /<branch>/ within
 #     a shared gh-pages branch, with an index page and pruning of deleted branches' previews.
+# When opting in, also switch Settings > Pages > Source to "Deploy from a branch" and select
+# gh-pages / (root) — that branch doesn't exist until the first run of this workflow creates it.
 permissions:
     contents: write
     pages: write

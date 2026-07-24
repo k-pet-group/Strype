@@ -162,6 +162,7 @@ export type PEAComponentAPI = {
   downloadWAV: (src: AudioBuffer, filenameStem: string) => void,
   redrawCanvas: () => void,
   overrideGraphics: (background: OffscreenCanvas | HTMLImageElement | null, imageToShowCentered: OffscreenCanvas | HTMLImageElement | null) => void,
+  copyConsoleText: (event?: Event) =>void,
 };
 
 export type MediaPreviewPopupComponentAPI = {

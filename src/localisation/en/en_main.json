@@ -189,7 +189,8 @@
     "renameIdentifiers": "Rename all uses of {thisIdentifierType}?",
     "thisVariable": "this variable",
     "thisFunction": "this function",
-    "thisClass": "this class"
+    "thisClass": "this class",
+    "downloadPEAConsole":"Preparing the console screenshot (this may take time)..."
   },
   "contextMenu": {
     "ctrl": "Ctrl",
@@ -211,7 +212,7 @@
     "delete": "Delete",
     "deleteOuter": "Delete Outer",
     "insert": "Insert",
-    "screenshotGraphics": "Download screenshot",
+    "screenshotPEA": "Download screenshot",
     "collapseHeader": "Collapsed View",
     "collapseDocumentation": "Interface View",
     "collapseFull": "Expanded View",

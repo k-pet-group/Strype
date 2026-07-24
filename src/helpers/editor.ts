@@ -86,7 +86,8 @@ export enum CustomEventTypes {
     pythonConsoleAfterInput = "pythonConsoleAfterInput",
     notifyGraphicsUsage = "graphicsUsage",
     pythonExecAreaSizeChanged = "peaSizeChanged",
-    highlightPythonRunningState = "highlightPythonRunningState"
+    highlightPythonRunningState = "highlightPythonRunningState",
+    copyPEAConsoleText = "copyPEAConsoleText"
     // #v-endif
 }
 

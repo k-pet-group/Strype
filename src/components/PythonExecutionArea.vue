@@ -26,8 +26,10 @@
                             <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @mousedown.stop="graphicsCanvasMouseDown" @mouseup.stop="graphicsCanvasMouseUp" @mousemove="graphicsCanvasMouseMove" @mouseleave="graphicsCanvasMouseExit"></canvas>
                         </div>
                     </pane>
-                    <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5">
-                        <textarea 
+                    <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5" style="position: relative;">
+                    <div v-if="isConsoleAreaShowing" :class="{'console-copy-btn far fa-copy': true, 'flash-background': copyConsoleTextBtnClicked, hidden: !isTabContentHovered}" 
+                        @click="copyConsoleText" @animationend="copyConsoleTextBtnClicked=false"></div> 
+                    <textarea 
                             :id="pythonConsoleId"
                             ref="pythonConsole"
                             class="pea-console"
@@ -36,10 +38,13 @@
                             @wheel.stop
                             @keydown.self.stop="handleKeyEvent"
                             @keyup.self="handleKeyEvent"
+                            @dragstart.prevent
+                            @dragover.prevent
+                            @drop.prevent
                             disabled
                             spellcheck="false"
-                        >    
-                        </textarea>
+                            @contextmenu="handleContextMenu"
+                        ></textarea>
                     </pane>
                 </Splitpanes>
             </div>
@@ -70,10 +75,10 @@ import { CoordPosition, defaultEmptyStrypeLayoutDividerSettings, PythonExecRunni
 import { WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import SVGIcon from "@/components/SVGIcon.vue";
 import { Splitpanes, Pane } from "splitpanes";
-import { debounce } from "lodash";
+import { debounce, escape } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
 import {getAvailableFilesFromLibrary, getLibraryName, getRawFileFromLibraries} from "@/helpers/libraryManager";
-import { getDateTimeFormatted } from "@/helpers/common";
+import { getDateTimeFormatted, isMacOSPlatform } from "@/helpers/common";
 import { bufferToBase64 } from "@/helpers/media";
 import turtleImgURL from "@/assets/images/turtle.png" ;
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
@@ -88,7 +93,7 @@ import {getPythonClient, isPythonWorkerReady, renderer, terminateAndRestartPyodi
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {createOrGetAudioContext} from "@/helpers/audioContext";
 import {clearAllRuntimeErrors, computeFrameSnapshot} from "@/helpers/storeMethods";
-
+import html2canvas from "html2canvas";
 
 // Helper to keep indexed tabs (for maintenance if we add some tabs etc)
 const enum PEATabIndexes {graphics, console}
@@ -186,6 +191,7 @@ export default defineComponent({
             downloadWAV: this.downloadWAV,
             overrideGraphics: this.overrideGraphics,
             redrawCanvas: this.redrawCanvas,
+            copyConsoleText: this.copyConsoleText,            
         };
 
         // Expose the Components API handler object on window for Strype.graphics and Strype.sounds 
@@ -219,6 +225,7 @@ export default defineComponent({
             frameContextMenuItems: [] as StrypeContextMenuItem[],
             showContextMenuAtCoordPos: {x: 0, y: 0} as CoordPosition,
             mouseCoordsToShow: undefined as string | undefined,
+            copyConsoleTextBtnClicked: false, // flag used for UI
             graphicsOverride: null as {background: OffscreenCanvas | HTMLImageElement, imageToShowCentered: OffscreenCanvas | HTMLImageElement} | null,
         };
     },
@@ -783,6 +790,26 @@ export default defineComponent({
             const consoleTextarea = this.$refs.pythonConsole as HTMLTextAreaElement;
             consoleTextarea.scrollTop = consoleTextarea.scrollHeight;
         },
+       
+        copyConsoleText(event?: Event): string | undefined {
+            // Show an animation on the copy button, if that was what triggered this action (either clicked on it or via keyboard shortcut)
+            if(event && ( event.type == CustomEventTypes.copyPEAConsoleText || (event.target as HTMLElement).classList.contains("console-copy-btn"))){
+                this.copyConsoleTextBtnClicked = true;
+            }
+
+            // Copy the console text to the clipboard depends on the console context: if the console contains a text selection that's what is copied,
+            // otherwise, the full console content is copied.
+            // The copied content is returned.
+            const pythonConsole = this.$refs.pythonConsole as HTMLTextAreaElement;
+            if(pythonConsole){
+                const isConsoleTextSelected = (pythonConsole.selectionStart != pythonConsole.selectionEnd);
+                const textToCopy = (isConsoleTextSelected) ? pythonConsole.value.substring(pythonConsole.selectionStart, pythonConsole.selectionEnd) : pythonConsole.value;
+                navigator.clipboard.writeText(textToCopy);
+                return textToCopy;
+            }
+
+            return undefined;
+        },
 
         handleKeyEvent(event: KeyboardEvent) {
             // Key events are captured by the UI to navigate the blue cursor and add frames -- for the console, we don't want to propagate the event
@@ -1114,8 +1141,10 @@ export default defineComponent({
         },
 
         handleContextMenu(event: MouseEvent): void {
-            // Do not show any menu if the user's code is being executed
-            if(this.isPythonExecuting){
+            const isContextMenuForGraphics = ((event.target as HTMLElement)?.id ?? "") == "pythonGraphicsCanvas";
+
+            // Do not show any menu if the user's code is being executed and we are using Graphics 
+            if(this.isPythonExecuting && isContextMenuForGraphics){
                 return;
             }
             
@@ -1128,8 +1157,11 @@ export default defineComponent({
             // Overwrite readonly properties clientX and clientY (to position the menu if needed)
             setContextMenuEventClientXY(event);
            
-            // Create the menu content here and open it
-            this.frameContextMenuItems = [{label: this.$t("contextMenu.screenshotGraphics"), onClick: this.screenshotGraphicsArea}];
+            // Create the menu content here and open it (for Graphis: "download screenshot", for the console: "Copy" and "Download")
+            this.frameContextMenuItems = (isContextMenuForGraphics) 
+                ? [{label: this.$t("contextMenu.screenshotPEA"), onClick: this.screenshotGraphicsArea}]
+                : [{label: this.$t("contextMenu.copy"), onClick: this.copyConsoleText, shortcut: `${(isMacOSPlatform()) ? "⌘" : this.$t("contextMenu.ctrl")}+⇧+C`},
+                    {label: this.$t("contextMenu.screenshotPEA") + "...", onClick: this.screenshotConsole}];
             this.showContextMenuAtCoordPos.x = event.x;
             this.showContextMenuAtCoordPos.y = event.y;
             this.showContextMenu = true;
@@ -1157,6 +1189,86 @@ export default defineComponent({
             document.body.removeChild(link);
             // Clean up
             URL.revokeObjectURL(url);
+        },
+
+        async screenshotConsole(): Promise<void> {
+            // The screenshot of the console cannot be directly invoked on the textarea element like we do on the Graphics' canvas.
+            // So instead, we use HTML2Canvas to draw a representation of our textarea, then follow the same logic than Graphics' canvas.
+            // The small tweak is HTML2Canvas can take forever to generate its canvas, because of internal work issues and DOM parsing.
+            // When the textarea content is big, the canvas generation is significantly slow. So to having hanging, we always do the generation
+            // operation outside our editor window (in a separate iframe). We also show the progess bar so it is clear the UI is busy.
+            vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.downloadPEAConsole")});    
+            const textarea = this.$refs.pythonConsole as HTMLTextAreaElement;
+            const textareaStyle = getComputedStyle(textarea);
+
+            const html2canvasIframe = document.createElement("iframe");
+
+            html2canvasIframe.style.position = "fixed";
+            html2canvasIframe.style.right = `-${textarea.clientWidth + 20}px`; // We offset the iframe by at least it's own width + extra for safety
+            html2canvasIframe.style.top = "0";
+            html2canvasIframe.style.width = `${textarea.clientWidth + 20}px`; // Adapt the iframe to the console size, with extra 20px both dimensions
+            html2canvasIframe.style.height = `${textarea.clientHeight + 20}px`; // Adapt the iframe to the console size, with extra 20px both dimensions
+            html2canvasIframe.style.border = "0";
+
+            document.body.appendChild(html2canvasIframe);
+            const html2canvasIframeDoc = html2canvasIframe.contentDocument;
+            if(html2canvasIframeDoc){
+                // Prepare the content. We need to set the div width in a way we replicate as much as possible the textarea console.
+                // That is, we need to consider the original console width, bar its internal scrollbar.
+                const style = html2canvasIframeDoc.createElement("style");
+                style.textContent = `
+.pea-mirror {
+    color: ${textareaStyle.color};
+    background-color: ${textareaStyle.backgroundColor};
+    width: ${textarea.scrollWidth/* - (textarea.offsetWidth - textarea.clientWidth - parseFloat(textareaStyle.borderLeftWidth.replace("px","")) - parseFloat(textareaStyle.borderLeftWidth.replace("px", "")))*/}px;
+    height: ${textarea.clientHeight}px;
+    padding: ${textareaStyle.padding};
+    margin: ${textareaStyle.margin};
+    overflow-y: hidden;
+    font-family: ${textareaStyle.fontFamily};
+    font-size: ${textareaStyle.fontSize};
+    font-weight: ${textareaStyle.fontWeight};
+    font-style: ${textareaStyle.fontStyle};
+    tab-size: ${textareaStyle.tabSize};
+    line-height: ${textareaStyle.lineHeight};
+    letter-spacing: ${textareaStyle.letterSpacing};
+    letter-spacing: ${textareaStyle.letterSpacing};
+    word-spacing: ${textareaStyle.wordSpacing};
+    white-space: ${textareaStyle.whiteSpace};
+    white-space-collapse: ${textareaStyle.whiteSpaceCollapse};
+    overflow-wrap: ${textareaStyle.overflowWrap};
+    word-break: ${textareaStyle.wordBreak};
+    box-sizing: ${textareaStyle.boxSizing};
+}`;
+
+                html2canvasIframeDoc.head.appendChild(style);
+                // Create the mirror with its text directly within body as a literal HTML string addition,
+                // because using standard Document API (createElement(), appendChild(), etc.) is significantly slower,
+                // even with the necessary HTML-escaping characters transformation.
+                html2canvasIframeDoc.body.innerHTML += `<div id=\"PEAMirror\" class=\"pea-mirror\">${escape(textarea.value)}</div>`;
+                const peaConsoleMirror = html2canvasIframeDoc.querySelector("#PEAMirror") as HTMLDivElement;
+                if(peaConsoleMirror){
+                    peaConsoleMirror.scrollTop = textarea.scrollTop;
+                    const canvas = await html2canvas(peaConsoleMirror as HTMLDivElement);
+                    canvas.toBlob((blob) => {
+                        if(blob){
+                            // Download here
+                            const url = URL.createObjectURL(blob);
+                            const link = document.createElement("a");
+                            link.href = url;
+                            link.download = `strype-${getDateTimeFormatted(new Date(Date.now()))}.png`;
+                            link.click();
+                            
+                            // Clean after ourselves 
+                            URL.revokeObjectURL(url);
+                            document.body.removeChild(html2canvasIframe);
+                           
+                            // Stop the progress bar
+                            vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress({requestAttention: false});
+                        }    
+                    });
+                }
+            }
         },
         
         downloadWAV(src: AudioBuffer, filenameStem: string) {
@@ -1267,6 +1379,27 @@ export default defineComponent({
 
     .pea-toggle-layout-button.pea-toggle-layout-button-selected {
         color: yellow;
+    }
+
+    .console-copy-btn {
+        position: absolute;
+        color: white;
+        top: $strype-python-exec-area-layout-buttons-pos-offset;
+        right: $strype-python-exec-area-layout-buttons-pos-offset;
+        padding: 3px 3px;
+        border-radius: 5px;
+        background: rgba(69, 68, 68, 0.8);
+    }
+
+    
+    .flash-background {
+        animation: flash-bg-anim 300ms ease-out;
+    }   
+
+    @keyframes flash-bg-anim {
+        0%   { background-color: init; color: init; }
+        50%   { background-color: #c3beae; color: black; }
+        100% { background-color: init; color: init; }
     }
     
     .show-error-icon {

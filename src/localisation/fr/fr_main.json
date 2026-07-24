@@ -189,7 +189,8 @@
     "thisVariable": "cette variable",
     "thisFunction": "cette fonction",
     "thisClass": "cette classe",
-    "clearAllRecent": "Supprimer tout"
+    "clearAllRecent": "Supprimer tout",
+    "downloadPEAConsole":"Préparation de la capture du terminal (cela peut prendre du temps)..."
   },
   "contextMenu": {
     "ctrl": "Ctrl",
@@ -211,14 +212,15 @@
     "delete": "Supprimer",
     "deleteOuter": "Supprimer externe(s)",
     "insert": "Insérer",
-    "screenshotGraphics": "Télécharger une capture d'écran",
+    "screenshotPEA": "Télécharger une capture d'écran",
     "collapseHeader": "Vue Réduite",
     "collapseDocumentation": "Vue Interface",
     "collapseFull": "Vue Dévelopée",
     "cannotCollapseErrors": "Réduction impossible avec des erreurs",
     "freeze": "Verrouiller",
     "unfreeze": "Déverrouiller",
-    "cannotFreezeErrors": "Verrouillage impossible avec des erreurs"
+    "cannotFreezeErrors": "Verrouillage impossible avec des erreurs",
+    "download": "Télécharger"
   },
   "appMenu": {
     "downloadHex": "Convertir vers Hex",
@@ -267,7 +269,7 @@
     "stopping": "Arrêt...",
     "loading": "Initialisation...",
     "runtimeErrorConsole": "Erreur d'exécution",
-    "console": "Console",
+    "console": "Terminal",
     "Graphics": "Graphics",
     "importTurtleOrGraphics": "Importez 'strype.graphics' ou 'turtle' pour utiliser Graphics",
     "PEA-layout-tabs-collapsed": "Disposition en onglets reduite",
@@ -324,7 +326,7 @@
     "libraryAddrPlaceholder": "Adresse de la bibliothèque",
     "add": "Ajouter",
     "builtinGraphics": "Graphics",
-    "builtinConsole": "Console",
+    "builtinConsole": "Terminal",
     "builtinTurtle": "Turtle",
     "builtinMicrobit": "micro:bit"
   },

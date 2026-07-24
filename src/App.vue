@@ -449,6 +449,17 @@ export default defineComponent({
                 return;
             }
 
+            // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
+            // Handle the keyboard shortcuts for the PEA console copy (when the PEA console is visible).
+            if((event.metaKey || event.ctrlKey) && event.shiftKey && event.key.toLowerCase() == "c" && vueComponentsAPIHandler.peaComponentAPI?.getIsConsoleAreaShowing()){
+                vueComponentsAPIHandler.peaComponentAPI?.copyConsoleText(new Event(CustomEventTypes.copyPEAConsoleText));
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                return;            
+            }
+            // #v-endif
+
             // Close the rename identifiers popup on most keys:
             // to simplify the event registration on when we close the popup, we close it on almost all key hits except navigation keys:
             // they will be handled in watch() via the change of frame and we do allow navigation when the popup is showing.

@@ -41,8 +41,7 @@
                             @drop.prevent
                             disabled
                             spellcheck="false"
-                        >    
-                        </textarea>
+                        ></textarea>
                     </pane>
                 </Splitpanes>
             </div>

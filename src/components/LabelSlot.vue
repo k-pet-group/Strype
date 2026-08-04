@@ -172,7 +172,7 @@ export default defineComponent({
         }
     },
 
-    beforeUnmounts() {
+    beforeUnmount() {
         this.appStore.removePreCompileErrors(this.UID);
     },
 
@@ -1108,8 +1108,12 @@ export default defineComponent({
             //   with operators and brackets which can create new slots.
             // - Delete and backspace are not input events so they happen elsewhere.
             
-            const stateBeforeChanges = cloneDeep(this.appStore.$state);
-            
+            // Scoped to this frame only: ordinary character input only ever mutates this.frameId's own slots
+            // (see checkSlotRefactoring()/performKeywordFrameConversion() in LabelSlotsStructure.vue -- the
+            // keyword-frame-conversion path re-widens this to a full clone itself before it reparents/attaches
+            // any other frame, since that's the one case here that can reach beyond this.frameId).
+            const stateBeforeChanges = this.appStore.cloneStateForUndo([this.frameId]);
+
             const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
             const inputSpanFieldContent = inputSpanField.textContent ?? "";
             const currentSlot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as BaseSlot;

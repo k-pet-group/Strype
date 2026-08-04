@@ -630,6 +630,14 @@ export default defineComponent({
                                         // characters) -- buffering keystrokes during the conversion's own brief async
                                         // gap replaces it, so there's no reason left to delay the conversion itself.
                                         this.startPendingConversion();
+                                        // A keyword-frame conversion (if/elif/for/while/etc.) can reparent this frame and/or
+                                        // attach/detach joint frames on its parent, reaching beyond this.frameId -- so if
+                                        // stateBeforeChanges was captured scoped to just this frame (see LabelSlot.vue's
+                                        // onInput()), widen it to a full clone here, before any such mutation has happened,
+                                        // so undo/redo still captures every frame this conversion actually touches.
+                                        if((stateBeforeChanges as any).__touchedFrameIds !== undefined) {
+                                            stateBeforeChanges = this.appStore.cloneStateForUndo();
+                                        }
                                         this.performKeywordFrameConversion(keywordFrameConversionDef, candidateKeyword[1].length, uiLiteralCode, stateBeforeChanges, options?.triggeredByEnter ? 0 : 1, {...options, isColonTrigger});
                                     }
                                     else if(isVarAssignSlotStructure && this.labelIndex == 0 && !((currentFocusSlotCursorInfos?.slotInfos.slotId??",").includes(",")) && this.appStore.frameObjects[this.frameId].frameType.type == AllFrameTypesIdentifier.funccall && uiLiteralCode.match(/(?<!=)=(?!=)/) != null){

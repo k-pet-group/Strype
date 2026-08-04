@@ -81,7 +81,7 @@ import _ from "lodash";
 import { mapStores } from "pinia";
 import {getAllEnabledUserDefinedClasses, getAllEnabledUserDefinedFunctions} from "@/helpers/storeMethods";
 import {buildProbeCodeAndOffset, getAllExplicitlyImportedItems, getAllUserDefinedVariablesUpTo, getAvailableItemsForImportFromModule, getAvailableModulesForImport, getBuiltins, tpyDefineLibraries, getUserDefinedSignature} from "@/autocompletion/acManager";
-import Parser from "@/parser/parser";
+import Parser, { getCachedCodeWithoutErrors } from "@/parser/parser";
 import { CustomEventTypes, parseLabelSlotUID } from "@/helpers/editor";
 import {Completion, Signature, SignatureArg, TPyParser} from "@tigerpython/tpparser";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -300,7 +300,7 @@ export default defineComponent({
         async updateAC(frameId: number, token : string | null, context: string, kind: "code" | "string"): Promise<void> {
             const tokenStartsWithUnderscore = (token ?? "").startsWith("_");
             const parser = new Parser(false, "py", true);
-            const userCode = parser.getCodeWithoutErrors(frameId);
+            const userCode = getCachedCodeWithoutErrors(parser, frameId);
             
             await tpyDefineLibraries(parser);
             

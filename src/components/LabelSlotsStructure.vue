@@ -63,7 +63,7 @@ import { bumpCaretRequestSeq, CustomEventTypes, getEditableSelectionText, getFra
 import { checkCodeErrors, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName, isAncestorGatedFrameTypeAllowed } from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import Parser from "@/parser/parser";
-import { calculateParamPrompt } from "@/autocompletion/acManager";
+import { calculateParamPrompt, invalidateParamPromptCache } from "@/autocompletion/acManager";
 import scssVars from "@/assets/style/_export.module.scss";
 import { isMacOSPlatform, splitByRegexMatches } from "@/helpers/common";
 import { detectBrowser } from "@/helpers/browser";
@@ -547,6 +547,15 @@ export default defineComponent({
                     this.partialIgnoreRefocus = true;
                 }
                 this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures = parsedCodeRes.slots;
+                // If this label is a funcdef's formal parameter list, any edit here (renaming a
+                // param, adding/removing one, adding/removing a default value) can change what
+                // calculateParamPrompt() should show at call sites elsewhere in the document --
+                // invalidate its cache so those pick up the change next time they're computed
+                // (see the comment on invalidateParamPromptCache() for why this is coarse rather
+                // than tracking which specific call sites are affected).
+                if (allowed === AllowedSlotContent.ONLY_FORMAL_PARAMS) {
+                    invalidateParamPromptCache();
+                }
                 // The parser can be return a different size "code" of the slots than the code literal
                 // (that is for example the case with textual operators which requires spacing in typing, not in the UI)
                 focusCursorAbsPos += parsedCodeRes.cursorOffset;

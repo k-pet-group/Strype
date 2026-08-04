@@ -6,7 +6,7 @@ import {getAllEnabledUserDefinedClasses, getAllEnabledUserDefinedFunctions} from
 import i18n from "@/i18n";
 import {Signature, TPyParser} from "@tigerpython/tpparser";
 import {getAvailablePyPyiFromLibrary, getPossibleImports, getTextFileFromLibraries} from "@/helpers/libraryManager";
-import Parser, { AC_PROBE_MARKER } from "@/parser/parser";
+import Parser, { AC_PROBE_MARKER, getCachedCodeWithoutErrors } from "@/parser/parser";
 import {extractPYI} from "@/helpers/python-pyi";
 import {AcResultsWithCategorySchema} from "@/types/ac-types-zod";
 import builtinsMod from "@/../pysrc/pyi/builtins.pyi?raw";
@@ -751,9 +751,43 @@ export function buildProbeCodeAndOffset(baseCode: string, context: string): {cod
     return {code, offset: markerIndex + probePrefix.length};
 }
 
+// calculateParamPrompt (below) recomputes on every keystroke in a function call's argument list
+// (it's driven by a Vue computed over the label's slots), but its result only actually depends on
+// which parameter position we're at (context/token/paramIndex/lastParam/prevKeywordNames/isFocused)
+// -- none of which change from typing into an argument's own value, only from editing the call's
+// function-name chain, or adding/removing brackets/commas/equals signs there (all of which already
+// produce a fresh placeholderSource tuple via checkSlotRefactoring's reparse, so a cache keyed on
+// that tuple naturally misses exactly when needed for those). For calls to a locally-defined
+// function/class (blank context), the signature is also read fresh from that definition's own
+// frame data every time regardless of context/token changing at the call site -- so editing a
+// function's formal parameters (rename/add/remove/default value) needs to invalidate every cached
+// prompt too, done coarsely via invalidateParamPromptCache() (called from checkSlotRefactoring
+// whenever the edited label is a funcdef's parameter list) rather than tracked per-function, since
+// formal-param edits are rare compared to normal typing. Calls resolved via TigerPython's
+// whole-document evidence inference (the dotted/context branch below, e.g. "ax.plot(...)") aren't
+// specially invalidated when their evidence changes elsewhere (e.g. the assignment that establishes
+// what "ax" is) -- accepted as a rare staleness tradeoff versus recomputing every keystroke.
+const paramPromptCache = new Map<string, Promise<string>>();
+
+export function invalidateParamPromptCache(): void {
+    paramPromptCache.clear();
+}
+
+export async function calculateParamPrompt(frameId: number, placeholderSource : {context: string, token: string, paramIndex: number, lastParam: boolean, prevKeywordNames: string[]}, isFocused: boolean) : Promise<string> {
+    const {context, token, paramIndex, lastParam, prevKeywordNames} = placeholderSource;
+    const cacheKey = `${context}|${token}|${paramIndex}|${lastParam}|${prevKeywordNames.join(",")}|${isFocused}`;
+    const cached = paramPromptCache.get(cacheKey);
+    if (cached !== undefined) {
+        return cached;
+    }
+    const promise = calculateParamPromptUncached(frameId, placeholderSource, isFocused);
+    paramPromptCache.set(cacheKey, promise);
+    return promise;
+}
+
 // Gets the parameter name prompt for the given autocomplete details (context+token)
 // for the given parameter. Note that for the UI to display spans properly, empty placeholders are returned as \u200b (0-width space)
-export async function calculateParamPrompt(frameId: number, {context, token, paramIndex, lastParam, prevKeywordNames} : {context: string, token: string, paramIndex: number, lastParam: boolean, prevKeywordNames: string[]}, isFocused: boolean) : Promise<string> {
+async function calculateParamPromptUncached(frameId: number, {context, token, paramIndex, lastParam, prevKeywordNames} : {context: string, token: string, paramIndex: number, lastParam: boolean, prevKeywordNames: string[]}, isFocused: boolean) : Promise<string> {
     if (!context) {
         // If context is blank, we know that the function must be one of:
         // - A user-defined function (of the section definitions only )
@@ -814,7 +848,7 @@ export async function calculateParamPrompt(frameId: number, {context, token, par
     if (context) {
         // See if TigerPython can infer the type of the content before the dot (".")
         const parser = new Parser(false, "py", true);
-        const userCode = parser.getCodeWithoutErrors(frameId);
+        const userCode = getCachedCodeWithoutErrors(parser, frameId);
         await tpyDefineLibraries(parser);
         // getCodeWithoutErrors() leaves AC_PROBE_MARKER exactly where the frame we're editing sits, so
         // the probe below ends up correctly nested there, however much other code (e.g. evidence for a

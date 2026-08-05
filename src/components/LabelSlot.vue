@@ -182,6 +182,12 @@ export default defineComponent({
 
     beforeUnmount() {
         this.appStore.removePreCompileErrors(this.UID);
+        // Cancel any pending debounced updateAC() call -- otherwise it can fire after this slot
+        // (and potentially its whole frame) no longer exists, reading stale/gone state. Concretely
+        // hit as a CI regression: updateACForModuleImport() ran against an import frame that had
+        // since been torn down, ending up with a garbage/empty library address and throwing
+        // "Failed to construct 'URL': Invalid base URL" as an unhandled rejection.
+        (this.updateAC as unknown as DebouncedFunc<() => void>).cancel();
     },
 
     data: function() {
@@ -723,6 +729,11 @@ export default defineComponent({
         // Event callback equivalent to what would happen for a blur event callback 
         // (the spans don't get focus anymore because the containg editable div grab it)
         onLoseCaret(event: CustomEvent<{keepIgnoreKeyEventFlagOn?: boolean, keepEditingModeOn?: boolean}>): void {
+            // A pending debounced updateAC() call is for whatever was focused before -- once we've
+            // lost the caret, that's no longer relevant (and firing it later, e.g. against a slot
+            // whose frame has since been removed, is a source of stale-state bugs; see the
+            // matching cancel() in beforeUnmount()):
+            (this.updateAC as unknown as DebouncedFunc<() => void>).cancel();
             const {keepIgnoreKeyEventFlagOn, keepEditingModeOn} = event.detail??{};
             this.$nextTick(() => vueComponentsAPIHandler.labelSlotsStructureComponentAPI?.forInstance[getFrameLabelSlotsStructureUID(this.frameId, this.labelSlotsIndex)].updatePrependTextAndCheckErrors());
             // Before anything, we make sure that the current frame still exists,

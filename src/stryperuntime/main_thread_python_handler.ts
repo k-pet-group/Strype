@@ -18,8 +18,11 @@ import * as Comlink from "comlink";
 import {makeServiceWorkerChannel} from "sync-message";
 import {ref} from "vue";
 
-// Can be re-used:
-const serviceWorkerChannel = makeServiceWorkerChannel({scope: import.meta.env.BASE_URL});
+// Can be re-used. Exported so PythonExecutionArea can health-check it before a run (see
+// isServiceWorkerChannelResponsive in shared_helpers.ts) -- Safari in particular is known to
+// silently drop a page's service worker controller (e.g. after backgrounding the tab), which
+// otherwise only surfaces ~5s into a run as a ServiceWorkerError from deep inside Pyodide:
+export const serviceWorkerChannel = makeServiceWorkerChannel({scope: import.meta.env.BASE_URL});
 
 export const renderer = new Renderer();
 export const isPythonWorkerReady = ref(false);

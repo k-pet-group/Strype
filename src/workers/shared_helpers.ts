@@ -19,3 +19,20 @@ export async function serviceWorkerReadyAndInControl() : Promise<void> {
     });
 }
 
+// Unlike serviceWorkerReadyAndInControl() above (which only checks that *some* controller is
+// present), this actually round-trips through the sync-message channel to confirm the service
+// worker is currently intercepting requests for it. A controller can be present yet not truly
+// answering (e.g. Safari silently losing a backgrounded tab's service worker), in which case a
+// Pyodide run that depends on the channel (input(), cloud file I/O, output catch-up) would only
+// discover the problem ~5s in, via a ServiceWorkerError from deep inside the worker. Kept to a
+// short timeout so a genuinely dead channel is detected fast rather than stalling the Run click:
+export async function isServiceWorkerChannelResponsive(channelBaseUrl: string, timeoutMs = 800) : Promise<boolean> {
+    try {
+        const response = await fetch(channelBaseUrl + "/version", {signal: AbortSignal.timeout(timeoutMs)});
+        return response.ok;
+    }
+    catch {
+        return false;
+    }
+}
+

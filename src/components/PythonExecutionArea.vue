@@ -85,11 +85,11 @@ import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { BTab, BTabs } from "bootstrap-vue-next";
 import * as Comlink from "comlink";
 import {handleErrorTrace, setSInputConsole} from "@/helpers/execPythonCode";
-import {PyodideErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/shared_helpers";
+import {isServiceWorkerChannelResponsive, PyodideErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/shared_helpers";
 import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
-import {getPythonClient, isPythonWorkerReady, renderer, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
+import {getPythonClient, isPythonWorkerReady, renderer, serviceWorkerChannel, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {createOrGetAudioContext} from "@/helpers/audioContext";
 import {clearAllRuntimeErrors, computeFrameSnapshot} from "@/helpers/storeMethods";
@@ -641,7 +641,7 @@ export default defineComponent({
                 setSInputConsole(pythonConsole);
                 
                 // getPythonClient() can change value if restarted so important we take one
-                // const reference to it for the duration of a Python run: 
+                // const reference to it for the duration of a Python run:
                 const client = getPythonClient();
                 if (client == null) {
                     // Shouldn't normally happen (the Run button is disabled while
@@ -650,7 +650,30 @@ export default defineComponent({
                     useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                     return;
                 }
-                
+
+                // The run depends on the sync-message service worker channel throughout (input(),
+                // cloud file I/O, output catch-up), but nothing normally confirms it's actually
+                // being intercepted before we commit to running -- a controller can be present yet
+                // not truly answering (Safari is known to silently lose a backgrounded tab's service
+                // worker), in which case the run would only fail ~5s in, deep inside the worker.
+                // Check fast, and if it's not responding try to get the service worker to reclaim
+                // us before proceeding; if that doesn't help either, we still go ahead -- the
+                // .then()/.catch() below will reset the Run button cleanly rather than leaving it
+                // stuck, so this is a best-effort speed-up, not a hard gate:
+                if (!(await isServiceWorkerChannelResponsive(serviceWorkerChannel.baseUrl))) {
+                    console.error("Service worker sync channel not responding; attempting to reclaim control before running");
+                    const registration = await navigator.serviceWorker.getRegistration();
+                    await registration?.update();
+                    await new Promise<void>((resolve) => {
+                        const timeout = setTimeout(resolve, 1500);
+                        navigator.serviceWorker.addEventListener("controllerchange", () => {
+                            clearTimeout(timeout);
+                            resolve();
+                        }, {once: true});
+                        registration?.active?.postMessage("claim");
+                    });
+                }
+
                 const syncBridgePromise = handleSyncRequests(renderer, soundManager as SoundManager, turtlePixiHandler, {
                     getPressedKeys: () => pressedKeys,
                     waitForNextKey: () => {

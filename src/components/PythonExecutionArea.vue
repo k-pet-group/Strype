@@ -782,8 +782,21 @@ export default defineComponent({
                             }
                         });
                     }
+                }).catch((err) => {
+                    // client.call() itself can reject -- not just resolve with a possibleError --
+                    // e.g. if a sync request from the worker (see bridgeSync/makeRawRequest) couldn't
+                    // reach the main thread because the service worker sync-message channel was briefly
+                    // down (ServiceWorkerError). Without this handler that rejection went unhandled and
+                    // the .then() above never ran, leaving the Run button stuck showing "Stop" with
+                    // nothing running until the user clicked Stop then Run again to force a reset:
+                    console.error("Python execution failed to complete: ", err);
+                    setPythonExecAreaLayoutButtonPos();
+                    // The worker may be left in a broken/uncertain state, so get a clean one for next time:
+                    void terminateAndRestartPyodide();
+                    soundManager?.stopAllSounds();
+                    useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
                 });
-                
+
                 // We make sure the number of errors shown in the interface is in line with the current state of the code
                 // Note that a run time error can still occur later.                
                 this.checkNonePrecompiledErrors();

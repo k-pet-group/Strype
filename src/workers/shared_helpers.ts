@@ -28,7 +28,13 @@ export async function serviceWorkerReadyAndInControl() : Promise<void> {
 // short timeout so a genuinely dead channel is detected fast rather than stalling the Run click:
 export async function isServiceWorkerChannelResponsive(channelBaseUrl: string, timeoutMs = 800) : Promise<boolean> {
     try {
-        const response = await fetch(channelBaseUrl + "/version", {signal: AbortSignal.timeout(timeoutMs)});
+        // Must be POST, not the fetch() default of GET: sync-message's own fetch listener
+        // doesn't care about method for /version, but if the service worker *isn't*
+        // intercepting, a GET to an unmatched path is commonly rewritten to a 200 (e.g. an SPA's
+        // own index.html fallback, in dev and in many production static hosts) -- so a GET here
+        // could report "healthy" when the channel is actually dead. POST to the same unmatched
+        // path correctly falls through to a real 404 instead:
+        const response = await fetch(channelBaseUrl + "/version", {method: "POST", signal: AbortSignal.timeout(timeoutMs)});
         return response.ok;
     }
     catch {

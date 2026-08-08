@@ -6,7 +6,7 @@ import {getAllEnabledUserDefinedClasses, getAllEnabledUserDefinedFunctions} from
 import i18n from "@/i18n";
 import {Signature, TPyParser} from "@tigerpython/tpparser";
 import {getAvailablePyPyiFromLibrary, getPossibleImports, getTextFileFromLibraries} from "@/helpers/libraryManager";
-import Parser, { AC_PROBE_MARKER } from "@/parser/parser";
+import Parser, { AC_PROBE_MARKER, getCachedCodeWithoutErrors } from "@/parser/parser";
 import {extractPYI} from "@/helpers/python-pyi";
 import {AcResultsWithCategorySchema} from "@/types/ac-types-zod";
 import builtinsMod from "@/../pysrc/pyi/builtins.pyi?raw";
@@ -751,9 +751,63 @@ export function buildProbeCodeAndOffset(baseCode: string, context: string): {cod
     return {code, offset: markerIndex + probePrefix.length};
 }
 
+// calculateParamPrompt (below) recomputes on every keystroke in a function call's argument list
+// (it's driven by a Vue computed over the label's slots), but its result only actually depends on
+// which parameter position we're at (context/token/paramIndex/lastParam/prevKeywordNames/isFocused)
+// -- none of which change from typing into an argument's own value, only from editing the call's
+// function-name chain, or adding/removing brackets/commas/equals signs there (all of which already
+// produce a fresh placeholderSource tuple via checkSlotRefactoring's reparse, so a cache keyed on
+// that tuple naturally misses exactly when needed for those). For calls to a locally-defined
+// function/class (blank context), the signature is also read fresh from that definition's own
+// frame data every time regardless of context/token changing at the call site -- so editing a
+// function's formal parameters (rename/add/remove/default value) needs to invalidate every cached
+// prompt too, done coarsely via invalidateParamPromptCache() (called from checkSlotRefactoring
+// whenever the edited label is a funcdef's parameter list) rather than tracked per-function, since
+// formal-param edits are rare compared to normal typing. Calls resolved via TigerPython's
+// whole-document evidence inference (the dotted/context branch below, e.g. "ax.plot(...)") aren't
+// specially invalidated when their evidence changes elsewhere (e.g. the assignment that establishes
+// what "ax" is) -- accepted as a rare staleness tradeoff versus recomputing every keystroke. Note
+// this cache only ever holds *definitive* answers: calculateParamPromptUncached() returns undefined
+// (rather than a placeholder string) when it had to give up without resolving a signature, and
+// calculateParamPrompt() below deliberately doesn't persist those -- otherwise a lookup that first
+// runs before TigerPython's evidence/library data is ready would cache "don't know" forever, since
+// nothing about the cache key changes once that data does become available.
+const paramPromptCache = new Map<string, Promise<string | undefined>>();
+
+export function invalidateParamPromptCache(): void {
+    paramPromptCache.clear();
+}
+
+export async function calculateParamPrompt(frameId: number, placeholderSource : {context: string, token: string, paramIndex: number, lastParam: boolean, prevKeywordNames: string[]}, isFocused: boolean) : Promise<string> {
+    const {context, token, paramIndex, lastParam, prevKeywordNames} = placeholderSource;
+    const cacheKey = `${context}|${token}|${paramIndex}|${lastParam}|${prevKeywordNames.join(",")}|${isFocused}`;
+    let promise = paramPromptCache.get(cacheKey);
+    if (promise === undefined) {
+        promise = calculateParamPromptUncached(frameId, placeholderSource, isFocused);
+        paramPromptCache.set(cacheKey, promise);
+    }
+    const result = await promise;
+    if (result === undefined) {
+        // calculateParamPromptUncached() gave up (couldn't yet resolve a signature) rather than
+        // definitively finding nothing -- don't leave that in the cache, or a later call for the
+        // same key (e.g. once TigerPython's evidence for the call has caught up) would keep
+        // reading back this stale "don't know" answer forever, since nothing about the cache key
+        // itself changes once the real signature becomes resolvable. Only remove our own entry:
+        // another call for the same key may already have replaced it with a fresh attempt.
+        if (paramPromptCache.get(cacheKey) === promise) {
+            paramPromptCache.delete(cacheKey);
+        }
+        return "\u200b";
+    }
+    return result;
+}
+
 // Gets the parameter name prompt for the given autocomplete details (context+token)
-// for the given parameter. Note that for the UI to display spans properly, empty placeholders are returned as \u200b (0-width space)
-export async function calculateParamPrompt(frameId: number, {context, token, paramIndex, lastParam, prevKeywordNames} : {context: string, token: string, paramIndex: number, lastParam: boolean, prevKeywordNames: string[]}, isFocused: boolean) : Promise<string> {
+// for the given parameter. Note that for the UI to display spans properly, empty placeholders are returned as \u200b (0-width space).
+// Returns undefined (rather than \u200b) when it had to give up without a definitive answer -- e.g. a matching
+// item was found but its signature/params data isn't available yet, or TigerPython's evidence-based inference
+// hasn't resolved the call's type yet -- so the caller (calculateParamPrompt) knows not to cache that answer.
+async function calculateParamPromptUncached(frameId: number, {context, token, paramIndex, lastParam, prevKeywordNames} : {context: string, token: string, paramIndex: number, lastParam: boolean, prevKeywordNames: string[]}, isFocused: boolean) : Promise<string | undefined> {
     if (!context) {
         // If context is blank, we know that the function must be one of:
         // - A user-defined function (of the section definitions only )
@@ -781,7 +835,9 @@ export async function calculateParamPrompt(frameId: number, {context, token, par
                 return getParamPromptOld(builtinFunc.params.filter((p) => !p.hide).map((p) => p.name), builtinFunc.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
             }
             else {
-                return "\u200b";
+                // Matched a builtin, but it has neither a signature nor params -- that data may
+                // simply not have loaded yet, so don't hand back a definitive answer:
+                return undefined;
             }
         }
     }
@@ -807,14 +863,16 @@ export async function calculateParamPrompt(frameId: number, {context, token, par
             return getParamPromptOld(importedFunc.params.filter((p) => !p.hide).map((p) => p.name), importedFunc.params.filter((p) => !p.hide).map((p) => p.defaultValue !== undefined), paramIndex, lastParam);
         }
         else {
-            return "\u200b";
+            // Matched an imported item, but it has neither a signature nor params -- that data may
+            // simply not have loaded yet, so don't hand back a definitive answer:
+            return undefined;
         }
     }
 
     if (context) {
         // See if TigerPython can infer the type of the content before the dot (".")
         const parser = new Parser(false, "py", true);
-        const userCode = parser.getCodeWithoutErrors(frameId);
+        const userCode = getCachedCodeWithoutErrors(parser, frameId);
         await tpyDefineLibraries(parser);
         // getCodeWithoutErrors() leaves AC_PROBE_MARKER exactly where the frame we're editing sits, so
         // the probe below ends up correctly nested there, however much other code (e.g. evidence for a
@@ -839,7 +897,10 @@ export async function calculateParamPrompt(frameId: number, {context, token, par
         return calculateParamPrompt(frameId, {context, token, paramIndex, lastParam, prevKeywordNames}, isFocused);
     }
     
-    // Can't find it!
-    return "\u200b";
+    // Can't find it! Either it genuinely doesn't exist, or (far more commonly, in practice)
+    // TigerPython's whole-document evidence inference for the dotted/context branch above hasn't
+    // resolved this call's type yet -- we can't tell those apart here, so treat it as "don't know"
+    // rather than a definitive answer, so calculateParamPrompt() won't cache it.
+    return undefined;
 
 }

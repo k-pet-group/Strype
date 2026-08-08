@@ -942,6 +942,32 @@ export default class Parser {
             code = STRYPE_EXPRESSION_BLANK;
         }
         
-        return {code: code, slotLengths: slotLengths, slotStarts: slotStarts, slotIds: slotIds, slotTypes: slotTypes}; 
+        return {code: code, slotLengths: slotLengths, slotStarts: slotStarts, slotIds: slotIds, slotTypes: slotTypes};
     }
+}
+
+// getCodeWithoutErrors() re-parses and re-type-checks the *whole* document from scratch, which is
+// expensive on large documents -- and it's called from two independent places (AutoCompletion.vue's
+// updateAC(), and acManager.ts's calculateParamPrompt() for dotted-context calls like "ax.plot(...)")
+// that can both run for the same frameId around the same "settle" moment after a keystroke, doing
+// the same work twice. Both callers construct their Parser with identical arguments
+// (new Parser(false, "py", true)), and the method is a pure function of (frameId, document state),
+// so the result can safely be shared between them.
+//
+// Cached against editorLastModificationAt rather than a purpose-built counter: it's already the
+// store's existing "content was modified" signal, bumped by saveStateChanges() *and*
+// applyStateUndoRedoChanges() (undo/redo doesn't go through saveStateChanges, so a cache keyed only
+// on the latter would miss it) and a couple of other content/state-modifying actions -- so this
+// self-invalidates on any edit without needing new invalidation call sites scattered around.
+const codeWithoutErrorsCache = new Map<number, {modifiedAt: number; result: string}>();
+
+export function getCachedCodeWithoutErrors(parser: Parser, frameId: number): string {
+    const modifiedAt = useStore().editorLastModificationAt;
+    const cached = codeWithoutErrorsCache.get(frameId);
+    if (cached !== undefined && cached.modifiedAt === modifiedAt) {
+        return cached.result;
+    }
+    const result = parser.getCodeWithoutErrors(frameId);
+    codeWithoutErrorsCache.set(frameId, {modifiedAt, result});
+    return result;
 }

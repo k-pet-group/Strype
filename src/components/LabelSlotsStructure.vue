@@ -517,7 +517,7 @@ export default defineComponent({
             return true;
         },
 
-        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, skipStateSaveOnly?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean, ignoreBlurEditableSlot?: boolean, triggeredByEnter?: boolean}) {
+        checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, skipStateSaveOnly?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean, ignoreBlurEditableSlot?: boolean, triggeredByEnter?: boolean, treatAsBlurred?: boolean}) {
             // Slot errors will be check later again. We clear off the notification on the parent (frame header) for slot errors so it can reset the triangle error indicator
             vueComponentsAPIHandler.frameHeaderComponentAPI?.forInstance[this.frameId].setHasErroneousSlot(false);
             // Comments do not need to be checked, so we do nothing special for them, but just enforce the caret to be placed at the right place and the code value to be updated
@@ -550,7 +550,7 @@ export default defineComponent({
                 // As we will need to reposition the cursor, we keep a reference to the "absolute" position in this label's slots,
                 // so we find that out while getting through all the slots to get the literal code.
                 let {uiLiteralCode, focusSpanPos: focusCursorAbsPos, hasStringSlots, mediaLiterals} = getFrameLabelSlotLiteralCodeAndFocus(labelDiv, slotUID, {useFlatMediaDataCode: options?.useFlatMediaDataCode});
-                const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: options?.skipCursorSetAndStateSave ? undefined : focusCursorAbsPos, skipStringEscape: hasStringSlots, imageLiterals: mediaLiterals});
+                const parsedCodeRes = parseCodeLiteral(uiLiteralCode, {frameType: this.appStore.frameObjects[this.frameId].frameType.type, isInsideString: false, cursorPos: (options?.skipCursorSetAndStateSave || options?.treatAsBlurred) ? undefined : focusCursorAbsPos, skipStringEscape: hasStringSlots, imageLiterals: mediaLiterals});
                 const majorChange = this.majorChange(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures, parsedCodeRes.slots);
                 // Chrome triggers a loss and reset of focus when the slots structure (and only structurally speaking) are changed in the store, typically when inserting operators
                 // so might want to ignore the events in this situation (ignore blur fully, and partially ignore refocus as some things in focus() should not be done).
@@ -584,6 +584,13 @@ export default defineComponent({
                     this.refactorCount += 1;
                 }
                 this.$forceUpdate();
+                if (options?.treatAsBlurred) {
+                    // We're leaving the slot (e.g. a string just auto-converted to a colour literal on
+                    // blur), so there's no cursor position to restore into -- just persist the change as
+                    // its own undo step.
+                    this.$nextTick(() => this.appStore.saveStateChanges(stateBeforeChanges));
+                    return;
+                }
                 this.$nextTick(() => {
                     // If it was a major change, our entire old div element may have been removed
                     // from the tree and re-added, so it's crucial we refetch the new element in

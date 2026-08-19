@@ -10,8 +10,8 @@
             <span class="MediaPreviewPopup-header-text" v-html="mediaInfo"></span>
         </div>
         <div class="MediaPreviewPopup-controls">
-            <BButton size="sm" variant="outline-success" class="MediaPreviewPopup-header-preview-button" @click="doPreview">{{$t("media.preview")}}</BButton>
-            <BButton size="sm" variant="outline-success" class="MediaPreviewPopup-header-download-button" @click="doDownload"><i class="fa fa-download"></i></BButton>
+            <BButton v-if="mediaType !== 'colour'" size="sm" variant="outline-success" class="MediaPreviewPopup-header-preview-button" @click="doPreview">{{$t("media.preview")}}</BButton>
+            <BButton v-if="mediaType !== 'colour'" size="sm" variant="outline-success" class="MediaPreviewPopup-header-download-button" @click="doDownload"><i class="fa fa-download"></i></BButton>
             <BButton size="sm" variant="outline-danger" class="MediaPreviewPopup-header-edit-button" @click="doEdit">{{$t("media.edit")}}</BButton>
         </div>
         <div class="MediaPreviewPopup-img-container-wrapper">
@@ -26,7 +26,7 @@
 
 <script lang="ts">
 import { defineComponent } from "vue";
-import {EditImageInDialogFunction, EditSoundInDialogFunction, LoadedMedia} from "@/types/types";
+import {EditImageInDialogFunction, EditSoundInDialogFunction, LoadedMedia, OpenColourPickerInDialogFunction} from "@/types/types";
 import {getDateTimeFormatted} from "@/helpers/common";
 import {saveAs} from "file-saver";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
@@ -62,13 +62,14 @@ export default defineComponent({
             imgDataURL: "",
             mediaInfo: "",
             mediaType: "",
+            hex: "",
             audioBuffer: undefined as AudioBuffer | undefined,
             stopPreviewOnHide : () => {},
             replaceAfterEdit : (() => {}) as ((replacement: {code: string, mediaType: string}) => void),
         };
     },
 
-    inject: ["editImageInDialog", "editSoundInDialog"],
+    inject: ["editImageInDialog", "editSoundInDialog", "openColourPickerInDialog"],
     
     methods: {
         showPopup(event : MouseEvent, media: LoadedMedia, replaceMedia: (replacement: {code: string, mediaType: string}) => void) {
@@ -82,7 +83,12 @@ export default defineComponent({
 
             this.mediaType = media.mediaType;
             this.audioBuffer = media.audioBuffer;
-            if (media.audioBuffer) {
+            this.hex = media.hex ?? "";
+            if (media.mediaType === "colour") {
+                this.imgDataURL = media.imageDataURL;
+                this.mediaInfo = media.hex ?? "";
+            }
+            else if (media.audioBuffer) {
                 // This is not translated because it's a class name:
                 this.mediaInfo = `${HTMLSoundClass}<br>${media.audioBuffer.duration.toFixed(2)} ${this.$t("media.soundSeconds")}`;
                 this.imgDataURL = media.imageDataURL;
@@ -190,7 +196,12 @@ export default defineComponent({
             }
         },
         doEdit() {
-            if (this.audioBuffer) {
+            if (this.mediaType === "colour") {
+                this.doOpenColourPickerInDialog(this.hex, (hex : string) => {
+                    this.replaceAfterEdit({code: "\"" + hex + "\"", mediaType: "colour"});
+                }, () => {});
+            }
+            else if (this.audioBuffer) {
                 this.doEditSoundInDialog(this.audioBuffer, (replacement : {code: string, mediaType: string}) => {
                     this.replaceAfterEdit(replacement);
                 });
@@ -217,6 +228,9 @@ export default defineComponent({
         },
         doEditSoundInDialog() : EditSoundInDialogFunction {
             return (this as any).editSoundInDialog as EditSoundInDialogFunction;
+        },
+        doOpenColourPickerInDialog() : OpenColourPickerInDialogFunction {
+            return (this as any).openColourPickerInDialog as OpenColourPickerInDialogFunction;
         },
     },
 });

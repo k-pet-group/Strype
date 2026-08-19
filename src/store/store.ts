@@ -1017,6 +1017,22 @@ export const useStore = defineStore("app", {
             }
         },
 
+        // Converts an existing string slot (e.g. the one the colour picker was opened from, via Ctrl-Shift-Y)
+        // into a colour MediaSlot in place, at the same field index. This relies on a string slot always being
+        // already flanked by its own lhs/rhs sibling fields (addNewSlot's string branch above always wraps
+        // [lhs, string, rhs]), so there's no need to splice new siblings in -- "adjacent" fields already exist.
+        convertStringSlotToColourLiteral(slotInfos: SlotCoreInfos, hex: string) {
+            const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(slotInfos.slotId);
+            const parentFieldSlot = (parentId.length > 0)
+                ? retrieveSlotFromSlotInfos({...slotInfos, slotId: parentId}) as SlotsStructure
+                : this.frameObjects[slotInfos.frameId].labelSlotsDict[slotInfos.labelSlotsIndex].slotStructures;
+            const quote = (parentFieldSlot.fields[slotIndex] as StringSlot).quote;
+
+            const stateBeforeChanges = cloneDeep(this.$state);
+            parentFieldSlot.fields[slotIndex] = {mediaType: "colour", code: quote + hex.toLowerCase() + quote} as MediaSlot;
+            this.saveStateChanges(stateBeforeChanges);
+        },
+
         /**
          * This method is called if we need to delete an operator, bracket or string (i.e. the deletion is not solely
          * contained neatly in one slot).  We envisage this as being in a particular slot (the current slot) and deleting

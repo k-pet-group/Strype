@@ -1,4 +1,5 @@
-import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, MediaSlot, SlotsStructure, StringSlot, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState } from "@/types/types";
+import { isHexColourLiteral } from "@/helpers/colour";
 import {useStore} from "@/store/store";
 import {checkCodeErrors} from "@/helpers/storeMethods";
 import {CustomEventTypes, getLastCaretPosInsideParent, operators, trimmedKeywordOperators} from "@/helpers/editor";
@@ -897,7 +898,14 @@ function toSlots(p: ParsedConcreteTree) : SlotsStructure {
         // ([\s\S] matches any char, including newlines, which might be present if it's triple quoted):
         const strMatch = /^([rbfRBF]*)(["'])([\s\S]+)$/.exec(val);
         if (strMatch) {
-            const str : StringSlot = {code: strMatch[3].slice(0, strMatch[3].length - strMatch[2].length), quote: strMatch[2]};
+            const content = strMatch[3].slice(0, strMatch[3].length - strMatch[2].length);
+            // Unprefixed strings matching a hex colour (e.g. "#aabbcc") load as a colour literal rather
+            // than a plain string, mirroring the organic typing/blur auto-conversion (editor.ts parseCodeLiteral):
+            if (strMatch[1] === "" && isHexColourLiteral(content)) {
+                const colour : MediaSlot = {mediaType: "colour", code: strMatch[2] + content.toLowerCase() + strMatch[2]};
+                return {fields: [{code: ""}, colour, {code: ""}], operators: [{code: ""}, {code: ""}]};
+            }
+            const str : StringSlot = {code: content, quote: strMatch[2]};
             return {fields: [{code: strMatch[1]}, str, {code: ""}], operators: [{code: ""}, {code: ""}]};
         }
         else {

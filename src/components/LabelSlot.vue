@@ -771,6 +771,16 @@ export default defineComponent({
                         keepEditingModeOn
                     );
                 }
+                // Give a plain string one last check as we leave it: if its content now matches a hex
+                // colour literal (e.g. the user just typed "#aabbcc"), auto-convert it to a colour swatch.
+                // Mere cursor movement (Tab/click-away/arrow-out) never fires onInput, so this is the only
+                // point such a conversion can happen -- reusing the same reparse pipeline as organic typing
+                // gets cursor repositioning, undo/redo and structural re-rendering for free.
+                if (this.slotType === SlotType.string) {
+                    const stateBeforeChanges = cloneDeep(this.appStore.$state);
+                    this.$emit(CustomEventTypes.requestSlotsRefactoring, this.UID, stateBeforeChanges, {useFlatMediaDataCode: true, treatAsBlurred: true});
+                }
+
                 //reset the flag for first code change
                 this.isFirstChange = true;
 
@@ -1140,14 +1150,18 @@ export default defineComponent({
                 };
 
                 const commitReplacement = (hex: string) => {
-                    this.appStore.setFrameEditableSlotContent({...targetSlotInfos, code: hex, initCode: "", isFirstChange: true});
-                    const cursorInfo: SlotCursorInfos = {slotInfos: targetSlotInfos, cursorPos: hex.length};
+                    // Converts the whole string to a colour literal (now an atomic, 1-char-wide field), so
+                    // rather than leaving the cursor "inside" it, we place it in the adjacent sibling field.
+                    this.appStore.convertStringSlotToColourLiteral(targetSlotInfos, hex);
+                    const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(targetSlotInfos.slotId);
+                    const rhsSlotInfos: SlotCoreInfos = {...targetSlotInfos, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + 1)};
+                    const cursorInfo: SlotCursorInfos = {slotInfos: rhsSlotInfos, cursorPos: 0};
                     nextTick(() => {
                         setDocumentSelection(cursorInfo, cursorInfo);
                         this.appStore.setSlotTextCursors(cursorInfo, cursorInfo);
                         this.appStore.setFocusEditableSlot({
-                            frameSlotInfos: targetSlotInfos,
-                            caretPosition: this.appStore.getAllowedChildren(targetSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
+                            frameSlotInfos: rhsSlotInfos,
+                            caretPosition: this.appStore.getAllowedChildren(rhsSlotInfos.frameId) ? CaretPosition.body : CaretPosition.below,
                         });
                     });
                 };
@@ -1173,9 +1187,9 @@ export default defineComponent({
                 };
 
                 const commitInsertion = (hex: string) => {
-                    this.appStore.addNewSlot(targetSlotInfos, "\"", lhsCode, rhsCode, SlotType.string, false, hex);
+                    this.appStore.addNewSlot(targetSlotInfos, "colour", lhsCode, rhsCode, SlotType.media, false, "\"" + hex + "\"");
                     // Place the cursor in the new trailing (empty) field right after the inserted
-                    // string, mirroring commitInsertion in triggerMediaRecording above:
+                    // colour literal, mirroring commitInsertion in triggerMediaRecording above:
                     const {parentId, slotIndex} = getSlotParentIdAndIndexSplit(targetSlotInfos.slotId);
                     const rhsSlotInfos: SlotCoreInfos = {...targetSlotInfos, slotId: getSlotIdFromParentIdAndIndexSplit(parentId, slotIndex + 2)};
                     const cursorInfo: SlotCursorInfos = {slotInfos: rhsSlotInfos, cursorPos: 0};
@@ -2113,7 +2127,19 @@ export default defineComponent({
 
         async loadMediaPreview(): Promise<LoadedMedia> {
             let slot = retrieveSlotFromSlotInfos(this.coreSlotInfo) as MediaSlot;
-            if (slot.mediaType.startsWith("image") && !slot.mediaType.startsWith("image/svg+xml")) {
+            if (slot.mediaType === "colour") {
+                const hex = slot.code.replace(/["']/g, "");
+                const canvas = document.createElement("canvas");
+                canvas.width = 32;
+                canvas.height = 32;
+                const ctx = canvas.getContext("2d");
+                if (ctx) {
+                    ctx.fillStyle = hex;
+                    ctx.fillRect(0, 0, canvas.width, canvas.height);
+                }
+                return {mediaType: slot.mediaType, imageDataURL: canvas.toDataURL(), hex: hex};
+            }
+            else if (slot.mediaType.startsWith("image") && !slot.mediaType.startsWith("image/svg+xml")) {
                 return {mediaType: slot.mediaType, imageDataURL: "data:" + slot.mediaType + ";" + /base64,[^"']+/.exec(slot.code)?.[0]};
             }
             else if (slot.mediaType.startsWith("audio")) {

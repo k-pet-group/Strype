@@ -15,6 +15,7 @@ import {toUnicodeEscapes} from "@/parser/parser";
 import { fromUnicodeEscapes, pasteMixedPython } from "@/helpers/pythonToFrames";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
+import { isHexColourLiteral } from "@/helpers/colour";
 
 export const undoMaxSteps = 50;
 export const autoSaveFreqMins = 2; // The number of minutes between each autosave action.
@@ -1737,7 +1738,16 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
             // When we construct the parts before and after the string, we need to internally set the cursor "fake" position, that is, the cursor offset by the bits we are evaluating
             const {slots: structBeforeString, cursorOffset: beforeStringCursortOffset} = parseCodeLiteral(beforeStringCode, {isInsideString: false, cursorPos: flags?.cursorPos, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
             cursorOffset += beforeStringCursortOffset;
-            const structOfString: StringSlot = {code: stringContentCode, quote: openingQuoteValue};
+            // Auto-convert a plain string matching a hex colour literal (e.g. "#aabbcc") into a colour
+            // MediaSlot, but only once the cursor has genuinely left the string (cursorPos undefined, or
+            // outside the quotes -- inclusive bounds, so a boundary position is still treated as "inside"
+            // and doesn't convert), and only for unprefixed strings (f/r/b-prefixed strings are excluded,
+            // since those are constructed live the same way as a plain string via addNewSlot's string branch).
+            const cursorInsideThisString = flags?.cursorPos !== undefined && flags.cursorPos >= openingQuoteIndex && flags.cursorPos <= closingQuoteIndex;
+            const hasStringPrefix = /(^|[^a-zA-Z0-9_])[fFrRbB]{1,2}$/.test(beforeStringCode);
+            const structOfString: StringSlot | MediaSlot = (!cursorInsideThisString && !hasStringPrefix && isHexColourLiteral(stringContentCode))
+                ? {mediaType: "colour", code: openingQuoteValue + stringContentCode.toLowerCase() + openingQuoteValue} as MediaSlot
+                : {code: stringContentCode, quote: openingQuoteValue};
             const {slots: structAfterString, cursorOffset: afterStringCursorOffset} = parseCodeLiteral(afterStringCode, {isInsideString: false, cursorPos: flags?.cursorPos !== undefined ? flags?.cursorPos - closingQuoteIndex + (2*(quoteTokenLength -1)) + stringPlaceholder.length : undefined, skipStringEscape: flags?.skipStringEscape, imageLiterals: imageLiterals});
             cursorOffset += afterStringCursorOffset;
             (structAfterString.fields[0] as BaseSlot).code = removePossibleFieldPlaceholderFromStart((structAfterString.fields[0] as BaseSlot).code);

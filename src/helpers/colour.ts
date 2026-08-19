@@ -35,6 +35,13 @@ export function parseColourToHex(input: string): string | null {
     return result;
 }
 
+// Strict predicate used for auto-detection (typing-blur and python-load) of a colour literal:
+// exactly 6 hex digits after "#", unlike parseColourToHex's lenient CSS-colour parsing (which is
+// only used to seed the picker from arbitrary content).
+export function isHexColourLiteral(s: string): boolean {
+    return /^#[0-9a-fA-F]{6}$/.test(s);
+}
+
 export function hexToHsv(hex: string): { h: number, s: number, v: number } {
     const r = parseInt(hex.substring(1, 3), 16) / 255;
     const g = parseInt(hex.substring(3, 5), 16) / 255;

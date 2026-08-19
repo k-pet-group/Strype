@@ -106,13 +106,13 @@ function interleave<T>(a: T[], b: T[]): T[] {
     return result;
 }
 
-// An f-string's content is stored as plain text (see toSlots() in pythonToFrames.ts -- there's
-// no separate structure for the {expr} substitutions), so nothing stops a user typing an
-// unmatched "{" or "}" into one. That's not just a parsing artefact: it's a genuine SyntaxError
-// in real Python too (e.g. f"{x" fails to compile), so it can never be emitted as a real
-// f-string literal. This checks the same brace-balancing rule Python itself applies (an
-// unescaped "{{"/"}}" pair is literal, anything else must nest to zero) to detect that case
-// before it happens, rather than after a failed round-trip:
+// An f-string's content is stored as plain text (see stringNodeToSlots() in
+// pythonToFramesExpr.ts -- there's no separate structure for the {expr} substitutions), so
+// nothing stops a user typing an unmatched "{" or "}" into one. That's not just a tree-sitter
+// parsing artefact: it's a genuine SyntaxError in real Python too (e.g. f"{x" fails to compile),
+// so it can never be emitted as a real f-string literal. This checks the same brace-balancing
+// rule Python itself applies (an unescaped "{{"/"}}" pair is literal, anything else must nest to
+// zero) to detect that case before it happens, rather than after a failed round-trip:
 function isWellFormedFString(code: string): boolean {
     let depth = 0;
     for (let i = 0; i < code.length; i++) {
@@ -138,12 +138,12 @@ function isWellFormedFString(code: string): boolean {
     return depth === 0;
 }
 
-// Replaces any [prefix, StringSlot, blank] triple (the shape toSlots() produces for a string
-// terminal) that is an f-string with unbalanced braces with a call to
+// Replaces any [prefix, StringSlot, blank] triple (the shape stringNodeToSlots() produces --
+// see pythonToFramesExpr.ts) that is an f-string with unbalanced braces with a call to
 // STRYPE_INVALID_FSTRING_WRAPPER, so saving never emits Python that's guaranteed to fail to
 // re-parse. The prefix+quote+content is preserved verbatim as an ordinary (non-f) string
 // argument -- braces have no special meaning there, so it's always safely representable -- and
-// unwrapped again on load by replaceMediaLiteralsAndInvalidOps() in pythonToFrames.ts.
+// unwrapped again on load by replaceMediaLiteralsAndInvalidOps().
 function escapeUnrepresentableFStrings(slots: SlotsStructure): SlotsStructure {
     for (let i = 0; i + 1 < slots.fields.length; i++) {
         const prefixField = slots.fields[i];

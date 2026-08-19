@@ -1312,18 +1312,10 @@ export function notifyDragEnded():void {
 /**
  * Operator and brackets related content
  */
-// For Strype, we ignore the following double/triple operators += -= /= *= %= //= **= &= |= ^= >>= <<= 
-export const operators = [".","+","-","/","*","%",":","//","**","&","|","~","^",">>","<<",
-    "==","=","!=",">=","<=","<",">",","];
-// Note that for those textual operator keywords, we only have space surrounding the single words: double words don't need
-// as they will always come from a combination of writing one word then the other (the first will be added as operator);
-// "as" is added in the operator list for imports, but it will be discarded when not dealing with import frames.
-// Important that the longer operators come before the shorter ones with the same prefix:
-// "lambda" is recognised as a plain prefix keyword operator (like "not") so it can be
-// typed/pasted without crashing and gets sensible precedence-based spacing, but Strype
-// gives it no semantic support (no parameter-list awareness) -- it's a pass-through.
-export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is not ", " is ", " or ", " not in ", " not ", " as ", " if ", " else ", " for ", " lambda "];
-export const trimmedKeywordOperators = keywordOperatorsWithSurroundSpaces.map((spacedOp) => spacedOp.trim());
+// Defined in pythonOperators.ts (a dependency-free leaf module) and re-exported here so existing
+// importers of editor.ts are unaffected.
+import { operators, keywordOperatorsWithSurroundSpaces, trimmedKeywordOperators } from "@/helpers/pythonOperators";
+export { operators, keywordOperatorsWithSurroundSpaces, trimmedKeywordOperators };
 
 
 // We construct the list of all operator with a specific order: first the spaced keyword operators, 

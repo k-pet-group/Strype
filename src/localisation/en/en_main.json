@@ -47,6 +47,7 @@
     "invalidPythonParsePaste": "Invalid Python code pasted: {errorMsg}",
     "wrongPythonStructCopied": "cannot paste else/elif/except/finally and further content in one paste",
     "incompatiblePythonStrypeSection": "the Python code cannot be placed in the target Strype section",
+    "invalidPythonCodeSyntax": "invalid syntax",
     "invalidMatchStmtContent": "this content is not allowed inside a 'match' statement",
     "errorAccessingIndexedDB": "Error accessing browser storage (possibly due to private browsing).  Your project will not be automatically backed up.  (Error: {errorMsg})",
     "foundRecentUnsavedState": "A recent unsaved project backup (last modified {when}) was found.  Do you want to load it?",

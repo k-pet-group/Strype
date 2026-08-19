@@ -403,12 +403,23 @@ test.describe("Frozen state deals with errors", () => {
         expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
     });
     
+    // A mismatched-brace f-string (a genuine SyntaxError in real Python too, not just a
+    // tree-sitter artefact -- e.g. f"{x" fails to compile) can never be emitted as a real f-string
+    // literal, so Strype represents it as a call to ___strype_fstring_wrap() with the original,
+    // otherwise-unparseable f-string source stashed as an ordinary (non-f) string argument -- see
+    // STRYPE_INVALID_FSTRING_WRAPPER's doc comment in pythonSlotsShared.ts. This is the exact
+    // saved/loadable form Strype itself produces and round-trips (confirmed live: loading it
+    // reconstructs an f-string slot with Strype's own "This string is unterminated." error on it,
+    // and saving it back out reproduces this same wrapped text unchanged) -- unlike a raw
+    // mismatched-brace f-string typed directly into this fixture's source text, which tree-sitter
+    // can no longer parse at all (a hard parse failure, not the softer error state this test needs
+    // to reach in order to check that freezing/folding is blocked while it's showing):
     const inputWithTigerPythonError = `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
 def foo (name,ID ) :
     # Mismatched format string:
-    print(f"Student: {name} ({ID)") 
+    print(___strype_fstring_wrap("f\\"Student: {name} ({ID)\\"")) 
 #(=> Section:Main
 foo("Anon",7) 
 #(=> Section:End
@@ -480,12 +491,23 @@ test.describe("Folding state deals with errors", () => {
         expect(await page.locator("#peaConsole").inputValue()).toContain("object of type 'NoneType' has no len()");
     });
 
+    // A mismatched-brace f-string (a genuine SyntaxError in real Python too, not just a
+    // tree-sitter artefact -- e.g. f"{x" fails to compile) can never be emitted as a real f-string
+    // literal, so Strype represents it as a call to ___strype_fstring_wrap() with the original,
+    // otherwise-unparseable f-string source stashed as an ordinary (non-f) string argument -- see
+    // STRYPE_INVALID_FSTRING_WRAPPER's doc comment in pythonSlotsShared.ts. This is the exact
+    // saved/loadable form Strype itself produces and round-trips (confirmed live: loading it
+    // reconstructs an f-string slot with Strype's own "This string is unterminated." error on it,
+    // and saving it back out reproduces this same wrapped text unchanged) -- unlike a raw
+    // mismatched-brace f-string typed directly into this fixture's source text, which tree-sitter
+    // can no longer parse at all (a hard parse failure, not the softer error state this test needs
+    // to reach in order to check that freezing/folding is blocked while it's showing):
     const inputWithTigerPythonError = `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
 def foo (name,ID ) :
     # Mismatched format string:
-    print(f"Student: {name} ({ID)") 
+    print(___strype_fstring_wrap("f\\"Student: {name} ({ID)\\"")) 
 #(=> Section:Main
 foo("Anon",7) 
 #(=> Section:End
@@ -514,6 +536,8 @@ foo("Anon",7)
         await saveAndCheck(page, expectedSaveWithTigerPythonError);
     });
 
+    // See inputWithTigerPythonError's comment above -- same ___strype_fstring_wrap() scheme,
+    // wrapping a different malformed f-string (an unmatched "{" this time rather than a stray ")"):
     const inputWithNestedTigerPythonError = `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
@@ -521,7 +545,7 @@ class Alpha  :
     def hasNoError (self, ) :
         return 42 
     def __init__ (self,y ) :
-        self.x  = f"{len(y)" 
+        self.x  = ___strype_fstring_wrap("f\\"{len(y)\\"") 
 #(=> Section:Main
 Alpha(None) 
 #(=> Section:End

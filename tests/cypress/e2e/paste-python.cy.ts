@@ -124,9 +124,14 @@ describe("Python round-trip", () => {
 
     it("Shows an error for invalid code with wrong code", () => {
         // Since the default code contains a project doc, we need to include it to the code
-        // The fixture's invalidity comes from a "@" (matrix mult) operator, which Strype doesn't support
+        // The fixture's invalidity comes from a "@" (matrix mult) operator -- valid Python syntax
+        // (tree-sitter parses it without error, unlike Skulpt), but not one Strype supports
+        // semantically, so it's now rejected during the tree-walk (an UnsupportedConstructError,
+        // which -- unlike a genuine parse error -- carries no line number) rather than during
+        // parsing itself. This also means the message no longer echoes back Skulpt-specific
+        // wording like "operator":
         testRoundTripImportAndDownload("tests/cypress/fixtures/python-invalid-hints-extract.py", defaultProjectDocFullLine);
-        assertVisibleError(/invalid.*import.*operator.*line: 24/si);
+        assertVisibleError(/invalid.*import/si);
     });
 
     it("Shows an error for invalid code when mixed with invalid placement", () => {
@@ -152,7 +157,9 @@ describe("Python round-trip", () => {
                     cy.writeFile(tempFilePath, imports + defs + main + "\nthis nonsense should not be parseable\n");
                     testRoundTripImportAndDownload(tempFilePath, defaultProjectDocFullLine);
                     const line = 1 + (imports + defs + main).split(/\r?\n/).length;
-                    assertVisibleError(new RegExp(`invalid.*import.*nonsense.*line: ${line}`, "si"));
+                    // Generic message since the Skulpt->web-tree-sitter migration -- see the
+                    // comment on the "wrong code" test above:
+                    assertVisibleError(new RegExp(`invalid.*import.*line: ${line}`, "si"));
                 });
             });
         });
@@ -486,9 +493,13 @@ describe("Python paste errors", () => {
         assertPasteError("    x", null);
     });
     it("Shows an error on invalid paste", () => {
-        assertPasteError("!", /Invalid Python code.*!/);
-        assertPasteError("ifg True:\n    pass", /Invalid Python code.*True/);
-        assertPasteError("if True:\n    invalid%%%", /Invalid Python code.*%%%/);
+        // The error message is deliberately generic ("invalid syntax at line N") since the
+        // Skulpt->web-tree-sitter migration -- it no longer echoes back a fragment of the invalid
+        // input the way Skulpt's exception message did (see the comment on the "wrong code" test
+        // above), so these can no longer assert on "!"/"True"/"%%%" appearing in the message:
+        assertPasteError("!", /Invalid Python code/);
+        assertPasteError("ifg True:\n    pass", /Invalid Python code/);
+        assertPasteError("if True:\n    invalid%%%", /Invalid Python code/);
         // We have a different message for when we paste an else with more content after (which we can't handle)
         assertPasteError("else:\n    pass\nprint(\"Hi\")", /else/);
     });

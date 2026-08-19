@@ -15,6 +15,13 @@ import { startVersionCheck } from "./helpers/versionCheck";
 import { openIndexedDBConnection, tidyUpDatabaseState } from "@/store/store-db-storage";
 import { getEditorTabId } from "@/store/store";
 import { showIndexDBError } from "@/helpers/storeMethods";
+import { startEagerLoad as startEagerTreeSitterLoad } from "@/helpers/treeSitterPython";
+
+// Loaded eagerly (not on first paste/load use) so parsing is ready immediately -- see
+// src/helpers/treeSitterPython.ts. Kicked off here (as early as possible), but only actually
+// awaited just before app.mount() below, so it doesn't block anything else in this file from
+// starting concurrently in the meantime.
+const treeSitterReady = startEagerTreeSitterLoad();
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import {getPEATabContentContainerDivId} from "./helpers/editor";
 // #v-endif
@@ -158,6 +165,11 @@ await openIndexedDBConnection()
         .finally(() => initialDBConnection.close()))
     .catch(showIndexDBError);
 
+
+// Must finish before the app becomes interactive (and hence before any paste/load could be
+// triggered) -- see the comment on startEagerLoad() in treeSitterPython.ts for why this await is
+// needed and not just decorative:
+await treeSitterReady;
 
 // Mount the app
 app.mount("#app");

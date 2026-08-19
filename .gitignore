@@ -27,7 +27,6 @@ pnpm-debug.log*
 *.sw?
 yarn.lock
 src/debug.log
-public/js/original-formatted-skulpt.min.js
 
 # Cypress outputs
 tests/cypress/downloads/*

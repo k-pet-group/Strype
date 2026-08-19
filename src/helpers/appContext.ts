@@ -18,9 +18,9 @@ export const AppVersion = "7";
 export const AppSPYSaveVersion = "1";
 export const AppName = "Strype";
 // The prefix to use in comments directly after the "#" to indicate a Strype
-// special directive or metadata:
-export const AppSPYPrefix = "(=>";
-export const AppSPYFullPrefix = "#" + AppSPYPrefix;
+// special directive or metadata. Defined in spyPrefix.ts (a dependency-free leaf module) and
+// re-exported here so existing importers of appContext are unaffected.
+export { AppSPYPrefix, AppSPYFullPrefix } from "@/helpers/spyPrefix";
 let appPlatform = StrypePlatform.standard;
 // #v-ifdef STRYPE_PLATFORM == VITE_MICROBIT_MODE
 appPlatform = StrypePlatform.microbit;

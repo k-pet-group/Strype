@@ -28,7 +28,8 @@ jobs:
           testtype: ["python", "microbit"]
           # Did have Mac here, but it seems to run out of memory so taken it out:
           os: [ ubuntu-latest ]
-          cypress_split: [0, 1, 2] # For parallelising the jobs, length must match the --total arg below
+          # For parallelising the jobs, length must match the SPLIT env var below.
+          cypress_split: [0, 1, 2]
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository code

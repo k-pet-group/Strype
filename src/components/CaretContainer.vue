@@ -1,13 +1,34 @@
 <template>
-    <div 
+    <div
         :class="{[scssVars.caretContainerClassName]: true, 'static-caret-container': isStaticCaretContainer, [scssVars.draggingFrameClassName]: areFramesDraggedOver}"
         @click.exact.prevent.stop="toggleCaret()"
         @contextmenu.prevent.stop="handleClick($event)"
         :key="UID"
         :id="UID"
-        tabindex="-1"        
+        tabindex="-1"
     >
-        <ContextMenu 
+        <!--
+            This input is the real DOM focus target for a frame cursor (see focusInputUID below).
+            It exists so that browsers -- Safari/WebKit in particular -- see a genuine editable element
+            under the caret and dispatch native clipboard "paste" events for Cmd/Ctrl-V, rather than
+            silently deciding paste isn't applicable at a plain, non-editable div.
+            It is visually hidden and not part of the tab order; it never keeps user-typed content
+            (see clearFocusInputContent()) and is not currently given any ARIA semantics -- see the PR
+            description for the accessibility implications of that.
+        -->
+        <input
+            type="text"
+            class="visually-hidden"
+            :id="focusInputUID"
+            tabindex="-1"
+            autocomplete="off"
+            autocorrect="off"
+            autocapitalize="off"
+            spellcheck="false"
+            inputmode="none"
+            @input="clearFocusInputContent"
+        />
+        <ContextMenu
             :contextMenuItemsDef="frameContextMenuItems"
             :showContextMenu="showContextMenu"
             :showAt="showContextMenuAtCoordPos"
@@ -35,12 +56,11 @@ import { defineComponent, PropType } from "vue";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
 import {AllFrameTypesIdentifier, CaretPosition, Position, PythonExecRunningState, FrameContextMenuActionName, CollapsedState, StrypeContextMenuItem, CoordPosition} from "@/types/types";
-import { getCaretUID, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes, getCaretContainerUID } from "@/helpers/editor";
+import { getCaretUID, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes, getCaretContainerUID, getCaretContainerFocusInputUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { cloneDeep } from "lodash";
 import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import scssVars  from "@/assets/style/_export.module.scss";
-import {detectBrowser} from "@/helpers/browser";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
@@ -144,6 +164,10 @@ export default defineComponent({
             return getCaretContainerUID(this.caretAssignedPosition,this.frameId);
         },
 
+        focusInputUID(): string {
+            return getCaretContainerFocusInputUID(this.caretAssignedPosition, this.frameId);
+        },
+
         caretUID(): string {
             return getCaretUID(this.caretAssignedPosition, this.frameId);
         },
@@ -184,7 +208,6 @@ export default defineComponent({
 
     mounted() {
         window.addEventListener("paste", this.pasteIfFocused);
-        window.addEventListener("keydown", this.keydownForSafariPaste);
         document.addEventListener(CustomEventTypes.scrollCaretIntoView, this.putCaretContainerInView);
         // When a frame is added, we need to make sure it will be visible in the view port. This is particularly true
         // when a paste or duplicate action is performed.
@@ -193,7 +216,6 @@ export default defineComponent({
 
     unmounted() {
         window.removeEventListener("paste", this.pasteIfFocused);
-        window.removeEventListener("keydown", this.keydownForSafariPaste);
         document.removeEventListener(CustomEventTypes.scrollCaretIntoView, this.putCaretContainerInView);
         // Remove the component's API instance
         if(vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[this.UID]){
@@ -213,30 +235,23 @@ export default defineComponent({
             }  
         },
         
-        keydownForSafariPaste(event: KeyboardEvent) {
-            // Safari-specific code.  Safari doesn't turn Cmd-V into a paste if it believes the paste
-            // is not applicable.  This can happen to us at frame cursors.  So we manually turn it into
-            // paste if we believe Safari won't turn it into paste:
-            // Note: Safari also won't paste if the clipboard is empty, which it is when frames are on the clipboard
-            // So this solves both issues.
-            if (this.isFocusedForPaste && detectBrowser() === "safari" && event.metaKey && event.key.toLowerCase() === "v") {
-                navigator.clipboard.readText().catch((err) => {
-                    // This can happen during Playwright testing:
-                    console.error("Failed to read clipboard during frame paste", err);
-                    return "";
-                }).then((text) => {
-                    this.pasteIfFocused(event, text);
-                });
-                
-                event.stopPropagation();
-                event.preventDefault();
-                event.stopImmediatePropagation();
-            }
+        // Clears out the invisible paste-focus input's content (see the template comment on it):
+        // nothing ever reads its value, but a stray typed character (anything that somehow reaches
+        // the input without a shortcut handler already having called preventDefault -- see
+        // Commands.vue's keydown handling of bare frame-cursor typing) or the browser's own default
+        // paste-insertion (see the top of pasteIfFocused below) would otherwise sit there indefinitely.
+        clearFocusInputContent(event: Event) {
+            (event.target as HTMLInputElement).value = "";
         },
 
-        pasteIfFocused(event: Event, overrideText?: string) {
+        pasteIfFocused(event: ClipboardEvent) {
             // Only respond if we are focused:
             if (this.isFocusedForPaste) {
+                // The paste focus input (see template) is a genuine editable element, so browsers will
+                // by default try to insert the pasted text into it; we handle the paste ourselves below,
+                // so stop that default insertion (it would immediately be wiped by clearFocusInputContent
+                // anyway, but there's no reason to let the browser do the work in the first place).
+                event.preventDefault();
                 let pasteDestination = {id: this.frameId, caretPosition: this.caretAssignedPosition};
                 const stateBeforeChanges = cloneDeep(this.appStore.$state);
                 let hasRemovedFrameSelection = false;
@@ -257,13 +272,13 @@ export default defineComponent({
 
                 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                 const inFrameType = this.appStore.frameObjects[(this.appStore.currentFrame.caretPosition == CaretPosition.body) ? this.appStore.currentFrame.id : getParentOrJointParent(this.appStore.currentFrame.id)].frameType;
-                if(!inFrameType.forbiddenChildrenTypes.includes(AllFrameTypesIdentifier.funccall) && Object.values((event as ClipboardEvent).clipboardData?.items??[]).some((dataTransferItem: DataTransferItem) => dataTransferItem.kind == "file" && /^(image)|(audio)\//.test(dataTransferItem.type))){
+                if(!inFrameType.forbiddenChildrenTypes.includes(AllFrameTypesIdentifier.funccall) && Object.values(event.clipboardData?.items??[]).some((dataTransferItem: DataTransferItem) => dataTransferItem.kind == "file" && /^(image)|(audio)\//.test(dataTransferItem.type))){
                     // For the special case of image media, we want to simulate the addition of a method call with that media.
                     // Therefore, we will need to "wrap" around the media literal value with our usual wrappers.
                     // We don't rely on the frame authorised children rules for that, because we don't have a copied frame in the state.
                     // We know a media frame cannot be inside an import section, nor directly inside a definition section, nor directly inside a class or function frame
                     // (this test is done first in the condition above).
-                    preparePasteMediaData(event as ClipboardEvent, (code: string, dataAndDim: MediaDataAndDim) => {
+                    preparePasteMediaData(event, (code: string, dataAndDim: MediaDataAndDim) => {
                         // We create a new function call frame with the media-adapated code content
                         this.appStore.ignoreStateSavingActionsForUndoRedo = true;
                         this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall), undefined, true, true).then((frameId) => {
@@ -299,7 +314,7 @@ export default defineComponent({
                     return;
                 }
                 // #v-endif
-                const pythonCode = overrideText ?? (event as ClipboardEvent).clipboardData?.getData("text");
+                const pythonCode = event.clipboardData?.getData("text");
                 // Note we don't permanently trim the code because we need to preserve leading indent.
                 // But we trim for the purposes of checking if there's any content at all:
                 if (pythonCode != undefined && pythonCode?.trim()) {
@@ -393,6 +408,10 @@ export default defineComponent({
     scroll-margin-top: 50px;
     scroll-margin-bottom: 50px;
     outline: none;
+    // Establishes a positioning context for the invisible paste-focus <input> (position: absolute via
+    // Bootstrap's .visually-hidden), so it stays roughly where the visible caret is on screen rather
+    // than wherever the nearest other positioned ancestor happens to be.
+    position: relative;
 }
 
 .static-caret-container{

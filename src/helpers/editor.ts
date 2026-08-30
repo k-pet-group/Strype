@@ -505,6 +505,13 @@ export function getCaretContainerUID(caretPos: CaretPosition, frameId: number): 
     return "caret_" + caretPos + "_of_frame_" + frameId;
 }
 
+// The id of the invisible <input> that actually receives DOM focus for a frame cursor (see CaretContainer.vue).
+// Real DOM focus must land on this input (rather than the caret container div) so that browsers -- Safari/WebKit
+// in particular -- recognise the location as a legitimate paste target and dispatch native clipboard events.
+export function getCaretContainerFocusInputUID(caretPos: CaretPosition, frameId: number): string {
+    return getCaretContainerUID(caretPos, frameId) + "_focusInput";
+}
+
 export function isCaretContainerElement(id: string): boolean {
     return caretContainerUIDRegex.test(id);
 }

@@ -968,3 +968,26 @@ plt.show()
     }
 });
 
+
+test.describe("Image get_pixel/set_pixel", () => {
+    test("Round-trips colors, including alpha, high red values and out-of-range Color attributes", async ({page}) => {
+        await enterCode(page, ["from strype.graphics import *", "", `
+img = Image(4, 1)
+img.set_pixel(0, 0, "red")
+img.set_pixel(1, 0, "#fFffFF80")
+img.set_pixel(2, 0, Color(255, 0, 128, 7))
+c = Color(10, 20, 30)
+c.red = 300
+c.green = -5
+c.blue = 99.6
+img.set_pixel(3, 0, c)
+# Repeat a string to exercise the cache:
+img.set_pixel(0, 0, "red")
+for x in range(4):
+    p = img.get_pixel(x, 0)
+    print(p.red, p.green, p.blue, p.alpha)
+`.trimStart()]);
+        await runToFinish(page);
+        await checkConsoleContent(page, "255 0 0 255\n255 255 255 128\n255 0 128 7\n255 0 100 255\n");
+    });
+});

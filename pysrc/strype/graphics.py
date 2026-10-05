@@ -4,6 +4,12 @@ import collections as _collections
 import re as _re
 import time as _time
 
+# get_pixel/set_pixel are often called in tight loops over a whole image, so we bind the JS functions once here
+# (looking them up on the JS module proxy every call is a surprisingly costly round-trip), and we pass colors
+# across as a single packed integer (red << 24 | green << 16 | blue << 8 | alpha) rather than 4 separate values.
+_canvas_get_pixel = _strype_graphics_internal.canvas_getPixel
+_canvas_set_pixel = _strype_graphics_internal.canvas_setPixel
+
 # This file is automatically processed to extract types for TigerPython, using the "# type" annotations
 
 # This thread https://stackoverflow.com/questions/1573053/javascript-function-to-convert-color-names-to-hex-codes
@@ -100,6 +106,27 @@ class Color:
         a = _round_and_clamp_0_255(self.alpha)
         return "#{:02x}{:02x}{:02x}{:02x}".format(r, g, b, a)
 
+# Maps color strings (as passed by the user, so before any lower-casing) to the packed integer for set_pixel.
+# Only successfully-parsed strings are stored.  It is cleared if it gets large, in case a program generates many different strings.
+_packed_color_cache = {}
+# type: dict[str, int]
+
+def _pack_color(color):
+    # type: (Color) -> int
+    r = color.red
+    g = color.green
+    b = color.blue
+    a = color.alpha
+    try:
+        # Fast path: for ints in 0-255, no bits above the lowest 8 will be set.  (A negative int has
+        # high bits set, and a float raises TypeError here, so both go to the slow path.)
+        if (r | g | b | a) & -256 == 0:
+            return (r << 24) | (g << 16) | (b << 8) | a
+    except TypeError:
+        pass
+    # Color's attributes are public so could have been changed to something out of range since construction:
+    return (_round_and_clamp_0_255(r) << 24) | (_round_and_clamp_0_255(g) << 16) | (_round_and_clamp_0_255(b) << 8) | _round_and_clamp_0_255(a)
+
 _Dimension = _collections.namedtuple("Dimension", ["width", "height"])
 
 class Image:
@@ -188,8 +215,14 @@ class Image:
         :param y: The y coordinate within the image, in pixels.
         :return: A :class:`Color` object with the color of the given pixel.
         """
-        rgba = _strype_graphics_internal.canvas_getPixel(self.__image, int(x), int(y))
-        return Color(rgba[0], rgba[1], rgba[2], rgba[3])
+        packed = _canvas_get_pixel(self.__image, int(x), int(y))
+        # The packed values are all known to be ints in 0-255, so skip the validation in Color.__init__:
+        color = Color.__new__(Color)
+        color.red = packed >> 24
+        color.green = (packed >> 16) & 255
+        color.blue = (packed >> 8) & 255
+        color.alpha = packed & 255
+        return color
 
     def set_pixel(self, x, y, color):
         # type: (int, int, Color | str) -> None
@@ -200,10 +233,20 @@ class Image:
         :param y: The y coordinate of the pixel (must be an integer).
         :param color: The color to use.  The color can be either an HTML color name (e.g. "magenta"), an HTML hex string (e.g. "#ff00c0"), or a :class:`Color` object.
         """
-        if isinstance(color, str):
-            color = color_from_string(color)
-        
-        _strype_graphics_internal.canvas_setPixel(self.__image, x, y, color.red, color.green, color.blue, color.alpha)
+        if type(color) is Color:
+            packed = _pack_color(color)
+        elif isinstance(color, str):
+            packed = _packed_color_cache.get(color)
+            if packed is None:
+                packed = _pack_color(color_from_string(color))
+                if len(_packed_color_cache) >= 1000:
+                    _packed_color_cache.clear()
+                _packed_color_cache[color] = packed
+        else:
+            # Color subclasses (or things that look like Color):
+            packed = _pack_color(color)
+
+        _canvas_set_pixel(self.__image, int(x), int(y), packed)
 
     def _bulk_get_pixels(self):
         # type: () -> list[int]

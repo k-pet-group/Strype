@@ -19,7 +19,6 @@
                 <BTab :button-id="filesTabId" :title="'📁 '+$t('PEA.fileSystem')" title-link-class="pea-display-tab"></BTab>
             </BTabs>
             <div class="flex-padding"/>            
-            <span v-if="isGraphicsAreaShowing && !isPythonExecuting && mouseCoordsToShow" class="pea-hover-coords">{{mouseCoordsToShow}}</span>
             <div class="flex-padding"/>
             <button id="runButton" ref="runButton" class="pea-controls-button" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!isPythonWorkerReady">
                 <img v-if="!isPythonExecuting" :src="faviconURL" class="pea-play-img">
@@ -35,6 +34,10 @@
                     <pane :id="graphicsSplitPaneId" key="1" v-show="isGraphicsAreaShowing" :size="(isTabsLayout) ? 100 : currentSplitterPane1Size" min-size="5">
                         <div :id="graphicsContainerDivId" @wheel.stop :class="{'pea-graphics-container': true, hidden: graphicsTemporaryHidden}" @contextmenu="handleContextMenu">
                             <canvas id="pythonGraphicsCanvas" ref="pythonGraphicsCanvas" @mousedown.stop="graphicsCanvasMouseDown" @mouseup.stop="graphicsCanvasMouseUp" @mousemove="graphicsCanvasMouseMove" @mouseleave="graphicsCanvasMouseExit"></canvas>
+                            <!-- Sized to exactly cover the drawn world (see updateHoverCoordsDisplay()) so the label can sit in its corners -->
+                            <div v-if="isGraphicsAreaShowing && !isPythonExecuting && mouseCoordsToShow" class="pea-hover-coords-bounds" :style="hoverCoordsBoundsStyle">
+                                <span :class="{'pea-hover-coords': true, 'pea-hover-coords-top-right': hoverCoordsAtTopRight}">{{mouseCoordsToShow}}</span>
+                            </div>
                         </div>
                     </pane>
                     <pane key="2" v-show="isConsoleAreaShowing" :size="(isTabsLayout) ? 100 : (100 - currentSplitterPane1Size)" min-size="5" style="position: relative;">
@@ -259,6 +262,11 @@ export default defineComponent({
             frameContextMenuItems: [] as StrypeContextMenuItem[],
             showContextMenuAtCoordPos: {x: 0, y: 0} as CoordPosition,
             mouseCoordsToShow: undefined as string | undefined,
+            // Where the hover coordinates label is drawn: a box covering the drawn world, and whether
+            // the label is in its top-right corner (it normally sits bottom-left, but moves out of the
+            // way when the mouse is in the bottom-left region so it's never under the cursor):
+            hoverCoordsBoundsStyle: {} as {[prop: string]: string},
+            hoverCoordsAtTopRight: false,
             copyConsoleTextBtnClicked: false, // flag used for UI
             graphicsOverride: null as {background: OffscreenCanvas | HTMLImageElement, imageToShowCentered: OffscreenCanvas | HTMLImageElement} | null,
         };
@@ -1284,10 +1292,29 @@ export default defineComponent({
                 mostRecentMouseDetails.x = clampedX;
                 mostRecentMouseDetails.y = clampedY;
                 this.mouseCoordsToShow = "(" + roundedX + ", " + roundedY + ")";
+                this.updateHoverCoordsDisplay(roundedX, roundedY);
             }
             else {
                 this.mouseCoordsToShow = undefined;
             }
+        },
+        // Positions the hover coordinates label over the drawn world (which is centred in the canvas and scaled
+        // to fit, so it doesn't necessarily fill it). The label is bottom-left, unless the mouse is in the
+        // bottom-left cell of a 4x4 grid over the world, in which case it moves to the top-right:
+        updateHoverCoordsDisplay(roundedX: number, roundedY: number) {
+            const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement | undefined;
+            if (!domCanvas) {
+                return;
+            }
+            const scaledWidth = graphicsCanvasLogicalWidth * this.scaleToFit;
+            const scaledHeight = graphicsCanvasLogicalHeight * this.scaleToFit;
+            this.hoverCoordsBoundsStyle = {
+                left: (domCanvas.offsetLeft + (domCanvas.clientWidth - scaledWidth) / 2) + "px",
+                top: (domCanvas.offsetTop + (domCanvas.clientHeight - scaledHeight) / 2) + "px",
+                width: scaledWidth + "px",
+                height: scaledHeight + "px",
+            };
+            this.hoverCoordsAtTopRight = roundedX <= -graphicsCanvasLogicalWidth / 4 && roundedY <= -graphicsCanvasLogicalHeight / 4;
         },
         graphicsCanvasMouseExit(event: MouseEvent) {
             this.mouseCoordsToShow = undefined;
@@ -1714,9 +1741,28 @@ export default defineComponent({
         outline: none;
     }
     
+    // Covers the drawn world, ignoring the mouse so the canvas still gets all mouse events:
+    .pea-hover-coords-bounds {
+        position: absolute;
+        pointer-events: none;
+    }
+
+    // White text with a black outline so it's legible over any graphics:
     .pea-hover-coords {
-        font-size: 90%;
-        color: #333;
+        position: absolute;
+        left: 4px;
+        bottom: 2px;
+        font-size: 110%;
+        color: white;
+        text-shadow: -1px -1px 0 black, 1px -1px 0 black, -1px 1px 0 black, 1px 1px 0 black, 0 0 3px black;
+        white-space: nowrap;
+    }
+
+    .pea-hover-coords.pea-hover-coords-top-right {
+        left: auto;
+        bottom: auto;
+        right: 4px;
+        top: 2px;
     }
     
     .pea-no-graphics-import-span {

@@ -24,16 +24,24 @@ async function openIfFrame(page: Page) {
 // non-string slot, then "c" to activate the colour-picker shortcut (see Commands.vue's
 // triggerSlotShortcut). Only works at exactly that caret position.
 async function openColourPickerViaShortcut(page: Page) {
-    await page.keyboard.press(" ");
     // The pane focuses its first button asynchronously (a zero-delay setTimeout in Commands.vue's
     // openSlotShortcutsPane()), so wait for that rather than pressing the shortcut letter
-    // immediately -- otherwise it can race and land back on the slot itself. The default 5s
-    // timeout isn't always enough under heavy CI contention (seen consistently failing on a
-    // macos-latest/chromium run, CI run 36733941422/job 109950581178: the button never got focus
-    // within 5s, twice with a different knock-on symptom on other retries) -- macOS CI runners are
-    // already known to be starved for main-thread time under load (see playwright.config.ts's
-    // worker-count comment), so give this more headroom rather than treat it as a real hang.
-    await expect(page.locator("#addSlotShortcutsPanel .frame-cmd-btn").first()).toBeFocused({timeout: 20000});
+    // immediately -- otherwise it can race and land back on the slot itself. Under heavy CI
+    // contention (macOS runners are known to be starved for main-thread time, see
+    // playwright.config.ts's worker-count comment) the Space itself can also be lost -- e.g.
+    // pressed before the slot has really taken focus after the previous dialog closed -- in which
+    // case no amount of waiting helps (seen repeatedly: CI runs 36733941422, 37274489427, where
+    // the first button stayed "inactive" for the whole 20s). So retry the Space whenever the pane
+    // still isn't active (the slot is empty here, so a second Space is harmless), with short waits
+    // between attempts instead of one long one.
+    const panel = page.locator("#addSlotShortcutsPanel");
+    await expect(async () => {
+        // The panel is shown whenever the slot offers shortcuts; this class marks it as open:
+        if (await panel.locator("xpath=self::*[contains(@class, 'frame-commands-pane-active')]").count() === 0) {
+            await page.keyboard.press(" ");
+        }
+        await expect(panel.locator(".frame-cmd-btn").first()).toBeFocused({timeout: 3000});
+    }).toPass({timeout: 30000});
     await page.keyboard.press("c");
 }
 

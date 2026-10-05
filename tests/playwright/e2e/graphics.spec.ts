@@ -141,6 +141,50 @@ async function hoverProportionalPos(page: Page, x: number, y: number) : Promise<
 }
 
 test.describe("Test mouse hover coordinate display", () => {
+    // The label is drawn over the graphics, in the bottom-left of the drawn world -- unless the mouse is in
+    // the bottom-left cell of a 4x4 grid over the world, when it moves to the top-right so it's never under
+    // the cursor. Positions are compared with the world's rectangle, found from the canvas and its scale.
+    test("Check the hover coordinates sit bottom-left, moving to top-right when the mouse is bottom-left", async ({page}) => {
+        await page.click("#graphicsPEATab");
+        const coords = page.locator(".pea-hover-coords");
+
+        async function labelCorner() : Promise<{left: number, right: number, top: number, bottom: number}> {
+            const canvas = await page.locator("#pythonGraphicsCanvas").boundingBox();
+            const scale = Number.parseFloat(await page.locator("#pythonGraphicsCanvas").getAttribute("data-scale") ?? "0");
+            const label = await coords.boundingBox();
+            if (!canvas || !label) {
+                throw new Error("Could not find the canvas or the coordinates label");
+            }
+            const worldW = 800 * scale, worldH = 600 * scale;
+            const worldLeft = canvas.x + (canvas.width - worldW) / 2, worldTop = canvas.y + (canvas.height - worldH) / 2;
+            // Distances from the label to each edge of the world:
+            return {left: label.x - worldLeft, right: worldLeft + worldW - (label.x + label.width),
+                top: label.y - worldTop, bottom: worldTop + worldH - (label.y + label.height)};
+        }
+
+        // Mouse in the middle, and in other cells (including top-right and bottom-right): bottom-left.
+        for (const [x, y] of [[0.5, 0.5], [0.9, 0.1], [0.9, 0.9], [0.1, 0.1], [0.1, 0.6]] as [number, number][]) {
+            await hoverProportionalPos(page, x, y);
+            await expect(coords).toBeVisible();
+            const c = await labelCorner();
+            expect(c.left, `Mouse at ${x},${y}`).toBeLessThan(c.right);
+            expect(c.bottom, `Mouse at ${x},${y}`).toBeLessThan(c.top);
+        }
+        // Mouse in the bottom-left cell: top-right.
+        for (const [x, y] of [[0.05, 0.95], [0.2, 0.8]] as [number, number][]) {
+            await hoverProportionalPos(page, x, y);
+            await expect(coords).toBeVisible();
+            const c = await labelCorner();
+            expect(c.right, `Mouse at ${x},${y}`).toBeLessThan(c.left);
+            expect(c.top, `Mouse at ${x},${y}`).toBeLessThan(c.bottom);
+        }
+
+        // White with a black outline, and it must not intercept the mouse:
+        await expect(coords).toHaveCSS("color", "rgb(255, 255, 255)");
+        expect(await coords.evaluate((e) => getComputedStyle(e).textShadow)).toContain("rgb(0, 0, 0)");
+        expect(await page.locator(".pea-hover-coords-bounds").evaluate((e) => getComputedStyle(e).pointerEvents)).toBe("none");
+    });
+
     // This display (the little "(x, y)" label next to the Run button) only shows while Python
     // is not executing, so there is no need to run any code for this test -- we just need the
     // graphics tab (and its canvas) to be showing.

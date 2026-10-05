@@ -148,10 +148,40 @@ async function assertStartingProject(page: Page)  {
 // that load an old, frozen localStorage snapshot (captured before the default project's shape
 // last changed) need to pass the frame count that snapshot actually contains, not today's count:
 async function assertStartingPlus(page: Page, paramContent: string, expectedFrameCount = DEFAULT_STARTING_FRAME_COUNT + 1) {
-    await expect(page.locator(".frame-div")).toHaveCount(expectedFrameCount);
-    await expect(page.locator("span", {hasText: "Hello from Strype"})).toHaveCount(1);
-    await expect(page.locator("span", {hasText: "This is the default Strype starter project"})).toHaveCount(1);
-    await expect(page.locator("span", {hasText: paramContent})).toHaveCount(1);
+    try {
+        await expect(page.locator(".frame-div")).toHaveCount(expectedFrameCount);
+        await expect(page.locator("span", {hasText: "Hello from Strype"})).toHaveCount(1);
+        await expect(page.locator("span", {hasText: "This is the default Strype starter project"})).toHaveCount(1);
+        await expect(page.locator("span", {hasText: paramContent})).toHaveCount(1);
+    }
+    catch (err) {
+        await logEditorStateForDiagnosis(page, `assertStartingPlus(expected ${expectedFrameCount} frames, content "${paramContent}") failed`);
+        throw err;
+    }
+}
+
+// Logs what the editor actually looks like, for diagnosing intermittent failures where the frame
+// count or content isn't what appendContent()/assertStartingPlus() expect (seen on WebKit and
+// Chromium in CI: e.g. 6 frames where 5 were expected right after typing the new content, as if an
+// extra frame had been created). Prints each frame's id and text, where the editor thought focus
+// and the cursor were, and whether a recent-state banner was showing -- enough to tell whether keys
+// landed in the wrong place, were repeated, or the page had not finished (re)loading:
+async function logEditorStateForDiagnosis(page: Page, reason: string) {
+    const state = await page.evaluate(() => {
+        const editor = document.querySelector("#editor");
+        return {
+            url: location.href,
+            readyState: document.readyState,
+            hasFocus: document.hasFocus(),
+            focusedElement: document.activeElement ? (document.activeElement.tagName + "#" + document.activeElement.id + "." + document.activeElement.className) : null,
+            slotFocusId: editor?.getAttribute("data-slot-focus-id"),
+            slotCursor: editor?.getAttribute("data-slot-cursor"),
+            pendingSlotConversion: editor?.getAttribute("data-pending-slot-conversion"),
+            frames: [...document.querySelectorAll(".frame-div")].map((f) => (f.id || "?") + ": " + (f.textContent ?? "").replace(/\s+/g, " ").trim().slice(0, 80)),
+            banner: [...document.querySelectorAll("[class*='message-banner']")].map((b) => (b.textContent ?? "").trim().slice(0, 120)),
+        };
+    }).catch((e) => "could not read editor state: " + e);
+    console.log(`[Editor state] ${reason}: ` + JSON.stringify(state, null, 1));
 }
 
 // Helper function for changing the page content with a custom string

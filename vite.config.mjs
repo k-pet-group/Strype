@@ -26,6 +26,31 @@ function getPyodideVersion() {
     return version;
 }
 
+// The Pyodide runtime files are only requested by the Python worker, which isn't created until the
+// main bundle has downloaded and run -- so on a slow connection the two downloads happen one after
+// the other. Preloading them from index.html starts them in parallel with the bundle instead. They
+// are served with immutable caching (see the comment on indexURL in python-execution.ts), so the
+// worker's own fetches are satisfied by the same HTTP cache entry (or share the in-flight request).
+// "fetch" + crossorigin matches how the worker requests them, so the preload is actually reused:
+function preloadPyodidePlugin() {
+    const files = ["pyodide.asm.wasm", "python_stdlib.zip", "pyodide.asm.js", "pyodide-lock.json"];
+    let base = "/";
+    return {
+        name: "preload-pyodide-plugin",
+        configResolved(config) {
+            base = config.base;
+        },
+        transformIndexHtml() {
+            const version = getPyodideVersion();
+            return files.map((file) => ({
+                tag: "link",
+                attrs: {rel: "preload", as: "fetch", crossorigin: "anonymous", href: `${base}pyodide/${version}/${file}`},
+                injectTo: "head",
+            }));
+        },
+    };
+}
+
 function zipPysrcPlugin() {
     let running = false;
     const run = async () => {
@@ -158,6 +183,7 @@ export default defineConfig(({mode}) => {
             removeFilesPlugin(isStandardPython),
             viteStaticCopyPyodide(),
             zipPysrcPlugin(),
+            preloadPyodidePlugin(),
             writeVersionFilePlugin(gitHash),
             // Ideally we want typescript: true, but only after finishing the Pyodide and Vue 3 work:
             checker({ typescript: false }),

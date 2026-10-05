@@ -1,5 +1,29 @@
 import { Page, expect, Locator } from "@playwright/test";
 
+// Waits for the Run button to read "Run". If it never does (typically stuck on "Initialising...",
+// seen in CI), log what state the page was in before rethrowing, to help work out why: the button,
+// the service worker controller, and how far the Pyodide files (preloaded from index.html) got.
+// Pair this with the "[Pyodide slot ...]"/"[Pyodide worker ...]" lines in the browser log above it.
+async function waitForRunButtonToShowRun(button: Locator) : Promise<void> {
+    const page = button.page();
+    try {
+        await expect(button).toHaveText("Run", {timeout: 120000});
+    }
+    catch (err) {
+        const state = await page.evaluate(() => ({
+            buttonText: document.querySelector("#runButton")?.textContent?.trim(),
+            buttonDisabled: (document.querySelector("#runButton") as HTMLButtonElement | null)?.disabled,
+            hasServiceWorkerController: navigator.serviceWorker?.controller != null,
+            visibilityState: document.visibilityState,
+            pyodideResources: performance.getEntriesByType("resource")
+                .filter((r) => /pyodide|pysrc/.test(r.name))
+                .map((r) => ({name: r.name.split("/").slice(-1)[0], startMs: Math.round(r.startTime), durationMs: Math.round(r.duration), bytes: (r as PerformanceResourceTiming).transferSize})),
+        })).catch((e) => "could not read page state: " + e);
+        console.log("[Run button never showed Run] " + JSON.stringify(state));
+        throw err;
+    }
+}
+
 export async function startRunning(page: Page, extraTimeout?: boolean) : Promise<Locator> {
     // It should not be running:
     const button = page.locator("#runButton");
@@ -10,7 +34,7 @@ export async function startRunning(page: Page, extraTimeout?: boolean) : Promise
     // long-running-program waits `extraTimeout` is otherwise used for below), so always give it
     // the generous timeout -- it costs nothing when Pyodide is already ready, since `expect`
     // resolves as soon as the condition is met:
-    await expect(button).toHaveText("Run", {timeout: 120000});
+    await waitForRunButtonToShowRun(button);
     // Click it:
     await page.click("#runButton");
     return button;
@@ -22,7 +46,7 @@ export async function runButtonShowsRun(button: Locator, extraTimeout?: boolean)
     // re-initialising after a run, which was seen locally to also blow past 60s under worker
     // contention (the same "Initialising..." symptom as startRunning's wait above) -- so always
     // use the generous timeout rather than only when a caller opts in via extraTimeout:
-    await expect(button).toHaveText("Run", {timeout: 120000});
+    await waitForRunButtonToShowRun(button);
 }
 
 

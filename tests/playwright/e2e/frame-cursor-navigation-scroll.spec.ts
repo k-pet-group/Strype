@@ -98,6 +98,31 @@ async function checkBoundedScrollOnNavigation(page: Page, key: "ArrowUp" | "Arro
     }
 }
 
+
+// After every press (checked almost immediately, not after the generous wait above), the frame
+// cursor must be fully inside the editor's own scrolling area. Regression test for a bug (seen on
+// Safari) where moving up let the cursor go out of view: the cursor was tested against the window
+// rather than the editor area (which starts below the menu), and the scroll was delayed 100ms so
+// fast key repeat outran it.
+async function checkCursorAlwaysVisible(page: Page, key: "ArrowUp" | "ArrowDown", times: number) : Promise<void> {
+    for (let i = 0; i < times; i++) {
+        await page.keyboard.press(key);
+        await page.waitForTimeout(30);
+        const result = await page.evaluate((id) => {
+            const area = document.getElementById(id)?.getBoundingClientRect();
+            const el = [...document.querySelectorAll(".navigationPosition.caret")].find((e) => !e.classList.contains("invisible"));
+            const r = el?.getBoundingClientRect();
+            return (area && r) ? {areaTop: area.top, areaBottom: area.bottom, top: r.top, bottom: r.bottom} : null;
+        }, EDITOR_CODE_DIV_ID);
+        if (result == null) {
+            continue;
+        }
+        // 1px tolerance for sub-pixel layout:
+        expect(result.top, `After ${key} press ${i + 1}/${times}: cursor above the editor area`).toBeGreaterThanOrEqual(result.areaTop - 1);
+        expect(result.bottom, `After ${key} press ${i + 1}/${times}: cursor below the editor area`).toBeLessThanOrEqual(result.areaBottom + 1);
+    }
+}
+
 // Escape out of any text-editing into frame-cursor mode, then drive the cursor as far as it'll go
 // in one direction (further presses past either end are harmless no-ops), to reach a known,
 // deterministic starting point without depending on the project's default caret position.
@@ -121,5 +146,17 @@ test.describe("Frame cursor keyboard navigation scrolls only a bounded amount", 
         await loadBookProject(page, "Chapter 8", "smoke");
         await goToExtreme(page, "ArrowDown");
         await checkBoundedScrollOnNavigation(page, "ArrowUp", 90);
+    });
+
+    test("Cursor stays in view when moving up quickly", async ({page}) => {
+        await loadBookProject(page, "Chapter 8", "smoke");
+        await goToExtreme(page, "ArrowDown");
+        await checkCursorAlwaysVisible(page, "ArrowUp", 90);
+    });
+
+    test("Cursor stays in view when moving down quickly", async ({page}) => {
+        await loadBookProject(page, "Chapter 8", "smoke");
+        await goToExtreme(page, "ArrowUp");
+        await checkCursorAlwaysVisible(page, "ArrowDown", 90);
     });
 });

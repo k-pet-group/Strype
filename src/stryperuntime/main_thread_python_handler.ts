@@ -81,6 +81,10 @@ async function triggerServiceWorkerReclaim() : Promise<void> {
 // so any tab left open longer than that can easily outlive a deploy). No amount of local retrying
 // fixes that; only reloading the page does, which is a separate piece of work:
 const maxActiveSlotLoadRetries = 3;
+// For logging only (see createPyodideSlot()): a running count of slots created, and how long after
+// creation a still-unusable slot gets a warning:
+let slotCounter = 0;
+const slotWatchdogMs = 30000;
 let activeSlotLoadRetriesUsed = 0;
 
 function createPyodideSlot() : PyodideSlot | null {
@@ -101,6 +105,17 @@ function createPyodideSlot() : PyodideSlot | null {
 
     const client = new PyodideClient(() => worker, serviceWorkerChannel);
     const slot: PyodideSlot = {worker, client, updatePort: updateChannel.port2, ready: false, controlled: false};
+    // Diagnostics for the Run button occasionally staying on "Initialising..." (seen in CI): log how
+    // long each slot takes to become ready, and warn if one is still not usable after a while, with
+    // which half (loaded vs controlled) is missing. Worker-side progress is relayed via "debugLog":
+    const slotId = `#${++slotCounter}`;
+    const slotCreatedAt = Date.now();
+    console.info(`[Pyodide slot ${slotId} ${new Date().toISOString()}] created (${activeSlot == null ? "will be the active slot" : "spare"})`);
+    setTimeout(() => {
+        if ((slot === activeSlot || slot === spareSlot) && !(slot.ready && slot.controlled)) {
+            console.warn(`[Pyodide slot ${slotId} ${new Date().toISOString()}] still not usable ${slotWatchdogMs / 1000}s after creation: ready=${slot.ready} controlled=${slot.controlled} isActive=${slot === activeSlot} activeSlotLoadRetriesUsed=${activeSlotLoadRetriesUsed}`);
+        }
+    }, slotWatchdogMs);
 
     // The worker reports its own navigator.serviceWorker.controller status (see
     // reportControllerStatus() in python-execution.ts), both once immediately on startup and
@@ -114,6 +129,9 @@ function createPyodideSlot() : PyodideSlot | null {
                 console.info(`[Pyodide slot controller ${new Date().toISOString()}] worker now reports controlled=${slot.controlled}`);
             }
             updateReadyFlag(slot);
+        }
+        else if (typeof e.data?.debugLog === "string") {
+            console.info(`[Pyodide worker ${slotId} ${new Date().toISOString()}] ${e.data.debugLog}`);
         }
         else if (e.data?.localFsChange != null && slot === activeSlot) {
             applyLiveChange(e.data.localFsChange.path, e.data.localFsChange.data);
@@ -164,6 +182,7 @@ function createPyodideSlot() : PyodideSlot | null {
         client.workerProxy.onReady,
         Comlink.proxy(() => {
             slot.ready = true;
+            console.info(`[Pyodide slot ${slotId} ${new Date().toISOString()}] Pyodide ready after ${Date.now() - slotCreatedAt}ms (controlled=${slot.controlled}, isActive=${slot === activeSlot})`);
             // A successful load is good evidence whatever was wrong (if anything) has cleared up:
             activeSlotLoadRetriesUsed = 0;
             // Only surface readiness if this slot is still the active one by the time it

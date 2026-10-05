@@ -7,16 +7,24 @@ import { setupStrypeTest } from "../support/general";
 // triggerSlotShortcut). Replaces the old direct Ctrl-Shift-Y shortcut, which no longer does
 // anything (see colour-picker.spec.ts's own copy of this helper).
 async function openColourPickerViaShortcut(page: import("@playwright/test").Page) {
-    await page.keyboard.press(" ");
     // The pane focuses its first button asynchronously (a zero-delay setTimeout in Commands.vue's
     // openSlotShortcutsPane()), so wait for that rather than pressing the shortcut letter
-    // immediately -- otherwise it can race and land back on the slot itself. The default 5s
-    // timeout isn't always enough under heavy CI contention (seen consistently failing on a
-    // macos-latest/chromium run for the identical wait in colour-picker.spec.ts, CI run
-    // 36733941422/job 109950581178) -- macOS CI runners are already known to be starved for
-    // main-thread time under load (see playwright.config.ts's worker-count comment), so give this
-    // more headroom rather than treat it as a real hang.
-    await expect(page.locator("#addSlotShortcutsPanel .frame-cmd-btn").first()).toBeFocused({timeout: 20000});
+    // immediately -- otherwise it can race and land back on the slot itself. Under heavy CI
+    // contention (macOS runners are known to be starved for main-thread time, see
+    // playwright.config.ts's worker-count comment) the Space itself can also be lost -- e.g.
+    // pressed before the slot has really taken focus after the previous dialog closed -- in which
+    // case no amount of waiting helps (seen repeatedly: CI runs 36733941422, 37274489427, where
+    // the first button stayed "inactive" for the whole 20s). So retry the Space whenever the pane
+    // still isn't active (the slot is empty here, so a second Space is harmless), with short waits
+    // between attempts instead of one long one.
+    const panel = page.locator("#addSlotShortcutsPanel");
+    await expect(async () => {
+        // The panel is shown whenever the slot offers shortcuts; this class marks it as open:
+        if (await panel.locator("xpath=self::*[contains(@class, 'frame-commands-pane-active')]").count() === 0) {
+            await page.keyboard.press(" ");
+        }
+        await expect(panel.locator(".frame-cmd-btn").first()).toBeFocused({timeout: 3000});
+    }).toPass({timeout: 30000});
     await page.keyboard.press("c");
 }
 
@@ -69,6 +77,19 @@ async function insertColourSwatch(page: import("@playwright/test").Page, hex: st
     await waitForEditorSettled(page);
 }
 
+// Selects the swatch just before the caret and copies it. Under CI load the Ctrl-C can arrive
+// before the selection has been applied (the clipboard then stays empty -- CI runs 37138666763 and
+// 37274489427, on three consecutive retries), so wait for a real selection first and keep
+// re-copying until the clipboard has the expected text (copying is idempotent):
+async function selectSwatchAndCopy(page: import("@playwright/test").Page, expected = "\"#aabbcc\"") {
+    await page.keyboard.press("Shift+ArrowLeft");
+    await expect.poll(() => page.evaluate(() => document.getSelection()?.isCollapsed === false)).toBe(true);
+    await expect.poll(async () => {
+        await page.keyboard.press("ControlOrMeta+c");
+        return await page.evaluate("navigator.clipboard.readText()");
+    }).toEqual(expected);
+}
+
 test.describe("Copying a colour literal", () => {
     test("Selecting just the swatch puts its quoted hex text on the clipboard", async ({page}) => {
         await openIfFrame(page);
@@ -77,9 +98,7 @@ test.describe("Copying a colour literal", () => {
 
         // Cursor is in the empty field right after the swatch (see insertColourSwatch's comment);
         // one shift-left selects exactly it (media literals are one character wide):
-        await page.keyboard.press("Shift+ArrowLeft");
-        await page.keyboard.press("ControlOrMeta+c");
-        await expect.poll(() => page.evaluate("navigator.clipboard.readText()")).toEqual("\"#aabbcc\"");
+        await selectSwatchAndCopy(page);
     });
 });
 
@@ -97,9 +116,7 @@ test.describe("Pasting a copied colour literal", () => {
     test("Pasting the copied text recreates a colour literal", async ({page}) => {
         await openIfFrame(page);
         await insertColourSwatch(page, "#aabbcc");
-        await page.keyboard.press("Shift+ArrowLeft");
-        await page.keyboard.press("ControlOrMeta+c");
-        await expect.poll(() => page.evaluate("navigator.clipboard.readText()")).toEqual("\"#aabbcc\"");
+        await selectSwatchAndCopy(page);
 
         // Paste into a second, fresh if-frame's empty slot. Escape (not End) first: the caret is
         // still in the (still-empty) field right after the swatch, and Space at the start of an
@@ -108,6 +125,7 @@ test.describe("Pasting a copied colour literal", () => {
         // by that pane instead of reaching the frame commands pane it actually needs here.
         await page.keyboard.press("Escape");
         await openIfFrame(page);
+        await waitForEditorSettled(page);
         await doPagePaste(page, "\"#aabbcc\"");
 
         await expect(colourSwatch(page)).toHaveCount(2);

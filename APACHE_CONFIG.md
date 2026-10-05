@@ -54,3 +54,39 @@ more-specific rule winning.
 
 Adjust the CORS origin for your own deployment; the path names match how
 Strype itself is deployed here and should be adjusted if yours differs.
+
+## Brotli compression (optional, recommended)
+
+The Pyodide runtime is the largest thing a first-time visitor downloads, and
+Brotli shrinks it noticeably more than gzip (measured at maximum quality,
+for Pyodide 0.29.4):
+
+| File                | gzip -9 | Brotli | Saving |
+|---------------------|---------|--------|--------|
+| `pyodide.asm.wasm`  | 2818 KB | 2124 KB | ~25%  |
+| `pyodide.asm.js`    | 221 KB  | 181 KB  | ~18%  |
+| `python_stdlib.zip` | 2385 KB | 2369 KB | ~1% (already compressed) |
+
+Requires `mod_brotli` (and `mod_deflate`, which is normally already enabled).
+This is safe for clients that don't support Brotli: `mod_brotli` only
+compresses when the request's `Accept-Encoding` includes `br`, otherwise
+the response falls through to gzip via `mod_deflate` (and to uncompressed if
+neither is accepted). List `BROTLI_COMPRESS` before `DEFLATE` so Brotli wins
+when both are acceptable:
+
+```apache
+<IfModule mod_brotli.c>
+    AddOutputFilterByType BROTLI_COMPRESS application/wasm application/javascript text/javascript application/json text/css text/html
+</IfModule>
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE application/wasm application/javascript text/javascript application/json text/css text/html
+</IfModule>
+```
+
+`mod_brotli` compresses on the fly at its default quality (5), which gives
+a smaller saving than the table above. Add `BrotliCompressionQuality 11`
+to get the full saving; it costs CPU on each uncached request, which is
+fine here because the large Pyodide files are cached by browsers (and
+intermediaries) for a year. Alternatively, precompress the files at build
+time as `.br` and serve them with `mod_rewrite`/`mod_negotiation`, avoiding
+the runtime cost entirely.

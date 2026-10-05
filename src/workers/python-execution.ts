@@ -222,7 +222,17 @@ function installLocalFsSync(pyodide: PyodideInterface): void {
     };
 }
 
+// The worker's console output doesn't reach the page console (and so isn't forwarded into e2e test
+// logs), so progress/diagnostic lines are relayed to the main thread, which logs them -- see the
+// "debugLog" handling in createPyodideSlot() in main_thread_python_handler.ts. Used to track down
+// the Run button occasionally staying on "Initialising..." in CI:
+const workerStartedAt = Date.now();
+function debugToMain(message: string) : void {
+    (self as unknown as DedicatedWorkerGlobalScope).postMessage({debugLog: `+${Date.now() - workerStartedAt}ms ${message}`});
+}
+
 async function loadOnly() : Promise<PyodideInterface> {
+    debugToMain("loadOnly: starting to load Pyodide");
     // The version segment here is deliberate, not incidental: it's what lets the deployed server
     // mark this whole directory as cacheable forever (see scripts/download-pyodide-libs.cjs, which
     // downloads into the matching public/pyodide/<version>/ folder, and the server config
@@ -230,6 +240,7 @@ async function loadOnly() : Promise<PyodideInterface> {
     // this multi-megabyte payload, or risking a browser never picking up a future Pyodide upgrade
     // because the URL never changed:
     const pyodide = await loadPyodideAndPackage({url: `${import.meta.env.BASE_URL}pysrc.zip`, format: "zip"}, () => loadPyodide({indexURL: `${import.meta.env.BASE_URL}pyodide/${__PYODIDE_VERSION__}/`}));
+    debugToMain("loadOnly: Pyodide and pysrc.zip loaded");
     
     // Register our strype.graphics etc modules with Pyodide by pointing it to the Javascript:
     pyodide.registerJsModule("strype_bridge", strype_bridge);
@@ -247,6 +258,7 @@ async function loadOnly() : Promise<PyodideInterface> {
 
     installLocalFsSync(pyodide);
     
+    debugToMain("loadOnly: finished setting up Pyodide");
     return pyodide;
 }
 const reloader = new PyodideFatalErrorReloader(loadOnly);
@@ -864,8 +876,13 @@ self.addEventListener("message", (e : any) => {
 // leave isPythonWorkerReady permanently false and Run permanently disabled. A functional probe is
 // the only signal that's actually reliable across engines:
 const workerServiceWorkerChannel = makeServiceWorkerChannel({scope: import.meta.env.BASE_URL});
+let lastReportedControlled : boolean | null = null;
 async function checkAndReportControllerStatus() : Promise<boolean> {
     const controlled = await isServiceWorkerChannelResponsive(workerServiceWorkerChannel.baseUrl);
+    if (controlled !== lastReportedControlled) {
+        debugToMain(`service worker channel check: responsive=${controlled}`);
+        lastReportedControlled = controlled;
+    }
     (self as unknown as DedicatedWorkerGlobalScope).postMessage({controllerStatus: controlled});
     return controlled;
 }
@@ -878,7 +895,13 @@ if ("serviceWorker" in navigator) {
 // per above, isn't a reliable signal to wait on in every engine:
 (async () => {
     const deadline = Date.now() + 20000;
+    let attempts = 0;
     while (!(await checkAndReportControllerStatus()) && Date.now() < deadline) {
+        attempts++;
         await new Promise((resolve) => setTimeout(resolve, 300));
+    }
+    if (lastReportedControlled !== true) {
+        // Nothing retries after this (apart from a controllerchange event), so Run stays disabled:
+        debugToMain(`gave up probing for a service worker controller after ${attempts} attempts / 20s`);
     }
 })();

@@ -54,7 +54,7 @@ import { defineComponent, PropType } from "vue";
 import { useStore } from "@/store/store";
 import Caret from"@/components/Caret.vue";
 import {AllFrameTypesIdentifier, CaretPosition, Position, PythonExecRunningState, FrameContextMenuActionName, CollapsedState, StrypeContextMenuItem, CoordPosition} from "@/types/types";
-import { getCaretUID, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes, getCaretContainerUID, getCaretContainerFocusInputUID } from "@/helpers/editor";
+import { getCaretUID, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes, getCaretContainerUID, getCaretContainerFocusInputUID, getEditorMiddleUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { cloneDeep } from "lodash";
 import { pasteMixedPython } from "@/helpers/pythonToFrames";
@@ -206,15 +206,15 @@ export default defineComponent({
 
     mounted() {
         window.addEventListener("paste", this.pasteIfFocused);
-        document.addEventListener(CustomEventTypes.scrollCaretIntoView, this.putCaretContainerInView);
+        document.addEventListener(CustomEventTypes.scrollCaretIntoView, this.onScrollCaretIntoView);
         // When a frame is added, we need to make sure it will be visible in the view port. This is particularly true
         // when a paste or duplicate action is performed.
-        this.putCaretContainerInView();
+        this.putCaretContainerInView(true);
     },
 
     unmounted() {
         window.removeEventListener("paste", this.pasteIfFocused);
-        document.removeEventListener(CustomEventTypes.scrollCaretIntoView, this.putCaretContainerInView);
+        document.removeEventListener(CustomEventTypes.scrollCaretIntoView, this.onScrollCaretIntoView);
         // Remove the component's API instance
         if(vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[this.UID]){
             delete vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[this.UID];
@@ -222,15 +222,39 @@ export default defineComponent({
     },
     
     methods: {
-        putCaretContainerInView(){
+        // Scrolls the frame cursor into view if it's not fully inside the editor's scrolling area. If
+        // "delay" is true we wait a bit for the UI to be ready first (needed when a frame has just been
+        // added); for plain cursor navigation the caret's element is already in place, and delaying
+        // lets fast key repeat (particularly on Safari) move the cursor out of view before we react.
+        putCaretContainerInView(delay = false){
             if(this.caretVisibility !== CaretPosition.none && this.caretVisibility === this.caretAssignedPosition) {
                 const caretContainerElement = document.getElementById(getCaretContainerUID(this.caretAssignedPosition, this.frameId));
-                const caretContainerEltRect = caretContainerElement?.getBoundingClientRect();
-                //is caret outside the viewport? if so, scroll into view (we need to wait a bit for the UI to be ready before we can perform the scroll)
-                if(caretContainerEltRect && (caretContainerEltRect.bottom + caretContainerEltRect.height < 0 || caretContainerEltRect.top + caretContainerEltRect.height > document.documentElement.clientHeight)){
-                    setTimeout(() => caretContainerElement?.scrollIntoView({block:"nearest"}), 100);
+                if (!caretContainerElement) {
+                    return;
                 }
-            }  
+                const checkAndScroll = () => {
+                    // The editor is a scrolling area of its own, below the menu, so test against that
+                    // rather than the window (otherwise the cursor can sit hidden above its top edge):
+                    const scrollAreaRect = document.getElementById(getEditorMiddleUID())?.getBoundingClientRect();
+                    const areaTop = Math.max(0, scrollAreaRect?.top ?? 0);
+                    const areaBottom = Math.min(document.documentElement.clientHeight, scrollAreaRect?.bottom ?? Infinity);
+                    const rect = caretContainerElement.getBoundingClientRect();
+                    if (rect.top < areaTop || rect.bottom > areaBottom) {
+                        caretContainerElement.scrollIntoView({block: "nearest"});
+                    }
+                };
+                if (delay) {
+                    setTimeout(checkAndScroll, 100);
+                }
+                else {
+                    checkAndScroll();
+                }
+            }
+        },
+        
+        // Handler for the scrollCaretIntoView event (dispatched when the cursor has moved):
+        onScrollCaretIntoView() {
+            this.putCaretContainerInView();
         },
         
         // Clears out the invisible paste-focus input's content to prevent stray characters (not caught

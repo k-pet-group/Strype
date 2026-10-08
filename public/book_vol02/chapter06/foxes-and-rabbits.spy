@@ -1,0 +1,386 @@
+#(=> Strype:1:std
+#(=> editorCommandsSplitterPane2Size:{"tabsCollapsed":41.76,"splitCollapsed":35.79}
+#(=> peaCommandsSplitterPane2Size:{"tabsCollapsed":49.29,"splitCollapsed":51.21}
+#(=> peaSplitViewSplitterPane1Size:{"splitCollapsed":74.97}
+'''foxes-and-rabbits, Version 1
+
+A predator/prey simulation that shows rabbits and foxes in a grid. It simulates the movement of these animals.
+
+Rabbits are the yellow squares, foxes are the blue ones. Rabbits move around, have offspring (they multiply if no foxes are around), and they can die of old age. Foxes are similar, but they also eat rabbits: if rhey are next to a rabbit, they will eat it. Foxes propage more slowly than rabbits; they can die of old age and they can also die of starvation (they starve if they do not find a rabbit for some time).
+
+You can experiment with this project by altering the constants that define the characteristics of each animal. Or you can introduce new animals (maybe something that eats foxes?).
+
+This project is part of the book "Creative Python Programming with Strype, Volume 2".
+Authors: Michael Kölling and Neil C.C. Brown
+
+'''
+#(=> Section:Imports
+from strype.graphics import * 
+import random 
+#(=> Section:Definitions
+class Field  :
+    '''
+        The field containing the foxes and rabbits (and other animals you might like to create).
+        This class keeps a grid of animals in cells, and converts grid cells to Strype\'s pixel
+        coordinates when it places actors.
+        '''
+    # The width of the grid (in cells).
+    WIDTH  = 80 
+    # The height of the grid (in cells).
+    HEIGHT  = 60 
+    # The size of one cell in pixels.
+    CELL_SIZE  = 10 
+    # The probability that a fox will be created in any given grid position (in percent).
+    FOX_CREATION_PROBABILITY  = 2 
+    # The probability that a rabbit will be created in any given grid position (in percent).
+    RABBIT_CREATION_PROBABILITY  = 8 
+    #(=> FrameState:FoldToHeader
+    def __init__ (self, ) :
+        '''Create the field and populate it with foxes and rabbits.'''
+        # grid[row][col] holds the animal in that cell, or None.
+        self.grid  = [] 
+        for row  in range(Field.HEIGHT)  :
+            self.grid.append([None] * Field.WIDTH) 
+        set_background("white") 
+        self.populate() 
+    #(=> FrameState:FoldToHeader
+    def populate (self, ) :
+        '''Populate a field with foxes and rabbits.'''
+        for row  in range(Field.HEIGHT)  :
+            for col  in range(Field.WIDTH)  :
+                if random.randrange(100) <= Field.FOX_CREATION_PROBABILITY  :
+                    fox  = Fox(col,row,self,True) 
+                    self.add_object(fox,col,row) 
+                elif random.randrange(100) <= Field.RABBIT_CREATION_PROBABILITY  :
+                    rabbit  = Rabbit(col,row,self,True) 
+                    self.add_object(rabbit,col,row) 
+                # else leave the location empty
+    #(=> FrameState:FoldToHeader
+    def step (self, ) :
+        '''Run one step of the simulation: let every animal act once.'''
+        # Take a snapshot first: animals born during this step don't act until the next step, and animals eaten during the step are skipped.
+        for animal  in get_actors()  :
+            if animal.is_alive()  :
+                animal.act() 
+    # ---- Grid <-> pixel conversion ----
+    #(=> FrameState:FoldToHeader
+    def pixel_x (self,col ) :
+        '''The world x coordinate of the centre of the given column.'''
+        return col * Field.CELL_SIZE - (Field.WIDTH * Field.CELL_SIZE) // 2 + Field.CELL_SIZE // 2 
+    #(=> FrameState:FoldToHeader
+    def pixel_y (self,row ) :
+        '''The world y coordinate of the centre of the given row (row 0 is the top).'''
+        return (Field.HEIGHT * Field.CELL_SIZE) // 2 - row * Field.CELL_SIZE - Field.CELL_SIZE // 2 
+    #(=> FrameState:FoldToHeader
+    def add_object (self,animal,col,row ) :
+        '''Put an animal into the given cell.'''
+        self.grid[row][col]  = animal 
+    #---- Manage actors in the grid ----
+    #(=> FrameState:FoldToHeader
+    def move_actor (self,animal,col,row ) :
+        '''Move an animal to another cell.'''
+        if self.grid[animal.row][animal.col] is animal  :
+            self.grid[animal.row][animal.col]  = None 
+        animal.col  = col 
+        animal.row  = row 
+        self.grid[row][col]  = animal 
+        animal.set_location(self.pixel_x(col),self.pixel_y(row)) 
+    #(=> FrameState:FoldToHeader
+    def remove_actor (self,animal ) :
+        '''Remove an animal from the field.'''
+        if self.grid[animal.row][animal.col] is animal  :
+            self.grid[animal.row][animal.col]  = None 
+        if animal.get_x() is not None  :
+            #the check above can be removed once 'remove()' is more forgiving
+            animal.remove() 
+    #(=> FrameState:FoldToHeader
+    def is_empty (self,col,row ) :
+        '''Return True if nothing is in the given cell.'''
+        return self.grid[row][col] is None 
+    #(=> FrameState:FoldToHeader
+    def get_neighbours (self,col,row,tag ) :
+        '''Return all animals with the given tag in the (up to) eight cells surrounding the given cell.'''
+        found  = [] 
+        for dc  in range(-1,2)  :
+            for dr  in range(-1,2)  :
+                if dc != 0 or dr != 0  :
+                    c  = col + dc 
+                    r  = row + dr 
+                    if 0 <= c < Field.WIDTH and 0 <= r < Field.HEIGHT  :
+                        other  = self.grid[r][c] 
+                        if other is not None and other.get_tag() == tag  :
+                            found.append(other) 
+        return found 
+    # ---- Location finding ----
+    #(=> FrameState:FoldToHeader
+    def random_adjacent_location (self,x,y ) :
+        '''Generate a random location that is adjacent to the given location, or is the same location. The returned location will be within the valid bounds of the field.'''
+        # Generate an offset of -1, 0, or +1 for both the current x and y.
+        next_x  = x + random.randrange(3) - 1 
+        next_y  = y + random.randrange(3) - 1 
+        # Check in case the new location is outside the bounds.
+        if next_x < 0 or next_x >= Field.WIDTH or next_y < 0 or next_y >= Field.HEIGHT  :
+            return Location(x,y) 
+        else :
+            return Location(next_x,next_y) 
+    #(=> FrameState:FoldToHeader
+    def free_adjacent_location (self,x,y ) :
+        '''Try to find a free location that is adjacent to the given location. If there is none, then return the current location if it is free. If not, return None. The returned location will be within the valid bounds of the field.'''
+        locations  = [] 
+        for xoffset  in range(-1,2)  :
+            next_x  = x + xoffset 
+            if 0 <= next_x < Field.WIDTH  :
+                for yoffset  in range(-1,2)  :
+                    next_y  = y + yoffset 
+                    # Exclude invalid locations and the original location.
+                    if 0 <= next_y < Field.HEIGHT and (xoffset != 0 or yoffset != 0)  :
+                        if self.is_empty(next_x,next_y)  :
+                            locations.append(Location(next_x,next_y)) 
+        
+        if len(locations) == 0  :
+            # no empty adjacents; check whether current location is free
+            if self.is_empty(x,y)  :
+                return Location(x,y) 
+            else :
+                return None 
+        else :
+            # return a random free location
+            return random.choice(locations) 
+#(=> FrameState:FoldToHeader
+class Location  :
+    '''
+        Represent a location in a rectangular grid.
+        '''
+    #(=> FrameState:FoldToDocumentation
+    def __init__ (self,col,row ) :
+        '''
+                Represent a coordinate.
+                col: The horizontal coordinate.
+                row: The vertical coordinate.
+                '''
+        self.col  = col 
+        self.row  = row 
+    #(=> FrameState:FoldToDocumentation
+    def __eq__ (self,other ) :
+        '''Implement content equality.'''
+        if isinstance(other,Location)  :
+            return self.col == other.get_col() and self.row == other.get_row() 
+        else :
+            return False 
+    #(=> FrameState:FoldToDocumentation
+    def __hash__ (self, ) :
+        '''Use the top 16 bits for the col value and the bottom for the row. Except for very big grids, this gives a unique hash for each (col, row) pair.'''
+        return (self.col << 16) + self.row 
+    #(=> FrameState:FoldToDocumentation
+    def __str__ (self, ) :
+        '''Return a string of the form col,row'''
+        return str(self.col) + "," + str(self.row) 
+    #(=> FrameState:FoldToDocumentation
+    def get_col (self, ) :
+        '''Return the column (horizontal coordinate).'''
+        return self.col 
+    #(=> FrameState:FoldToDocumentation
+    def get_row (self, ) :
+        '''Return the row (vertical coordinate).'''
+        return self.row 
+class Animal(Actor)  :
+    '''
+        Class Animal serves as a superclass of all animals in this simulation.
+        '''
+    #(=> FrameState:FoldToHeader
+    def __init__ (self,image,col,row,field,tag ) :
+        '''Create a new animal with age zero (a new born).'''
+        super().__init__(image,field.pixel_x(col),field.pixel_y(row),tag) 
+        self.age  = 0 
+        self.alive  = True 
+        self.field  = field 
+        self.col  = col 
+        self.row  = row 
+    #(=> FrameState:FoldToHeader
+    def is_alive (self, ) :
+        '''Return True if the animal is still alive.'''
+        return self.alive 
+    #(=> FrameState:FoldToHeader
+    def set_dead (self, ) :
+        '''Tell the animal that it\'s dead now :('''
+        self.alive  = False 
+        if self.field is not None  :
+            self.field.remove_actor(self) 
+    #(=> FrameState:FoldToHeader
+    def get_age (self, ) :
+        '''Return the animal\'s age.'''
+        return self.age 
+    #(=> FrameState:FoldToHeader
+    def set_age (self,age ) :
+        '''Set the animal\'s age.'''
+        self.age  = age 
+    #(=> FrameState:FoldToHeader
+    def get_field (self, ) :
+        '''Return the field we live in.'''
+        return self.field 
+    #(=> FrameState:FoldToHeader
+    def get_col (self, ) :
+        '''Return the animal\'s grid column.'''
+        return self.col 
+    #(=> FrameState:FoldToHeader
+    def get_row (self, ) :
+        '''Return the animal\'s grid row.'''
+        return self.row 
+    #(=> FrameState:FoldToHeader
+    def move_to (self,col,row ) :
+        '''Move the animal to the given grid cell.'''
+        self.field.move_actor(self,col,row) 
+class Rabbit(Animal)  :
+    '''
+        A rabbit in a predator/prey simulation. Rabbits move around and breed.
+        '''
+    # Characteristics shared by all rabbits (class constants).
+    # The age to which a rabbit can live.
+    MAX_AGE  = 50 
+    # The age at which a rabbit can start to breed.
+    BREEDING_AGE  = 5 
+    # The likelihood of a rabbit breeding (in percent).
+    BREEDING_PROBABILITY  = 12 
+    # The maximum number of births.
+    MAX_LITTER_SIZE  = 5 
+    # The rabbit's image
+    IMAGE  = load_image("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAcAAAAHCAIAAABLMMCEAAAACXBIWXMAAAsTAAALEwEAmpwYAAAFw2lUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgOS4xLWMwMDIgNzkuYjdjNjRjY2Y5LCAyMDI0LzA3LzE2LTEyOjM5OjA0ICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cGhvdG9zaG9wPSJodHRwOi8vbnMuYWRvYmUuY29tL3Bob3Rvc2hvcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgMjYuMCAoTWFjaW50b3NoKSIgeG1wOkNyZWF0ZURhdGU9IjIwMjYtMTAtMDdUMTc6Mjc6MjcrMDE6MDAiIHhtcDpNb2RpZnlEYXRlPSIyMDI2LTEwLTA3VDE3OjI5OjM0KzAxOjAwIiB4bXA6TWV0YWRhdGFEYXRlPSIyMDI2LTEwLTA3VDE3OjI5OjM0KzAxOjAwIiBkYzpmb3JtYXQ9ImltYWdlL3BuZyIgcGhvdG9zaG9wOkNvbG9yTW9kZT0iMyIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDozMjM4NGU2Zi00MGM3LTRkYzEtYTdhOS0wOWI5YjcxNjNkYmEiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6MzdlMDg5Y2YtMzAzYS00MTE4LWE5NTItZTljOTk1YjY2OGZiIiB4bXBNTTpPcmlnaW5hbERvY3VtZW50SUQ9InhtcC5kaWQ6MzdlMDg5Y2YtMzAzYS00MTE4LWE5NTItZTljOTk1YjY2OGZiIj4gPHhtcE1NOkhpc3Rvcnk+IDxyZGY6U2VxPiA8cmRmOmxpIHN0RXZ0OmFjdGlvbj0iY3JlYXRlZCIgc3RFdnQ6aW5zdGFuY2VJRD0ieG1wLmlpZDozN2UwODljZi0zMDNhLTQxMTgtYTk1Mi1lOWM5OTViNjY4ZmIiIHN0RXZ0OndoZW49IjIwMjYtMTAtMDdUMTc6Mjc6MjcrMDE6MDAiIHN0RXZ0OnNvZnR3YXJlQWdlbnQ9IkFkb2JlIFBob3Rvc2hvcCAyNi4wIChNYWNpbnRvc2gpIi8+IDxyZGY6bGkgc3RFdnQ6YWN0aW9uPSJzYXZlZCIgc3RFdnQ6aW5zdGFuY2VJRD0ieG1wLmlpZDozMjM4NGU2Zi00MGM3LTRkYzEtYTdhOS0wOWI5YjcxNjNkYmEiIHN0RXZ0OndoZW49IjIwMjYtMTAtMDdUMTc6Mjk6MzQrMDE6MDAiIHN0RXZ0OnNvZnR3YXJlQWdlbnQ9IkFkb2JlIFBob3Rvc2hvcCAyNi4wIChNYWNpbnRvc2gpIiBzdEV2dDpjaGFuZ2VkPSIvIi8+IDwvcmRmOlNlcT4gPC94bXBNTTpIaXN0b3J5PiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PoH9fUQAAAARSURBVAgdY/h2yhUTMQwCUQDn32L2MrUf7gAAAABJRU5ErkJggg==") 
+    #(=> FrameState:FoldToHeader
+    def __init__ (self,col,row,field,random_age=True ) :
+        '''Create a new rabbit. A rabbit may be created with age zero (a new born) or with a random age. '''
+        super().__init__(Rabbit.IMAGE,col,row,field,"rabbit") 
+        if random_age  :
+            self.set_age(random.randrange(Rabbit.MAX_AGE)) 
+    #(=> FrameState:FoldToHeader
+    def act (self, ) :
+        '''This is what the rabbit does most of the time - it runs around. Sometimes it will breed or die of old age.'''
+        self.increment_age() 
+        if self.is_alive()  :
+            #Breed sometimes
+            births  = self.breed() 
+            for b  in range(births)  :
+                loc  = self.get_field().free_adjacent_location(self.get_col(),self.get_row()) 
+                if loc is not None  :
+                    new_rabbit  = Rabbit(loc.get_col(),loc.get_row(),self.get_field(),False) 
+                    self.get_field().add_object(new_rabbit,loc.get_col(),loc.get_row()) 
+            #Move
+            new_location  = self.get_field().free_adjacent_location(self.get_col(),self.get_row()) 
+            # Only move if there was a free location
+            if new_location is not None  :
+                self.move_to(new_location.get_col(),new_location.get_row()) 
+            else :
+                # can neither move nor stay - overcrowding - all locations taken
+                self.set_dead() 
+    #(=> FrameState:FoldToHeader
+    def increment_age (self, ) :
+        '''Increase the age. This could result in the rabbit\'s death (of old age).'''
+        self.set_age(self.get_age() + 1) 
+        if self.get_age() > Rabbit.MAX_AGE  :
+            self.set_dead() 
+    #(=> FrameState:FoldToHeader
+    def breed (self, ) :
+        '''Generate a number representing the number of births, if it can breed. Return the number of births (may be zero).'''
+        births  = 0 
+        if self.can_breed() and random.randrange(100) <= Rabbit.BREEDING_PROBABILITY  :
+            births  = random.randrange(Rabbit.MAX_LITTER_SIZE) + 1 
+        return births 
+    #(=> FrameState:FoldToHeader
+    def can_breed (self, ) :
+        '''A rabbit can breed if it has reached the breeding age.'''
+        return self.get_age() >= Rabbit.BREEDING_AGE 
+class Fox(Animal)  :
+    '''
+        A fox in a predator/prey simulation. Foxes move around, eat rabbits and breed. 
+        They may starve if they do not eat for a long time.
+    
+    '''
+    # Characteristics shared by all foxes (class constants).
+    # The age to which a fox can live.
+    MAX_AGE  = 150 
+    # The age at which a fox can start to breed.
+    BREEDING_AGE  = 10 
+    # The likelihood of a fox breeding (in percent).
+    BREEDING_PROBABILITY  = 8 
+    # The maximum number of births.
+    MAX_LITTER_SIZE  = 3 
+    # The food value of a single rabbit. In effect, this is the number of steps a fox can go before it has to eat again.
+    RABBIT_FOOD_VALUE  = 6 
+    # The fox's image
+    IMAGE  = load_image("data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAcAAAAHCAIAAABLMMCEAAAACXBIWXMAAAsTAAALEwEAmpwYAAAE9GlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgOS4xLWMwMDIgNzkuYjdjNjRjY2Y5LCAyMDI0LzA3LzE2LTEyOjM5OjA0ICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cGhvdG9zaG9wPSJodHRwOi8vbnMuYWRvYmUuY29tL3Bob3Rvc2hvcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgMjYuMCAoTWFjaW50b3NoKSIgeG1wOkNyZWF0ZURhdGU9IjIwMjYtMTAtMDdUMTc6Mjc6MjcrMDE6MDAiIHhtcDpNb2RpZnlEYXRlPSIyMDI2LTEwLTA3VDE3OjI4OjQ5KzAxOjAwIiB4bXA6TWV0YWRhdGFEYXRlPSIyMDI2LTEwLTA3VDE3OjI4OjQ5KzAxOjAwIiBkYzpmb3JtYXQ9ImltYWdlL3BuZyIgcGhvdG9zaG9wOkNvbG9yTW9kZT0iMyIgeG1wTU06SW5zdGFuY2VJRD0ieG1wLmlpZDozN2UwODljZi0zMDNhLTQxMTgtYTk1Mi1lOWM5OTViNjY4ZmIiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6MzdlMDg5Y2YtMzAzYS00MTE4LWE5NTItZTljOTk1YjY2OGZiIiB4bXBNTTpPcmlnaW5hbERvY3VtZW50SUQ9InhtcC5kaWQ6MzdlMDg5Y2YtMzAzYS00MTE4LWE5NTItZTljOTk1YjY2OGZiIj4gPHhtcE1NOkhpc3Rvcnk+IDxyZGY6U2VxPiA8cmRmOmxpIHN0RXZ0OmFjdGlvbj0iY3JlYXRlZCIgc3RFdnQ6aW5zdGFuY2VJRD0ieG1wLmlpZDozN2UwODljZi0zMDNhLTQxMTgtYTk1Mi1lOWM5OTViNjY4ZmIiIHN0RXZ0OndoZW49IjIwMjYtMTAtMDdUMTc6Mjc6MjcrMDE6MDAiIHN0RXZ0OnNvZnR3YXJlQWdlbnQ9IkFkb2JlIFBob3Rvc2hvcCAyNi4wIChNYWNpbnRvc2gpIi8+IDwvcmRmOlNlcT4gPC94bXBNTTpIaXN0b3J5PiA8L3JkZjpEZXNjcmlwdGlvbj4gPC9yZGY6UkRGPiA8L3g6eG1wbWV0YT4gPD94cGFja2V0IGVuZD0iciI/PjsZs/cAAAAQSURBVAiZY2Bg+YoFDQJRAChcL6p14alIAAAAAElFTkSuQmCC") 
+    #(=> FrameState:FoldToHeader
+    def __init__ (self,col,row,field,random_age=True ) :
+        '''Create a fox. A fox can be created as a new born (age zero and not hungry) or with random age.'''
+        super().__init__(Fox.IMAGE,col,row,field,"fox") 
+        if random_age  :
+            self.set_age(random.randrange(Fox.MAX_AGE)) 
+            self.food_level  = random.randrange(Fox.RABBIT_FOOD_VALUE) 
+        else :
+            # leave age at 0
+            self.food_level  = Fox.RABBIT_FOOD_VALUE 
+    #(=> FrameState:FoldToHeader
+    def act (self, ) :
+        '''This is what the fox does most of the time: it hunts for rabbits. In the process, it might breed, die of hunger, or die of old age.'''
+        self.increment_age() 
+        self.increment_hunger() 
+        if self.is_alive()  :
+            # New foxes are born into adjacent locations.
+            births  = self.breed() 
+            for b  in range(births)  :
+                loc  = self.get_field().free_adjacent_location(self.get_col(),self.get_row()) 
+                if loc is not None  :
+                    new_fox  = Fox(loc.get_col(),loc.get_row(),self.get_field(),False) 
+                    self.get_field().add_object(new_fox,loc.get_col(),loc.get_row()) 
+            # Move towards the source of food if found.
+            new_location  = self.find_food(self.get_col(),self.get_row()) 
+            if new_location is None  :
+                # no food found - move randomly
+                new_location  = self.get_field().free_adjacent_location(self.get_col(),self.get_row()) 
+            if new_location is not None  :
+                self.move_to(new_location.get_col(),new_location.get_row()) 
+            else :
+                # can neither move nor stay - overcrowding - all locations taken
+                self.set_dead() 
+    #(=> FrameState:FoldToHeader
+    def increment_age (self, ) :
+        '''Increase the age. This could result in the fox\'s death from old age.'''
+        self.set_age(self.get_age() + 1) 
+        if self.get_age() > Fox.MAX_AGE  :
+            self.set_dead() 
+    #(=> FrameState:FoldToHeader
+    def increment_hunger (self, ) :
+        '''Make this fox more hungry. This could result in the fox\'s death from starvation.'''
+        self.food_level  = self.food_level - 1 
+        if self.food_level <= 0  :
+            self.set_dead() 
+    #(=> FrameState:FoldToHeader
+    def find_food (self,x,y ) :
+        '''Look for rabbits adjacent to the given location. Only the first live rabbit is eaten.
+        Return where food was found, or None if it wasn\'t.'''
+        rabbits  = self.get_field().get_neighbours(x,y,"rabbit") 
+        if len(rabbits) == 0  :
+            return None 
+        else :
+            #pick a random rabbit to eat
+            rabbit  = random.choice(rabbits) 
+            loc  = Location(rabbit.get_col(),rabbit.get_row()) 
+            # eat it
+            rabbit.set_dead() 
+            self.food_level  = Fox.RABBIT_FOOD_VALUE 
+            return loc 
+    #(=> FrameState:FoldToHeader
+    def breed (self, ) :
+        '''Generate a number representing the number of births, if it can breed. Return the number of births (may be zero).'''
+        births  = 0 
+        if self.can_breed() and random.randrange(100) <= Fox.BREEDING_PROBABILITY  :
+            births  = random.randrange(Fox.MAX_LITTER_SIZE) + 1 
+        return births 
+    #(=> FrameState:FoldToHeader
+    def can_breed (self, ) :
+        '''A fox can breed if it has reached the breeding age.'''
+        return self.get_age() >= Fox.BREEDING_AGE 
+#(=> Section:Main
+field  = Field() 
+while True  :
+    field.step() 
+    pace(30) 
+#(=> Section:End

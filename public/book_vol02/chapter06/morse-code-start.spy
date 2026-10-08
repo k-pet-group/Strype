@@ -1,0 +1,111 @@
+#(=> Strype:1:std
+'''Morse code, version 0.1 
+
+This project encodes and decodes morse code: it turns text into beeps, and beeps back into text.
+
+This version is incomplete, however: currently, it only turns text into morse code, not the other way around.
+That is left for you to do...
+
+This project is part of the book "Creative Python Programming with Strype, Volume 2".
+Authors: Michael Kölling and Neil C.C. Brown'''
+#(=> Section:Imports
+import math 
+from strype.sound import * 
+#(=> Section:Definitions
+# How many samples we use per second when we make our own sounds:
+SAMPLE_RATE  = 44100 
+# The pitch of our beeps, in Hz:
+PITCH  = 650 
+# How long things last, in seconds:
+UNIT  = 0.1 
+DOT  = 1 * UNIT 
+DASH  = 2 * UNIT 
+SYMBOL_GAP  = 1 * UNIT 
+LETTER_GAP  = 4 * UNIT 
+WORD_GAP  = 8 * UNIT 
+# Parallel lists: CODES[i] is the Morse code for LETTERS[i]
+LETTERS  = ["a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","0","1","2","3","4","5","6","7","8","9"] 
+CODES  = [".-","-...","-.-.","-..",".","..-.","--.","....","..",".---","-.-",".-..","--","-.","---",".--.","--.-",".-.","...","-","..-","...-",".--","-..-","-.--","--..","-----",".----","..---","...--","....-",".....","-....","--...","---..","----."] 
+def make_tone (seconds ) :
+    '''Returns a list of samples for a beep lasting the given number of seconds.'''
+    count  = int(seconds * SAMPLE_RATE) 
+    samples  = [] 
+    for i  in range(count)  :
+        samples.append(0.5 * math.sin(2 * math.pi * PITCH * i / SAMPLE_RATE)) 
+    # Fade the first and last few samples in and out, to avoid clicks:
+    fade  = 200 
+    for i  in range(fade)  :
+        samples[i]  = samples[i] * i / fade 
+        samples[-1 - i]  = samples[-1 - i] * i / fade 
+    return samples 
+def make_silence (seconds ) :
+    '''Returns a list of samples for silence lasting the given number of seconds.'''
+    return [0.0] * int(seconds * SAMPLE_RATE) 
+def text_to_morse (text ) :
+    '''Converts text to Morse code: letters are separated by spaces, words by " / ".'''
+    morse  = "" 
+    for word  in text.lower().split()  :
+        for ch  in word  :
+            if ch in LETTERS  :
+                morse  = morse + CODES[LETTERS.index(ch)] + " " 
+        morse  = morse + "/ " 
+    return morse.rstrip("/ ") 
+def morse_to_sound (morse ) :
+    '''Builds a Sound that beeps out the given Morse code.'''
+    dot  = make_tone(DOT) 
+    dash  = make_tone(DASH) 
+    symbol_gap  = make_silence(SYMBOL_GAP) 
+    letter_gap  = make_silence(LETTER_GAP) 
+    # Every letter is followed by a letter gap, so a word gap only needs the extra time:
+    extra_word_gap  = make_silence(WORD_GAP - LETTER_GAP) 
+    samples  = [] 
+    for code  in morse.split()  :
+        if code == "/"  :
+            samples.extend(extra_word_gap) 
+        else :
+            for i  in range(len(code))  :
+                if code[i] == "."  :
+                    samples.extend(dot) 
+                else :
+                    samples.extend(dash) 
+                # Between the symbols of a letter (not after the last one):
+                if i < len(code) - 1  :
+                    samples.extend(symbol_gap) 
+            samples.extend(letter_gap) 
+    return Sound(samples) 
+def split_into_chunks (sound ) :
+    '''Divides a sound into a list of chunks, each holding one UNIT (as defined by the constant above) of samples.
+    The last chunk may be shorter. Every chunk is a list of samples.'''
+    samples  = sound.get_samples() 
+    chunk_size  = int(sound.get_sample_rate() * UNIT) 
+    chunks  = [] 
+    for start  in range(0,len(samples),chunk_size)  :
+        chunks.append(samples[start:start + chunk_size]) 
+    return chunks 
+def sound_to_morse (sound ) :
+    '''Listens to a Sound and returns the Morse code it contains.'''
+    # TODO: use split_into_chunks to get the 0.25 second chunks, then:
+    #  1. Decide for each chunk whether it is loud (its biggest sample, ignoring
+    #     the sign, is above 0.2) or quiet.
+    #  2. Count how many chunks in a row are loud, or quiet.
+    #  3. A loud run of 1 chunk is a dot, and of 2 chunks is a dash.
+    #     A quiet run of about 4 chunks is the end of a letter (add a space),
+    #     and of about 8 chunks is the end of a word (add " / ").
+    #     A quiet run of 1 chunk is just the gap inside a letter: ignore it.
+    return "" 
+def morse_to_text (morse ) :
+    '''Converts Morse code (as made by text_to_morse) back into text.'''
+    # TODO: split the morse into separate codes, and look each one up in CODES.
+    # The code "/" is a gap between words, so it should become a space.
+    return "" 
+#(=> Section:Main
+message  = input("Message to send: ") 
+morse  = text_to_morse(message) 
+print("Sending: " + morse) 
+sound  = morse_to_sound(morse) 
+sound.play() 
+# TODO: once your decoding works, uncomment these lines to check the round trip:
+# heard = sound_to_morse(sound)
+# print("Heard:   "+heard)
+# print("Decoded: "+morse_to_text(heard))
+#(=> Section:End

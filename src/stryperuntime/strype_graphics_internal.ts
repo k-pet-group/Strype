@@ -191,9 +191,22 @@ export function canvas_setPixel(img : RemoteCanvas, x : number, y : number, pack
 export function canvas_getAllPixels(img : RemoteCanvas) : Uint8ClampedArray {
     return cachePixelsOf(img).pixelsRGBA;
 }
-export function canvas_setAllPixelsRGBA(img: RemoteCanvas, pixels : number[]) : void {
+export function canvas_setAllPixelsRGBA(img: RemoteCanvas, pixels : number[] | PyProxy) : void {
     const cache = cachePixelsOf(img);
-    cache.pixelsRGBA.set(pixels);
+    if (typeof (pixels as PyProxy & {getBuffer?: unknown}).getBuffer === "function") {
+        // A bytes/bytearray/memoryview (a PyProxy supporting the buffer protocol).  Copying it in one go
+        // is far faster than TypedArray.set() reading each element through the proxy:
+        const buf = (pixels as PyProxy & {getBuffer: (type: "u8") => {data: ArrayLike<number>, release: () => void}}).getBuffer("u8");
+        try {
+            cache.pixelsRGBA.set(buf.data);
+        }
+        finally {
+            buf.release();
+        }
+    }
+    else {
+        cache.pixelsRGBA.set(pixels as number[]);
+    }
     markDirty(img, cache);
 }
 export function canvas_drawImagePart(dest: RemoteCanvas, src : RemoteImage | RemoteCanvas, dx : number, dy : number, sx : number, sy : number, sw : number, sh : number, scale : number) : void {

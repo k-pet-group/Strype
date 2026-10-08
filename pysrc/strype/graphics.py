@@ -266,7 +266,8 @@ class Image:
         Sets the values of the pixels from RGBA values in one giant array.  The pixels should be arranged as described
         in `_bulk_get_pixels()`.  The array should thus be of length width * height * 4.
         
-        :param rgba_array: An array of 0-255 RGBA values organised as described above.
+        :param rgba_array: An array of 0-255 RGBA values organised as described above.  A bytearray (or bytes) is
+                           much faster than a list.
         """
         _strype_graphics_internal.canvas_setAllPixelsRGBA(self.__image, rgba_array)
 

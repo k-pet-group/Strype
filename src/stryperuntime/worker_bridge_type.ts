@@ -263,6 +263,9 @@ export type StrypeSpriteStateUpdate =
     | {request: "add", id: SpriteHandle, x: number, y: number, rotation: number, scale: number, image: RemoteImage | RemoteCanvas, collidable: boolean}
     | {request: "remove", id: SpriteHandle, removeAtTime: number | null} // null means remove immediately
     | {request: "update", id: SpriteHandle, x: number, y: number, rotation: number, scale: number, image: RemoteImage | RemoteCanvas, collidable: boolean}
+    // Only sent by the worker once the program has called sync_graphics(): all the updates since the last sync, in order,
+    // with repeated updates to the same sprite merged into one.  The main thread only redraws on receiving one of these.
+    | {request: "batch", updates: Exclude<StrypeSpriteStateUpdate, {request: "batch"}>[]}
 ;
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

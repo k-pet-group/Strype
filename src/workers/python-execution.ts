@@ -79,7 +79,7 @@ import {loadPyodide} from "pyodide";
 import {loadPyodideAndPackage, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader} from "pyodide-worker-runner";
 import * as Comlink from "comlink";
 import {strype_bridge} from "@/stryperuntime/pyodide_bridge";
-import {ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse} from "@/stryperuntime/worker_bridge_type";
+import {ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, StrypeSpriteStateUpdate, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse} from "@/stryperuntime/worker_bridge_type";
 import {SpriteManager} from "@/stryperuntime/image_and_collisions";
 import {asyncBridge, PyodideWorkerGlobalScope, syncBridge} from "@/workers/python_execution_type";
 import {getFSForEmscripten} from "@/stryperuntime/pyodide-emscripten-cloud-fs";
@@ -718,9 +718,67 @@ runner`);
         // Set the global fields used by Javascript code (and by the pyodide cloud file mounting, just below): 
         self.syncStrypePyodideWorkerBridge = bridgeSync;
         self.asyncStrypePyodideWorkerBridge = (r) => makeRequest({kind: "async", request: r});
-        self.spriteManager = new SpriteManager((u) => {
+        // Once the program calls sync_graphics() (see strype_graphics_internal.ts) we stop sending each sprite
+        // update straight away and instead collect them here, then send the lot as one "batch" message on each
+        // sync_graphics() call (and when the run ends).  The main thread then redraws only on receiving a batch.
+        // This is much cheaper than a message per update for programs that move many actors per frame.
+        let flushGraphicsAtEndOfRun = () => {};
+        let batching = false;
+        let pendingUpdates : Exclude<StrypeSpriteStateUpdate, {request: "batch"}>[] = [];
+        // Where in pendingUpdates the latest "update" for each sprite is, so a later update to that sprite can replace it
+        // (an "update" carries the sprite's full state, so only the latest matters).  The slot is reused rather than
+        // appending, which keeps the order relative to any "add"/"remove" of other sprites correct:
+        const pendingUpdateIndexById = new Map<number, number>();
+        const sendPendingUpdates = () => {
             catchUpWithMainThreadIfNeeded(true);
-            self.updatePort.postMessage(u);
+            // We send a batch even if it's empty, as that is the signal to redraw (e.g. an Image was drawn on):
+            self.updatePort.postMessage({request: "batch", updates: pendingUpdates});
+            pendingUpdates = [];
+            pendingUpdateIndexById.clear();
+        };
+        self.syncGraphics = () => {
+            batching = true;
+            sendPendingUpdates();
+        };
+        flushGraphicsAtEndOfRun = () => {
+            if (batching) {
+                sendPendingUpdates();
+            }
+        };
+        self.spriteManager = new SpriteManager((u) => {
+            if (!batching) {
+                catchUpWithMainThreadIfNeeded(true);
+                self.updatePort.postMessage(u);
+                return;
+            }
+            switch (u.request) {
+            case "batch":
+                // Never produced by a SpriteManager; here to keep the switch exhaustive:
+                break;
+            case "update": {
+                const existing = pendingUpdateIndexById.get(u.id.handle);
+                if (existing !== undefined) {
+                    pendingUpdates[existing] = u;
+                }
+                else {
+                    pendingUpdateIndexById.set(u.id.handle, pendingUpdates.length);
+                    pendingUpdates.push(u);
+                }
+                break;
+            }
+            case "remove":
+                // Any pending update is now pointless, and a later update for the same id mustn't replace an earlier slot:
+                pendingUpdateIndexById.delete(u.id.handle);
+                pendingUpdates.push(u);
+                break;
+            case "clear":
+                // Everything before a clear is irrelevant:
+                pendingUpdates = [u];
+                pendingUpdateIndexById.clear();
+                break;
+            default:
+                pendingUpdates.push(u);
+            }
         });
         self.pyodide = pyodide;
         
@@ -841,7 +899,14 @@ runner`);
             }
         };
         runner.set_callback(callback);
-        await runner.run_async(pythonCode, {});
+        try {
+            await runner.run_async(pythonCode, {});
+        }
+        finally {
+            // If the program was batching graphics updates (via sync_graphics()), send any that are still outstanding
+            // so the final state is drawn:
+            flushGraphicsAtEndOfRun();
+        }
         // The counter-based catch-up above only fires every 50 async requests, so a run that ends
         // with a handful of prints immediately followed by an error (too few to trip that threshold)
         // can otherwise have its error reported to the main thread before all of that trailing output

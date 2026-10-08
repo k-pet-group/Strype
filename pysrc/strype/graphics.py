@@ -1193,6 +1193,21 @@ def remove_actors(tag = None):
         a.remove()
     return to_remove
 
+def sync_graphics():
+    # type: () -> None
+    """
+    Draw the world, and from now on only draw the world when this function is called.
+
+    Call this once per iteration of your main loop, after you have moved your actors.  This makes programs
+    that move lots of actors run much faster, because the world is drawn once per call to this function, not
+    each time an actor is changed.
+
+    If you never call this function, the world is drawn automatically whenever anything changes.  Once you have
+    called it, that automatic drawing is switched off for the rest of the run, and any changes you make will not
+    appear on screen until the next call to `sync_graphics()` (or until your program finishes).
+    """
+    _strype_graphics_internal.syncGraphics()
+
 def stop():
     # type: () -> None
     """

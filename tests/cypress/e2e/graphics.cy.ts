@@ -1020,3 +1020,81 @@ describe("Removal and re-add", () => {
 
 
 });
+
+describe("sync_graphics", () => {
+    if (Cypress.env("mode") == "microbit") {
+        // Graphics tests can't run in microbit
+        return;
+    }
+
+    it("Moves and removals made since the last sync_graphics() are shown when the program ends", () => {
+        // The squares are created at the origin and moved/removed after the (only) call to sync_graphics(), which
+        // is never called again.  The final state should still be drawn when the program finishes, and should be
+        // the same picture as the equivalent test which does not use sync_graphics():
+        runCodeAndCheckImage("", `
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    squares.append((x*spacing, y*spacing, Actor(white_square.clone(), 0, 0, "removable" if len(squares) % 2 == 0 else None)))
+            sync_graphics()
+            for (x, y, sq) in squares:
+                sq.set_location(x // 2, y // 2)
+                sq.set_location(x, y)
+            remove_actors("removable")
+            `, "graphics-remove-every-other-square");
+    });
+
+    it("Changes after sync_graphics() are not drawn until the next call", () => {
+        // The program never finishes, so the picture can only be what the call to sync_graphics() drew:
+        runCodeAndCheckImage("", `
+            cat = Actor('cat-test.jpg')
+            sync_graphics()
+            cat.set_rotation(45)
+            cat.move(100)
+            while True:
+                sleep(0.1)
+            `, "graphics-just-cat", ImageComparison.COMPARE_TO_EXISTING, 3000, false);
+    });
+
+    it("Each call to sync_graphics() draws the changes made since the previous call", () => {
+        runCodeAndCheckImage("", `
+            cat = Actor('cat-test.jpg')
+            sync_graphics()
+            cat.set_rotation(45)
+            sync_graphics()
+            cat.set_rotation(-60)
+            cat.move(100)
+            while True:
+                sleep(0.1)
+            `, "graphics-just-cat-rotated-45", ImageComparison.COMPARE_TO_EXISTING, 3000, false);
+    });
+
+    it("A run after a run that called sync_graphics() goes back to drawing immediately", () => {
+        // The first run calls sync_graphics() and leaves a marker file in /local, which persists to the second run.
+        // The second run never calls sync_graphics() and never finishes, so the cat's rotation can only
+        // be on screen if drawing is back to the default mode of drawing whenever anything changes:
+        focusEditorAndClear();
+        enterAndExecuteCode("", `
+            import os
+            first_run = not os.path.exists("sync-graphics-second-run-marker.txt")
+            with open("sync-graphics-second-run-marker.txt", "w") as f:
+                f.write("x")
+            if first_run:
+                sync_graphics()
+            else:
+                cat = Actor('cat-test.jpg')
+                cat.set_rotation(45)
+                while True:
+                    sleep(0.1)
+            `);
+        // First run has finished (enterAndExecuteCode checked), so run again:
+        cy.get("#runButton").contains("Run", {timeout: 60000});
+        cy.get("#runButton").click();
+        cy.wait(3000);
+        checkGraphicsCanvasContent("graphics-just-cat-rotated-45");
+    });
+});

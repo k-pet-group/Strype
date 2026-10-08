@@ -10,6 +10,9 @@ export interface PyodideWorkerGlobalScope extends WorkerGlobalScope {
     syncStrypePyodideWorkerBridge: SyncStrypePyodideHandlerFunction;
     asyncStrypePyodideWorkerBridge: AsyncStrypePyodideHandlerFunction;
     spriteManager : SpriteManager;
+    // Called by the sync_graphics() Python function: switches to batched sprite updates (if not already)
+    // and sends everything since the last call to the main thread, to be drawn:
+    syncGraphics: () => void;
     pyodide: PyodideAPI;
 }
 

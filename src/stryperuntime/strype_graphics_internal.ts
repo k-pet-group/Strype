@@ -90,6 +90,11 @@ export function loadAndWaitForImage(filename: string) : RemoteImage {
     // Filename handling should have been done by caller, so we should never reach here:
     throw new Error(`Unable to load image: ${filename}`);
 }
+export function syncGraphics() : void {
+    // Unlike the sprite update functions below, this isn't a method on SpriteManager because the batching
+    // lives in the worker's message sending code (see python-execution.ts):
+    globalThis.syncGraphics();
+}
 export function setBackground(img : RemoteImage) : void {
     globalThis.spriteManager.setBackground(img);
 } 

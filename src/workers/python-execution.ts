@@ -460,7 +460,20 @@ const executePython = pyodideExpose(async (
     // (e.g. "while True: actor.move(5)") can queue up just as unboundedly as a tight print loop can.  So
     // we share this same counter and catch-up logic with sprite updates, to bound how many messages of
     // *either* kind can be outstanding at once:
+    //
+    // A catch-up is expensive: without SharedArrayBuffer the blocking wait is a synchronous XHR via the
+    // service worker, and it also has to wait for the main thread to drain everything queued so far
+    // (including any canvas redraws in progress).  A program that moves hundreds of actors per frame
+    // would otherwise spend most of its time waiting.  So for sprite updates, which cost the main thread
+    // very little to process each, we also require a minimum time since the last sync, which bounds the
+    // backlog to roughly that much work rather than to a fixed number of messages.
+    // We must NOT do this for other requests such as console output: each of those is much more expensive
+    // for the main thread (DOM updates), so 100ms worth of them can take a very long time to drain, which
+    // is exactly the problem described above that the count is there to prevent.
+    const MIN_ASYNC_REQUESTS_BEFORE_CATCH_UP = 50;
+    const MIN_MS_BETWEEN_SPRITE_CATCH_UPS = 100;
     let numConsecutiveAsyncRequests = 0;
+    let lastSyncTime = performance.now();
     // Does the actual sync dummy round-trip that guarantees all previously-sent async requests
     // (e.g. console_print for stdout/stderr) have been fully processed by the main thread, per the
     // ordering guarantee described above.
@@ -472,10 +485,11 @@ const executePython = pyodideExpose(async (
             throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for dummy`);
         }
         numConsecutiveAsyncRequests = 0;
+        lastSyncTime = performance.now();
     };
-    const catchUpWithMainThreadIfNeeded = () => {
+    const catchUpWithMainThreadIfNeeded = (cheapForMainThread: boolean) => {
         numConsecutiveAsyncRequests += 1;
-        if (numConsecutiveAsyncRequests >= 50) {
+        if (numConsecutiveAsyncRequests >= MIN_ASYNC_REQUESTS_BEFORE_CATCH_UP && (!cheapForMainThread || performance.now() - lastSyncTime >= MIN_MS_BETWEEN_SPRITE_CATCH_UPS)) {
             // To avoid racing too far ahead of the main thread, we do a quick catch-up:
             syncCatchUpWithMainThread();
         }
@@ -483,9 +497,10 @@ const executePython = pyodideExpose(async (
     const makeRequest = (req: SyncOrAsyncStrypePyodideWorkerRequest) => {
         if (req.kind === "sync") {
             numConsecutiveAsyncRequests = 0;
+            lastSyncTime = performance.now();
         }
         else {
-            catchUpWithMainThreadIfNeeded();
+            catchUpWithMainThreadIfNeeded(false);
         }
         // All requests are ultimately sent on:
         makeRawRequest(req);
@@ -704,7 +719,7 @@ runner`);
         self.syncStrypePyodideWorkerBridge = bridgeSync;
         self.asyncStrypePyodideWorkerBridge = (r) => makeRequest({kind: "async", request: r});
         self.spriteManager = new SpriteManager((u) => {
-            catchUpWithMainThreadIfNeeded();
+            catchUpWithMainThreadIfNeeded(true);
             self.updatePort.postMessage(u);
         });
         self.pyodide = pyodide;

@@ -9,3 +9,11 @@
 - file: sounds-v3.spy
   image: soundwave.png
   description: The second version of the sound manipulation project
+
+- file: morse-code-start.spy
+  image: morse-code.png
+  description: Convert text to more code, and play it as sound
+
+- file: foxes-and-rabbits.spy
+  image: foxes-and-rabbits.png
+  description: A predator/prey simulation

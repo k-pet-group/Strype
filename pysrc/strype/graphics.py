@@ -598,7 +598,11 @@ class Actor:
         Remove the actor from the world.
         
         If you later need to add it back to the world, you can use the `re_add` method.
+
+        If the actor has already been removed, this does nothing.
         """
+        if self.__id not in _actorsInWorld:
+            return
         # This call makes sure __editable_image stores the image in case we later need to re-add:
         self.get_image()
         _strype_graphics_internal.removeImage(self.__id)

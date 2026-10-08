@@ -993,6 +993,30 @@ describe("Removal and re-add", () => {
                 r.set_rotation(45)
             `, "graphics-remove-every-other-square-re-add-half");
     });
+    it("Removing an already-removed actor does nothing", () => {
+        // Same as "Remove based on tag", but we then call remove() again on every square,
+        // which should be harmless and give the same image:
+        runCodeAndCheckImage("", `
+            white_square = Image(20, 20)
+            white_square.set_fill("white")
+            white_square.fill()
+            squares = []
+            spacing = 50
+            collide = True
+            for y in range(-300//spacing, 300//spacing):
+                for x in range(-400//spacing, 400//spacing):
+                    if collide:
+                        tag = "removable"
+                    else:
+                        tag = None
+                    collide = not collide
+                    squares.append(Actor(white_square.clone(), x*spacing, y*spacing, tag))
+            remove_actors("removable")
+            for sq in squares:
+                if sq.get_tag() == "removable":
+                    sq.remove()
+            `, "graphics-remove-every-other-square");
+    });
 
 
 });

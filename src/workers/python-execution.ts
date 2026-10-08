@@ -487,6 +487,8 @@ const executePython = pyodideExpose(async (
         numConsecutiveAsyncRequests = 0;
         lastSyncTime = performance.now();
     };
+    // cheapForMainThread: true for requests that are very quick for the main thread to process (sprite updates), which are
+    // additionally spaced out by MIN_MS_BETWEEN_SPRITE_CATCH_UPS; false for expensive ones (console output), which use the count alone.
     const catchUpWithMainThreadIfNeeded = (cheapForMainThread: boolean) => {
         numConsecutiveAsyncRequests += 1;
         if (numConsecutiveAsyncRequests >= MIN_ASYNC_REQUESTS_BEFORE_CATCH_UP && (!cheapForMainThread || performance.now() - lastSyncTime >= MIN_MS_BETWEEN_SPRITE_CATCH_UPS)) {
@@ -767,7 +769,9 @@ runner`);
                 break;
             }
             case "remove":
-                // Any pending update is now pointless, and a later update for the same id mustn't replace an earlier slot:
+                // Updates already pending for this sprite are still sent before this remove: they are needed if the
+                // removal is scheduled for later (removeAtTime), and harmless if it is immediate.  We just forget
+                // their slot, so any later update for this id is appended after the remove, keeping the order:
                 pendingUpdateIndexById.delete(u.id.handle);
                 pendingUpdates.push(u);
                 break;

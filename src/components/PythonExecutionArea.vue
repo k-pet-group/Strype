@@ -123,6 +123,9 @@ const enum PEATabIndexes {graphics, console, files}
 let domContext : CanvasRenderingContext2D | null = null;
 let targetContext : OffscreenCanvasRenderingContext2D | null = null;
 let targetCanvas : OffscreenCanvas | null = null;
+// Incremented each time a run starts its redraw loop, so that the previous run's loop stops itself
+// (otherwise each run leaves behind a requestAnimationFrame loop that runs forever):
+let redrawLoopGeneration = 0;
 let mostRecentClickedItems : SpriteHandle[] = []; // All the items under the mouse cursor at last click
 let mostRecentClickDetails : { x: number, y: number, button: number, clickCount: number } | null = null; // x, y, button, click_count
 let mostRecentMouseDetails : {x: number, y: number, buttonsPressed: boolean[]} = {x:0, y:0, buttonsPressed: [false, false, false]}; // X, Y, three button states
@@ -682,9 +685,10 @@ export default defineComponent({
                 // Start the redraw loop:
                 // eslint-disable-next-line @typescript-eslint/no-this-alias
                 const t = this;
+                const myGeneration = ++redrawLoopGeneration;
                 function redraw() {
                     t.redrawCanvasIfNeeded();
-                    if (useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop) {
+                    if (myGeneration == redrawLoopGeneration && useStore().pythonExecRunningState != PythonExecRunningState.RunningAwaitingStop) {
                         requestAnimationFrame(redraw);
                     }
                 }

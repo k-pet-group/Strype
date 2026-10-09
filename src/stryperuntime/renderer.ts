@@ -50,6 +50,8 @@ export class Renderer  {
         case "clear": {
             // Delete everything except the first black background:
             this.loadedImages.splice(1);
+            // Canvases from the previous run are no longer referenced by anything:
+            this.canvases.splice(0);
             this.sprites.clear();
             // A new run starts in the default mode, where we redraw whenever anything changes:
             this.redrawOnlyOnSync = false;

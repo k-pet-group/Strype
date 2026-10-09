@@ -60,6 +60,8 @@ export class SpriteManager {
         this.notify({request: "add", id: makeSpriteHandle(0), x: bk.x, y: bk.y, rotation: bk.rotation, scale: bk.scale, image: bk.img, collidable: false});
         // We don't mark dirty on clear, because we don't trigger a re-render
         this.collisionSystem.clear();
+        // Otherwise the Box/Sprite pairs from every previous run stay reachable via this map:
+        this.boxToImageMap.clear();
     }
     
     public setBackground(imageOrCanvas : RemoteImage) : void {

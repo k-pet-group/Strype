@@ -266,7 +266,8 @@ class Image:
         Sets the values of the pixels from RGBA values in one giant array.  The pixels should be arranged as described
         in `_bulk_get_pixels()`.  The array should thus be of length width * height * 4.
         
-        :param rgba_array: An array of 0-255 RGBA values organised as described above.
+        :param rgba_array: An array of 0-255 RGBA values organised as described above.  A bytearray (or bytes) is
+                           much faster than a list.
         """
         _strype_graphics_internal.canvas_setAllPixelsRGBA(self.__image, rgba_array)
 
@@ -597,7 +598,11 @@ class Actor:
         Remove the actor from the world.
         
         If you later need to add it back to the world, you can use the `re_add` method.
+
+        If the actor has already been removed, this does nothing.
         """
+        if self.__id not in _actorsInWorld:
+            return
         # This call makes sure __editable_image stores the image in case we later need to re-add:
         self.get_image()
         _strype_graphics_internal.removeImage(self.__id)
@@ -1187,6 +1192,21 @@ def remove_actors(tag = None):
     for a in to_remove:
         a.remove()
     return to_remove
+
+def sync_graphics():
+    # type: () -> None
+    """
+    Draw the world, and from now on only draw the world when this function is called.
+
+    Call this once per iteration of your main loop, after you have moved your actors.  This makes programs
+    that move lots of actors run much faster, because the world is drawn once per call to this function, not
+    each time an actor is changed.
+
+    If you never call this function, the world is drawn automatically whenever anything changes.  Once you have
+    called it, that automatic drawing is switched off for the rest of the run, and any changes you make will not
+    appear on screen until the next call to `sync_graphics()` (or until your program finishes).
+    """
+    _strype_graphics_internal.syncGraphics()
 
 def stop():
     # type: () -> None

@@ -15353,6 +15353,24 @@
             "version": 0
         },
         {
+            "acResult": "_canvas_get_pixel",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "errors": "Fellback through everything and parse_arguments failed on Python Library Documentation: JsProxy in strype.graphics\n\ns\bst\btr\bry\byp\bpe\be.\b.g\bgr\bra\bap\bph\bhi\bic\bcs\bs.\b._\b_c\bca\ban\bnv\bva\bas\bs_\b_g\bge\bet\bt_\b_p\bpi\bix\bxe\bel\bl = () => void 0 earlier errs: 'NoneType' object has no attribute 'args'Traceback (most recent call last):\n  File \"<exec>\", line 244, in ac_for\nAttributeError: 'NoneType' object has no attribute 'args'\n'strype.graphics._canvas_get_pixel' is not a callable objectTraceback (most recent call last):\n  File \"<exec>\", line 244, in ac_for\nAttributeError: 'NoneType' object has no attribute 'args'\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 256, in ac_for\n  File \"/lib/python313.zip/inspect.py\", line 3344, in signature\n    return Signature.from_callable(obj, follow_wrapped=follow_wrapped,\n           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                                   globals=globals, locals=locals, eval_str=eval_str)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/lib/python313.zip/inspect.py\", line 3070, in from_callable\n    return _signature_from_callable(obj, sigcls=cls,\n                                    follow_wrapper_chains=follow_wrapped,\n                                    globals=globals, locals=locals, eval_str=eval_str)\n  File \"/lib/python313.zip/inspect.py\", line 2498, in _signature_from_callable\n    raise TypeError('{!r} is not a callable object'.format(obj))\nTypeError: 'strype.graphics._canvas_get_pixel' is not a callable object\n",
+            "version": 0
+        },
+        {
+            "acResult": "_canvas_set_pixel",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "errors": "Fellback through everything and parse_arguments failed on Python Library Documentation: JsProxy in strype.graphics\n\ns\bst\btr\bry\byp\bpe\be.\b.g\bgr\bra\bap\bph\bhi\bic\bcs\bs.\b._\b_c\bca\ban\bnv\bva\bas\bs_\b_s\bse\bet\bt_\b_p\bpi\bix\bxe\bel\bl = () => void 0 earlier errs: 'NoneType' object has no attribute 'args'Traceback (most recent call last):\n  File \"<exec>\", line 244, in ac_for\nAttributeError: 'NoneType' object has no attribute 'args'\n'strype.graphics._canvas_set_pixel' is not a callable objectTraceback (most recent call last):\n  File \"<exec>\", line 244, in ac_for\nAttributeError: 'NoneType' object has no attribute 'args'\n\nDuring handling of the above exception, another exception occurred:\n\nTraceback (most recent call last):\n  File \"<exec>\", line 256, in ac_for\n  File \"/lib/python313.zip/inspect.py\", line 3344, in signature\n    return Signature.from_callable(obj, follow_wrapped=follow_wrapped,\n           ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n                                   globals=globals, locals=locals, eval_str=eval_str)\n                                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n  File \"/lib/python313.zip/inspect.py\", line 3070, in from_callable\n    return _signature_from_callable(obj, sigcls=cls,\n                                    follow_wrapper_chains=follow_wrapped,\n                                    globals=globals, locals=locals, eval_str=eval_str)\n  File \"/lib/python313.zip/inspect.py\", line 2498, in _signature_from_callable\n    raise TypeError('{!r} is not a callable object'.format(obj))\nTypeError: 'strype.graphics._canvas_set_pixel' is not a callable object\n",
+            "version": 0
+        },
+        {
             "acResult": "_collections",
             "documentation": "This module implements specialized container datatypes providing\nalternatives to Python's general purpose built-in containers, dict,\nlist, set, and tuple.\n\n* namedtuple   factory function for creating tuple subclasses with named fields\n* deque        list-like container with fast appends and pops on either end\n* ChainMap     dict-like class for creating a single view of multiple mappings\n* Counter      dict subclass for counting hashable objects\n* OrderedDict  dict subclass that remembers the order entries were added\n* defaultdict  dict subclass that calls a factory function to supply missing values\n* UserDict     wrapper around dictionary objects for easier dict subclassing\n* UserList     wrapper around list objects for easier list subclassing\n* UserString   wrapper around string objects for easier string subclassing",
             "type": [
@@ -15406,6 +15424,34 @@
             "type": [
                 "module"
             ],
+            "version": 0
+        },
+        {
+            "acResult": "_pack_color",
+            "documentation": "",
+            "type": [
+                "function"
+            ],
+            "signature": {
+                "positionalOnlyArgs": [],
+                "positionalOrKeywordArgs": [
+                    {
+                        "name": "color",
+                        "defaultValue": null,
+                        "argType": "None"
+                    }
+                ],
+                "varArgs": null,
+                "keywordOnlyArgs": [],
+                "varKwargs": null,
+                "firstParamIsSelfOrCls": false
+            },
+            "version": 0
+        },
+        {
+            "acResult": "_packed_color_cache",
+            "documentation": "dict() -> new empty dictionary\ndict(mapping) -> new dictionary initialized from a mapping object's\n    (key, value) pairs\ndict(iterable) -> new dictionary initialized as if via:\n    d = {}\n    for k, v in iterable:\n        d[k] = v\ndict(**kwargs) -> new dictionary initialized with the name=value pairs\n    in the keyword argument list.  For example:  dict(one=1, two=2)",
+            "type": [],
             "version": 0
         },
         {
@@ -15719,7 +15765,7 @@
         },
         {
             "acResult": "show_text",
-            "documentation": "Shows the text at the given X, Y position in the world.\n\nThis allows you to easily draw text on the world, for example a \"Game Over\" message.  You can show multiple text items if you supply\ndifferent X, Y positions for each.  If you want to change the text at a particular position,\ncall this function again with the same X, Y position and a new string; this will replace the previous text at that position.\nTo clear the text entirely at that position, pass None as the text, with the same X, Y position. \n\n:param text: The text to show, or None to show no text.  Passing None allows you to clear text previously drawn at the same position. \n:param x: The X position of the centre of the text.  This is rounded to the nearest integer.\n:param y: The Y position of the centre of the text.  This is rounded to the nearest integer.\n:param font_size: The font size to use for the text.",
+            "documentation": "Shows the text at the given X, Y position in the world.\n\nThis allows you to easily draw text on the world, for example a \"Game Over\" message.  You can show multiple text items if you supply\ndifferent X, Y positions for each.  If you want to change the text at a particular position,\ncall this function again with the same X, Y position and a new string; this will replace the previous text at that position.\nTo clear the text entirely at that position, pass None as the text, with the same X, Y position.\n\n:param text: The text to show, or None to show no text.  Passing None allows you to clear text previously drawn at the same position.\n:param x: The X position of the centre of the text.  This is rounded to the nearest integer.\n:param y: The Y position of the centre of the text.  This is rounded to the nearest integer.\n:param font_size: The font size to use for the text.",
             "type": [
                 "function"
             ],
@@ -15757,6 +15803,14 @@
         {
             "acResult": "stop",
             "documentation": "Stop the execution of the program.  This function will not return.",
+            "type": [
+                "function"
+            ],
+            "version": 0
+        },
+        {
+            "acResult": "sync_graphics",
+            "documentation": "Draw the world, and from now on only draw the world when this function is called.\n\nCall this once per iteration of your main loop, after you have moved your actors.  This makes programs\nthat move lots of actors run much faster, because the world is drawn once per call to this function, not\neach time an actor is changed.\n\nIf you never call this function, the world is drawn automatically whenever anything changes.  Once you have\ncalled it, that automatic drawing is switched off for the rest of the run, and any changes you make will not\nappear on screen until the next call to `sync_graphics()` (or until your program finishes).",
             "type": [
                 "function"
             ],

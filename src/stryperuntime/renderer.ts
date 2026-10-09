@@ -13,8 +13,13 @@ export class Renderer  {
     // We need to use SpriteManager rather than just a simple map because we need the collision detection to also
     // run on the main thread to ask about which sprites were under mouse clicks.  The dirty state is also held
     // by the SpriteManager, and set to dirty when we get an update, but cleared when we render:
-    private sprites : SpriteManager; 
-    
+    private sprites : SpriteManager;
+    // Once the program has called sync_graphics() (which we learn of by receiving a "batch" update), we no longer redraw
+    // just because something changed; we only redraw when a new batch has arrived (syncReceived), i.e. at the next sync_graphics() call.
+    // Both are reset when a new run starts (the "clear" update).
+    private redrawOnlyOnSync = false;
+    private syncReceived = false;
+
     constructor() {
         // The notify parameter is to send updates to the main thread, but we are the main thread!
         // So no need to do anything when this sprite manager changes:
@@ -37,37 +42,52 @@ export class Renderer  {
     // Sets the receiver for the MessagePort to update this renderer.  Will only
     // receive on the port, not send.
     setMessageChannel(recvUpdates : MessagePort) : void {
-        recvUpdates.onmessage = (e) => {
-            const update = e.data as StrypeSpriteStateUpdate;
-            switch (update.request) {
-            case "clear": {
-                // Delete everything except the first black background:
-                this.loadedImages.splice(1);
-                this.sprites.clear();
-                break;
+        recvUpdates.onmessage = (e) => this.handleUpdate(e.data as StrypeSpriteStateUpdate);
+    }
+
+    private handleUpdate(update : StrypeSpriteStateUpdate) : void {
+        switch (update.request) {
+        case "clear": {
+            // Delete everything except the first black background:
+            this.loadedImages.splice(1);
+            // Canvases from the previous run are no longer referenced by anything:
+            this.canvases.splice(0);
+            this.sprites.clear();
+            // A new run starts in the default mode, where we redraw whenever anything changes:
+            this.redrawOnlyOnSync = false;
+            this.syncReceived = false;
+            break;
+        }
+        case "batch": {
+            // The program has called sync_graphics(): from now until the next run, we redraw only when we receive one of these.
+            this.redrawOnlyOnSync = true;
+            this.syncReceived = true;
+            for (const u of update.updates) {
+                this.handleUpdate(u);
             }
-            case "add": {
-                this.sprites.addSprite(update.image, update.collidable, update.x, update.y, update.id.handle);
-                // Note: deliberate fall-through here into the update.
-            }
-            case "update": {
-                // Note that in theory each call here updates the collision box, so it looks inefficient to do it in many calls.
-                // But really, when it's an update only one field is updated, and all of the SpriteManager methods don't do anything
-                // if a field is set unchanged:
-                const id = update.id.handle;
-                this.sprites.setSpriteLocation(id, update.x, update.y);
-                this.sprites.setSpriteRotation(id, update.rotation);
-                this.sprites.setSpriteScale(id, update.scale);
-                this.sprites.setSpriteImage(id, update.image);
-                this.sprites.setSpriteCollidable(id, update.collidable);
-                break;
-            }
-            case "remove": {
-                this.sprites.removeSprite(update.id.handle, update.removeAtTime);
-                break;
-            }
-            }
-        };
+            break;
+        }
+        case "add": {
+            this.sprites.addSprite(update.image, update.collidable, update.x, update.y, update.id.handle);
+            // Note: deliberate fall-through here into the update.
+        }
+        case "update": {
+            // Note that in theory each call here updates the collision box, so it looks inefficient to do it in many calls.
+            // But really, when it's an update only one field is updated, and all of the SpriteManager methods don't do anything
+            // if a field is set unchanged:
+            const id = update.id.handle;
+            this.sprites.setSpriteLocation(id, update.x, update.y);
+            this.sprites.setSpriteRotation(id, update.rotation);
+            this.sprites.setSpriteScale(id, update.scale);
+            this.sprites.setSpriteImage(id, update.image);
+            this.sprites.setSpriteCollidable(id, update.collidable);
+            break;
+        }
+        case "remove": {
+            this.sprites.removeSprite(update.id.handle, update.removeAtTime);
+            break;
+        }
+        }
     }
 
     async loadImage(url: string) : Promise<RemoteImage> {
@@ -149,11 +169,12 @@ export class Renderer  {
     }
 
     isDirty() : boolean {
-        return this.sprites.isDirty();
+        return this.sprites.isDirty() && (!this.redrawOnlyOnSync || this.syncReceived);
     }
-    
+
     resetDirty() : void {
         this.sprites.resetDirty();
+        this.syncReceived = false;
     }
 
     getItemsToDraw() : {x: number, y: number, rotation: number, scale: number, img: ImageBitmap | OffscreenCanvas}[] {

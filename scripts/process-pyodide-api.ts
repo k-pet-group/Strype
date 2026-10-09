@@ -82,10 +82,16 @@ function getPythonCodeForTypeAndDocumentation(userCode: string, module: string |
     return userCode + pythonInspectionCode + "\nac_for(" + (module != null && module != "" ? "\"" + module + "\"" : "None") + ", \"" + itemToQuery + "\")\n";
 }
 
-// Stub for Strype Javascript parts:
+// Stub for Strype Javascript parts.  Some Python modules take a reference to one of the internal functions
+// when they are imported (e.g. graphics.py's _canvas_get_pixel = _strype_graphics_internal.canvas_getPixel,
+// to avoid a lookup per call), so the graphics stub must claim to have any attribute that is asked for:
+const anyFunction = () => new Proxy({}, {
+    get: () => () => undefined,
+    has: () => true,
+});
 const strype_bridge = {
     strype_graphics_input_internal: {},
-    strype_graphics_internal: {},
+    strype_graphics_internal: anyFunction(),
     strype_sound_internal: {},
     strype_turtle_internal: {},
 };

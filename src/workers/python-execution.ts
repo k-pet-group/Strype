@@ -79,7 +79,7 @@ import {loadPyodide} from "pyodide";
 import {loadPyodideAndPackage, OutputPart, pyodideExpose, PyodideExtras, PyodideFatalErrorReloader} from "pyodide-worker-runner";
 import * as Comlink from "comlink";
 import {strype_bridge} from "@/stryperuntime/pyodide_bridge";
-import {ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse} from "@/stryperuntime/worker_bridge_type";
+import {ResponseFor, SyncOrAsyncStrypePyodideWorkerRequest, StrypeSpriteStateUpdate, SyncStrypePyodideHandlerFunction, SyncStrypePyodideWorkerRequest, SyncStrypePyodideWorkerResponse} from "@/stryperuntime/worker_bridge_type";
 import {SpriteManager} from "@/stryperuntime/image_and_collisions";
 import {asyncBridge, PyodideWorkerGlobalScope, syncBridge} from "@/workers/python_execution_type";
 import {getFSForEmscripten} from "@/stryperuntime/pyodide-emscripten-cloud-fs";
@@ -460,7 +460,20 @@ const executePython = pyodideExpose(async (
     // (e.g. "while True: actor.move(5)") can queue up just as unboundedly as a tight print loop can.  So
     // we share this same counter and catch-up logic with sprite updates, to bound how many messages of
     // *either* kind can be outstanding at once:
+    //
+    // A catch-up is expensive: without SharedArrayBuffer the blocking wait is a synchronous XHR via the
+    // service worker, and it also has to wait for the main thread to drain everything queued so far
+    // (including any canvas redraws in progress).  A program that moves hundreds of actors per frame
+    // would otherwise spend most of its time waiting.  So for sprite updates, which cost the main thread
+    // very little to process each, we also require a minimum time since the last sync, which bounds the
+    // backlog to roughly that much work rather than to a fixed number of messages.
+    // We must NOT do this for other requests such as console output: each of those is much more expensive
+    // for the main thread (DOM updates), so 100ms worth of them can take a very long time to drain, which
+    // is exactly the problem described above that the count is there to prevent.
+    const MIN_ASYNC_REQUESTS_BEFORE_CATCH_UP = 50;
+    const MIN_MS_BETWEEN_SPRITE_CATCH_UPS = 100;
     let numConsecutiveAsyncRequests = 0;
+    let lastSyncTime = performance.now();
     // Does the actual sync dummy round-trip that guarantees all previously-sent async requests
     // (e.g. console_print for stdout/stderr) have been fully processed by the main thread, per the
     // ordering guarantee described above.
@@ -472,10 +485,13 @@ const executePython = pyodideExpose(async (
             throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for dummy`);
         }
         numConsecutiveAsyncRequests = 0;
+        lastSyncTime = performance.now();
     };
-    const catchUpWithMainThreadIfNeeded = () => {
+    // cheapForMainThread: true for requests that are very quick for the main thread to process (sprite updates), which are
+    // additionally spaced out by MIN_MS_BETWEEN_SPRITE_CATCH_UPS; false for expensive ones (console output), which use the count alone.
+    const catchUpWithMainThreadIfNeeded = (cheapForMainThread: boolean) => {
         numConsecutiveAsyncRequests += 1;
-        if (numConsecutiveAsyncRequests >= 50) {
+        if (numConsecutiveAsyncRequests >= MIN_ASYNC_REQUESTS_BEFORE_CATCH_UP && (!cheapForMainThread || performance.now() - lastSyncTime >= MIN_MS_BETWEEN_SPRITE_CATCH_UPS)) {
             // To avoid racing too far ahead of the main thread, we do a quick catch-up:
             syncCatchUpWithMainThread();
         }
@@ -483,9 +499,10 @@ const executePython = pyodideExpose(async (
     const makeRequest = (req: SyncOrAsyncStrypePyodideWorkerRequest) => {
         if (req.kind === "sync") {
             numConsecutiveAsyncRequests = 0;
+            lastSyncTime = performance.now();
         }
         else {
-            catchUpWithMainThreadIfNeeded();
+            catchUpWithMainThreadIfNeeded(false);
         }
         // All requests are ultimately sent on:
         makeRawRequest(req);
@@ -703,9 +720,69 @@ runner`);
         // Set the global fields used by Javascript code (and by the pyodide cloud file mounting, just below): 
         self.syncStrypePyodideWorkerBridge = bridgeSync;
         self.asyncStrypePyodideWorkerBridge = (r) => makeRequest({kind: "async", request: r});
+        // Once the program calls sync_graphics() (see strype_graphics_internal.ts) we stop sending each sprite
+        // update straight away and instead collect them here, then send the lot as one "batch" message on each
+        // sync_graphics() call (and when the run ends).  The main thread then redraws only on receiving a batch.
+        // This is much cheaper than a message per update for programs that move many actors per frame.
+        let flushGraphicsAtEndOfRun = () => {};
+        let batching = false;
+        let pendingUpdates : Exclude<StrypeSpriteStateUpdate, {request: "batch"}>[] = [];
+        // Where in pendingUpdates the latest "update" for each sprite is, so a later update to that sprite can replace it
+        // (an "update" carries the sprite's full state, so only the latest matters).  The slot is reused rather than
+        // appending, which keeps the order relative to any "add"/"remove" of other sprites correct:
+        const pendingUpdateIndexById = new Map<number, number>();
+        const sendPendingUpdates = () => {
+            catchUpWithMainThreadIfNeeded(true);
+            // We send a batch even if it's empty, as that is the signal to redraw (e.g. an Image was drawn on):
+            self.updatePort.postMessage({request: "batch", updates: pendingUpdates});
+            pendingUpdates = [];
+            pendingUpdateIndexById.clear();
+        };
+        self.syncGraphics = () => {
+            batching = true;
+            sendPendingUpdates();
+        };
+        flushGraphicsAtEndOfRun = () => {
+            if (batching) {
+                sendPendingUpdates();
+            }
+        };
         self.spriteManager = new SpriteManager((u) => {
-            catchUpWithMainThreadIfNeeded();
-            self.updatePort.postMessage(u);
+            if (!batching) {
+                catchUpWithMainThreadIfNeeded(true);
+                self.updatePort.postMessage(u);
+                return;
+            }
+            switch (u.request) {
+            case "batch":
+                // Never produced by a SpriteManager; here to keep the switch exhaustive:
+                break;
+            case "update": {
+                const existing = pendingUpdateIndexById.get(u.id.handle);
+                if (existing !== undefined) {
+                    pendingUpdates[existing] = u;
+                }
+                else {
+                    pendingUpdateIndexById.set(u.id.handle, pendingUpdates.length);
+                    pendingUpdates.push(u);
+                }
+                break;
+            }
+            case "remove":
+                // Updates already pending for this sprite are still sent before this remove: they are needed if the
+                // removal is scheduled for later (removeAtTime), and harmless if it is immediate.  We just forget
+                // their slot, so any later update for this id is appended after the remove, keeping the order:
+                pendingUpdateIndexById.delete(u.id.handle);
+                pendingUpdates.push(u);
+                break;
+            case "clear":
+                // Everything before a clear is irrelevant:
+                pendingUpdates = [u];
+                pendingUpdateIndexById.clear();
+                break;
+            default:
+                pendingUpdates.push(u);
+            }
         });
         self.pyodide = pyodide;
         
@@ -826,7 +903,14 @@ runner`);
             }
         };
         runner.set_callback(callback);
-        await runner.run_async(pythonCode, {});
+        try {
+            await runner.run_async(pythonCode, {});
+        }
+        finally {
+            // If the program was batching graphics updates (via sync_graphics()), send any that are still outstanding
+            // so the final state is drawn:
+            flushGraphicsAtEndOfRun();
+        }
         // The counter-based catch-up above only fires every 50 async requests, so a run that ends
         // with a handful of prints immediately followed by an error (too few to trip that threshold)
         // can otherwise have its error reported to the main thread before all of that trailing output

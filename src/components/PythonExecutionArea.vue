@@ -107,7 +107,7 @@ import {isServiceWorkerChannelResponsive, PyodideErrorDetails, serviceWorkerRead
 import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
 import {SoundManager} from "@/stryperuntime/sound_manager";
 import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
-import {getPythonClient, isPythonWorkerReady, renderer, serviceWorkerChannel, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
+import {callTrackingProxyPorts, getPythonClient, isPythonWorkerReady, renderer, serviceWorkerChannel, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {closeAudioContext, createOrGetAudioContext} from "@/helpers/audioContext";
 import {clearAllRuntimeErrors, computeFrameSnapshot} from "@/helpers/storeMethods";
@@ -695,7 +695,7 @@ export default defineComponent({
                 requestAnimationFrame(redraw);
                 
                 this.libraries = parser.getLibraries();
-                const micropipLibraries = [];
+                const micropipLibraries : string[] = [];
                 const userLibraries = {} as {[url: string] : Record<string, string>};
                 for (const lib of this.libraries) {
                     if (lib.startsWith("micropip:")) {
@@ -808,7 +808,7 @@ export default defineComponent({
                 // this is cheap and idempotent when nothing has changed.
                 await client.workerProxy.restoreLocalFs(listEntriesForWorker());
 
-                (client.call(
+                (callTrackingProxyPorts(client, () => client.call(
                     client.workerProxy.executePython,
                     userCode,
                     micropipLibraries,
@@ -843,7 +843,7 @@ export default defineComponent({
                             });
                         }
                     }))
-                ) as Promise<PyodideErrorDetails | null>).then((possibleError) => {
+                )) as Promise<PyodideErrorDetails | null>).then((possibleError) => {
                     // If the user clicked Stop, runClicked() (below) has already set this to NotRunning
                     // *before* this callback fires (natural completion is the only other path, and that
                     // only sets NotRunning just below, i.e. after we've had a chance to check it here).

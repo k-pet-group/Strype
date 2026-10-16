@@ -61,7 +61,7 @@
             </ModalDlg>
             <!-- save project -->
             <a :id="saveProjectLinkId" v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="handleSaveMenuClick">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
-            <a v-if="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !isSynced }" @click="handleSaveAsMenuClick">{{$t("appMenu.saveAsProject")}}</a>
+            <a v-if="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !canSaveAs }" @click="handleSaveAsMenuClick">{{$t("appMenu.saveAsProject")}}</a>
             <ModalDlg :dlgId="saveProjectModalDlgId" :okCustomTitle="$t((isGitSaveTargetSelected) ? 'buttonLabel.continueSave' : 'buttonLabel.save')" size="lg">
                 <div class="save-project-modal-dlg-container">
                     <div class="modal-row">
@@ -369,6 +369,9 @@ export default defineComponent({
             getCurrentDriveLocation: () => {
                 return this.currentDriveLocation;
             },
+            getRequestSaveAs: () => {
+                return this.requestSaveAs;
+            },
             setRequestSaveAs: (value: boolean) => {
                 this.requestSaveAs = value;
             },
@@ -555,6 +558,12 @@ export default defineComponent({
             return this.appStore.syncTarget != StrypeSyncTarget.none;
         },
 
+        canSaveAs(): boolean {
+            // "Save As" is available when "Save" doesn't show the save dialog: when the project is synced,
+            // or when it comes from a Python file opened from a Cloud Drive or a Git provider (see saveToSuggestedCloudLocation())
+            return this.isSynced || this.appStore.suggestedCloudSaveLocation != undefined;
+        },
+
         noSyncTargetValue(): StrypeSyncTarget {
             return StrypeSyncTarget.none;
         },
@@ -587,7 +596,12 @@ export default defineComponent({
         currentDriveLocation(): string {
             // The current Drive location (folder of a project) depends on whether we are already
             // "connected" to a Drive: if there is no Drive or if the user selects a target that is
-            // NOT the current target, then the default destination is "Strype". 
+            // NOT the current target, then the default destination is "Strype".
+            // When not connected, a project that comes from a Python file opened from the selected Drive is saved in the folder of that file.
+            const suggestedLocation = this.appStore.suggestedCloudSaveLocation;
+            if(!this.isSynced && suggestedLocation?.alias && suggestedLocation.target == this.tempSyncTarget){
+                return suggestedLocation.alias;
+            }
             return(this.appStore.strypeProjectLocationAlias && (this.appStore.syncTarget == this.tempSyncTarget))? this.appStore.strypeProjectLocationAlias : "Strype";
         },
 
@@ -901,15 +915,35 @@ export default defineComponent({
                 this.saveCurrentProject();
             }
             else{
-                eventBus.emit(CustomEventTypes.showStrypeModal, this.saveProjectModalDlgId);
                 // When we are saving a "browser" project (that is, not from FS or GD) we need to be able to trigger the "Open" later, so we set a flag
                 this.requestOpenProjectLater = (saveReason == SaveRequestReason.loadProject);
+                if(this.appStore.suggestedCloudSaveLocation){
+                    this.saveToSuggestedCloudLocation();
+                }
+                else{
+                    eventBus.emit(CustomEventTypes.showStrypeModal, this.saveProjectModalDlgId);
+                }
             }
+        },
+
+        saveToSuggestedCloudLocation(){
+            // A project that comes from a Python file opened from a Cloud Drive or a Git provider isn't synced, but it is saved
+            // without the save dialog, in the folder of that file, as a Strype file of the same name ("Save As" shows the dialog).
+            // (for a Git provider, the user is still asked for the commit message)
+            const suggestedLocation = this.appStore.suggestedCloudSaveLocation;
+            if(!suggestedLocation){
+                return;
+            }
+            this.showMenu = false;
+            vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.setSaveFileName(this.appStore.projectName);
+            this.appStore.trackStorageLocation(suggestedLocation.target);
+            this.appStore.flushAnalyticsQueue("critical");
+            vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.saveFile(suggestedLocation.target, SaveRequestReason.saveProjectAtLocation);
         },
 
         handleSaveAsMenuClick(){
             // Don't do anything if "save as" is grayed out
-            if(this.isSynced){
+            if(this.canSaveAs){
                 // This is used to set the "save as" flag, and open the modal; the saving mechanism is handled via the modal.
                 this.requestSaveAs = true;
                 eventBus.emit(CustomEventTypes.showStrypeModal, this.saveProjectModalDlgId);
@@ -1015,6 +1049,10 @@ export default defineComponent({
             if(isSyncTargetCloudDrive(target) && target != this.settingsStore.promotedCloudTarget){
                 this.settingsStore.setPromotedCloudTarget(target);
             }
+            // Once the project is linked to a target, the location suggested for its first save (see suggestedCloudSaveLocation) isn't relevant anymore
+            if(target != StrypeSyncTarget.none){
+                this.appStore.suggestedCloudSaveLocation = undefined;
+            }
             // In case there is a Cloud Drive file ID or other Drive related info are handling when we are saving as a file on the FS, we make sure we remove that
             if(target == StrypeSyncTarget.fs || target == StrypeSyncTarget.none){
                 this.appStore.currentCloudSaveFileId = undefined;
@@ -1100,6 +1138,11 @@ export default defineComponent({
             }
             else if (dlgId == this.loadBookProjectModalDlgId) {
                 (this.$refs.openBookDlg as InstanceType<typeof OpenBookDlg>).shown();
+            }
+            else if (dlgId == this.saveProjectModalDlgId && !this.isSynced && this.appStore.suggestedCloudSaveLocation) {
+                // A project that comes from a Python file opened from a Cloud Drive or a Git provider is proposed to be saved there
+                // (in the folder of that file, see currentDriveLocation)
+                this.tempSyncTarget = this.appStore.suggestedCloudSaveLocation.target;
             }
         },
 

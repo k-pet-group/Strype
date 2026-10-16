@@ -487,13 +487,29 @@ export default defineComponent({
             // (a commit message given in a previous, unfinished, save can't be used for this one)
             this.gitCommitMessageFromSaveChoice = undefined;
 
+            // If the project comes from a Python file opened from this Drive, its first save there is done in the folder of that file
+            // (or, when saving at another location, the folder picker starts there).
+            // For a Git provider, that's only for "Save" (see Menu's saveToSuggestedCloudLocation()): with "Save As", the user chooses
+            // the location in the provider's save dialog as usual (which already opens in the folder of the file loaded last).
+            const suggestedLocation = this.appStore.suggestedCloudSaveLocation;
+            const isSavingToSuggestedLocation = suggestedLocation != undefined && suggestedLocation.target == cloudTarget
+                && this.appStore.syncTarget == StrypeSyncTarget.none
+                && (saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation)
+                && (!isSyncTargetGitProvider(cloudTarget) || (saveReason == SaveRequestReason.saveProjectAtLocation && !vueComponentsAPIHandler.menuComponentAPI?.getRequestSaveAs()));
+            if(isSavingToSuggestedLocation){
+                this.appStore.strypeProjectLocation = suggestedLocation.location;
+                this.appStore.strypeProjectLocationAlias = suggestedLocation.alias;
+                this.appStore.strypeProjectLocationPath = suggestedLocation.path;
+            }
+
             const continueSavingProcess = () => {
                 // When an explicit save is requested, it acts as a "save as" and we generate a new file in the specified Cloud Drive.
                 // In any other case, we only save a file if there is a save file id set
-                if(isSyncTargetGitProvider(cloudTarget) && (saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation)){
+                if(isSyncTargetGitProvider(cloudTarget) && !isSavingToSuggestedLocation && (saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation)){
                     // For a Git provider, the save dialog doesn't propose a location: once we know the connection is valid (signing in if needed,
                     // after which this method is called again), the user chooses where to save in the provider's own dialog, with the commit message.
                     // (the save continues in savePickedFolder() when that's done)
+                    // When saving in the folder of the Python file the project comes from, we save like for a Drive below (the user is only asked for the commit message).
                     const startGitSaveChoice = () => {
                         eventBus.emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: cloudTarget, function: (saveReason: SaveRequestReason) => this.saveFile(cloudTarget, saveReason)});
                         (cloudDriveComponent as CloudDriveComponent & GitProviderComponent).pickSaveLocation(this.saveFileName + "." + strypeFileExtension);
@@ -512,9 +528,22 @@ export default defineComponent({
                     let isStrypeForNewCloudDriveTargetSave = saveReason == SaveRequestReason.saveProjectAtLocation 
                         && this.isSwappingCloudDriveTarget(cloudTarget)
                         && (vueComponentsAPIHandler.menuComponentAPI?.getCurrentDriveLocation() == "Strype");
-                    const updateStrypeProjectLocation =  isStrypeForNewCloudDriveTargetSave || (typeof this.appStore.strypeProjectLocation != "string") || this.appStore.syncTarget == StrypeSyncTarget.none;
+                    // (when saving in the folder of the Python file the project comes from, we only check that folder)
+                    const updateStrypeProjectLocation = !isSavingToSuggestedLocation
+                        && (isStrypeForNewCloudDriveTargetSave || (typeof this.appStore.strypeProjectLocation != "string") || this.appStore.syncTarget == StrypeSyncTarget.none);
                     const createStrypeFolder = updateStrypeProjectLocation || !(this.appStore.strypeProjectLocation);
                     cloudDriveComponent?.checkDriveStrypeOrOtherFolder(createStrypeFolder, createStrypeFolder, (strypeFolderId: string | null) => {
+                        if(isSavingToSuggestedLocation && strypeFolderId == null){
+                            // The folder of the Python file isn't available anymore: we forget it and let the user choose where to save
+                            // in the save dialog, as for any other project (in "Strype" by default)
+                            this.appStore.suggestedCloudSaveLocation = undefined;
+                            this.appStore.strypeProjectLocation = undefined;
+                            this.appStore.strypeProjectLocationAlias = "";
+                            this.appStore.strypeProjectLocationPath = "";
+                            eventBus.emit(CustomEventTypes.showStrypeModal, getSaveAsProjectModalDlg());
+                            return Promise.resolve();
+                        }
+
                         // Show the file picker to select a folder (with default location) if the location specified doesn't exist, or if the user asked for changing it
                         if(strypeFolderId != null && (this.appStore.strypeProjectLocation == undefined  || updateStrypeProjectLocation)){
                             // No location is set, we set the Strype folder
@@ -680,6 +709,12 @@ export default defineComponent({
                 // When the target explains why saving failed (for example, a Git provider for a protected branch), we show it to the user.
                 // (it's text from the target, shown in a dialog that renders HTML: we escape it)
                 const errorDetailsMsg = (errorDetails) ? this.$t("errorMessage.saveFailedDetails", {details: escapeHTML(errorDetails).replace(/\n+/g, "<br>")}) : "";
+                // If a new file couldn't be created in the folder of the Python file the project comes from (for example, the user can't write in it),
+                // we don't save there anymore: the next save shows the save dialog.
+                if(isExplictSave && this.saveFileId == undefined && errRespStatus != 401
+                    && this.appStore.suggestedCloudSaveLocation?.target == cloudTarget && this.appStore.suggestedCloudSaveLocation.location == strypeProjectLocation){
+                    this.appStore.suggestedCloudSaveLocation = undefined;
+                }
                 // Unlike with a Drive, committing a new file to a Git provider can fail for reasons the user should know about
                 // (for example, a protected branch): we tell the user (the case of an existing file is handled below for all targets).
                 if(isSyncTargetGitProvider(cloudTarget) && errRespStatus != 401 && this.saveFileId == undefined){
@@ -692,6 +727,12 @@ export default defineComponent({
                 // (not to sure why rawResp.status doesn't give the right stuff, but based on debugging, this works...)
                 if(errRespStatus == 401){
                     this.proceedFailedConnectionCheckOnSave(cloudTarget);
+                }
+                else if(isExplictSave && this.saveFileId == undefined){
+                    // A new file couldn't be created in the chosen folder (for example, the user can't write in it): we tell the user.
+                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.driveSaveFailed", {drivename: cloudDriveComponent.driveName}) + errorDetailsMsg;
+                    eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
+                    vueComponentsAPIHandler.menuComponentAPI?.setRequestSaveAs(false);
                 }
                 else if((errRespStatus??400) >= 400 && this.saveFileId != undefined){
                     // We assume something went wrong regarding saving against the specified file id.
@@ -768,8 +809,22 @@ export default defineComponent({
                 const isPurePython = otherParams.fileName?.endsWith(`.${pythonFileExtension}`)??false;
                 const isSpyNewFormat = (otherParams.fileName?.endsWith(`.${strypeFileExtension}`)??false) && fileContent.startsWith(AppSPYFullPrefix);
                 if(isPurePython){
-                    // The loading mechanisms for a Python file differs from a Strype file AND it doens't maintain a "link" to Google Drive.
+                    // The loading mechanisms for a Python file differs from a Strype file AND it doens't maintain a "link" to the Drive.
+                    // However, we keep the file's folder (set by the Drive when the file was picked) so the first save there is proposed in that folder,
+                    // as a Strype file with the same name (except for a shared file: the user may not be able to write in its folder).
                     vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false, "cloud").then(() => {
+                        if(this.openSharedProjectFileId.length == 0 && this.appStore.strypeProjectLocation && typeof this.appStore.strypeProjectLocation == "string"){
+                            const suggestedLocation = {target: cloudTarget, location: this.appStore.strypeProjectLocation, alias: this.appStore.strypeProjectLocationAlias, path: this.appStore.strypeProjectLocationPath};
+                            this.appStore.suggestedCloudSaveLocation = suggestedLocation;
+                            // (Google Drive gets the folder's name asynchronously when the file is picked, it may not be there yet)
+                            if(!suggestedLocation.alias){
+                                cloudDriveComponent.getFolderNameFromId(suggestedLocation.location).then((folderNameAndPath) => {
+                                    if(this.appStore.suggestedCloudSaveLocation?.target == cloudTarget && this.appStore.suggestedCloudSaveLocation.location == suggestedLocation.location){
+                                        this.appStore.suggestedCloudSaveLocation = {...suggestedLocation, alias: folderNameAndPath.name, path: folderNameAndPath.path??""};
+                                    }
+                                }, () => {});
+                            }
+                        }
                         this.saveFileId = undefined;
                         this.updateSignInStatus(cloudTarget, false);
                         this.appStore.strypeProjectLocation = undefined;

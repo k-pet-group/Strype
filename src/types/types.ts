@@ -1312,6 +1312,15 @@ export interface MIMEDesc {
 
 export type ProjectLocation = (undefined | string | FileSystemFileHandle);
 
+// The folder of a Python file opened from a Cloud Drive or a Git provider: the project isn't synced with that target,
+// but its first save there is proposed in that folder (see CloudDriveHandler's loadPickedFileId() and saveFile())
+export interface SuggestedCloudSaveLocation {
+    target: StrypeSyncTarget,
+    location: string, // like strypeProjectLocation
+    alias: string, // like strypeProjectLocationAlias
+    path: string, // like strypeProjectLocationPath
+}
+
 export interface Locale {
     code: string, // a 2 letter code idenitifying the locale (e.g.: "en")
     name: string, // the user-friendly locale's name (e.g.: "English")

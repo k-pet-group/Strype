@@ -6,13 +6,6 @@
  * the Cloud Drive component we already have.
  */
 
-import { StrypeSyncTarget } from "./types";
-
-// Small helper function check if a target is specifically a git-based target
-export const isSyncTargetGitProvider = (target: StrypeSyncTarget): boolean => {
-    return [StrypeSyncTarget.gh, StrypeSyncTarget.gl].includes(target);
-};
-
 export interface GitRepository {
    // Identifies the repository on the provider: "owner/repo" on GitHub, "group/subgroup/project" on GitLab
    fullName: string,

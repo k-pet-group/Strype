@@ -37,7 +37,7 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import { CustomEventTypes, getAppSimpleMsgDlgId, getCloudLoginErrorModalDlgId, getFrameUID, getSaveAsProjectModalDlg } from "@/helpers/editor";
 import { escapeHTML, pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { BootstrapDlgSize, LoadRequestReason, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
-import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, isSyncTargetCloudDrive, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
+import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, isSyncTargetCloudDrive, isSyncTargetGitProvider, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
 import GoogleDriveComponent from "@/components/GoogleDriveComponent.vue";
 import OneDriveComponent from "@/components/OneDriveComponent.vue";
 import { generateSPYFileContent } from "@/helpers/load-save";
@@ -46,7 +46,7 @@ import { AppSPYFullPrefix, eventBus } from "@/helpers/appContext";
 import { BButton, BvTriggerableEvent } from "bootstrap-vue-next";
 import GitHubComponent from "@/components/GitHubComponent.vue";
 import GitLabComponent from "@/components/GitLabComponent.vue";
-import { GitProviderComponent, isSyncTargetGitProvider, parseGitFileId } from "@/types/git-provider-types";
+import { GitProviderComponent, parseGitFileId } from "@/types/git-provider-types";
 import { getDefaultGitCommitMessage } from "@/helpers/gitProvider";
 
 // This enum is used for flaging the action taken when a request to save a file on a Cloud Drive

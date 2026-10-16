@@ -252,7 +252,15 @@ export default defineConfig(({mode}) => {
             hmr: mode !== "e2e", // disable HMR during Cypress
             watch: mode !== "e2e" ? undefined : { // This is also needed to disable HMR
                  ignored: ['**/*']
-            }
+            },
+            // Mirrors the production Apache forwarding to the GitHub authentication backend
+            // (ProxyPass /gh-auth/api/ http://127.0.0.1:3031/), which runs with "npm run serve:gh-auth":
+            proxy: {
+                "/gh-auth/api/": {
+                    target: "http://127.0.0.1:3031",
+                    rewrite: (path) => path.replace(/^\/gh-auth\/api/, ""),
+                },
+            },
         }
     };
 });

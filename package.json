@@ -5,6 +5,7 @@
     "scripts": {
         "serve:microbit": "cross-env STRYPE_PLATFORM=microbit vite --port 8081",
         "serve:python": "npm run compile-service-worker && cross-env STRYPE_PLATFORM=standard vite --port 8081",
+        "serve:gh-auth": "node --env-file=public/gh-auth/.env public/gh-auth/server.js",
         "serve:python:testing": "npm run compile-service-worker && cross-env STRYPE_PLATFORM=standard vite --port 8081 --mode e2e",
         "serve:python:dist:playwright": "rimraf temp-scripts/playwright-server && npm run build:python && mkdirp temp-scripts/playwright-server/editor/ && mv dist/* temp-scripts/playwright-server/editor/ && npx serve -l 8081 temp-scripts/playwright-server",
         "build:microbit": "cross-env STRYPE_PLATFORM=microbit vite build",

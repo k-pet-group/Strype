@@ -13,11 +13,11 @@
         </ModalDlg>
         <!-- For Git providers, saving is committing: the user gives the commit message (see doSaveFile()) -->
         <ModalDlg :dlgId="gitCommitModalDlgId" :dlgTitle="$t('appMessage.gitCommitTitle', {providername: getDriveName()})" :okCustomTitle="$t('buttonLabel.commit')"
-            :elementToFocusId="gitCommitMessageInputId" size="lg" showCloseBtn>
+            :okDisabled="gitCommitMessage.trim().length == 0" :elementToFocusId="gitCommitMessageInputId" size="lg" showCloseBtn>
             <div class="git-commit-dlg-container">
                 <span>{{gitCommitDetails}}</span>
                 <label :for="gitCommitMessageInputId">{{$t("appMessage.gitCommitMessage")}}</label>
-                <input :id="gitCommitMessageInputId" v-model="gitCommitMessage" :placeholder="gitDefaultCommitMessage" type="text" autocomplete="off" class="form-control" />
+                <input :id="gitCommitMessageInputId" v-model="gitCommitMessage" :placeholder="$t('appMessage.gitCommitMessagePlaceholder')" type="text" autocomplete="off" class="form-control" />
             </div>
         </ModalDlg>
         <!-- Each specific drive is created here, but typing inference is done in getSpecificCloudDriveComponent() -->
@@ -144,7 +144,6 @@ export default defineComponent({
             // For the commit dialog of Git providers (see doSaveFile())
             gitCommitDetails: "",
             gitCommitMessage: "",
-            gitDefaultCommitMessage: "",
             pendingGitCommit: null as ((commitMessage: string) => void) | null,
             // When the user chose where to save in a Git provider's dialog, they also gave the commit message there (see savePickedFolder())
             gitCommitMessageFromSaveChoice: undefined as string | undefined,
@@ -611,8 +610,7 @@ export default defineComponent({
             // (when we save into an existing file, we commit to that file, see the provider's doSaveFile())
             const fileName = parseGitFileId((isExplictSave) ? "" : (this.saveFileId ?? ""))?.fileName ?? (this.getProjectNameForSave(isExplictSave) + "." + strypeFileExtension);
             this.gitCommitDetails = this.$t("appMessage.gitCommitDetails", {filename: fileName, location: this.appStore.strypeProjectLocationAlias});
-            this.gitDefaultCommitMessage = getDefaultGitCommitMessage();
-            this.gitCommitMessage = this.gitDefaultCommitMessage;
+            this.gitCommitMessage = getDefaultGitCommitMessage();
             this.pendingGitCommit = (commitMessage: string) => this.proceedSaveFile(cloudTarget, strypeProjectLocation, commitMessage);
             eventBus.emit(CustomEventTypes.showStrypeModal, this.gitCommitModalDlgId);
         },
@@ -631,9 +629,8 @@ export default defineComponent({
             const pendingGitCommit = this.pendingGitCommit;
             this.pendingGitCommit = null;
             if(event.trigger == "ok"){
-                // (Git doesn't allow an empty message: we use the default one then)
-                const commitMessage = this.gitCommitMessage.trim();
-                pendingGitCommit?.((commitMessage.length > 0) ? commitMessage : this.gitDefaultCommitMessage);
+                // (the dialog can't be validated with an empty message, which Git doesn't allow)
+                pendingGitCommit?.(this.gitCommitMessage.trim());
             }
             else{
                 // The save is cancelled: we only reset the "Save As" flag of the Menu

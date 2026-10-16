@@ -176,6 +176,7 @@
     "gitCommitTitle": "Commit to {providername}",
     "gitCommitDetails": "{filename} will be committed and pushed to {location}.",
     "gitCommitMessage": "Commit message:",
+    "gitCommitMessagePlaceholder": "Provide a commit message",
     "gitDefaultCommitMessage": "File change ({datetime})",
     "fileName": "File Name:",
     "createShareProjectLink": "Create Strype project sharing link",

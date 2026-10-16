@@ -5,8 +5,10 @@
  * "Strype" repository, which is proposed for creation if it doesn't exist) and gives the commit message.
  */
 <template>
-    <ModalDlg :dlgId="dlgId" :dlgTitle="(isSaving) ? $t('appMessage.gitSaveTitle', {providername: providerName}) : $t('appMessage.selectStrypeFile')" showCloseBtn size="lg"
-        :okCustomTitle="$t((isSaving) ? 'buttonLabel.save' : 'buttonLabel.select')" :okDisabled="isBusy || selectedBranch.length == 0 || pickedItem == null">
+    <!-- When saving, the commit message input gets the focus: the dialog then selects its content, so the user can
+         simply type their own message instead of the default one (or validate with Enter) -->
+    <ModalDlg :dlgId="dlgId" :elementToFocusId="(isSaving) ? commitMessageInputId : undefined" :dlgTitle="(isSaving) ? $t('appMessage.gitSaveTitle', {providername: providerName}) : $t('appMessage.selectStrypeFile')" showCloseBtn size="lg"
+        :okCustomTitle="$t((isSaving) ? 'buttonLabel.save' : 'buttonLabel.select')" :okDisabled="isBusy || selectedBranch.length == 0 || pickedItem == null || isCommitMessageMissing">
         <div class="git-file-picker-selectors">
             <template v-if="isSaving">
                 <span>{{$t("appMessage.fileName")}}</span>
@@ -31,7 +33,7 @@
             </div>
             <template v-if="isSaving">
                 <label :for="commitMessageInputId">{{$t("appMessage.gitCommitMessage")}}</label>
-                <input :id="commitMessageInputId" v-model="commitMessage" :placeholder="defaultCommitMessage" type="text" autocomplete="off" class="form-control" />
+                <input :id="commitMessageInputId" v-model="commitMessage" :placeholder="$t('appMessage.gitCommitMessagePlaceholder')" type="text" autocomplete="off" class="form-control" />
             </template>
         </div>
     </ModalDlg>
@@ -76,7 +78,8 @@ const commitMessageInputId = props.dlgId + "-commitMessage";
 const isSaving = ref(false);
 const saveFileName = ref("");
 const commitMessage = ref("");
-const defaultCommitMessage = ref("");
+// (Git doesn't allow an empty message: the dialog can't be validated without one)
+const isCommitMessageMissing = computed(() => isSaving.value && commitMessage.value.trim().length == 0);
 const repositories = ref<GitRepository[]>([]);
 const branches = ref<string[]>([]);
 const selectedRepository = ref("");
@@ -206,7 +209,6 @@ function onDlgHidden(event: BvTriggerableEvent) {
         onPickedItem(pickedItem.value);
     }
     else if(isSaving.value){
-        // (the dialog can be validated with the Enter key even when its OK button is disabled: that's a cancellation too)
         emit("saveCancelled");
     }
 }
@@ -215,11 +217,9 @@ function onPickedItem(pickedItem: CloudDriveItemPickerItem | null) {
     if(isSaving.value){
         // (the picker only shows folders here; with nothing picked, we use the root)
         const folderPath = pickedItem?.id ?? rootFolderId;
-        // (Git doesn't allow an empty message: we use the default one then)
-        const trimmedCommitMessage = commitMessage.value.trim();
         emit("saveChosen", {
             location: {repoId: selectedRepository.value, branchId: selectedBranch.value, folderPath},
-            commitMessage: (trimmedCommitMessage.length > 0) ? trimmedCommitMessage : defaultCommitMessage.value,
+            commitMessage: commitMessage.value.trim(),
             createStrypeRepository: isNewStrypeRepositorySelected.value,
         });
         return;
@@ -254,8 +254,7 @@ function open(startingSelection?: {repoId: string, branchId: string}): Promise<v
 // Shows the dialog to choose where to save a project (with the given file name, including the extension) and the commit message.
 function openForSave(fileName: string): Promise<void> {
     saveFileName.value = fileName;
-    defaultCommitMessage.value = getDefaultGitCommitMessage();
-    commitMessage.value = defaultCommitMessage.value;
+    commitMessage.value = getDefaultGitCommitMessage();
     return show(true);
 }
 

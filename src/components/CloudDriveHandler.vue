@@ -14,6 +14,8 @@
         <!-- Each specific drive is created here, but typing inference is done in getSpecificCloudDriveComponent() -->
         <GoogleDriveComponent ref="googleDriveComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
         <OneDriveComponent ref="oneDriveComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
+        <GitHubComponent ref="gitHubComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
+        <GitLabComponent ref="gitLabComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
     </div>
 </template>
 
@@ -33,6 +35,8 @@ import { generateSPYFileContent } from "@/helpers/load-save";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { AppSPYFullPrefix, eventBus } from "@/helpers/appContext";
 import { BButton } from "bootstrap-vue-next";
+import GitHubComponent from "@/components/GitHubComponent.vue";
+import GitLabComponent from "@/components/GitLabComponent.vue";
 
 // This enum is used for flaging the action taken when a request to save a file on a Cloud Drive
 // has been done, and a file of the same name already exists on the Drive
@@ -50,6 +54,8 @@ export default defineComponent({
         ModalDlg,
         GoogleDriveComponent,
         OneDriveComponent,
+        GitHubComponent,
+        GitLabComponent,
         BButton,
     },
 
@@ -173,18 +179,27 @@ export default defineComponent({
             let component = null as CloudDriveComponent | null;
             if(cloudTarget == StrypeSyncTarget.gd){
                 // Google Drive
-                component = this.$refs.googleDriveComponent as CloudDriveComponent;
+                // ("satisfies" checks that the component implements CloudDriveComponent, as $refs are untyped)
+                component = this.$refs.googleDriveComponent as InstanceType<typeof GoogleDriveComponent> satisfies CloudDriveComponent;
+            }
+            else if(cloudTarget == StrypeSyncTarget.od){
+                // OneDrive
+                component = this.$refs.oneDriveComponent as InstanceType<typeof OneDriveComponent> satisfies CloudDriveComponent;
+            }
+            else if(cloudTarget == StrypeSyncTarget.gl){
+                // GitLab (the CloudDriveComponent check is done in the component itself, on what it exposes)
+                component = this.$refs.gitLabComponent as CloudDriveComponent;
             }
             else{
-                // OneDrive
-                component = this.$refs.oneDriveComponent as CloudDriveComponent;
+                // GitHub (the CloudDriveComponent check is done in the component itself, on what it exposes)
+                component = this.$refs.gitHubComponent as CloudDriveComponent;
             }
             // We only update the specific Drive's method delegates when needed (that is when the cloudTarget changes)
             if(this.currentCloudTarget != cloudTarget){
                 const resetToDefault = (cloudTarget ==  StrypeSyncTarget.none || cloudTarget == StrypeSyncTarget.fs);
-                this.getDriveName = (resetToDefault) ? () => "" : () => (component as CloudDriveComponent).driveName;
-                this.checkIsFileLockedProp = (resetToDefault) ? () => false : () => (component as CloudDriveComponent).isFileLocked;
-                this.signInFn = (resetToDefault) ? () => {} : () => (component as CloudDriveComponent).signIn((cloudTarget: StrypeSyncTarget) => { 
+                this.getDriveName = (resetToDefault) ? () => "" : () => component.driveName;
+                this.checkIsFileLockedProp = (resetToDefault) ? () => false : () => component.isFileLocked;
+                this.signInFn = (resetToDefault) ? () => {} : () => component.signIn((cloudTarget: StrypeSyncTarget) => { 
                     if(this.currentAction == "load"){
                         this.doLoadFile(cloudTarget, this.loadReason, this.openSharedProjectFileId, this.isSwappingCloudDriveTarget(cloudTarget));
                     }
@@ -324,8 +339,8 @@ export default defineComponent({
                     });
                 }
                 else{
-                // We test the connection to make sure it's still valid: if so, we continue with the loading, and if not we reset the token and
-                // call this method again so signing will be requested
+                    // We test the connection to make sure it's still valid: if so, we continue with the loading, and if not we reset the token and
+                    // call this method again so signing will be requested
                     this.testCloudConnection(cloudTarget);
                 }
             }

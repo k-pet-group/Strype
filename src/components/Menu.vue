@@ -36,9 +36,15 @@
                             <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
                             <span>{{ $t("appMessage.targetFS") }}</span>
                         </div>
+                    </div>
+                    <div class="secondary-targets-container">
                         <div id="loadFromGHStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg secondary-target'" tabindex="0"  @click="changeTempSyncTarget(syncGHValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
                             @mouseenter="changeTargetFocusOnMouseOver">
                             <span>GitHub</span>                        
+                        </div>
+                        <div id="loadFromGLStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg secondary-target'" tabindex="0"  @click="changeTempSyncTarget(syncGLValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
+                            @mouseenter="changeTargetFocusOnMouseOver">
+                            <span>GitLab</span>                        
                         </div>
                     </div>                    
                     <div>
@@ -87,9 +93,15 @@
                                     <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
                                     <span>{{ $t("appMessage.targetFS") }}</span>
                                 </div>
+                            </div>
+                            <div class="secondary-targets-container">
                                 <div id="saveToGHStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncGHValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
                                         :class="{[scssVars.projectTargetButtonClassName + ' save-dlg secondary-target']: true, saveTargetSelected: tempSyncTarget == syncGHValue}">                                    
                                         <span>GitHub</span>
+                                </div>
+                                <div id="saveToGLStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncGLValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
+                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg secondary-target']: true, saveTargetSelected: tempSyncTarget == syncGLValue}">                                    
+                                        <span>GitLab</span>
                                 </div>
                             </div>
                         </div>
@@ -557,6 +569,10 @@ export default defineComponent({
             return StrypeSyncTarget.gh;
         },
 
+        syncGLValue(): StrypeSyncTarget {
+            return StrypeSyncTarget.gl;
+        },
+
         isSyncingToCloud(): boolean {
             return isSyncTargetCloudDrive(this.appStore.syncTarget);
         },
@@ -916,17 +932,8 @@ export default defineComponent({
             // On the "load project dialog", entering a target button should "snap" the focus to it and select it.
             // On the "save project dialog", entering a button just give an indication that the button can be "clicked".
             // For both, we handle those visual aspects by setting the focus on the button -- CSS does the rest.
-            // If an embedded project link gets focus (like the book projects link in the "load project dialog" case), then we need to remove the focus on the current primary target.
-            if(event.target && !(event.target as HTMLElement).classList.contains("open-menu-embedded-proj-link")){
-                (event.target as HTMLDivElement).focus();
-            }
-            else{
-                // We have an embedded project link: we find which primary target button has focus to blur it
-                const loadStrypePrimaryTargetButton = (document.querySelectorAll(`.${scssVars.projectTargetButtonClassName}.load-dlg:focus`));
-                if(loadStrypePrimaryTargetButton && loadStrypePrimaryTargetButton.length == 1){
-                    (loadStrypePrimaryTargetButton[0] as HTMLDivElement).blur();
-                }
-            }
+            // The embedded project links of the "load project dialog" (examples and book) behave the same way.
+            (event.target as HTMLElement | null)?.focus();
         },
 
         changeTempSyncTarget(target: StrypeSyncTarget, isSaveAction?: boolean) {
@@ -945,6 +952,23 @@ export default defineComponent({
             this.tempLoadOld = data;
             // Immediately counts as a selection:
             eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "ok", componentId: this.loadProjectModalDlgId});
+        },
+
+        getTargetButtonId(target: StrypeSyncTarget, isSaveAction?: boolean): string {
+            // The ID of a target's button in the load or save project dialog (Google Drive's when there is no target yet)
+            const prefix = (isSaveAction) ? "saveTo" : "loadFrom";
+            switch(target){
+            case StrypeSyncTarget.od:
+                return prefix + "ODStrypeButton";
+            case StrypeSyncTarget.fs:
+                return (isSaveAction) ? this.saveToFSStrypeButtonId : this.loadFromFSStrypeButtonId;
+            case StrypeSyncTarget.gh:
+                return prefix + "GHStrypeButton";
+            case StrypeSyncTarget.gl:
+                return prefix + "GLStrypeButton";
+            default:
+                return prefix + "GDStrypeButton";
+            }
         },
 
         getTargetSelectVal(): StrypeSyncTarget {
@@ -1115,20 +1139,10 @@ export default defineComponent({
             else if (dlgId != this.loadDemoProjectModalDlgId && dlgId != this.loadBookProjectModalDlgId) {
                 // (The Examples... and Book... dialogs' own "shown" work happens earlier, in
                 // onStrypeMenuShowModalDlg -- see its comment for why.)
-                // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
+                // When the load or save project dialogs are opened, we focus the button of the current target (Google Drive's by default when we don't have information about the source target).
+                // The search is scoped to the opened dialog, so it does nothing for dialogs without target buttons.
                 setTimeout(() => {
-                    const targetToFocusButton =[...document.querySelectorAll(`#${dlgId} .${scssVars.projectTargetButtonClassName}`)].find((targetButton) => {
-                        // As the moment we only have 2 possible source targets, we can simply check whether "Google" is in the button or not...
-                        if(this.tempSyncTarget == this.noSyncTargetValue || this.tempSyncTarget == this.syncGDValue) {
-                            return targetButton.querySelector("span")?.textContent?.includes("Google");
-                        }
-                        else {
-                            return !targetButton.querySelector("span")?.textContent?.includes("Google");
-                        }
-                    });
-                    if(targetToFocusButton){
-                        (targetToFocusButton as HTMLDivElement).focus();
-                    }
+                    (document.querySelector(`#${dlgId} #${this.getTargetButtonId(this.tempSyncTarget, dlgId == this.saveProjectModalDlgId)}`) as HTMLDivElement | null)?.focus();
                 }, 100);
             } 
         },
@@ -1914,12 +1928,37 @@ export default defineComponent({
     margin-right: 5px;
 }
 
+// The secondary targets and the embedded project links rows are laid out on a 6-column grid (twice the
+// primary targets' grid) so that each of their items is centered between two primary targets.
+.secondary-targets-container,
+div:has(> a.open-menu-embedded-proj-link) {
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    column-gap: 10px;
+    margin-top: 5px;
+    margin-bottom: 10px;
+}
+
+.secondary-targets-container > *,
+div:has(> a.open-menu-embedded-proj-link) > * {
+    justify-self: center;
+}
+
+.secondary-targets-container > :nth-child(1),
+div:has(> a.open-menu-embedded-proj-link) > :nth-child(1) {
+    grid-column: 2 / span 2;
+}
+
+.secondary-targets-container > :nth-child(2),
+div:has(> a.open-menu-embedded-proj-link) > :nth-child(2) {
+    grid-column: 4 / span 2;
+}
+
 .secondary-target {
     font-size: smaller;
     padding: 4px 10px !important;
     width: fit-content !important;
-    grid-column: 2 ;
-    justify-self: center;
+    border-radius: 6px !important;
 }
 
 .clear-all-label {
@@ -1944,13 +1983,6 @@ export default defineComponent({
     border-color: #007bff;
     box-shadow: 2px 2px 5px rgb(141, 140, 140);
     outline: none;
-}
-
-div:has(> a.open-menu-embedded-proj-link) {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 5px;
 }
 
 .save-project-modal-dlg-container {
@@ -2024,7 +2056,8 @@ div:has(> a.open-menu-embedded-proj-link) {
 .project-target-button-container {
     display: grid;
     gap: 10px;
-    grid-template-columns: 1fr 1fr 1fr;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    justify-items: center;
 }
 
 .#{$strype-classname-project-target-button} {

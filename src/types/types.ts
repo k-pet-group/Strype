@@ -1233,6 +1233,7 @@ export enum StrypeSyncTarget {
     gd, // Google Drive    
     od, // Microsoft One Drive
     ws, // Webstore: only used for default autosaving in the browser
+    gh, // GitHub
 }
 
 export enum ShareProjectMode {

@@ -6,7 +6,7 @@ import { StrypeSyncTarget } from "./types";
 
 // Small helper function to check if a target is a cloud based target
 export const isSyncTargetCloudDrive = (target: StrypeSyncTarget): boolean => {
-    return [StrypeSyncTarget.gd, StrypeSyncTarget.od].includes(target);
+    return [StrypeSyncTarget.gd, StrypeSyncTarget.od, StrypeSyncTarget.gh].includes(target);
 };
 
 export interface SaveExistingCloudProjectInfos {

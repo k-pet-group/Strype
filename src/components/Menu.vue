@@ -36,8 +36,15 @@
                             <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
                             <span>{{ $t("appMessage.targetFS") }}</span>
                         </div>
+                        <div id="loadFromGHStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg secondary-target'" tabindex="0"  @click="changeTempSyncTarget(syncGHValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
+                            @mouseenter="changeTargetFocusOnMouseOver">
+                            <span>GitHub</span>                        
+                        </div>
+                    </div>                    
+                    <div>
+                        <a class="open-menu-embedded-proj-link" tabindex="0" @click="onOpenMenuLinkClick('examples')" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)" @mouseenter="changeTargetFocusOnMouseOver">{{$t("appMenu.loadDemoProject")}}</a>
+                        <a class="open-menu-embedded-proj-link" tabindex="0" @click="onOpenMenuLinkClick('book')" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)" @mouseenter="changeTargetFocusOnMouseOver">{{$t("appMenu.book")}}</a>
                     </div>
-                    <div><a class="open-menu-embedded-proj-link" @click="onOpenMenuLinkClick('examples')">{{$t("appMenu.loadDemoProject")}}</a><a class="open-menu-embedded-proj-link" @click="onOpenMenuLinkClick('book')">{{$t("appMenu.book")}}</a></div>
                     <div class="recent-states-pane" v-if="showRecentUnsaved && recentLoadableStates && recentLoadableStates.length > 0">
                         <div class="d-flex justify-content-between align-items-baseline">
                             <span class="load-save-label">{{ $t("appMessage.loadRecentState") }}</span>
@@ -65,20 +72,24 @@
                         <span class="load-save-label modal-cell">{{$t("appMessage.saveToTarget")}}</span>
                         <div class="modal-cell">
                             <div :ref="saveProjectTargetButtonGpId" class="project-target-button-container">
-                                <div id="saveToGDStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
+                                <div id="saveToGDStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncGDValue || tempSyncTarget == noSyncTargetValue}">
                                     <img src="@/assets/images/logoGDrive.png" alt="Google Drive"/> 
                                     <span>Google Drive</span>
                                 </div>
-                                <div id="saveToODStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncODValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
+                                <div id="saveToODStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncODValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncODValue}">
                                     <img src="@/assets/images/logoOneDrive.svg" alt="OneDrive"/> 
                                     <span>OneDrive</span>
                                 </div>
-                                <div :id="saveToFSStrypeButtonId" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
+                                <div :id="saveToFSStrypeButtonId" tabindex="0" @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
                                     :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncFSValue}">
                                     <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
                                     <span>{{ $t("appMessage.targetFS") }}</span>
+                                </div>
+                                <div id="saveToGHStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncGHValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
+                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg secondary-target']: true, saveTargetSelected: tempSyncTarget == syncGHValue}">                                    
+                                        <span>GitHub</span>
                                 </div>
                             </div>
                         </div>
@@ -540,6 +551,10 @@ export default defineComponent({
 
         syncODValue(): StrypeSyncTarget {
             return StrypeSyncTarget.od;
+        },
+
+        syncGHValue(): StrypeSyncTarget {
+            return StrypeSyncTarget.gh;
         },
 
         isSyncingToCloud(): boolean {
@@ -1091,6 +1106,12 @@ export default defineComponent({
                     this.getSharingLink(defaultSharingProjectMode, true);
                 }, 2000);
             }
+            else if(dlgId == this.shareProjectChooseMethodDlgId){
+                // When the share method dialog opens, we focus the first method (snapshot) by default
+                setTimeout(() => {
+                    (document.querySelector(`#${dlgId} .${scssVars.projectTargetButtonClassName}`) as HTMLDivElement | null)?.focus();
+                }, 100);
+            }
             else if (dlgId != this.loadDemoProjectModalDlgId && dlgId != this.loadBookProjectModalDlgId) {
                 // (The Examples... and Book... dialogs' own "shown" work happens earlier, in
                 // onStrypeMenuShowModalDlg -- see its comment for why.)
@@ -1625,22 +1646,48 @@ export default defineComponent({
         onTargetButtonKeyDown(event: KeyboardEvent, dlgId : string) {
             // Handle some basic keyboard logic for the target selection.
 
-            // Space, left/right arrows should trigger a change of target
-            if(event.key.toLowerCase() == " " || event.key.toLowerCase() == "arrowleft" || event.key.toLowerCase() == "arrowright"){
-                const currentFocusedElementID = document.activeElement?.id??"";
-                const targetButtons = [...document.querySelectorAll(`#${dlgId} .${scssVars.projectTargetButtonClassName}`)];
-                const focusedButtonIndex = targetButtons.findIndex((target) => {
-                    return target.id == currentFocusedElementID;
-                });
+            // Space, left/right and up/down arrows should trigger a change of target
+            const lowCaseEventKey = event.key.toLowerCase();
+            if(lowCaseEventKey == " " || lowCaseEventKey == "arrowleft" || lowCaseEventKey == "arrowright" || lowCaseEventKey == "arrowup" || lowCaseEventKey == "arrowdown"){
+                // The targets are laid out in rows: the primary targets on the first row, the secondary targets (if any)
+                // on the second row, and, for the load dialog, the embedded project links (examples, book) on the last row.
+                // Left/right (and space) loop through all of them in DOM order (row by row), up/down switch between the rows.
+                const allTargetButtons = [...document.querySelectorAll(`#${dlgId} .${scssVars.projectTargetButtonClassName}`)] as HTMLElement[];
+                const rows = [
+                    allTargetButtons.filter((target) => !target.classList.contains("secondary-target")),
+                    allTargetButtons.filter((target) => target.classList.contains("secondary-target")),
+                    (dlgId == this.loadProjectModalDlgId) ? [...document.querySelectorAll(`#${dlgId} .open-menu-embedded-proj-link`)] as HTMLElement[] : [],
+                ].filter((row) => row.length > 0);
+                const targetButtons = rows.flat();
+                const focusedButtonIndex = targetButtons.findIndex((target) => target == event.target);
                 if(focusedButtonIndex > -1){
-                    const newFocousedButtonIndex = (event.key.toLowerCase() == "arrowleft") 
-                        ? (((focusedButtonIndex - 1) >= 0) ? focusedButtonIndex - 1 : targetButtons.length - 1)
-                        : (((focusedButtonIndex + 1) < targetButtons.length) ? focusedButtonIndex + 1 : 0); 
-                    (targetButtons[newFocousedButtonIndex] as HTMLDivElement).focus();
-                    if(dlgId != this.loadProjectModalDlgId) {
-                        // Save and share-method immediately click:
-                        (targetButtons[newFocousedButtonIndex] as HTMLDivElement).click();
-                    }                    
+                    let newFocusedButton: HTMLElement | undefined;
+                    if(lowCaseEventKey == "arrowup" || lowCaseEventKey == "arrowdown"){
+                        // Only relevant if we have several rows (looping like left/right). Going to the first row lands on its
+                        // middle target (visually above the centered rows below), going to any other row lands on its first target.
+                        if(rows.length > 1){
+                            const focusedRowIndex = rows.findIndex((row) => row.includes(targetButtons[focusedButtonIndex]));
+                            const newRowIndex = (lowCaseEventKey == "arrowup")
+                                ? ((focusedRowIndex - 1 >= 0) ? focusedRowIndex - 1 : rows.length - 1)
+                                : ((focusedRowIndex + 1 < rows.length) ? focusedRowIndex + 1 : 0);
+                            newFocusedButton = (newRowIndex == 0)
+                                ? rows[0][Math.floor(rows[0].length / 2)]
+                                : rows[newRowIndex][0];
+                        }
+                    }
+                    else{
+                        const newFocusedButtonIndex = (lowCaseEventKey == "arrowleft")
+                            ? (((focusedButtonIndex - 1) >= 0) ? focusedButtonIndex - 1 : targetButtons.length - 1)
+                            : (((focusedButtonIndex + 1) < targetButtons.length) ? focusedButtonIndex + 1 : 0);
+                        newFocusedButton = targetButtons[newFocusedButtonIndex];
+                    }
+                    if(newFocusedButton){
+                        newFocusedButton.focus();
+                        if(dlgId == this.saveProjectModalDlgId) {
+                            // Save immediately clicks (it only selects the target, it doesn't trigger an action):
+                            newFocusedButton.click();
+                        }
+                    }
                 }
                 event.stopImmediatePropagation();
                 event.stopPropagation();
@@ -1651,10 +1698,12 @@ export default defineComponent({
             // Enter should act as a button validation, if one of the target is focused.
             if(event.key.toLowerCase() == "enter"){
                 const focusedTarget = document.activeElement;
-                if(focusedTarget && focusedTarget.classList.contains(scssVars.projectTargetButtonClassName)){
-                    (focusedTarget as HTMLDivElement).click();
-                    if(dlgId != this.loadProjectModalDlgId){
+                const isEmbeddedProjLink = !!focusedTarget?.classList.contains("open-menu-embedded-proj-link");
+                if(focusedTarget && (isEmbeddedProjLink || focusedTarget.classList.contains(scssVars.projectTargetButtonClassName))){
+                    (focusedTarget as HTMLElement).click();
+                    if(dlgId != this.loadProjectModalDlgId || isEmbeddedProjLink){
                         // On the save and share method dialogs, the action doesn't validate the modal dialog
+                        // (and neither do the embedded project links of the load dialog, they open another dialog)
                         event.stopPropagation();
                         event.stopImmediatePropagation();
                         event.preventDefault();
@@ -1865,6 +1914,14 @@ export default defineComponent({
     margin-right: 5px;
 }
 
+.secondary-target {
+    font-size: smaller;
+    padding: 4px 10px !important;
+    width: fit-content !important;
+    grid-column: 2 ;
+    justify-self: center;
+}
+
 .clear-all-label {
     font-size: 80%;
     text-decoration: underline;
@@ -1872,7 +1929,7 @@ export default defineComponent({
     cursor: pointer;
 }
 
-.open-menu-embedded-proj-link{
+.open-menu-embedded-proj-link {
     font-size: smaller;
     cursor: pointer;
     color: inherit;
@@ -1965,11 +2022,9 @@ div:has(> a.open-menu-embedded-proj-link) {
 }
 
 .project-target-button-container {
-    display: flex;
-    flex-wrap: nowrap;
-    gap: 20px;
-    justify-content: space-between;
-    align-items: center;
+    display: grid;
+    gap: 10px;
+    grid-template-columns: 1fr 1fr 1fr;
 }
 
 .#{$strype-classname-project-target-button} {

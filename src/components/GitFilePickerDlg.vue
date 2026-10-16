@@ -23,10 +23,9 @@
                 <option v-for="branch in branches" :key="branch" :value="branch">{{branch}}</option>
             </select>
             <p v-if="errorMsg.length > 0" class="text-danger git-file-picker-full-row">{{errorMsg}}</p>
-            <!-- When saving, the folder tree is an input like the others: it is aligned with them, and framed so it stands out.
-                 When loading, it is the main part of the dialog: it takes the full width. -->
-            <span v-if="isSaving" class="git-file-picker-folder-label">{{$t("appMessage.gitFolder")}}</span>
-            <div :class="(isSaving) ? 'git-file-picker-folder' : 'git-file-picker-full-row'">
+            <!-- The tree is an input like the others: it is aligned with them, and framed so it stands out. -->
+            <span class="git-file-picker-tree-label">{{$t((isSaving) ? "appMessage.gitFolder" : "appMessage.gitFile")}}</span>
+            <div class="git-file-picker-tree">
                 <CloudDriveItemPicker ref="itemPicker" :mode="(isSaving) ? CloudDriveItemPickerMode.FOLDERS : CloudDriveItemPickerMode.FILES" :fileExtFilter="fileExtensions"
                     :rawRootData="rootItems" :emptyText="$t('appMessage.emptyCloudDrivePicker', {drivename: providerName})"
                     @[CustomEventTypes.requestedCloudDriveItemChildren]="fetchFolderChildren"
@@ -301,14 +300,14 @@ defineExpose({open, openForSave, rememberSelection});
     margin: 0;
 }
 
-// (the label is aligned with the first line of the folder tree, not its middle)
-.git-file-picker-folder-label {
+// (the label is aligned with the first line of the tree, not its middle)
+.git-file-picker-tree-label {
     align-self: start;
     padding-top: 6px;
 }
 
 // Framed like the other inputs (Bootstrap's form controls)
-.git-file-picker-folder {
+.git-file-picker-tree {
     min-width: 0;
     border: var(--bs-border-width, 1px) solid var(--bs-border-color, #dee2e6);
     border-radius: var(--bs-border-radius, 0.375rem);
@@ -316,7 +315,7 @@ defineExpose({open, openForSave, rememberSelection});
 }
 
 // (keeps the dialog's other inputs, below the tree, visible with a large repository)
-.git-file-picker-folder .vtree-tree__scroll-area {
+.git-file-picker-tree .vtree-tree__scroll-area {
     max-height: 40vh;
 }
 </style>

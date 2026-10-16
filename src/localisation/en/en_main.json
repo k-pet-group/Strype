@@ -171,6 +171,7 @@
     "gitNewRepository": "{name} (new repository)",
     "gitRepositoryRoot": "(repository root)",
     "gitFolder": "Folder:",
+    "gitFile": "File:",
     "gitCreatingRepository": "Creating the repository \"{name}\"...",
     "gitCommitTitle": "Commit to {providername}",
     "gitCommitDetails": "{filename} will be committed and pushed to {location}.",

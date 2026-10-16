@@ -1111,24 +1111,23 @@ export default defineComponent({
             // This methods lists the content of the Drive at the given (folder) location.
             // If the folderId isn't provided, then we look for items at the Drive's root.
             const token = await this.getToken(OneDriveTokenPurpose.GRAPH_SEARCH);
-            const requestURL = (folderId) ? `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children` :  "https://graph.microsoft.com/v1.0/me/drive/root/children";
-            const resp = await fetch(requestURL, 
-                {method: "GET", headers: {"Authorization": `Bearer ${token}`, "Accept": "application/json"}});
-            if (!resp.ok){
-                // If we could not get the drive content, we throw an error for the caller to handle that
-                throw new Error(resp.status.toString());
+            // Graph gives a folder's content by pages: as long as there is more to get, we follow the link to the next page it gives.
+            let requestURL: string | undefined = (folderId) ? `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children` :  "https://graph.microsoft.com/v1.0/me/drive/root/children";
+            const driveItems: DriveItem[] = [];
+            while(requestURL){
+                const resp: Response = await fetch(requestURL,
+                    {method: "GET", headers: {"Authorization": `Bearer ${token}`, "Accept": "application/json"}});
+                if (!resp.ok){
+                    // If we could not get the drive content, we throw an error for the caller to handle that
+                    throw new Error(resp.status.toString());
+                }
+                const jsonProps: {value?: DriveItem[], "@odata.nextLink"?: string} | undefined = await resp.json();
+                // (we shouldn't get a response without the content, but if we do, we just stop there)
+                driveItems.push(...(jsonProps?.value ?? []));
+                requestURL = (jsonProps?.value) ? jsonProps["@odata.nextLink"] : undefined;
             }
-            else{
-                const jsonProps = await resp.json(); 
-                if(jsonProps && jsonProps.value){
-                    return jsonProps.value as DriveItem[];
-                }
-                else {
-                    // We shouldn't be in this situation but let's keep TS happy and make sure we return something if we don't get the expected data
-                    return [];
-                }
-            }                
+            return driveItems;
         },
-    },   
+    },
 });
 </script>

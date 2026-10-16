@@ -163,14 +163,16 @@ export default defineComponent({
                 });
             }
             const filterByFileRegex = new RegExp(`.*(${filterByFileRegexExtensionsParttern})$`); 
+            // (in files mode, folders are always kept so we can navigate into them)
             return vTreeData.filter((rootItem) => {
-                return ((filterByFolder && rootItem.isFolder) || (!filterByFolder && filterByFileRegex.test(rootItem.name)));
+                return (rootItem.isFolder || (!filterByFolder && filterByFileRegex.test(rootItem.name)));
             });
         },
 
         exposePickedItem(){
-            // We return the picked item, making sure we strip off the icon we added within the name.
-            this.$emit(CustomEventTypes.exposedCloudDrivePickerPickedItem, (this.pickedItem) ? {...this.pickedItem, name: this.pickedItem.name.substring(2)} : this.pickedItem);            
+            // We return the picked item, making sure we strip off the icon (and the space after it) we added within the name.
+            // (Note: the icons are 2 UTF-16 code units long, see getItemNameWithIcon().)
+            this.$emit(CustomEventTypes.exposedCloudDrivePickerPickedItem, (this.pickedItem) ? {...this.pickedItem, name: this.pickedItem.name.substring(this.fileSymbol.length + 1)} : this.pickedItem);
         },
 
         onSelectItemInternally(pickerItem: VTreeItemPickerItem){

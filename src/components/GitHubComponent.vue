@@ -5,7 +5,8 @@
  */
 <template>
     <GitFilePickerDlg ref="filePicker" dlgId="gitHubFilePickerDlg" :providerName="driveName" :queries="gitProvider.filePickerQueries"
-        @filePicked="gitProvider.onFilePicked" @unsupportedFilePicked="props.onUnsupportedByStrypeFilePicked" />
+        @filePicked="gitProvider.onFilePicked" @unsupportedFilePicked="props.onUnsupportedByStrypeFilePicked"
+        @saveChosen="gitProvider.onSaveChosen" @saveCancelled="props.onFolderToSavePickCancelled" />
 </template>
 <script setup lang="ts">
 import GitFilePickerDlg from "@/components/GitFilePickerDlg.vue";

@@ -365,6 +365,51 @@ export async function canPushToGitLabProject(auth: GitLabAuth, projectFullPath: 
     return Math.max(permissions?.project_access?.access_level ?? 0, permissions?.group_access?.access_level ?? 0) >= 30;
 }
 
+// Commits a file's (UTF-8) text content to a project's branch, creating the file if it doesn't exist yet.
+// The commit is done on GitLab, so there is nothing else to push.
+export async function commitGitLabFile(auth: GitLabAuth, projectFullPath: string, branch: string, filePath: string, content: string, commitMessage: string): Promise<void> {
+    // (the file path is a single URL parameter here: its slashes must be encoded too)
+    const filePathForApi = `${projectApiPath(projectFullPath)}/repository/files/${encodeURIComponent(filePath)}`;
+    // GitLab has distinct requests to create and to update a file, so we first check if the file exists.
+    // We look for it in its folder's content rather than asking for the file itself: a new file would then get a
+    // "404 Not Found" response, that browsers show as an error in the console even though it is expected.
+    const lastSlashIndex = filePath.lastIndexOf("/");
+    let folderContent: GitContentItem[];
+    try {
+        folderContent = await listGitLabFolderContent(auth, projectFullPath, branch, (lastSlashIndex > -1) ? filePath.substring(0, lastSlashIndex) : "");
+    }
+    catch (error) {
+        if (!(error instanceof GitLabHttpError && error.status === 404)) {
+            throw error;
+        }
+        folderContent = []; // The folder doesn't exist (yet): the file is new, the commit creates the folder too
+    }
+    const isExistingFile = folderContent.some((item) => item.path === filePath && !item.isFolder);
+    const response = await gitLabFetch(auth, filePathForApi, {
+        method: (isExistingFile) ? "PUT" : "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({branch, content, commit_message: commitMessage}),
+    });
+    if (!response.ok) {
+        throw new GitLabHttpError(response.status);
+    }
+}
+
+// Creates a private, empty project in the user's own namespace.
+export async function createGitLabProject(auth: GitLabAuth, name: string): Promise<GitRepository> {
+    const response = await gitLabFetch(auth, "/projects", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({name, visibility: "private"}),
+    });
+    if (!response.ok) {
+        throw new GitLabHttpError(response.status);
+    }
+    // (an empty project may have no default branch yet)
+    const project: {path_with_namespace: string, default_branch: string | null} = await response.json();
+    return {fullName: project.path_with_namespace, defaultBranch: project.default_branch ?? ""};
+}
+
 // Revokes the token, so Strype can no longer access GitLab with it.
 export async function disconnectFromGitLab(auth: GitLabAuth): Promise<void> {
     await postOAuthForm(auth.instance, "revoke", {token: auth.accessToken});
@@ -385,4 +430,6 @@ export const gitLabAPI: GitProviderAPI<GitLabAuth> = {
     getFileContent: getGitLabFileContent,
     getFileLastCommitDate: getGitLabFileLastCommitDate,
     canPushToRepository: canPushToGitLabProject,
+    commitFile: commitGitLabFile,
+    createRepository: createGitLabProject,
 };

@@ -53,13 +53,34 @@ export interface GitProviderAPI<Auth> {
    // The date (ISO 8601) of the last commit that changed a file, as Git doesn't keep a modification date for files
    getFileLastCommitDate(auth: Auth, repoId: string, branch: string, filePath: string): Promise<string>,
    canPushToRepository(auth: Auth, repoId: string): Promise<boolean>,
+   // Commits (and therefore pushes, as it is done on the provider) a file's (UTF-8) text content to a branch,
+   // creating the file if it doesn't exist yet
+   commitFile(auth: Auth, repoId: string, branch: string, filePath: string, content: string, commitMessage: string): Promise<void>,
+   // Creates a (private, empty) repository owned by the user. Its default branch is empty if the provider doesn't tell it.
+   createRepository(auth: Auth, name: string): Promise<GitRepository>,
 }
+
+// The name of the repository Strype uses by default (created when the user saves into it if it doesn't exist)
+export const strypeRepositoryName = "Strype";
+
+// Whether a repository is the user's "Strype" repository (names are case insensitive, we don't check the owner/group)
+export const isStrypeRepository = (repository: GitRepository): boolean => {
+    return repository.fullName.split("/").pop()?.toLowerCase() == strypeRepositoryName.toLowerCase();
+};
 
 // What the file picker dialog needs to browse a provider (the connection is already given by the caller).
 export interface GitFilePickerQueries {
    listRepositories(): Promise<GitRepository[]>,
    listBranches(repoId: string): Promise<string[]>,
    listFolderContent(repoId: string, branch: string, folderPath: string): Promise<GitContentItem[]>,
+}
+
+// What the user chose in the file picker dialog opened to save a project
+export interface GitSaveChoice {
+   location: GitLocationStruct,
+   commitMessage: string,
+   // When set, the "Strype" repository doesn't exist yet: it must be created first (location.repoId is then meaningless)
+   createStrypeRepository: boolean,
 }
 
 export interface GitFileIdStruct {
@@ -87,6 +108,43 @@ export const parseGitFileId = (fileId: string): GitFileIdStruct | null => {
     }
 };
 
+// The equivalent of a Drive's folder for a Git provider: a folder of a repository's branch.
+export interface GitLocationStruct {
+   repoId: string,
+   branchId: string,
+   // From the repository's root, without leading or trailing "/" ("" for the root)
+   folderPath: string,
+}
+
+// As for files, the state only deals with string location IDs: a Git location ID is the JSON of its GitLocationStruct.
+export const toGitLocationId = (gitLocationStruct: GitLocationStruct): string => {
+    return JSON.stringify(gitLocationStruct);
+};
+
+// Returns null if the ID isn't a Git location ID (for example, a folder ID from another Cloud Drive).
+export const parseGitLocationId = (locationId: string): GitLocationStruct | null => {
+    try{
+        const parsed = JSON.parse(locationId);
+        return (typeof parsed?.repoId == "string" && typeof parsed.branchId == "string" && typeof parsed.folderPath == "string")
+            ? parsed
+            : null;
+    }
+    catch{
+        return null;
+    }
+};
+
+// The location of a file is the folder containing it.
+export const getGitFileLocation = (gitFileId: GitFileIdStruct): GitLocationStruct => {
+    const lastSlashIndex = gitFileId.path.lastIndexOf("/");
+    return {repoId: gitFileId.repoId, branchId: gitFileId.branchId, folderPath: (lastSlashIndex > -1) ? gitFileId.path.substring(0, lastSlashIndex) : ""};
+};
+
+// How a location is shown to users, for example "owner/repo/some/folder (main)"
+export const getGitLocationLabel = (gitLocation: GitLocationStruct): string => {
+    return `${gitLocation.repoId}${(gitLocation.folderPath.length > 0) ? "/" + gitLocation.folderPath : ""} (${gitLocation.branchId})`;
+};
+
 export interface GitProviderComponent {
     // Props
     
@@ -95,5 +153,7 @@ export interface GitProviderComponent {
     // Computed Properties    
     
     // Methods
-   
+    // Asks the user where to save the project (file name with its extension) and the commit message: the Git equivalent
+    // of CloudDriveComponent.pickFolderForSave(), which then calls the onFolderToSaveFilePicked prop with the commit message.
+    pickSaveLocation: (fullFileName: string) => void,
 }

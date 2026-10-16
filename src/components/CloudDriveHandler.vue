@@ -11,6 +11,15 @@
                 <BButton :id="saveExistingFileOverwriteButtonId" v-if="!checkIsFileLockedProp()" variant="primary" @click="onSaveCloudExistingFileAction(Actions.overwrite);ok()">{{$t('buttonLabel.overwriteProject')}}</BButton>
             </template>
         </ModalDlg>
+        <!-- For Git providers, saving is committing: the user gives the commit message (see doSaveFile()) -->
+        <ModalDlg :dlgId="gitCommitModalDlgId" :dlgTitle="$t('appMessage.gitCommitTitle', {providername: getDriveName()})" :okCustomTitle="$t('buttonLabel.commit')"
+            :elementToFocusId="gitCommitMessageInputId" size="lg" showCloseBtn>
+            <div class="git-commit-dlg-container">
+                <span>{{gitCommitDetails}}</span>
+                <label :for="gitCommitMessageInputId">{{$t("appMessage.gitCommitMessage")}}</label>
+                <input :id="gitCommitMessageInputId" v-model="gitCommitMessage" :placeholder="gitDefaultCommitMessage" type="text" autocomplete="off" class="form-control" />
+            </div>
+        </ModalDlg>
         <!-- Each specific drive is created here, but typing inference is done in getSpecificCloudDriveComponent() -->
         <GoogleDriveComponent ref="googleDriveComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
         <OneDriveComponent ref="oneDriveComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
@@ -34,9 +43,11 @@ import OneDriveComponent from "@/components/OneDriveComponent.vue";
 import { generateSPYFileContent } from "@/helpers/load-save";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { AppSPYFullPrefix, eventBus } from "@/helpers/appContext";
-import { BButton } from "bootstrap-vue-next";
+import { BButton, BvTriggerableEvent } from "bootstrap-vue-next";
 import GitHubComponent from "@/components/GitHubComponent.vue";
 import GitLabComponent from "@/components/GitLabComponent.vue";
+import { GitProviderComponent, isSyncTargetGitProvider, parseGitFileId } from "@/types/git-provider-types";
+import { getDefaultGitCommitMessage } from "@/helpers/gitProvider";
 
 // This enum is used for flaging the action taken when a request to save a file on a Cloud Drive
 // has been done, and a file of the same name already exists on the Drive
@@ -103,6 +114,16 @@ export default defineComponent({
         };
     },
 
+    mounted() {
+        eventBus.on(CustomEventTypes.strypeModalShown, this.onGitCommitDlgShown);
+        eventBus.on(CustomEventTypes.strypeModalHidden, this.onGitCommitDlgHidden);
+    },
+
+    beforeUnmount() {
+        eventBus.off(CustomEventTypes.strypeModalShown, this.onGitCommitDlgShown);
+        eventBus.off(CustomEventTypes.strypeModalHidden, this.onGitCommitDlgHidden);
+    },
+
     props: {
         openSharedProjectFileId: {type: String, required: true},
     },
@@ -120,6 +141,13 @@ export default defineComponent({
             saveFileName: "", // The file name, will be set via the Menu when a name is provided for saving, or when loading a project            
             Actions, // this is required to be accessible in the template
             saveExistingCloudProjectInfos: {} as SaveExistingCloudProjectInfos,
+            // For the commit dialog of Git providers (see doSaveFile())
+            gitCommitDetails: "",
+            gitCommitMessage: "",
+            gitDefaultCommitMessage: "",
+            pendingGitCommit: null as ((commitMessage: string) => void) | null,
+            // When the user chose where to save in a Git provider's dialog, they also gave the commit message there (see savePickedFolder())
+            gitCommitMessageFromSaveChoice: undefined as string | undefined,
         };
     },
 
@@ -162,6 +190,14 @@ export default defineComponent({
         
         saveExistingFileOverwriteButtonId(): string {
             return "saveExistingFileOverwriteButton";
+        },
+
+        gitCommitModalDlgId(): string {
+            return "gitCommitModalDlg";
+        },
+
+        gitCommitMessageInputId(): string {
+            return "gitCommitMessageInput";
         },
     },
    
@@ -449,10 +485,28 @@ export default defineComponent({
             this.currentAction = "save";
             this.saveReason = saveReason;
             
+            // (a commit message given in a previous, unfinished, save can't be used for this one)
+            this.gitCommitMessageFromSaveChoice = undefined;
+
             const continueSavingProcess = () => {
                 // When an explicit save is requested, it acts as a "save as" and we generate a new file in the specified Cloud Drive.
                 // In any other case, we only save a file if there is a save file id set
-                if(saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation){
+                if(isSyncTargetGitProvider(cloudTarget) && (saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation)){
+                    // For a Git provider, the save dialog doesn't propose a location: once we know the connection is valid (signing in if needed,
+                    // after which this method is called again), the user chooses where to save in the provider's own dialog, with the commit message.
+                    // (the save continues in savePickedFolder() when that's done)
+                    const startGitSaveChoice = () => {
+                        eventBus.emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: cloudTarget, function: (saveReason: SaveRequestReason) => this.saveFile(cloudTarget, saveReason)});
+                        (cloudDriveComponent as CloudDriveComponent & GitProviderComponent).pickSaveLocation(this.saveFileName + "." + strypeFileExtension);
+                    };
+                    if(!cloudDriveComponent || cloudDriveComponent.isOAuthTokenNotSet()){
+                        this.proceedFailedConnectionCheckOnSave(cloudTarget);
+                    }
+                    else{
+                        cloudDriveComponent.testCloudConnection(startGitSaveChoice, () => this.proceedFailedConnectionCheckOnSave(cloudTarget));
+                    }
+                }
+                else if(saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation){
                     // If we don't have a set location, we ask for the location (with /Strype as the default location -- which is created if non existant)
                     // We detect the need for checking/creating "Strype" when the target is a cloud drive different than the current cloud drive target,
                     // and the folder is "Strype". In the case we know the user didn't explictly request to save a given location so we target "Strype".
@@ -539,12 +593,65 @@ export default defineComponent({
         },
 
         doSaveFile(cloudTarget: StrypeSyncTarget, strypeProjectLocation: string){
+            if(!isSyncTargetGitProvider(cloudTarget)){
+                this.proceedSaveFile(cloudTarget, strypeProjectLocation);
+                return;
+            }
+            // For a Git provider, saving is committing (and pushing) the file: we need a commit message.
+            // If the user just chose where to save in the provider's dialog, they gave it there.
+            if(this.gitCommitMessageFromSaveChoice != undefined){
+                const commitMessage = this.gitCommitMessageFromSaveChoice;
+                this.gitCommitMessageFromSaveChoice = undefined;
+                this.proceedSaveFile(cloudTarget, strypeProjectLocation, commitMessage);
+                return;
+            }
+            // Otherwise we ask the user for it, with a default one.
+            // Nothing is changed before the user confirms, so cancelling leaves the project as it was (not saved).
+            const isExplictSave = (this.saveReason == SaveRequestReason.saveProjectAtLocation || this.saveReason == SaveRequestReason.saveProjectAtOtherLocation);
+            // (when we save into an existing file, we commit to that file, see the provider's doSaveFile())
+            const fileName = parseGitFileId((isExplictSave) ? "" : (this.saveFileId ?? ""))?.fileName ?? (this.getProjectNameForSave(isExplictSave) + "." + strypeFileExtension);
+            this.gitCommitDetails = this.$t("appMessage.gitCommitDetails", {filename: fileName, location: this.appStore.strypeProjectLocationAlias});
+            this.gitDefaultCommitMessage = getDefaultGitCommitMessage();
+            this.gitCommitMessage = this.gitDefaultCommitMessage;
+            this.pendingGitCommit = (commitMessage: string) => this.proceedSaveFile(cloudTarget, strypeProjectLocation, commitMessage);
+            eventBus.emit(CustomEventTypes.showStrypeModal, this.gitCommitModalDlgId);
+        },
+
+        onGitCommitDlgShown(event: BvTriggerableEvent){
+            if(event.componentId == this.gitCommitModalDlgId){
+                // The default message is selected, so the user can simply type their own message instead
+                (document.getElementById(this.gitCommitMessageInputId) as HTMLInputElement | null)?.select();
+            }
+        },
+
+        onGitCommitDlgHidden(event: BvTriggerableEvent){
+            if(event.componentId != this.gitCommitModalDlgId){
+                return;
+            }
+            const pendingGitCommit = this.pendingGitCommit;
+            this.pendingGitCommit = null;
+            if(event.trigger == "ok"){
+                // (Git doesn't allow an empty message: we use the default one then)
+                const commitMessage = this.gitCommitMessage.trim();
+                pendingGitCommit?.((commitMessage.length > 0) ? commitMessage : this.gitDefaultCommitMessage);
+            }
+            else{
+                // The save is cancelled: we only reset the "Save As" flag of the Menu
+                vueComponentsAPIHandler.menuComponentAPI?.setRequestSaveAs(false);
+            }
+        },
+
+        getProjectNameForSave(isExplictSave: boolean): string {
+            // We need to set the name properly by what the user set in the save dialog (if applicable)
+            return (isExplictSave || this.saveReason == SaveRequestReason.overwriteExistingProject) ? this.saveFileName  : this.appStore.projectName;
+        },
+
+        proceedSaveFile(cloudTarget: StrypeSyncTarget, strypeProjectLocation: string, commitMessage?: string){
             const isExplictSave = (this.saveReason == SaveRequestReason.saveProjectAtLocation || this.saveReason == SaveRequestReason.saveProjectAtOtherLocation);
             if(isExplictSave){
                 this.saveFileId = undefined;
             }
-            // We need to set the name properly by what the user set in the save dialog (if applicable)
-            const newProjectName = (isExplictSave || this.saveReason == SaveRequestReason.overwriteExistingProject) ? this.saveFileName  : this.appStore.projectName;
+            const newProjectName = this.getProjectNameForSave(isExplictSave);
             this.appStore.projectName = newProjectName;
             const fileContent = generateSPYFileContent(); 
             // The file name depends on the context: normal save, we use the filed this.saveName that is in line with what the user provided in the input field
@@ -571,8 +678,16 @@ export default defineComponent({
                 // Notify the application that if we were saving for loading now we are done
                 if(this.saveReason == SaveRequestReason.loadProject || vueComponentsAPIHandler.menuComponentAPI?.getRequestOpenProjectLater()) {
                     eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
-                }                
+                }
             }, (errRespStatus: number) => {
+                // Unlike with a Drive, committing a new file to a Git provider can fail for reasons the user should know about
+                // (for example, a protected branch): we tell the user (the case of an existing file is handled below for all targets).
+                if(isSyncTargetGitProvider(cloudTarget) && errRespStatus != 401 && this.saveFileId == undefined){
+                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.gitCommitFailed", {providername: cloudDriveComponent.driveName, error: errRespStatus});
+                    eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
+                    vueComponentsAPIHandler.menuComponentAPI?.setRequestSaveAs(false);
+                    return;
+                }
                 // If we have an authorised error (for example, timed-out connexion) we should disconnect and warn the users
                 // (not to sure why rawResp.status doesn't give the right stuff, but based on debugging, this works...)
                 if(errRespStatus == 401){
@@ -595,7 +710,7 @@ export default defineComponent({
                         this.appStore.strypeProjectLocationPath = "";
                     }
                 }
-            });
+            }, commitMessage);
         },       
 
         proceedFailedConnectionCheckOnSave(cloudTarget: StrypeSyncTarget){
@@ -751,9 +866,11 @@ export default defineComponent({
             });
         },
 
-        savePickedFolder(cloudTarget: StrypeSyncTarget){
+        savePickedFolder(cloudTarget: StrypeSyncTarget, commitMessage?: string){
             // Doesn't matter the extact nature of the reason for saving, as long as we specify one of the 2 values for explicit saving.
             this.saveReason = SaveRequestReason.saveProjectAtLocation;
+            // (for a Git provider, the commit message the user gave with the location, used by doSaveFile())
+            this.gitCommitMessageFromSaveChoice = commitMessage;
             this.lookForAvailableProjectFileName(cloudTarget, this.appStore.strypeProjectLocation as string);
         },
 
@@ -796,7 +913,14 @@ export default defineComponent({
                 // User chose "overwrite": we do an overwriting save with the existing file Id (on Drive)
                 this.saveReason = SaveRequestReason.overwriteExistingProject;
                 this.saveFileId = this.saveExistingCloudProjectInfos.existingFileId;
-                this.saveExistingCloudProjectInfos.resumeProcessCallback();
+                // We resume once this dialog is closed: for a Git provider, resuming shows another dialog (to get the commit message)
+                const onSaveExistingDlgHidden = (event: BvTriggerableEvent) => {
+                    if(event.componentId == this.saveExistingCloudProjectModalDlgId){
+                        eventBus.off(CustomEventTypes.strypeModalHidden, onSaveExistingDlgHidden);
+                        this.saveExistingCloudProjectInfos.resumeProcessCallback();
+                    }
+                };
+                eventBus.on(CustomEventTypes.strypeModalHidden, onSaveExistingDlgHidden);
             }
             else if(action == Actions.copy){
                 // User chose "copy": we invite the user to choose a new name in the next Vue rendering
@@ -851,3 +975,16 @@ export default defineComponent({
         
 });
 </script>
+
+<style lang="scss">
+.git-commit-dlg-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.git-commit-dlg-container > label {
+    margin-top: 10px;
+    font-weight: 600;
+}
+</style>

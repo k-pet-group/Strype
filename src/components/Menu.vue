@@ -68,7 +68,7 @@
             <!-- save project -->
             <a :id="saveProjectLinkId" v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="handleSaveMenuClick">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
             <a v-if="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !isSynced }" @click="handleSaveAsMenuClick">{{$t("appMenu.saveAsProject")}}</a>
-            <ModalDlg :dlgId="saveProjectModalDlgId" :okCustomTitle="$t('buttonLabel.save')" size="lg">
+            <ModalDlg :dlgId="saveProjectModalDlgId" :okCustomTitle="$t((isGitSaveTargetSelected) ? 'buttonLabel.continueSave' : 'buttonLabel.save')" size="lg">
                 <div class="save-project-modal-dlg-container">
                     <div class="modal-row">
                         <label class="load-save-label modal-cell">{{$t("appMessage.fileName")}}</label>
@@ -293,6 +293,7 @@ import { checkCodeErrors, getAboveFrameCaretPosition, getFrameSectionIdFromFrame
 import scssVars from "@/assets/style/_export.module.scss";
 import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
 import { CloudFileSharingStatus, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
+import { isSyncTargetGitProvider } from "@/types/git-provider-types";
 import {deflateRaw} from "pako";
 import {Base64} from "js-base64";
 import disabledUndoImgPath from "@/assets/images/disabledUndo.svg";
@@ -571,6 +572,11 @@ export default defineComponent({
 
         syncGLValue(): StrypeSyncTarget {
             return StrypeSyncTarget.gl;
+        },
+
+        isGitSaveTargetSelected(): boolean {
+            // For a Git provider, the location is chosen (with the commit message) in a next dialog: the save dialog only "continues" to it
+            return isSyncTargetGitProvider(this.tempSyncTarget);
         },
 
         isSyncingToCloud(): boolean {
@@ -995,7 +1001,9 @@ export default defineComponent({
         },
 
         onSaveTargetChanged(){
-            this.showCloudSaveLocation = isSyncTargetCloudDrive(this.getTargetSelectVal());
+            // (a Git provider's location is chosen in a next dialog, see isGitSaveTargetSelected)
+            const selectedTarget = this.getTargetSelectVal();
+            this.showCloudSaveLocation = isSyncTargetCloudDrive(selectedTarget) && !isSyncTargetGitProvider(selectedTarget);
         },
 
         saveTargetChoice(target: StrypeSyncTarget){

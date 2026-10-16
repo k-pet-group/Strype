@@ -105,7 +105,8 @@ export interface VTreeItemPickerItem extends CloudDriveItemPickerItem{
 export interface CloudDriveComponent {
     // Props
     onFileToLoadPicked: (cloudTarget: StrypeSyncTarget, fileId: string, fileName?: string) => void,
-    onFolderToSaveFilePicked: (cloudTarget: StrypeSyncTarget) => void,
+    // (Git providers also give the commit message, as the user enters it when choosing where to save)
+    onFolderToSaveFilePicked: (cloudTarget: StrypeSyncTarget, commitMessage?: string) => void,
     onFolderToSavePickCancelled: () => void,
     onUnsupportedByStrypeFilePicked: VoidFunction,
 
@@ -134,7 +135,8 @@ export interface CloudDriveComponent {
     loadPickedFileId: (id: string, otherParams: { fileName?: string }, onGettingFileMetadataSucces: (fileNameFromDrive: string, fileModifiedDateTime: string) => void,
         onGettingFileContentSuccess: (fileContent: string) => void, onGettingFileContentFailure: (errorRespStatus: number) => void, onFinally: VoidFunction) => void,
     checkIsFileLocked: (existingFileId: string, onSuccess: VoidFunction, onFailure: VoidFunction) => void,
-    doSaveFile: (saveFileId: string | undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number) => void) => void,
+    // (commitMessage is only used, and always given, for Git providers: saving is then a commit)
+    doSaveFile: (saveFileId: string | undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number) => void, commitMessage?: string) => void,
     getCloudAPIStatusWhenLoadedOrFailed: () => Promise<CloudDriveAPIState>,
     getPublicSharedProjectContent: (sharedFileId: string) => Promise<{ isSuccess: boolean, projectName: string, decodedURIFileContent: string, errorMsg: string }>,
     getCurrentCloudFileCurrentSharingStatus: (saveFileId: string) => Promise<CloudFileSharingStatus>,

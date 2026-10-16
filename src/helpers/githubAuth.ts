@@ -275,6 +275,14 @@ export async function listGitHubBranches(auth: GitHubAuth, repositoryFullName: s
 
 // Returns the files and folders directly inside a folder ("" for the root) of a repository's branch.
 export async function listGitHubFolderContent(auth: GitHubAuth, repositoryFullName: string, branch: string, folderPath: string): Promise<GitContentItem[]> {
+    const items = await getGitHubFolderItems(auth, repositoryFullName, branch, folderPath);
+    // Other types are symbolic links and submodules, which we cannot browse.
+    return items.filter((item) => item.type === "file" || item.type === "dir")
+        .map((item) => ({name: item.name, path: item.path, isFolder: item.type === "dir"}));
+}
+
+// The raw description of the items directly inside a folder ("" for the root) of a repository's branch.
+async function getGitHubFolderItems(auth: GitHubAuth, repositoryFullName: string, branch: string, folderPath: string): Promise<{name: string, path: string, type: string, sha: string}[]> {
     const encodedPath = encodeGitHubPath(folderPath);
     const response = await gitHubFetch(auth, `/repos/${repositoryFullName}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`);
     if (response.status === 404 && encodedPath.length === 0) {
@@ -283,10 +291,7 @@ export async function listGitHubFolderContent(auth: GitHubAuth, repositoryFullNa
     if (!response.ok) {
         throw new GitHubHttpError(response.status);
     }
-    const data: {name: string, path: string, type: string}[] = await response.json();
-    // Other types are symbolic links and submodules, which we cannot browse.
-    return data.filter((item) => item.type === "file" || item.type === "dir")
-        .map((item) => ({name: item.name, path: item.path, isFolder: item.type === "dir"}));
+    return response.json();
 }
 
 // Thrown when a GitHub API call fails, with the HTTP status of the response.
@@ -333,6 +338,62 @@ export async function canPushToGitHubRepository(auth: GitHubAuth, repositoryFull
     return (await response.json()).permissions?.push === true;
 }
 
+// The base64 encoding of a text's UTF-8 bytes (btoa() alone only accepts Latin-1 text).
+function utf8ToBase64(text: string): string {
+    const bytes = new TextEncoder().encode(text);
+    let binary = "";
+    // (by chunks: spreading a large array as arguments would overflow the stack)
+    const CHUNK_SIZE = 0x8000;
+    for (let offset = 0; offset < bytes.length; offset += CHUNK_SIZE) {
+        binary += String.fromCharCode(...bytes.subarray(offset, offset + CHUNK_SIZE));
+    }
+    return btoa(binary);
+}
+
+// Commits a file's (UTF-8) text content to a repository's branch, creating the file if it doesn't exist yet.
+// The commit is done on GitHub, so there is nothing else to push. (Strype must have the "Contents" write permission.)
+export async function commitGitHubFile(auth: GitHubAuth, repositoryFullName: string, branch: string, filePath: string, content: string, commitMessage: string): Promise<void> {
+    const contentPath = `/repos/${repositoryFullName}/contents/${encodeGitHubPath(filePath)}`;
+    // Updating a file requires the SHA of the blob it replaces: we get the current one, so the commit goes on top of the branch's latest version.
+    // We look for the file in its folder's content (which gives the SHAs) rather than asking for the file itself: a new file
+    // would then get a "404 Not Found" response, that browsers show as an error in the console even though it is expected.
+    const lastSlashIndex = filePath.lastIndexOf("/");
+    let folderItems: {path: string, type: string, sha: string}[];
+    try {
+        folderItems = await getGitHubFolderItems(auth, repositoryFullName, branch, (lastSlashIndex > -1) ? filePath.substring(0, lastSlashIndex) : "");
+    }
+    catch (error) {
+        if (!(error instanceof GitHubHttpError && error.status === 404)) {
+            throw error;
+        }
+        folderItems = []; // The folder doesn't exist (yet): the file is new, the commit creates the folder too
+    }
+    const sha = folderItems.find((item) => item.path === filePath && item.type === "file")?.sha;
+    const response = await gitHubFetch(auth, contentPath, {
+        method: "PUT",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({message: commitMessage, content: utf8ToBase64(content), branch, sha}),
+    });
+    if (!response.ok) {
+        throw new GitHubHttpError(response.status);
+    }
+}
+
+// Creates a private, empty repository owned by the user. (Strype must have the "Administration" write permission,
+// and must be installed on all the user's repositories to then access it.)
+export async function createGitHubRepository(auth: GitHubAuth, name: string): Promise<GitRepository> {
+    const response = await gitHubFetch(auth, "/user/repos", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({name, private: true}),
+    });
+    if (!response.ok) {
+        throw new GitHubHttpError(response.status);
+    }
+    const repository: {full_name: string, default_branch?: string} = await response.json();
+    return {fullName: repository.full_name, defaultBranch: repository.default_branch ?? ""};
+}
+
 // Revokes the token. This does not uninstall the app: users do that in their GitHub settings > Applications.
 export async function disconnectFromGitHub(auth: GitHubAuth): Promise<void> {
     await postJson("revoke", {access_token: auth.accessToken});
@@ -353,4 +414,6 @@ export const gitHubAPI: GitProviderAPI<GitHubAuth> = {
     getFileContent: getGitHubFileContent,
     getFileLastCommitDate: getGitHubFileLastCommitDate,
     canPushToRepository: canPushToGitHubRepository,
+    commitFile: commitGitHubFile,
+    createRepository: createGitHubRepository,
 };

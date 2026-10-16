@@ -6,7 +6,7 @@
  */
 <template>
     <ModalDlg :dlgId="dlgId" :dlgTitle="(isSaving) ? $t('appMessage.gitSaveTitle', {providername: providerName}) : $t('appMessage.selectStrypeFile')" showCloseBtn size="lg"
-        :okCustomTitle="$t((isSaving) ? 'buttonLabel.save' : 'buttonLabel.select')" :okDisabled="isBusy || selectedBranch.length == 0">
+        :okCustomTitle="$t((isSaving) ? 'buttonLabel.save' : 'buttonLabel.select')" :okDisabled="isBusy || selectedBranch.length == 0 || pickedItem == null">
         <div class="git-file-picker-selectors">
             <template v-if="isSaving">
                 <span>{{$t("appMessage.fileName")}}</span>
@@ -23,14 +23,11 @@
                 <option v-for="branch in branches" :key="branch" :value="branch">{{branch}}</option>
             </select>
             <p v-if="errorMsg.length > 0" class="text-danger git-file-picker-full-row">{{errorMsg}}</p>
-            <!-- The tree is an input like the others: it is aligned with them, and framed so it stands out. -->
+            <!-- The picker is an input like the others: it is aligned with them, and framed so it stands out. -->
             <span class="git-file-picker-tree-label">{{$t((isSaving) ? "appMessage.gitFolder" : "appMessage.gitFile")}}</span>
             <div class="git-file-picker-tree">
-                <CloudDriveItemPicker ref="itemPicker" :mode="(isSaving) ? CloudDriveItemPickerMode.FOLDERS : CloudDriveItemPickerMode.FILES" :fileExtFilter="fileExtensions"
-                    :rawRootData="rootItems" :emptyText="$t('appMessage.emptyCloudDrivePicker', {drivename: providerName})"
-                    @[CustomEventTypes.requestedCloudDriveItemChildren]="fetchFolderChildren"
-                    @[CustomEventTypes.exposedCloudDrivePickerPickedItem]="onPickedItem"
-                    @[CustomEventTypes.requestedCloudDrivePickerRefresh]="loadRootContent" />
+                <CloudDriveItemPicker :mode="(isSaving) ? CloudDriveItemPickerMode.FOLDERS : CloudDriveItemPickerMode.FILES" :fileExtFilter="fileExtensions"
+                    :rootFolder="pickerRootFolder" :fetchFolderChildren="fetchFolderChildren" @pickedItemChanged="pickedItem = $event" />
             </div>
             <template v-if="isSaving">
                 <label :for="commitMessageInputId">{{$t("appMessage.gitCommitMessage")}}</label>
@@ -66,9 +63,8 @@ const emit = defineEmits<{
 }>();
 
 const fileExtensions = ["." + strypeFileExtension, "." + pythonFileExtension];
-// When saving, the repository's root is shown as a folder so it can be picked too.
-// (Paths from the providers never start with "/", so this ID can't be confused with a folder's.)
-const rootFolderId = "/";
+// In a given repository and branch, the path of an item identifies it: the root's path is empty.
+const rootFolderId = "";
 // When saving and there is no "Strype" repository, we propose it anyway: it is created if the user saves into it.
 // (Full names from the providers never start with "/", so this value can't be confused with a repository's.)
 const newStrypeRepositoryValue = "/" + strypeRepositoryName;
@@ -77,7 +73,6 @@ const newRepositoryBranch = "main";
 const repositorySelectId = props.dlgId + "-repository";
 const branchSelectId = props.dlgId + "-branch";
 const commitMessageInputId = props.dlgId + "-commitMessage";
-const itemPicker = ref<InstanceType<typeof CloudDriveItemPicker> | null>(null);
 const isSaving = ref(false);
 const saveFileName = ref("");
 const commitMessage = ref("");
@@ -86,7 +81,10 @@ const repositories = ref<GitRepository[]>([]);
 const branches = ref<string[]>([]);
 const selectedRepository = ref("");
 const selectedBranch = ref("");
-const rootItems = ref<CloudDriveItemPickerItem[]>([]);
+// The picker starts again from the root every time we set a new object here
+const pickerRootFolder = ref<CloudDriveItemPickerItem | null>(null);
+// When saving, the folder opened in the picker; otherwise, the file selected in the picker
+const pickedItem = ref<CloudDriveItemPickerItem | null>(null);
 const errorMsg = ref("");
 const pendingQueriesCount = ref(0);
 const isBusy = computed(() => pendingQueriesCount.value > 0);
@@ -98,10 +96,6 @@ const repositoryOptions = computed(() => {
     }
     return options;
 });
-// The picker also answers requests from other drives' dialogs (they are sent on the document), so we only
-// consider a picked item when we asked for it.
-let isExpectingPickedItem = false;
-
 onMounted(() => {
     eventBus.on(CustomEventTypes.strypeModalHidden, onDlgHidden);
 });
@@ -126,7 +120,6 @@ async function runQuery<T>(query: () => Promise<T>): Promise<T | null> {
 }
 
 function toPickerItems(gitItems: GitContentItem[], parentPath: string): CloudDriveItemPickerItem[] {
-    // In a given repository and branch, the path of an item identifies it.
     return gitItems.map((item) => ({id: item.path, name: item.name, isFolder: item.isFolder, parentId: parentPath}));
 }
 
@@ -152,7 +145,7 @@ async function loadRepositories() {
 async function onRepositorySelected(keepSelectedBranch?: boolean | Event) {
     // (when called by the select's change event, we get that event as argument: we don't keep the branch then)
     const repositoryFullName = selectedRepository.value;
-    rootItems.value = [];
+    pickerRootFolder.value = null;
     if(repositoryFullName.length == 0){
         branches.value = [];
         selectedBranch.value = "";
@@ -179,33 +172,26 @@ async function onRepositorySelected(keepSelectedBranch?: boolean | Event) {
     await loadRootContent();
 }
 
-async function loadRootContent() {
-    const repositoryFullName = selectedRepository.value, branch = selectedBranch.value;
-    if(repositoryFullName.length == 0 || branch.length == 0){
-        rootItems.value = [];
+function loadRootContent() {
+    if(selectedRepository.value.length == 0 || selectedBranch.value.length == 0){
+        pickerRootFolder.value = null;
         return;
     }
     errorMsg.value = "";
-    if(isSaving.value){
-        // The root folder is selected by default: we save right inside the repository unless the user picks a folder.
-        // Its content is fetched when it's expanded (see fetchFolderChildren()).
-        // (A new array is needed even if it's the same root again, so the picker shows it collapsed for that repository and branch.)
-        rootItems.value = [{id: rootFolderId, name: i18n.global.t("appMessage.gitRepositoryRoot"), isFolder: true}];
-        return;
-    }
-    const items = await runQuery(() => props.queries.listFolderContent(repositoryFullName, branch, ""));
-    if(selectedRepository.value == repositoryFullName && selectedBranch.value == branch){
-        rootItems.value = toPickerItems(items ?? [], "");
-    }
+    // The picker shows the repository's root first (with a generic name in the breadcrumbs), and gets the folders' content with fetchFolderChildren().
+    // When saving, we save in the folder opened in the picker: by default, the repository's root.
+    // (A new object is needed even if it's the same root again, so the picker starts again from the root for that repository and branch.)
+    pickerRootFolder.value = {id: rootFolderId, name: i18n.global.t("appMessage.gitRepositoryRootBreadcrumb"), isFolder: true};
 }
 
-async function fetchFolderChildren(folderId: string) {
-    const folderPath = (folderId == rootFolderId) ? "" : folderId;
+async function fetchFolderChildren(folderId: string): Promise<CloudDriveItemPickerItem[]> {
     // (a repository that doesn't exist yet has no content)
-    const items = (isNewStrypeRepositorySelected.value) ? [] : await runQuery(() => props.queries.listFolderContent(selectedRepository.value, selectedBranch.value, folderPath));
-    // We give the children to our picker directly rather than dispatching the event on the document (as other drives do),
-    // so the pickers of other drives don't receive them. (On failure we still give an empty list so the picker stops waiting.)
-    itemPicker.value?.gotChildrenForFolder(new CustomEvent(CustomEventTypes.exposedCloudDriveItemChidren, {detail: toPickerItems(items ?? [], folderId)}));
+    if(isNewStrypeRepositorySelected.value){
+        return [];
+    }
+    // (on failure, runQuery() shows the error and the folder is shown empty)
+    const items = await runQuery(() => props.queries.listFolderContent(selectedRepository.value, selectedBranch.value, folderId));
+    return toPickerItems(items ?? [], folderId);
 }
 
 function onDlgHidden(event: BvTriggerableEvent) {
@@ -213,8 +199,7 @@ function onDlgHidden(event: BvTriggerableEvent) {
         return;
     }
     if(event.trigger == "ok" && selectedBranch.value.length > 0){
-        isExpectingPickedItem = true;
-        itemPicker.value?.exposePickedItem();
+        onPickedItem(pickedItem.value);
     }
     else if(isSaving.value){
         // (the dialog can be validated with the Enter key even when its OK button is disabled: that's a cancellation too)
@@ -223,13 +208,9 @@ function onDlgHidden(event: BvTriggerableEvent) {
 }
 
 function onPickedItem(pickedItem: CloudDriveItemPickerItem | null) {
-    if(!isExpectingPickedItem){
-        return;
-    }
-    isExpectingPickedItem = false;
     if(isSaving.value){
         // (the picker only shows folders here; with nothing picked, we use the root)
-        const folderPath = (pickedItem == null || pickedItem.id == rootFolderId) ? "" : pickedItem.id;
+        const folderPath = pickedItem?.id ?? rootFolderId;
         // (Git doesn't allow an empty message: we use the default one then)
         const trimmedCommitMessage = commitMessage.value.trim();
         emit("saveChosen", {
@@ -253,7 +234,7 @@ function onPickedItem(pickedItem: CloudDriveItemPickerItem | null) {
 function show(saving: boolean): Promise<void> {
     errorMsg.value = "";
     isSaving.value = saving;
-    rootItems.value = [];
+    pickerRootFolder.value = null;
     eventBus.emit(CustomEventTypes.showStrypeModal, props.dlgId);
     return loadRepositories();
 }
@@ -312,10 +293,5 @@ defineExpose({open, openForSave, rememberSelection});
     border: var(--bs-border-width, 1px) solid var(--bs-border-color, #dee2e6);
     border-radius: var(--bs-border-radius, 0.375rem);
     padding: 6px 12px;
-}
-
-// (keeps the dialog's other inputs, below the tree, visible with a large repository)
-.git-file-picker-tree .vtree-tree__scroll-area {
-    max-height: 40vh;
 }
 </style>

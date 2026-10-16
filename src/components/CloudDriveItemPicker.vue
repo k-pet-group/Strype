@@ -1,340 +1,178 @@
 <template>
     <div>
-        <div class="strype-cloud-drive-item-picker-refresh-btn" tabindex="-1" @click="refreshContent"><i class="fas fa-sync-alt"></i><span>{{$t("buttonLabel.refresh")}}</span></div>
-        <VTree ref="vtree" @select="onSelectItemInternally" @click="onSelectItemByClick" @node-dblclick="onSelectItemByClick" :emptyText="emptyText" class="strype-vtree" titleField="name" />
+        <div class="cloud-drive-item-picker-header">
+            <nav :aria-label="$t('appMessage.cloudDriveItemPickerLocation')">
+                <ol class="breadcrumb cloud-drive-item-picker-breadcrumb">
+                    <li v-for="(folder, index) in breadcrumbs" :key="folder.id" :class="{'breadcrumb-item': true, active: index == breadcrumbs.length - 1}">
+                        <span v-if="index == breadcrumbs.length - 1" aria-current="location">{{folder.name}}</span>
+                        <a v-else href="#" @click.prevent="openBreadcrumb(index)">{{folder.name}}</a>
+                    </li>
+                </ol>
+            </nav>
+            <button v-if="showRefreshButton" type="button" class="btn btn-sm btn-outline-primary cloud-drive-item-picker-refresh-btn" :disabled="breadcrumbs.length == 0" @click="refreshContent">
+                <i class="fas fa-sync-alt"></i><span>{{$t("buttonLabel.refresh")}}</span>
+            </button>
+        </div>
+        <div class="list-group list-group-flush cloud-drive-item-picker-items">
+            <!-- (".." is shown while the folder is loading so the user can still go back up) -->
+            <button v-if="breadcrumbs.length > 1" type="button" class="list-group-item list-group-item-action" @click="openBreadcrumb(breadcrumbs.length - 2)">{{folderSymbol}} ..</button>
+            <div v-if="isLoading" class="list-group-item text-muted">{{$t("appMessage.cloudDriveItemPickerLoadingFolderContent")}}</div>
+            <template v-else-if="breadcrumbs.length > 0">
+                <button v-for="item in items" :key="item.id" type="button" :class="{'list-group-item list-group-item-action': true, active: item.id == selectedFile?.id}"
+                    @click="onItemClick(item)">{{(item.isFolder) ? folderSymbol : fileSymbol}} {{item.name}}</button>
+                <div v-if="items.length == 0" class="list-group-item text-muted">
+                    {{$t((mode == CloudDriveItemPickerMode.FOLDERS) ? "appMessage.cloudDriveItemPickerNoFolder" : "appMessage.cloudDriveItemPickerNoFolderOrFile")}}
+                </div>
+            </template>
+        </div>
     </div>
 </template>
-
-
-<script lang="ts">
+<script setup lang="ts">
 /****
  * A generic picker for Cloud Drives (when a Drive-specific API cannot be used).
- * The picker is a minimal file/folder explorer, configurable.
- * To make things easier we use a shared item model that each Drive needs to match
- * when providing the Drive's content. 
- * We expect the interaction between the picker navigation and the Drive queries to 
- * be continuous: it's unlikely a Drive query returns ALL elements in one go, so when
- * we need to get a folder content (on expanding the folder) then we need to get receive
- * another data content from the Drive... (it is not ideal, but it avoid waiting for
- * fetching the whole data if the Drive doesn't provide that in one go...)
- * However, we do so only when we have never looked for the content, so if the Drive
- * content has changed in the meantime, it won't be seen.
+ * The picker is a minimal file/folder explorer: like on GitHub, it shows the content of one folder at a time,
+ * with a ".." item to go to the parent folder and clickable breadcrumbs to go to any folder above.
+ * A folder is opened with a single click. In FOLDERS mode, the picked item is the opened folder (the last one of the breadcrumbs) once loaded;
+ * in FILES mode, it is the file the user has clicked in the opened folder (if any). The picked item is given by the event pickedItemChanged.
+ * The content of a folder is fetched (with the fetchFolderChildren prop) every time the folder is opened.
  */
-import { CustomEventTypes } from "@/helpers/editor";
-import { CloudDriveItemPickerFolderPathResolutionMode, CloudDriveItemPickerItem, CloudDriveItemPickerMode, VTreeItemPickerItem } from "@/types/cloud-drive-types";
-import { defineComponent, PropType } from "vue";
-import VTree from "@wsfe/vue-tree";
-import type { TreeNode } from "@wsfe/vue-tree/types/store";
-import { AppEvent } from "@/types/types";
-import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
+import { CloudDriveItemPickerItem, CloudDriveItemPickerMode } from "@/types/cloud-drive-types";
+import { computed, ref, watch } from "vue";
 
-export default defineComponent({
-    name: "CloudDriveItemPicker",
-
-    components: {
-        VTree,
-    },
-
-    props: {
-        mode: {
-            type: Number as PropType<CloudDriveItemPickerMode>,
-            default: CloudDriveItemPickerMode.FILES,
-        },
-
-        fileExtFilter: {
-            type: Array as PropType<string[]|string>,
-            default:  function () {
-                // By default there is no filter
-                return [];
-            }, 
-        },
-
-        pathResolutionMode: {
-            type: Number as PropType<CloudDriveItemPickerFolderPathResolutionMode>,
-            default: CloudDriveItemPickerFolderPathResolutionMode.BY_ID,
-        },
-        
-        initialFolderToSelectPathParts: {
-            type: Array as PropType<string[]>,
-            default: function () {
-                return [];
-            },
-        },
-
-        rawRootData: {
-            type: Array as PropType<CloudDriveItemPickerItem[]>,
-            required: true,
-        },
-
-        emptyText: String, // this is passed as a prop so the Cloud Drive component can customise it with its name
-    },
-
-    computed: {
-        folderSymbol(): string{
-            return "📁";
-        },
-
-        fileSymbol(): string{
-            return "📄";
-        },
-
-        internalChildrenRetrievedNotificationEvent(){
-            return "retrievedChildrenEvent";
-        },
-    },
-
-    data: function () {
-        return {
-            pickedItem: null as VTreeItemPickerItem | null, // the item picked (changes when anything else is selected)
-            isWaitingForChildrenLookup: false, // a flag we used when waiting for getting a folder content (used for a progress indicator)
-        };
-    },
-
-    watch:{
-        rawRootData: {
-            handler(newData: CloudDriveItemPickerItem[]) {
-                // We transform the new data array to a tree understood by VTree, and set it to the latter.
-                // (For large data, they recommand using setData() rather than a prop.)
-                const vTreeRootData = this.prepareItemsToShowInTree(newData);
-                this.$nextTick(() => {
-                    // We need to wait for the tree to be available.
-                    const vTreeComponent = (this.$refs.vtree as InstanceType<typeof VTree>);
-                    if(vTreeComponent){
-                        vTreeComponent.setData(vTreeRootData);
-                        // Select the initial folder to select if provided
-                        if(this.initialFolderToSelectPathParts.length > 0){
-                            this.selectInitialFolderLocation();
-                        }
-                        else if(vTreeRootData.length > 0){
-                            // Select the first node (if any) otherwise
-                            vTreeComponent.setSelected(vTreeRootData[0].id, true);
-                        }
-                    }
-                }); 
-            },
-            deep: true,
-            immediate: true,
-        },
-
-        isWaitingForChildrenLookup(newValue: boolean) {
-            // Trigger or stop the app progress bar.
-            const emitPayload: AppEvent = {requestAttention: newValue};
-            emitPayload.message = this.$t("appMessage.cloudDriveItemPickerLoadingFolderContent");
-            vueComponentsAPIHandler.appComponentAPI?.applyShowAppProgress(emitPayload);
-            // And block or release the overlay
-            document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: newValue}));
-        },        
-    },
-
-    mounted() {
-        // Register a listener to a request for the picked item
-        document.addEventListener(CustomEventTypes.requestedCloudDrivePickerPickedItem, this.exposePickedItem);       
-
-        // Register a listener to an folder item children being exposed
-        document.addEventListener(CustomEventTypes.exposedCloudDriveItemChidren, this.gotChildrenForFolder);       
-    },
-
-    unmounted() {
-        // Remove all listeners
-        document.removeEventListener(CustomEventTypes.requestedCloudDrivePickerPickedItem, this.exposePickedItem);
-        document.removeEventListener(CustomEventTypes.exposedCloudDriveItemChidren, this.gotChildrenForFolder);  
-    },
-    
-    methods: {
-        // Small helper to show an icon before the folder/file name and set the whole as name
-        getItemNameWithIcon(name: string, isFolderItem: boolean): string {
-            return `${(isFolderItem) ? this.folderSymbol : this.fileSymbol} ${name}`;
-        },
-
-        prepareItemsToShowInTree(cloudDriveItems: CloudDriveItemPickerItem[]): VTreeItemPickerItem[]{
-            // First transform to the data type for the tree
-            const vTreeData = cloudDriveItems
-                .map((cloudDriveItem) => ({...cloudDriveItem, name: this.getItemNameWithIcon(cloudDriveItem.name, cloudDriveItem.isFolder), children: []}) as VTreeItemPickerItem);
-            
-            // Then filter out the items that don't align with the mode/filter criteria
-            const filterByFolder = (this.mode == CloudDriveItemPickerMode.FOLDERS);
-            let filterByFileRegexExtensionsParttern = "";
-            if(typeof this.fileExtFilter == "string"){
-                filterByFileRegexExtensionsParttern = this.fileExtFilter.replaceAll(".", "\\.");
-            }
-            else{
-                (this.fileExtFilter as string[]).forEach((ext) => {
-                    filterByFileRegexExtensionsParttern = `${filterByFileRegexExtensionsParttern}${(filterByFileRegexExtensionsParttern.length > 0) ? "|" : ""}${ext.replaceAll(".", "\\.")}`;
-                });
-            }
-            const filterByFileRegex = new RegExp(`.*(${filterByFileRegexExtensionsParttern})$`); 
-            // (in files mode, folders are always kept so we can navigate into them)
-            return vTreeData.filter((rootItem) => {
-                return (rootItem.isFolder || (!filterByFolder && filterByFileRegex.test(rootItem.name)));
-            });
-        },
-
-        exposePickedItem(){
-            // We return the picked item, making sure we strip off the icon (and the space after it) we added within the name.
-            // (Note: the icons are 2 UTF-16 code units long, see getItemNameWithIcon().)
-            this.$emit(CustomEventTypes.exposedCloudDrivePickerPickedItem, (this.pickedItem) ? {...this.pickedItem, name: this.pickedItem.name.substring(this.fileSymbol.length + 1)} : this.pickedItem);
-        },
-
-        onSelectItemInternally(pickerItem: VTreeItemPickerItem){
-            this.pickedItem = {...pickerItem, isFolder: pickerItem.name.startsWith(this.folderSymbol)};
-        },
-
-        onSelectItemByClick(pickerItem: VTreeItemPickerItem){
-            this.onSelectItemInternally(pickerItem);
-            (this.$refs.vtree as InstanceType<typeof VTree>).setSelected(pickerItem.id, true);
-
-            // A click/double click event on a folder will collapse/expand it:
-            // the first time the event occurs, we need to know if that folder contains children as they would not have been provided.
-            // We only request children if the item is a folder AND it has not been visited before.
-            if(pickerItem.isFolder && !pickerItem.hasVisitedFolder){
-                // Notify we are waiting for getting the children
-                this.isWaitingForChildrenLookup = true;
-
-                // And ask for them
-                this.$emit(CustomEventTypes.requestedCloudDriveItemChildren, pickerItem.id);
-            }
-        },
-
-        gotChildrenForFolder(event: Event){         
-            // This method is called when the children are provided by the Cloud Drive component using this picker.
-            // It adds them in the picker.
-            // When done, it calls another internal event sending a boolean value for whichever other need (for example by selectInitialFolderLocation()).
-            if(this.pickedItem){
-                const pickedItemId = this.pickedItem.id;
-                const treeComponent = (this.$refs.vtree as InstanceType<typeof VTree>);
-                // We got the children of a folder: we can now consider our current folder has been visited
-                (treeComponent.getNode(pickedItemId) as TreeNode).hasVisitedFolder = true;                
-
-                // Then we append the children to the folder
-                const childrenForTree = this.prepareItemsToShowInTree((event as CustomEvent<CloudDriveItemPickerItem[]>).detail);
-                childrenForTree.forEach((child) => treeComponent.append(child, pickedItemId));
-               
-                // And we expand that folder since it would have not been opened by VTree as it was empty by then...
-                this.$nextTick(() => {                  
-                    treeComponent.setExpand(pickedItemId, true);
-                    
-                    // And we notify the children lookup is done
-                    this.isWaitingForChildrenLookup = false;
-                    this.$el.dispatchEvent(new CustomEvent(this.internalChildrenRetrievedNotificationEvent, {detail: true}));
-                });
-            }
-            else{
-                // This situation shouldn't happen, but we still notify the children lookup is done
-                this.isWaitingForChildrenLookup = false;
-                // And emits the event with false as value.
-                this.$el.dispatchEvent(new CustomEvent(this.internalChildrenRetrievedNotificationEvent, {detail: false}));
-            }
-        },
-
-        async selectInitialFolderLocation(){
-            // This method attempt to select the initial folder as defined by the property initialFolderToSelectPathParts which contains its path parts.
-            // The path may contain either the ids or the names of the folder making this path, this depends on the property pathResolutionMode.
-            // Because the tree is constructed by starting with the root content and getting the children on demand, we will need to programmatically
-            // request the inner folders of the path -- if at some point a folder isn't found we just do nothing.
-            const vTreeComponent = this.$refs.vtree as InstanceType<typeof VTree>;
-            if(vTreeComponent){
-                let vTreeRootFlatData = (this.pathResolutionMode == CloudDriveItemPickerFolderPathResolutionMode.BY_NAME) ? vTreeComponent.getFlatData() : null;
-                
-                let currentNodeAtLevel = null as VTreeItemPickerItem | null;
-                let parentNode = null as VTreeItemPickerItem | null;
-                const cleanup = () => {
-                    // If we didn't find a part of the path, no need to continue, but we select the first element of the tree (if any) to show a clean state
-                    const treeData = vTreeComponent.getTreeData();
-                    if(treeData.length > 0){
-                        vTreeComponent.setSelected(treeData[0].id, true); 
-                    }
-                };
-
-                for(const [index, pathPart] of this.initialFolderToSelectPathParts.entries()){
-                    const parentNodeId = parentNode?.id ?? ""; // keep TS happy
-                    // If we are not in the root level or the current level folder hasn't been visited (i.e. its children retrieved) we need to first
-                    if(index > 0 && !(vTreeComponent.getNode(parentNode?.id??"") as VTreeItemPickerItem|null)?.hasVisitedFolder){
-                        let gotChildren = false;
-                        await new Promise<void>((resolve) => {
-                            this.$el.addEventListener(this.internalChildrenRetrievedNotificationEvent, (event: any) => {
-                                gotChildren = (event as CustomEvent<boolean>).detail;
-                                resolve();
-                            }, {once: true});
-                            this.$emit(CustomEventTypes.requestedCloudDriveItemChildren, parentNodeId);
-                        });
-                        if(!gotChildren){
-                            // It's unlikely to happen but shall we not receive the children we just stop.
-                            cleanup();
-                            return;
-                        }
-                    }
-                    // get the children before looking for it
-                    if(this.pathResolutionMode == CloudDriveItemPickerFolderPathResolutionMode.BY_ID){
-                        currentNodeAtLevel = vTreeComponent.getNode(pathPart) as VTreeItemPickerItem | null;
-                    }
-                    else{
-                        // We need to look up the folder by name.                        
-                        currentNodeAtLevel = (((index > 0) ? (parentNode as VTreeItemPickerItem).children : (vTreeRootFlatData as VTreeItemPickerItem[] | null))?.find((node) => {
-                            return node.name == this.getItemNameWithIcon(pathPart as string, true);
-                        })??null) as VTreeItemPickerItem | null;
-                    }
-                    if(!currentNodeAtLevel){
-                        cleanup();
-                        return;
-                    }
-                    else{
-                        parentNode = currentNodeAtLevel;   
-                        // Important: we need to select the parent to allow gotChildrenForFolder() to work properly      
-                        // and also, when we are checking the very last element of the path, it will be selected here...
-                        vTreeComponent.setSelected(parentNode.id, true);
-                    }                   
-                }
-                
-                // If we have reached this part, then we have found and selected the folder we wanted to show: we scroll to it
-                // a bit later as the tree may not yet be rendered.
-                setTimeout(() => {
-                    vTreeComponent.scrollTo(parentNode?.id as string);
-                }, 0);
-            }
-        },
-
-        refreshContent(){
-            // The request is sent to the caller...
-            this.$emit(CustomEventTypes.requestedCloudDrivePickerRefresh);
-        },
-    },
+const props = withDefaults(defineProps<{
+    mode?: CloudDriveItemPickerMode,
+    // The extensions of the files to show in FILES mode (all files are shown if empty)
+    fileExtFilter?: string[],
+    // The folder shown first in the picker, it is the first part of the breadcrumbs: when the parent sets another object, the picker starts again from there.
+    rootFolder: CloudDriveItemPickerItem | null,
+    // The names of the folders (from the root folder) of the folder to open when the picker starts: we stop at the last folder found.
+    initialFolderPathParts?: string[],
+    // Whether a button to reload the opened folder's content is shown (not by default)
+    showRefreshButton?: boolean,
+    // Gets the content of a folder. If the promise is rejected, the folder is shown empty.
+    fetchFolderChildren: (folderId: string) => Promise<CloudDriveItemPickerItem[]>,
+}>(), {
+    mode: CloudDriveItemPickerMode.FILES,
+    fileExtFilter: () => [],
+    initialFolderPathParts: () => [],
 });
+
+const emit = defineEmits<{
+    pickedItemChanged: [item: CloudDriveItemPickerItem | null],
+}>();
+
+const folderSymbol = "📁";
+const fileSymbol = "📄";
+// The opened folder is the last one
+const breadcrumbs = ref<CloudDriveItemPickerItem[]>([]);
+// The content of the opened folder
+const items = ref<CloudDriveItemPickerItem[]>([]);
+const selectedFile = ref<CloudDriveItemPickerItem | null>(null);
+const isLoading = ref(false);
+// Every time the user goes somewhere, this counter is incremented: the folder content we get for a previous count is out of date and is ignored.
+// (The user can open another folder while a folder is loading.)
+let navigationCount = 0;
+
+// (in FOLDERS mode, nothing is picked while a folder is loading: when the picker starts, we may still be going down to the initial folder)
+const pickedItem = computed(() => (props.mode == CloudDriveItemPickerMode.FOLDERS)
+    ? ((isLoading.value) ? null : (breadcrumbs.value[breadcrumbs.value.length - 1] ?? null))
+    : selectedFile.value);
+watch(pickedItem, (item) => emit("pickedItemChanged", item), {immediate: true});
+
+watch(() => props.rootFolder, (rootFolder) => {
+    if(rootFolder){
+        openPath([rootFolder], props.initialFolderPathParts.filter((pathPart) => pathPart.length > 0));
+    }
+    else{
+        navigationCount++;
+        breadcrumbs.value = [];
+        items.value = [];
+        selectedFile.value = null;
+        isLoading.value = false;
+    }
+}, {immediate: true});
+
+async function getItemsToShow(folderId: string): Promise<CloudDriveItemPickerItem[]> {
+    const children = await props.fetchFolderChildren(folderId).catch(() => [] as CloudDriveItemPickerItem[]);
+    // In FILES mode, folders are always kept so we can navigate into them.
+    // We show the folders first, then the files, both sorted by name.
+    return children
+        .filter((item) => item.isFolder || (props.mode == CloudDriveItemPickerMode.FILES && (props.fileExtFilter.length == 0 || props.fileExtFilter.some((ext) => item.name.endsWith(ext)))))
+        .sort((item1, item2) => (item1.isFolder == item2.isFolder) ? item1.name.localeCompare(item2.name) : ((item1.isFolder) ? -1 : 1));
+}
+
+// Opens the last folder of the given path (the new breadcrumbs), then, if folder names are given, follows them down as long as they are found.
+async function openPath(path: CloudDriveItemPickerItem[], folderNamesToFollow?: string[]) {
+    const navigation = ++navigationCount;
+    breadcrumbs.value = path;
+    items.value = [];
+    selectedFile.value = null;
+    isLoading.value = true;
+    let folderItems = await getItemsToShow(path[path.length - 1].id);
+    for(const folderName of folderNamesToFollow ?? []){
+        if(navigation != navigationCount){
+            return;
+        }
+        const folder = folderItems.find((item) => item.isFolder && item.name == folderName);
+        if(!folder){
+            break;
+        }
+        breadcrumbs.value = [...breadcrumbs.value, folder];
+        folderItems = await getItemsToShow(folder.id);
+    }
+    if(navigation == navigationCount){
+        items.value = folderItems;
+        isLoading.value = false;
+    }
+}
+
+function openBreadcrumb(index: number) {
+    openPath(breadcrumbs.value.slice(0, index + 1));
+}
+
+function onItemClick(item: CloudDriveItemPickerItem) {
+    if(item.isFolder){
+        openPath([...breadcrumbs.value, item]);
+    }
+    else{
+        selectedFile.value = item;
+    }
+}
+
+function refreshContent() {
+    openPath(breadcrumbs.value);
+}
 </script>
-
 <style lang="scss">
-// The VTree component holds an iframe that we don't need, 
-// but because it's in the way, we just hide it.
-.strype-vtree > iframe {
-    display: none; 
-}
-
-/* Overwrite the existing classes of VTree to meet our own styling */
-.vtree-tree-node__indent-wrapper {
-    cursor: pointer;
-}
-
-.vtree-tree-node__title_selected {
-    font-weight: 600;
-}
-
-.vtree-tree__scroll-area {
-    max-width: 80vw;
-    max-height: 75vh;    
-    overflow: auto;
-    clear: both;
-}
-
-.strype-cloud-drive-item-picker-refresh-btn {
+.cloud-drive-item-picker-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     margin-bottom: 5px;
-    cursor: pointer;
-    border: 1px grey solid;
-    border-radius: 5px;
-    padding: 2px 5px;
-    color: #007bff;
-    float: right;
 }
 
-.strype-cloud-drive-item-picker-refresh-btn > i {
+.cloud-drive-item-picker-breadcrumb {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+}
+
+.cloud-drive-item-picker-refresh-btn {
+    flex-shrink: 0;
+}
+
+.cloud-drive-item-picker-refresh-btn > i {
     margin-right: 5px;
+}
+
+.cloud-drive-item-picker-items {
+    max-height: 40vh;
+    overflow: auto;
+}
+
+.cloud-drive-item-picker-items > .list-group-item {
+    padding: 4px 8px;
+    overflow-wrap: anywhere;
 }
 </style>

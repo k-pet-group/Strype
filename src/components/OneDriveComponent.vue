@@ -10,11 +10,10 @@
  */
 <template>
     <!-- The modal dialog for picking folders from WS accounts (see pickFolderForSave() -->
-    <ModalDlg :dlgId="folderPickerForWSAccountDlgId" showCloseBtn :okCustomTitle="$t('buttonLabel.select')" :okDisabled="disableFolderSelectionForWSAccountSaveModalDlg">
-        <CloudDriveItemPicker :mode="folderPickerForWSAccountSettings.pickerMode" v-on:[CustomEventTypes.exposedCloudDrivePickerPickedItem]="onPickedWSAccountFolderForSave" 
-            :pathResolutionMode="folderPickerForWSAccountSettings.pathResolutionMode" :initialFolderToSelectPathParts="folderPickerForWSAccountSettings.initialFolderPathPartsToSelect"
-            @[CustomEventTypes.requestedCloudDriveItemChildren]="fetchFolderChildrenForCloudDrivePicker" :rawRootData="folderPickerForWSAccountRawData" :emptyText="folderPickerForWSAccountSettings.emptyPickerText" 
-            @[CustomEventTypes.requestedCloudDrivePickerRefresh]="pickFolderForSave(true)" />
+    <ModalDlg :dlgId="folderPickerForWSAccountDlgId" showCloseBtn :okCustomTitle="$t('buttonLabel.select')" :okDisabled="folderPickerForWSAccountPickedFolder == null">
+        <CloudDriveItemPicker :mode="CloudDriveItemPickerMode.FOLDERS" :rootFolder="folderPickerForWSAccountRootFolder" showRefreshButton
+            :initialFolderPathParts="(appStore.strypeProjectLocationPath??'').split('/')" :fetchFolderChildren="fetchFolderChildrenForCloudDrivePicker"
+            @pickedItemChanged="folderPickerForWSAccountPickedFolder = $event" />
     </ModalDlg>
 </template>
 
@@ -27,7 +26,7 @@ import { StrypeSyncTarget } from "@/types/types";
 import { mapStores } from "pinia";
 import { defineComponent, PropType } from "vue";
 import { AccountInfo, Configuration, PublicClientApplication  } from "@azure/msal-browser";
-import { CloudDriveItemPickerFolderPathResolutionMode, CloudDriveItemPickerItem, CloudDriveItemPickerMode, CloudFileSharingStatus, OneDrivePickConfigurationOptions, OneDriveTokenPurpose } from "@/types/cloud-drive-types";
+import { CloudDriveItemPickerItem, CloudDriveItemPickerMode, CloudFileSharingStatus, OneDrivePickConfigurationOptions, OneDriveTokenPurpose } from "@/types/cloud-drive-types";
 import { uniqueId } from "lodash";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { CloudDriveAPIState } from "@/types/cloud-drive-types";
@@ -88,8 +87,10 @@ export default defineComponent({
             currentFileName: "",
             publicShareByStrypeWebLink: "", // We keep the link URL when Strype sets a file for public share so we don't need to query that again
             // Others
-            CustomEventTypes, // Just to have access to custom event types in template
-            folderPickerForWSAccountRawData: [] as CloudDriveItemPickerItem[],
+            CloudDriveItemPickerMode, // Just to have access to the picker modes in template
+            // The picker starts again from the Drive's root every time we set a new object here (the root's ID is empty, see listDriveItemsAtFolder())
+            folderPickerForWSAccountRootFolder: null as CloudDriveItemPickerItem | null,
+            folderPickerForWSAccountPickedFolder: null as CloudDriveItemPickerItem | null,
         };
     },
 
@@ -180,19 +181,6 @@ export default defineComponent({
 
         folderPickerForWSAccountDlgId(): string {
             return "folderPickerForWSAccountDlg";
-        },
-
-        folderPickerForWSAccountSettings(): {pickerMode: CloudDriveItemPickerMode, pathResolutionMode: CloudDriveItemPickerFolderPathResolutionMode, initialFolderPathPartsToSelect: string[], emptyPickerText: string} {
-            return {
-                pickerMode: CloudDriveItemPickerMode.FOLDERS,
-                pathResolutionMode: CloudDriveItemPickerFolderPathResolutionMode.BY_NAME,
-                initialFolderPathPartsToSelect: (this.appStore.strypeProjectLocationPath??"").split("/"),
-                emptyPickerText: this.$t("appMessage.emptyCloudDrivePicker", {drivename: this.driveName }),
-            };
-        },
-
-        disableFolderSelectionForWSAccountSaveModalDlg(): boolean {
-            return this.folderPickerForWSAccountRawData.filter((item) =>  item.isFolder).length == 0;
         },
     },
 
@@ -384,7 +372,11 @@ export default defineComponent({
                 throw Error(resp.status.toString());
             }
             else{
-                const jsonProps = await resp.json() as BaseItem;  
+                const jsonProps = await resp.json() as DriveItem;
+                // The Drive's root is named "root" by Graph, we use the Drive's name instead, and its path is empty.
+                if(jsonProps.root){
+                    return {name: this.driveName, path: ""};
+                }
                 const fullPath = (jsonProps.parentReference?.path) ?? this.pathRootIndicator;
                 const parentPath = fullPath.replace(new RegExp(`^.*${this.pathRootIndicator}($|/)`), "");
                 return {name: jsonProps.name??"", path: ((parentPath) ? parentPath + "/" : "") + jsonProps.name};
@@ -396,22 +388,14 @@ export default defineComponent({
             onGettingReadonlyStatus(false);
         },
 
-        async pickFolderForSave(doNotOpenPickerModalDlg?: boolean){
+        async pickFolderForSave(){
             // To date with the File Picker API v8, Microsoft doesn't expose the folder selection in the picker
             // (as well as not filtering on folders only) *for WS account*. Until this is sorted we will use our
-            // our own basic folder tree widget.
-            if(!this.isPersonalAccount){                
-                // We get the folders in one go first and to set up the picker (raw folder data and initial location)
-                const rootLevelDriveItems = await this.listDriveItemsAtFolder().catch((_) => {
-                    // If we could not get the drive content, we just don't do anything.                    
-                    return;
-                });
-                
-                const itemsForPicker = this.transformOneDriveItemsToCloudDriveItemPickerItems(rootLevelDriveItems as DriveItem[]);
-                this.folderPickerForWSAccountRawData = itemsForPicker;
-                if(!doNotOpenPickerModalDlg){              
-                    eventBus.emit(CustomEventTypes.showStrypeModal, this.folderPickerForWSAccountDlgId);
-                }
+            // our own basic folder explorer widget.
+            if(!this.isPersonalAccount){
+                // The picker starts from the Drive's root and opens the current project location (if any): the folder opened in the picker is where we save.
+                this.folderPickerForWSAccountRootFolder = {id: "", name: this.$t("appMessage.oneDriveRootBreadcrumb"), isFolder: true};
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.folderPickerForWSAccountDlgId);
             }
             else{
                 // We call the picker again, but only allow folders this time.
@@ -481,38 +465,47 @@ export default defineComponent({
         async onPickedWSAccountFolderForSave(pickedItem: CloudDriveItemPickerItem | null){
             // We received the folder picked by the user in the generic Cloud Drive picker to save at a location.
             // We need to just a few more things before contuining the normal saving workflow (i.e. with personal accounts):
-            // We need a BaseItem object to pass it to onPickedFolderForSave(), the shared method for both account types, 
+            // We need a DriveItem object to pass it to onPickedFolderForSave(), the shared method for both account types, 
             // so we query Graph to get more details about the file.
             if(pickedItem){
                 const token = await this.getToken(OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS);
-                // The drive ID is part of the file ID so we can easily extract it...
+                // The picker's root (the Drive's root) has an empty ID: we then query the root to get its real ID.
+                // Otherwise, the drive ID is part of the file ID so we can easily extract it...
                 const driveId = pickedItem.id.substring(0, pickedItem.id.indexOf("!"));
-                const requestURL = (driveId) ? `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${pickedItem.id}` : ("https://graph.microsoft.com/v1.0/drives/me/items/"+pickedItem.id);
-                let resp = await fetch(requestURL, 
+                const requestURL = (pickedItem.id.length == 0)
+                    ? "https://graph.microsoft.com/v1.0/me/drive/root"
+                    : ((driveId) ? `https://graph.microsoft.com/v1.0/drives/${driveId}/items/${pickedItem.id}` : ("https://graph.microsoft.com/v1.0/drives/me/items/"+pickedItem.id));
+                let resp = await fetch(requestURL,
                     {method: "GET", headers: {"Authorization": `Bearer ${token}`, "Accept": "application/json"}});
                 if (resp.ok){
-                    const jsonProps = await resp.json() as BaseItem;  
-                    if(jsonProps.parentReference?.id && jsonProps.parentReference.name && jsonProps.parentReference.path){                                    
+                    const jsonProps = await resp.json() as DriveItem;
+                    if(jsonProps.root || (jsonProps.parentReference?.id && jsonProps.parentReference.name && jsonProps.parentReference.path)){
                         this.onPickedFolderForSave(jsonProps);
                     }
-                }     
-            }      
+                }
+            }
         },
 
-        onPickedFolderForSave(pickedFolderItem: BaseItem) {
+        onPickedFolderForSave(pickedFolderItem: DriveItem) {
             this.appStore.strypeProjectLocation = pickedFolderItem.id;
-            this.appStore.strypeProjectLocationAlias = pickedFolderItem.name as string;    
-            const fullPath = pickedFolderItem.parentReference?.path??this.pathRootIndicator; 
-            const parentPath = fullPath.replace(new RegExp(`^.*${this.pathRootIndicator}($|/)`), "");               
-            this.appStore.strypeProjectLocationPath = ((parentPath) ? parentPath + "/" : "") + (pickedFolderItem.name as string);
+            // The Drive's root is named "root" by Graph, we use the Drive's name instead, and its path is empty.
+            if(pickedFolderItem.root){
+                this.appStore.strypeProjectLocationAlias = this.driveName;
+                this.appStore.strypeProjectLocationPath = "";
+            }
+            else{
+                this.appStore.strypeProjectLocationAlias = pickedFolderItem.name as string;
+                const fullPath = pickedFolderItem.parentReference?.path??this.pathRootIndicator;
+                const parentPath = fullPath.replace(new RegExp(`^.*${this.pathRootIndicator}($|/)`), "");
+                this.appStore.strypeProjectLocationPath = ((parentPath) ? parentPath + "/" : "") + (pickedFolderItem.name as string);
+            }
             this.onFolderToSaveFilePicked(StrypeSyncTarget.od);
         },
 
         onFolderPickerForWSAccountHideModalDlg(event: BvTriggerableEvent){
             if(event.componentId == this.folderPickerForWSAccountDlgId){
                 if(event.trigger == "ok"){
-                    // Trigger the selection's validation
-                    document.dispatchEvent(new CustomEvent(CustomEventTypes.requestedCloudDrivePickerPickedItem));
+                    this.onPickedWSAccountFolderForSave(this.folderPickerForWSAccountPickedFolder);
                 }
                 else{
                     this.onFolderToSavePickCancelled();
@@ -544,10 +537,14 @@ export default defineComponent({
             }
             else{
                 const jsonProps = await resp.json() as BaseItem;  
-                if(jsonProps.parentReference?.id && jsonProps.parentReference.name && jsonProps.parentReference.path){                                    
-                    this.appStore.strypeProjectLocation = jsonProps.parentReference.id;
-                    this.appStore.strypeProjectLocationAlias = jsonProps.parentReference.name; 
-                    this.appStore.strypeProjectLocationPath = jsonProps.parentReference.path.replace(new RegExp(`^.*${this.pathRootIndicator}($|/)`), "");
+                if(jsonProps.parentReference?.id && jsonProps.parentReference.path){
+                    const parentPath = jsonProps.parentReference.path.replace(new RegExp(`^.*${this.pathRootIndicator}($|/)`), "");
+                    // (when the file is at the Drive's root, Graph may not give the parent's name: we use the Drive's name, as for saving at the root)
+                    if(jsonProps.parentReference.name || parentPath.length == 0){
+                        this.appStore.strypeProjectLocation = jsonProps.parentReference.id;
+                        this.appStore.strypeProjectLocationAlias = (parentPath.length == 0) ? this.driveName : jsonProps.parentReference.name as string;
+                        this.appStore.strypeProjectLocationPath = parentPath;
+                    }
                 }
                 // If we opened the file via the picker, we have the meta information,
                 // if we opened a shared file (internal share) then we retrieve the meta now
@@ -1102,14 +1099,14 @@ export default defineComponent({
             return driveItems.map((item) => ({id: item.id, name: item.name, isFolder:  this.isDriveItemAFolder(item), parentId: ((item.parentReference?.path??"/drive/root:")=="/drive/root:") ? "" : item.parentReference?.id} as CloudDriveItemPickerItem));
         },
 
-        async fetchFolderChildrenForCloudDrivePicker(folderId: string) { 
+        async fetchFolderChildrenForCloudDrivePicker(folderId: string): Promise<CloudDriveItemPickerItem[]> {
             const childrenItems = await this.listDriveItemsAtFolder(folderId);
-            document.dispatchEvent(new CustomEvent(CustomEventTypes.exposedCloudDriveItemChidren, {detail: this.transformOneDriveItemsToCloudDriveItemPickerItems(childrenItems)}));
+            return this.transformOneDriveItemsToCloudDriveItemPickerItems(childrenItems);
         },
 
         async listDriveItemsAtFolder(folderId?: string): Promise<DriveItem[]>{
             // This methods lists the content of the Drive at the given (folder) location.
-            // If the folderId isn't provided, then we look for items at the Drive's root.
+            // If the folderId isn't provided (or empty), then we look for items at the Drive's root.
             const token = await this.getToken(OneDriveTokenPurpose.GRAPH_SEARCH);
             // Graph gives a folder's content by pages: as long as there is more to get, we follow the link to the next page it gives.
             let requestURL: string | undefined = (folderId) ? `https://graph.microsoft.com/v1.0/me/drive/items/${folderId}/children` :  "https://graph.microsoft.com/v1.0/me/drive/root/children";

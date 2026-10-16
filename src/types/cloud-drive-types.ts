@@ -76,23 +76,11 @@ export enum CloudDriveItemPickerMode {
     FOLDERS,
 }
 
-export enum CloudDriveItemPickerFolderPathResolutionMode {
-    // The folder path resolution mode indicates whether the picker should resolves paths using item IDs (default) or item names.
-    // This is notably required for looking up a location in the picker.
-    BY_ID,
-    BY_NAME,
-}
-
 export interface CloudDriveItemPickerItem {
     id: string,
     name: string,
     isFolder: boolean, // We need this: an item without children can totally be a folder if that folder is empty
     parentId?: string // expected to be undefined or empty for root elements
-    hasVisitedFolder?: boolean // this is for the internal behaviour of the Picker, to know if we need to fetch the folder content (see CloudDriveItemPicker.vue)
-}
-
-export interface VTreeItemPickerItem extends CloudDriveItemPickerItem{
-    children: VTreeItemPickerItem[],
 }
 /* end picker related stuff */
 

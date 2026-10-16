@@ -27,27 +27,17 @@
                                 <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
                                 <span>{{ $t("appMessage.targetFS") }}</span>
                             </div>
-                            <div id="loadFromGDStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
+                            <div :id="getTargetButtonId(primaryCloudTarget.target)" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(primaryCloudTarget.target)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
                                 @mouseenter="changeTargetFocusOnMouseOver">
-                                <img src="@/assets/images/logoGDrive.png" alt="Google Drive"/> 
-                                <span>Google Drive</span>
+                                <img :src="primaryCloudTarget.logo" :alt="primaryCloudTarget.label"/>
+                                <span>{{ primaryCloudTarget.label }}</span>
                             </div>
                         </div>
                         <div class="secondary-targets-container">
-                            <div id="loadFromODStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg secondary-target'" tabindex="0"  @click="changeTempSyncTarget(syncODValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
+                            <div v-for="cloudTarget in secondaryCloudTargets" :key="cloudTarget.target" :id="getTargetButtonId(cloudTarget.target)" :class="scssVars.projectTargetButtonClassName + ' load-dlg secondary-target'" tabindex="0"  @click="changeTempSyncTarget(cloudTarget.target)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
                                 @mouseenter="changeTargetFocusOnMouseOver">
-                                <img src="@/assets/images/logoOneDrive.svg" alt="OneDrive"/> 
-                                <span>OneDrive</span>
-                            </div>
-                            <div id="loadFromGHStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg secondary-target'" tabindex="0"  @click="changeTempSyncTarget(syncGHValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
-                                @mouseenter="changeTargetFocusOnMouseOver">
-                                <img src="@/assets/images/logoGitHub.svg" alt="GitHub"/>
-                                <span>GitHub</span>
-                            </div>
-                            <div id="loadFromGLStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg secondary-target'" tabindex="0"  @click="changeTempSyncTarget(syncGLValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
-                                @mouseenter="changeTargetFocusOnMouseOver">
-                                <img src="@/assets/images/logoGitLab.svg" alt="GitLab"/>
-                                <span>GitLab</span>
+                                <img :src="cloudTarget.logo" :alt="cloudTarget.label"/>
+                                <span>{{ cloudTarget.label }}</span>
                             </div>
                         </div>
                         <div class="embedded-proj-links-container">
@@ -88,27 +78,17 @@
                                         <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
                                         <span>{{ $t("appMessage.targetFS") }}</span>
                                     </div>
-                                    <div id="saveToGDStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
-                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncGDValue || tempSyncTarget == noSyncTargetValue}">
-                                        <img src="@/assets/images/logoGDrive.png" alt="Google Drive"/> 
-                                        <span>Google Drive</span>
+                                    <div :id="getTargetButtonId(primaryCloudTarget.target, true)" tabindex="0" @click="changeTempSyncTarget(primaryCloudTarget.target, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
+                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == primaryCloudTarget.target || tempSyncTarget == noSyncTargetValue}">
+                                        <img :src="primaryCloudTarget.logo" :alt="primaryCloudTarget.label"/>
+                                        <span>{{ primaryCloudTarget.label }}</span>
                                     </div>
                                 </div>
                                 <div class="secondary-targets-container">
-                                    <div id="saveToODStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncODValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
-                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg secondary-target']: true, saveTargetSelected: tempSyncTarget == syncODValue}">
-                                        <img src="@/assets/images/logoOneDrive.svg" alt="OneDrive"/> 
-                                        <span>OneDrive</span>
-                                    </div>
-                                    <div id="saveToGHStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncGHValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
-                                            :class="{[scssVars.projectTargetButtonClassName + ' save-dlg secondary-target']: true, saveTargetSelected: tempSyncTarget == syncGHValue}">
-                                            <img src="@/assets/images/logoGitHub.svg" alt="GitHub"/>
-                                            <span>GitHub</span>
-                                    </div>
-                                    <div id="saveToGLStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncGLValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
-                                            :class="{[scssVars.projectTargetButtonClassName + ' save-dlg secondary-target']: true, saveTargetSelected: tempSyncTarget == syncGLValue}">
-                                            <img src="@/assets/images/logoGitLab.svg" alt="GitLab"/>
-                                            <span>GitLab</span>
+                                    <div v-for="cloudTarget in secondaryCloudTargets" :key="cloudTarget.target" :id="getTargetButtonId(cloudTarget.target, true)" tabindex="0" @click="changeTempSyncTarget(cloudTarget.target, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
+                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg secondary-target']: true, saveTargetSelected: tempSyncTarget == cloudTarget.target}">
+                                        <img :src="cloudTarget.logo" :alt="cloudTarget.label"/>
+                                        <span>{{ cloudTarget.label }}</span>
                                     </div>
                                 </div>
                             </div>
@@ -308,6 +288,10 @@ import disabledUndoImgPath from "@/assets/images/disabledUndo.svg";
 import disabledRedoImgPath from "@/assets/images/disabledRedo.svg";
 import undoImgPath from "@/assets/images/undo.svg";
 import redoImgPath from "@/assets/images/redo.svg";
+import gdLogoImgPath from "@/assets/images/logoGDrive.png";
+import odLogoImgPath from "@/assets/images/logoOneDrive.svg";
+import ghLogoImgPath from "@/assets/images/logoGitHub.svg";
+import glLogoImgPath from "@/assets/images/logoGitLab.svg";
 import { useI18n } from "vue-i18n";
 import { BButton, BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
@@ -324,6 +308,19 @@ const defaultSharingProjectMode = ShareProjectMode.public;
 // The browser doesn't change during a session, so we detect it once here rather than calling
 // useBrowserDetect() (which allocates a new reactive object) on every keydown event.
 const { isSafari } = useBrowserDetect();
+// The cloud targets' buttons of the load/save project dialogs: the first one (Google Drive) is the default primary cloud target,
+// the others are the secondary targets, in this order (see primaryCloudTarget and secondaryCloudTargets).
+interface ProjectCloudTargetButtonInfos {
+    target: StrypeSyncTarget,
+    logo: string,
+    label: string,
+}
+const projectCloudTargetButtonsInfos: ProjectCloudTargetButtonInfos[] = [
+    {target: StrypeSyncTarget.gd, logo: gdLogoImgPath, label: "Google Drive"},
+    {target: StrypeSyncTarget.od, logo: odLogoImgPath, label: "OneDrive"},
+    {target: StrypeSyncTarget.gh, logo: ghLogoImgPath, label: "GitHub"},
+    {target: StrypeSyncTarget.gl, logo: glLogoImgPath, label: "GitLab"},
+];
 export default defineComponent({
     name: "Menu",
     
@@ -566,20 +563,16 @@ export default defineComponent({
             return StrypeSyncTarget.fs;
         },
 
-        syncGDValue(): StrypeSyncTarget {
-            return StrypeSyncTarget.gd;
+        primaryCloudTarget(): ProjectCloudTargetButtonInfos {
+            // The cloud target shown as a primary target, next to the local file system (Google Drive by default, see settingsStore.promotedCloudTarget)
+            return projectCloudTargetButtonsInfos.find((cloudTarget) => cloudTarget.target == this.settingsStore.promotedCloudTarget) ?? projectCloudTargetButtonsInfos[0];
         },
 
-        syncODValue(): StrypeSyncTarget {
-            return StrypeSyncTarget.od;
-        },
-
-        syncGHValue(): StrypeSyncTarget {
-            return StrypeSyncTarget.gh;
-        },
-
-        syncGLValue(): StrypeSyncTarget {
-            return StrypeSyncTarget.gl;
+        secondaryCloudTargets(): ProjectCloudTargetButtonInfos[] {
+            // The other cloud targets: when a target is promoted as primary target, Google Drive takes its place in the secondary targets
+            const defaultPrimaryCloudTarget = projectCloudTargetButtonsInfos[0];
+            return projectCloudTargetButtonsInfos.slice(1)
+                .map((cloudTarget) => (cloudTarget.target == this.primaryCloudTarget.target) ? defaultPrimaryCloudTarget : cloudTarget);
         },
 
         isGitSaveTargetSelected(): boolean {
@@ -969,9 +962,9 @@ export default defineComponent({
         },
 
         getTargetButtonId(target: StrypeSyncTarget, isSaveAction?: boolean): string {
-            // The ID of a target's button in the load or save project dialog (Google Drive's when there is no target yet)
+            // The ID of a target's button in the load or save project dialog (the primary cloud target's when there is no target yet)
             const prefix = (isSaveAction) ? "saveTo" : "loadFrom";
-            switch(target){
+            switch((target == StrypeSyncTarget.none) ? this.primaryCloudTarget.target : target){
             case StrypeSyncTarget.od:
                 return prefix + "ODStrypeButton";
             case StrypeSyncTarget.fs:
@@ -993,7 +986,7 @@ export default defineComponent({
             }
             // The new UI (changing combobox to buttons) means we can't directly check the HTML component to get the selection (unless using CSS).
             // Instead, we use the temp flag we've added in this Menu component, or the value for Google Drive (default) is no changed has been made.
-            return (this.tempSyncTarget != StrypeSyncTarget.none) ? this.tempSyncTarget : StrypeSyncTarget.gd;
+            return (this.tempSyncTarget != StrypeSyncTarget.none) ? this.tempSyncTarget : this.primaryCloudTarget.target;
         },
 
         onOpenMenuLinkClick(target: "examples" | "book"): void {
@@ -1018,6 +1011,10 @@ export default defineComponent({
             this.appStore.syncTarget = target;
             this.localSyncTarget = target;
             this.tempSyncTarget = target;
+            // A cloud target that has been used (to load or save) becomes the primary cloud target in the load/save dialogs
+            if(isSyncTargetCloudDrive(target) && target != this.settingsStore.promotedCloudTarget){
+                this.settingsStore.setPromotedCloudTarget(target);
+            }
             // In case there is a Cloud Drive file ID or other Drive related info are handling when we are saving as a file on the FS, we make sure we remove that
             if(target == StrypeSyncTarget.fs || target == StrypeSyncTarget.none){
                 this.appStore.currentCloudSaveFileId = undefined;

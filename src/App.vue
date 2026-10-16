@@ -1065,6 +1065,10 @@ export default defineComponent({
                 if(savedSettingsState.frameNumbersEnabled) {
                     this.settingsStore.setFrameNumbersEnabled(savedSettingsState.frameNumbersEnabled);
                 }
+                // (only a cloud target can be promoted: if the saved value isn't one, we keep the default)
+                if(savedSettingsState.promotedCloudTarget !== undefined && isSyncTargetCloudDrive(savedSettingsState.promotedCloudTarget)) {
+                    this.settingsStore.promotedCloudTarget = savedSettingsState.promotedCloudTarget;
+                }
                 if(!savedSettingsState.locale) {
                     // There is no locale saved. Maybe the user wants to use the default English, but maybe
                     // they would like to use another language and their working environment won't save it,

@@ -3032,6 +3032,9 @@ export const settingsStore = defineStore("settings", {
             locale: undefined as undefined | string,
             // Whether frame numbers should be displayed next to frame headers.
             frameNumbersEnabled: false,
+            // The cloud target shown next to the local file system as a primary target in the load/save dialogs:
+            // Google Drive by default, then the last cloud target used (swapping with Google Drive's place in the secondary targets).
+            promotedCloudTarget: StrypeSyncTarget.gd,
             // Handler for saving the settings in LocalStorage (from Vue 3, we cannot directly access the App instance via vm.$children)
             // so we use a callback function App MUST supply instead
             saveSettingInLocalStorageHandler: null as null | ((r: SaveRequestReason) => void),
@@ -3041,6 +3044,15 @@ export const settingsStore = defineStore("settings", {
     actions:{
         setFrameNumbersEnabled(enabled: boolean) {
             this.frameNumbersEnabled = enabled;
+
+            // Save the settings
+            if(this.saveSettingInLocalStorageHandler){
+                this.saveSettingInLocalStorageHandler(SaveRequestReason.saveSettings);
+            }
+        },
+
+        setPromotedCloudTarget(target: StrypeSyncTarget) {
+            this.promotedCloudTarget = target;
 
             // Save the settings
             if(this.saveSettingInLocalStorageHandler){

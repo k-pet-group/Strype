@@ -251,10 +251,25 @@ export async function listGitHubRepositoriesDetails(auth: GitHubAuth): Promise<G
             }
         }
     };
-    const installations = await getAllPages<{id: number}>("/user/installations", "installations");
+    const [userLogin, installations] = await Promise.all([getGitHubUserLogin(auth), getAllPages<{id: number}>("/user/installations", "installations")]);
     const repositories = await Promise.all(installations.map((installation) =>
-        getAllPages<{full_name: string, default_branch: string}>(`/user/installations/${installation.id}/repositories`, "repositories")));
-    return repositories.flat().map((repository) => ({fullName: repository.full_name, defaultBranch: repository.default_branch}));
+        getAllPages<{full_name: string, default_branch: string, owner: {login: string}, permissions?: {push?: boolean}}>(`/user/installations/${installation.id}/repositories`, "repositories")));
+    return repositories.flat().map((repository) => ({
+        fullName: repository.full_name,
+        defaultBranch: repository.default_branch,
+        canPush: repository.permissions?.push === true,
+        // (GitHub logins are case insensitive)
+        isOwnedByUser: repository.owner.login.toLowerCase() === userLogin.toLowerCase(),
+    }));
+}
+
+// Returns the login of the user the token is for.
+async function getGitHubUserLogin(auth: GitHubAuth): Promise<string> {
+    const response = await gitHubFetch(auth, "/user");
+    if (!response.ok) {
+        throw new GitHubHttpError(response.status);
+    }
+    return (await response.json()).login;
 }
 
 // Returns the names of all the branches of a repository ("owner/repo").
@@ -391,7 +406,7 @@ export async function createGitHubRepository(auth: GitHubAuth, name: string): Pr
         throw new GitHubHttpError(response.status);
     }
     const repository: {full_name: string, default_branch?: string} = await response.json();
-    return {fullName: repository.full_name, defaultBranch: repository.default_branch ?? ""};
+    return {fullName: repository.full_name, defaultBranch: repository.default_branch ?? "", canPush: true, isOwnedByUser: true};
 }
 
 // Revokes the token. This does not uninstall the app: users do that in their GitHub settings > Applications.

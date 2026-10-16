@@ -45,7 +45,7 @@ import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { CustomEventTypes } from "@/helpers/editor";
 import { getDefaultGitCommitMessage } from "@/helpers/gitProvider";
 import { CloudDriveItemPickerItem, CloudDriveItemPickerMode } from "@/types/cloud-drive-types";
-import { GitContentItem, GitFileIdStruct, GitFilePickerQueries, GitRepository, GitSaveChoice, isStrypeRepository, strypeRepositoryName } from "@/types/git-provider-types";
+import { GitContentItem, GitFileIdStruct, GitFilePickerQueries, GitRepository, GitSaveChoice, findStrypeRepository, isStrypeRepository, strypeRepositoryName } from "@/types/git-provider-types";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
@@ -124,15 +124,19 @@ function toPickerItems(gitItems: GitContentItem[], parentPath: string): CloudDri
 }
 
 async function loadRepositories() {
-    const loadedRepositories = await runQuery(() => props.queries.listRepositories());
+    let loadedRepositories = await runQuery(() => props.queries.listRepositories());
     if(loadedRepositories == null){
         return;
+    }
+    // We can load from read-only repositories, but only save in those the user can push to
+    if(isSaving.value){
+        loadedRepositories = loadedRepositories.filter((repository) => repository.canPush);
     }
     repositories.value = loadedRepositories;
     // When saving, we show the "Strype" repository (that may need to be created).
     // Otherwise, we show the repository selected last time if it's available, or else the first one.
     const repositoryToSelect = (isSaving.value)
-        ? (loadedRepositories.find(isStrypeRepository)?.fullName ?? newStrypeRepositoryValue)
+        ? (findStrypeRepository(loadedRepositories)?.fullName ?? newStrypeRepositoryValue)
         : ((loadedRepositories.some((repository) => repository.fullName == selectedRepository.value))
             ? selectedRepository.value
             : (loadedRepositories[0]?.fullName ?? ""));

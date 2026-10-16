@@ -10,7 +10,7 @@ import { CustomEventTypes, getAppSimpleMsgDlgId } from "@/helpers/editor";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { useStore } from "@/store/store";
 import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus } from "@/types/cloud-drive-types";
-import { getGitFileLocation, getGitLocationLabel, GitAuthExpiredError, GitFileIdStruct, GitFilePickerQueries, GitHttpError, GitLocationStruct, GitProviderAPI, GitProviderComponent, GitRepository, GitSaveChoice, isStrypeRepository, parseGitFileId, parseGitLocationId, strypeRepositoryName, toGitFileId, toGitLocationId } from "@/types/git-provider-types";
+import { getGitFileLocation, getGitLocationLabel, compareGitRepositories, findStrypeRepository, GitAuthExpiredError, GitFileIdStruct, GitFilePickerQueries, GitHttpError, GitLocationStruct, GitProviderAPI, GitProviderComponent, GitRepository, GitSaveChoice, parseGitFileId, parseGitLocationId, strypeRepositoryName, toGitFileId, toGitLocationId } from "@/types/git-provider-types";
 import { StrypeSyncTarget } from "@/types/types";
 import { Ref, ref, shallowRef } from "vue";
 
@@ -69,9 +69,14 @@ export function useGitProvider<Auth>(options: {
         return oauthToken.value;
     }
 
+    // The repositories the user can access, in the order they are shown (see compareGitRepositories())
+    async function listRepositories(auth: Auth): Promise<GitRepository[]> {
+        return (await api.listRepositories(auth)).sort(compareGitRepositories);
+    }
+
     // For the file picker dialog (GitFilePickerDlg)
     const filePickerQueries: GitFilePickerQueries = {
-        listRepositories: () => api.listRepositories(getAuth()),
+        listRepositories: () => listRepositories(getAuth()),
         listBranches: (repoId) => api.listBranches(getAuth(), repoId),
         listFolderContent: (repoId, branch, folderPath) => api.listFolderContent(getAuth(), repoId, branch, folderPath),
     };
@@ -170,7 +175,7 @@ export function useGitProvider<Auth>(options: {
         }
         let accessibleRepositories: GitRepository[];
         try{
-            accessibleRepositories = await api.listRepositories(oauthToken.value);
+            accessibleRepositories = await listRepositories(oauthToken.value);
         }
         catch(error){
             if(error instanceof GitAuthExpiredError && failedConnectionCallBack){
@@ -179,9 +184,9 @@ export function useGitProvider<Auth>(options: {
             return checkFolderDoneCallBack(null);
         }
         if(checkStrypeFolder){
-            // (if several owners/groups have a "Strype" repository, we take the first one)
+            // (if several owners/groups have a "Strype" repository, we take the user's own one, see findStrypeRepository())
             // (an empty GitLab project has no default branch yet: we can't use it as a default location)
-            const strypeRepository = accessibleRepositories.find((repository) => isStrypeRepository(repository) && repository.defaultBranch.length > 0);
+            const strypeRepository = findStrypeRepository(accessibleRepositories, (repository) => repository.defaultBranch.length > 0);
             return checkFolderDoneCallBack((strypeRepository) ? toGitLocationId({repoId: strypeRepository.fullName, branchId: strypeRepository.defaultBranch, folderPath: ""}) : null);
         }
         const stateLocation = (typeof appStore.strypeProjectLocation == "string") ? parseGitLocationId(appStore.strypeProjectLocation) : null;

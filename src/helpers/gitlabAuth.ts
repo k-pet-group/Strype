@@ -286,21 +286,38 @@ function projectApiPath(projectFullPath: string): string {
     return `/projects/${encodeURIComponent(projectFullPath)}`;
 }
 
-// Returns the full paths ("group/subgroup/project") of all the projects the user can push to (Developer role or above).
+// Returns the full paths ("group/subgroup/project") of all the projects whose code the user can read (Reporter role or above).
 export async function listGitLabProjects(auth: GitLabAuth): Promise<string[]> {
     return (await listGitLabProjectsDetails(auth)).map((project) => project.fullName);
 }
 
 // Same as listGitLabProjects(), with some details about each project.
 export async function listGitLabProjectsDetails(auth: GitLabAuth): Promise<GitRepository[]> {
-    const projects = await getAllGitLabPages<{path_with_namespace: string, default_branch: string | null}>(auth, "/projects?" + new URLSearchParams({
+    // (we can't use the "simple" representation: it doesn't tell the user's permissions)
+    // (a Guest can't read a private project's code: the Reporter role is the minimum we need)
+    const [username, projects] = await Promise.all([getGitLabUsername(auth), getAllGitLabPages<{path_with_namespace: string, default_branch: string | null, archived: boolean, namespace: {kind: string, full_path: string}, permissions?: GitLabPermissions}>(auth, "/projects?" + new URLSearchParams({
         membership: "true",
-        min_access_level: "30",
-        simple: "true",
+        min_access_level: "20",
         order_by: "path",
         sort: "asc",
+    }))]);
+    return projects.map((project) => ({
+        fullName: project.path_with_namespace,
+        defaultBranch: project.default_branch ?? "",
+        // (an archived project is read-only)
+        canPush: !project.archived && hasGitLabPushAccess(project.permissions),
+        // A user's own projects are in their personal namespace, named after their username (case insensitive)
+        isOwnedByUser: project.namespace.kind === "user" && project.namespace.full_path.toLowerCase() === username.toLowerCase(),
     }));
-    return projects.map((project) => ({fullName: project.path_with_namespace, defaultBranch: project.default_branch ?? ""}));
+}
+
+// Returns the username of the user the token is for.
+async function getGitLabUsername(auth: GitLabAuth): Promise<string> {
+    const response = await gitLabFetch(auth, "/user");
+    if (!response.ok) {
+        throw new GitLabHttpError(response.status);
+    }
+    return (await response.json()).username;
 }
 
 // Returns the names of all the branches of a project ("group/project").
@@ -361,7 +378,14 @@ export async function canPushToGitLabProject(auth: GitLabAuth, projectFullPath: 
     if (!response.ok) {
         throw new GitLabHttpError(response.status);
     }
-    const permissions: {project_access: {access_level: number} | null, group_access: {access_level: number} | null} | undefined = (await response.json()).permissions;
+    return hasGitLabPushAccess((await response.json()).permissions);
+}
+
+// The user's access to a project, as given with the project's details
+interface GitLabPermissions {project_access: {access_level: number} | null, group_access: {access_level: number} | null}
+
+// Whether the user has the Developer role or above, in the project itself or through its group.
+function hasGitLabPushAccess(permissions: GitLabPermissions | undefined): boolean {
     return Math.max(permissions?.project_access?.access_level ?? 0, permissions?.group_access?.access_level ?? 0) >= 30;
 }
 
@@ -407,7 +431,7 @@ export async function createGitLabProject(auth: GitLabAuth, name: string): Promi
     }
     // (an empty project may have no default branch yet)
     const project: {path_with_namespace: string, default_branch: string | null} = await response.json();
-    return {fullName: project.path_with_namespace, defaultBranch: project.default_branch ?? ""};
+    return {fullName: project.path_with_namespace, defaultBranch: project.default_branch ?? "", canPush: true, isOwnedByUser: true};
 }
 
 // Revokes the token, so Strype can no longer access GitLab with it.

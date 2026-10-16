@@ -18,7 +18,17 @@ export interface GitRepository {
    fullName: string,
    // Empty for an empty repository
    defaultBranch: string,
+   // Whether the user can push to the repository (otherwise, we can only load files from it)
+   canPush: boolean,
+   // Whether the repository belongs to the user themselves (rather than to an organisation/group, or to another user giving them access)
+   isOwnedByUser: boolean,
 }
+
+// The order in which repositories are shown: those the user can push to first, then alphabetically (case insensitive).
+export const compareGitRepositories = (repository1: GitRepository, repository2: GitRepository): number => {
+    return (Number(repository2.canPush) - Number(repository1.canPush))
+        || repository1.fullName.localeCompare(repository2.fullName, undefined, {sensitivity: "base"});
+};
 
 export interface GitContentItem {
    name: string,
@@ -43,7 +53,7 @@ export class GitHttpError extends Error {
 export interface GitProviderAPI<Auth> {
    // Whether the connection is (still) valid
    isConnectionValid(auth: Auth): Promise<boolean>,
-   // The repositories the user can access, and push to
+   // The repositories the user can access, even read-only (in any order)
    listRepositories(auth: Auth): Promise<GitRepository[]>,
    listBranches(auth: Auth, repoId: string): Promise<string[]>,
    // The files and folders directly inside a folder ("" for the root) of a repository's branch
@@ -66,6 +76,14 @@ export const strypeRepositoryName = "Strype";
 // Whether a repository is the user's "Strype" repository (names are case insensitive, we don't check the owner/group)
 export const isStrypeRepository = (repository: GitRepository): boolean => {
     return repository.fullName.split("/").pop()?.toLowerCase() == strypeRepositoryName.toLowerCase();
+};
+
+// The "Strype" repository to use by default among the given ones (that also pass the filter if given): as the user may have access
+// to other users' or organisations' "Strype" repositories, we take the user's own one if any, or else the first one.
+// (it must be one the user can push to, as it is where projects are saved by default)
+export const findStrypeRepository = (repositories: GitRepository[], filter?: (repository: GitRepository) => boolean): GitRepository | undefined => {
+    const strypeRepositories = repositories.filter((repository) => isStrypeRepository(repository) && repository.canPush && (filter?.(repository) ?? true));
+    return strypeRepositories.find((repository) => repository.isOwnedByUser) ?? strypeRepositories[0];
 };
 
 // What the file picker dialog needs to browse a provider (the connection is already given by the caller).

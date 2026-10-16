@@ -20,36 +20,40 @@
             <ModalDlg :dlgId="loadProjectModalDlgId" showCloseBtn hideDlgBtns>
                 <div class="project-target-popup-content-container">
                     <span class="load-save-label">{{ $t("appMessage.loadToTarget") }}</span>
-                    <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
-                        <div id="loadFromGDStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
-                            @mouseenter="changeTargetFocusOnMouseOver">
-                            <img src="@/assets/images/logoGDrive.png" alt="Google Drive"/> 
-                            <span>Google Drive</span>
+                    <div class="project-targets-container">
+                        <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
+                            <div :id="loadFromFSStrypeButtonId" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
+                                @mouseenter="changeTargetFocusOnMouseOver">
+                                <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
+                                <span>{{ $t("appMessage.targetFS") }}</span>
+                            </div>
+                            <div id="loadFromGDStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
+                                @mouseenter="changeTargetFocusOnMouseOver">
+                                <img src="@/assets/images/logoGDrive.png" alt="Google Drive"/> 
+                                <span>Google Drive</span>
+                            </div>
                         </div>
-                        <div id="loadFromODStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncODValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
-                            @mouseenter="changeTargetFocusOnMouseOver">
-                            <img src="@/assets/images/logoOneDrive.svg" alt="OneDrive"/> 
-                            <span>OneDrive</span>
+                        <div class="secondary-targets-container">
+                            <div id="loadFromODStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg secondary-target'" tabindex="0"  @click="changeTempSyncTarget(syncODValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
+                                @mouseenter="changeTargetFocusOnMouseOver">
+                                <img src="@/assets/images/logoOneDrive.svg" alt="OneDrive"/> 
+                                <span>OneDrive</span>
+                            </div>
+                            <div id="loadFromGHStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg secondary-target'" tabindex="0"  @click="changeTempSyncTarget(syncGHValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
+                                @mouseenter="changeTargetFocusOnMouseOver">
+                                <img src="@/assets/images/logoGitHub.svg" alt="GitHub"/>
+                                <span>GitHub</span>
+                            </div>
+                            <div id="loadFromGLStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg secondary-target'" tabindex="0"  @click="changeTempSyncTarget(syncGLValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
+                                @mouseenter="changeTargetFocusOnMouseOver">
+                                <img src="@/assets/images/logoGitLab.svg" alt="GitLab"/>
+                                <span>GitLab</span>
+                            </div>
                         </div>
-                        <div :id="loadFromFSStrypeButtonId" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
-                            @mouseenter="changeTargetFocusOnMouseOver">
-                            <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
-                            <span>{{ $t("appMessage.targetFS") }}</span>
+                        <div class="embedded-proj-links-container">
+                            <a class="open-menu-embedded-proj-link" tabindex="0" @click="onOpenMenuLinkClick('examples')" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)" @mouseenter="changeTargetFocusOnMouseOver">{{$t("appMenu.loadDemoProject")}}</a>
+                            <a class="open-menu-embedded-proj-link" tabindex="0" @click="onOpenMenuLinkClick('book')" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)" @mouseenter="changeTargetFocusOnMouseOver">{{$t("appMenu.book")}}</a>
                         </div>
-                    </div>
-                    <div class="secondary-targets-container">
-                        <div id="loadFromGHStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg secondary-target'" tabindex="0"  @click="changeTempSyncTarget(syncGHValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
-                            @mouseenter="changeTargetFocusOnMouseOver">
-                            <span>GitHub</span>                        
-                        </div>
-                        <div id="loadFromGLStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg secondary-target'" tabindex="0"  @click="changeTempSyncTarget(syncGLValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
-                            @mouseenter="changeTargetFocusOnMouseOver">
-                            <span>GitLab</span>                        
-                        </div>
-                    </div>                    
-                    <div>
-                        <a class="open-menu-embedded-proj-link" tabindex="0" @click="onOpenMenuLinkClick('examples')" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)" @mouseenter="changeTargetFocusOnMouseOver">{{$t("appMenu.loadDemoProject")}}</a>
-                        <a class="open-menu-embedded-proj-link" tabindex="0" @click="onOpenMenuLinkClick('book')" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)" @mouseenter="changeTargetFocusOnMouseOver">{{$t("appMenu.book")}}</a>
                     </div>
                     <div class="recent-states-pane" v-if="showRecentUnsaved && recentLoadableStates && recentLoadableStates.length > 0">
                         <div class="d-flex justify-content-between align-items-baseline">
@@ -77,31 +81,35 @@
                     <div class="modal-row">
                         <span class="load-save-label modal-cell">{{$t("appMessage.saveToTarget")}}</span>
                         <div class="modal-cell">
-                            <div :ref="saveProjectTargetButtonGpId" class="project-target-button-container">
-                                <div id="saveToGDStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
-                                    :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncGDValue || tempSyncTarget == noSyncTargetValue}">
-                                    <img src="@/assets/images/logoGDrive.png" alt="Google Drive"/> 
-                                    <span>Google Drive</span>
+                            <div class="project-targets-container">
+                                <div :ref="saveProjectTargetButtonGpId" class="project-target-button-container">
+                                    <div :id="saveToFSStrypeButtonId" tabindex="0" @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
+                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncFSValue}">
+                                        <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
+                                        <span>{{ $t("appMessage.targetFS") }}</span>
+                                    </div>
+                                    <div id="saveToGDStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
+                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncGDValue || tempSyncTarget == noSyncTargetValue}">
+                                        <img src="@/assets/images/logoGDrive.png" alt="Google Drive"/> 
+                                        <span>Google Drive</span>
+                                    </div>
                                 </div>
-                                <div id="saveToODStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncODValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
-                                    :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncODValue}">
-                                    <img src="@/assets/images/logoOneDrive.svg" alt="OneDrive"/> 
-                                    <span>OneDrive</span>
-                                </div>
-                                <div :id="saveToFSStrypeButtonId" tabindex="0" @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
-                                    :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncFSValue}">
-                                    <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
-                                    <span>{{ $t("appMessage.targetFS") }}</span>
-                                </div>
-                            </div>
-                            <div class="secondary-targets-container">
-                                <div id="saveToGHStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncGHValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
-                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg secondary-target']: true, saveTargetSelected: tempSyncTarget == syncGHValue}">                                    
-                                        <span>GitHub</span>
-                                </div>
-                                <div id="saveToGLStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncGLValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
-                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg secondary-target']: true, saveTargetSelected: tempSyncTarget == syncGLValue}">                                    
-                                        <span>GitLab</span>
+                                <div class="secondary-targets-container">
+                                    <div id="saveToODStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncODValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
+                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg secondary-target']: true, saveTargetSelected: tempSyncTarget == syncODValue}">
+                                        <img src="@/assets/images/logoOneDrive.svg" alt="OneDrive"/> 
+                                        <span>OneDrive</span>
+                                    </div>
+                                    <div id="saveToGHStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncGHValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
+                                            :class="{[scssVars.projectTargetButtonClassName + ' save-dlg secondary-target']: true, saveTargetSelected: tempSyncTarget == syncGHValue}">
+                                            <img src="@/assets/images/logoGitHub.svg" alt="GitHub"/>
+                                            <span>GitHub</span>
+                                    </div>
+                                    <div id="saveToGLStrypeButton" tabindex="0" @click="changeTempSyncTarget(syncGLValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
+                                            :class="{[scssVars.projectTargetButtonClassName + ' save-dlg secondary-target']: true, saveTargetSelected: tempSyncTarget == syncGLValue}">
+                                            <img src="@/assets/images/logoGitLab.svg" alt="GitLab"/>
+                                            <span>GitLab</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -1685,16 +1693,13 @@ export default defineComponent({
                 if(focusedButtonIndex > -1){
                     let newFocusedButton: HTMLElement | undefined;
                     if(lowCaseEventKey == "arrowup" || lowCaseEventKey == "arrowdown"){
-                        // Only relevant if we have several rows (looping like left/right). Going to the first row lands on its
-                        // middle target (visually above the centered rows below), going to any other row lands on its first target.
+                        // Only relevant if we have several rows (looping like left/right). Going to a row lands on its first target.
                         if(rows.length > 1){
                             const focusedRowIndex = rows.findIndex((row) => row.includes(targetButtons[focusedButtonIndex]));
                             const newRowIndex = (lowCaseEventKey == "arrowup")
                                 ? ((focusedRowIndex - 1 >= 0) ? focusedRowIndex - 1 : rows.length - 1)
                                 : ((focusedRowIndex + 1 < rows.length) ? focusedRowIndex + 1 : 0);
-                            newFocusedButton = (newRowIndex == 0)
-                                ? rows[0][Math.floor(rows[0].length / 2)]
-                                : rows[newRowIndex][0];
+                            newFocusedButton = rows[newRowIndex][0];
                         }
                     }
                     else{
@@ -1936,37 +1941,58 @@ export default defineComponent({
     margin-right: 5px;
 }
 
-// The secondary targets and the embedded project links rows are laid out on a 6-column grid (twice the
-// primary targets' grid) so that each of their items is centered between two primary targets.
+// The targets rows (and the embedded project links row) are wrapped in a block that shrinks to fit them, centered
+// in the dialog: the primary targets are pushed to its sides, and the secondary targets fill the 3 equal columns
+// of a grid spanning its full width, so both rows are aligned on their left and right sides. The embedded project
+// links are laid out on the same grid, each spanning 2 columns, so they are centered between 2 secondary targets.
+.project-targets-container {
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+
 .secondary-targets-container,
-div:has(> a.open-menu-embedded-proj-link) {
+.embedded-proj-links-container {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     column-gap: 10px;
-    margin-top: 5px;
+}
+
+.secondary-targets-container {
+    margin-top: 15px;
+    margin-bottom: 20px;
+}
+
+.embedded-proj-links-container {
     margin-bottom: 10px;
 }
 
-.secondary-targets-container > *,
-div:has(> a.open-menu-embedded-proj-link) > * {
+.embedded-proj-links-container > * {
+    grid-row: 1;
     justify-self: center;
 }
 
-.secondary-targets-container > :nth-child(1),
-div:has(> a.open-menu-embedded-proj-link) > :nth-child(1) {
+.embedded-proj-links-container > :nth-child(1) {
+    grid-column: 1 / span 2;
+}
+
+.embedded-proj-links-container > :nth-child(2) {
     grid-column: 2 / span 2;
 }
 
-.secondary-targets-container > :nth-child(2),
-div:has(> a.open-menu-embedded-proj-link) > :nth-child(2) {
-    grid-column: 4 / span 2;
+.secondary-target {
+    flex-direction: row !important;
+    justify-content: center !important;
+    gap: 8px;
+    font-size: 90%; // between the primary targets' font size and the embedded project links' (smaller)
+    padding: 4px 10px !important;
+    width: auto !important;
+    border-radius: 6px !important;
 }
 
-.secondary-target {
-    font-size: smaller;
-    padding: 4px 10px !important;
-    width: fit-content !important;
-    border-radius: 6px !important;
+.secondary-target img {
+    width: 24px;
+    height: 24px;
 }
 
 .clear-all-label {
@@ -2062,10 +2088,9 @@ div:has(> a.open-menu-embedded-proj-link) > :nth-child(2) {
 }
 
 .project-target-button-container {
-    display: grid;
-    gap: 10px;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    justify-items: center;
+    display: flex;
+    justify-content: space-between;
+    column-gap: 40px;
 }
 
 .#{$strype-classname-project-target-button} {

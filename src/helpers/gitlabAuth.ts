@@ -291,17 +291,18 @@ export async function listGitLabProjects(auth: GitLabAuth): Promise<string[]> {
     return (await listGitLabProjectsDetails(auth)).map((project) => project.fullName);
 }
 
-// Same as listGitLabProjects(), with some details about each project.
+// Same as listGitLabProjects(), with some details about each project. Projects scheduled for deletion are left out.
 export async function listGitLabProjectsDetails(auth: GitLabAuth): Promise<GitRepository[]> {
-    // (we can't use the "simple" representation: it doesn't tell the user's permissions)
+    // (we can't use the "simple" representation: it doesn't tell whether a project is scheduled for deletion, nor the user's permissions)
     // (a Guest can't read a private project's code: the Reporter role is the minimum we need)
-    const [username, projects] = await Promise.all([getGitLabUsername(auth), getAllGitLabPages<{path_with_namespace: string, default_branch: string | null, archived: boolean, namespace: {kind: string, full_path: string}, permissions?: GitLabPermissions}>(auth, "/projects?" + new URLSearchParams({
+    const [username, projects] = await Promise.all([getGitLabUsername(auth), getAllGitLabPages<{path_with_namespace: string, default_branch: string | null, archived: boolean, namespace: {kind: string, full_path: string}, permissions?: GitLabPermissions, marked_for_deletion_on?: string | null, marked_for_deletion_at?: string | null}>(auth, "/projects?" + new URLSearchParams({
         membership: "true",
         min_access_level: "20",
         order_by: "path",
         sort: "asc",
     }))]);
-    return projects.map((project) => ({
+    // (depending on the GitLab version, the deletion date is given by either field)
+    return projects.filter((project) => !project.marked_for_deletion_on && !project.marked_for_deletion_at).map((project) => ({
         fullName: project.path_with_namespace,
         defaultBranch: project.default_branch ?? "",
         // (an archived project is read-only)

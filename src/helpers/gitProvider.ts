@@ -218,31 +218,11 @@ export function useGitProvider<Auth>(options: {
         pickSaveLocation(appStore.projectName + "." + strypeFileExtension);
     }
 
-    async function lookForAvailableProjectFileName(fileLocation: string | undefined, fileName: string, onFileAlreadyExists: (existingFileId: string) => void, onSuccess: VoidFunction, onFailure: VoidFunction) {
-        // We check if the project's file name is already used in the folder we save the file into.
-        const gitLocation = parseGitLocationId(fileLocation ?? "");
-        if(oauthToken.value == null || gitLocation == null){
-            onFailure();
-            return;
-        }
-        const fullFileName = fileName + "." + strypeFileExtension;
-        let folderContent;
-        try{
-            folderContent = await api.listFolderContent(oauthToken.value, gitLocation.repoId, gitLocation.branchId, gitLocation.folderPath);
-        }
-        catch{
-            onFailure();
-            return;
-        }
-        // There is no lock mechanism with Git
-        isFileLocked.value = false;
-        const existingFile = folderContent.find((item) => !item.isFolder && item.name == fullFileName);
-        if(existingFile){
-            onFileAlreadyExists(toGitFileId({repoId: gitLocation.repoId, branchId: gitLocation.branchId, path: existingFile.path, fileName: fullFileName}));
-        }
-        else{
-            onSuccess();
-        }
+    function lookForAvailableProjectFileName(fileLocation: string | undefined, fileName: string, onFileAlreadyExists: (existingFileId: string) => void, onSuccess: VoidFunction, onFailure: VoidFunction) {
+        // Unlike with a Drive, we don't ask the user whether to overwrite a file of the same name in the folder we save into:
+        // committing a new version of a file is what is expected with Git (and the previous versions are kept in the history).
+        // The commit updates the file if it exists, or else creates it (see doSaveFile()).
+        onSuccess();
     }
 
     function openFilePicker(startingFromFolderId: string | undefined): Promise<void> {
@@ -289,7 +269,7 @@ export function useGitProvider<Auth>(options: {
 
     async function doSaveFile(saveFileId: string | undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number, errorDetails?: string) => void, commitMessage?: string) {
         // Saving is committing the file (on the provider, so it is pushed at the same time). The file is the one we already save into if any,
-        // or else a new file (or an existing file the user chose to overwrite) in the project's location.
+        // or else the file of that name in the project's location (created if it doesn't exist yet, updated otherwise).
         let gitFileId = parseGitFileId(saveFileId ?? "");
         if(gitFileId == null){
             const gitLocation = parseGitLocationId(projetLocation);

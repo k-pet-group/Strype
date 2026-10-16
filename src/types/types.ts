@@ -1234,7 +1234,9 @@ export enum StrypeSyncTarget {
     od, // Microsoft One Drive
     ws, // Webstore: only used for default autosaving in the browser
     gh, // GitHub
+    gl, // GitLab (both the base server and the self managed instances)
 }
+
 
 export enum ShareProjectMode {
     public, // A public sharing (generic cases)

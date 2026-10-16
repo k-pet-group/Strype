@@ -2,11 +2,12 @@
  * These types are used with Cloud Drive related things.
  */
 
+import { isSyncTargetGitProvider } from "./git-provider-types";
 import { StrypeSyncTarget } from "./types";
 
-// Small helper function to check if a target is a cloud based target
+// Small helper function to check if a target is a cloud based target (or git-based that accept as a cloud)
 export const isSyncTargetCloudDrive = (target: StrypeSyncTarget): boolean => {
-    return [StrypeSyncTarget.gd, StrypeSyncTarget.od, StrypeSyncTarget.gh].includes(target);
+    return [StrypeSyncTarget.gd, StrypeSyncTarget.od].includes(target) || isSyncTargetGitProvider(target);
 };
 
 export interface SaveExistingCloudProjectInfos {

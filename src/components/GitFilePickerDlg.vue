@@ -28,7 +28,7 @@
             <!-- The picker is an input like the others: it is aligned with them, and framed so it stands out. -->
             <span class="git-file-picker-tree-label">{{$t((isSaving) ? "appMessage.gitFolder" : "appMessage.gitFile")}}</span>
             <div class="git-file-picker-tree">
-                <CloudDriveItemPicker :mode="(isSaving) ? CloudDriveItemPickerMode.FOLDERS : CloudDriveItemPickerMode.FILES" :fileExtFilter="fileExtensions"
+                <CloudDriveItemPicker :mode="(isSaving) ? CloudDriveItemPickerMode.FOLDERS : CloudDriveItemPickerMode.FILES" :preferredFileExts="fileExtensions" showFilesInFoldersMode
                     :rootFolder="pickerRootFolder" :fetchFolderChildren="fetchFolderChildren" @pickedItemChanged="pickedItem = $event" />
             </div>
             <template v-if="isSaving">
@@ -64,6 +64,7 @@ const emit = defineEmits<{
     saveCancelled: [],
 }>();
 
+// (the Strype files are listed first in the picker, then the Python files)
 const fileExtensions = ["." + strypeFileExtension, "." + pythonFileExtension];
 // In a given repository and branch, the path of an item identifies it: the root's path is empty.
 const rootFolderId = "";
@@ -215,7 +216,7 @@ function onDlgHidden(event: BvTriggerableEvent) {
 
 function onPickedItem(pickedItem: CloudDriveItemPickerItem | null) {
     if(isSaving.value){
-        // (the picker only shows folders here; with nothing picked, we use the root)
+        // (only folders can be picked here; with nothing picked, we use the root)
         const folderPath = pickedItem?.id ?? rootFolderId;
         emit("saveChosen", {
             location: {repoId: selectedRepository.value, branchId: selectedBranch.value, folderPath},
@@ -226,7 +227,7 @@ function onPickedItem(pickedItem: CloudDriveItemPickerItem | null) {
     }
     // A folder isn't something we can load
     if(pickedItem && !pickedItem.isFolder){
-        // The picker already filters the files, but we have a mechanism for unsupported files anyway, so let's double check for safety
+        // The picker doesn't let unsupported files be picked, but we have a mechanism for unsupported files anyway, so let's double check for safety
         if(!fileExtensions.some((fileExtension) => pickedItem.name.endsWith(fileExtension))){
             emit("unsupportedFilePicked");
             return;

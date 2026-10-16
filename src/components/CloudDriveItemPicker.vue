@@ -19,9 +19,9 @@
             <div v-if="isLoading" class="list-group-item text-muted">{{$t("appMessage.cloudDriveItemPickerLoadingFolderContent")}}</div>
             <template v-else-if="breadcrumbs.length > 0">
                 <button v-for="item in items" :key="item.id" type="button" :class="{'list-group-item list-group-item-action': true, active: item.id == selectedFile?.id}"
-                    @click="onItemClick(item)">{{(item.isFolder) ? folderSymbol : fileSymbol}} {{item.name}}</button>
+                    :disabled="!item.isFolder && !isFilePickable(item)" @click="onItemClick(item)">{{(item.isFolder) ? folderSymbol : fileSymbol}} {{item.name}}</button>
                 <div v-if="items.length == 0" class="list-group-item text-muted">
-                    {{$t((mode == CloudDriveItemPickerMode.FOLDERS) ? "appMessage.cloudDriveItemPickerNoFolder" : "appMessage.cloudDriveItemPickerNoFolderOrFile")}}
+                    {{$t((mode == CloudDriveItemPickerMode.FOLDERS && !showFilesInFoldersMode) ? "appMessage.cloudDriveItemPickerNoFolder" : "appMessage.cloudDriveItemPickerNoFolderOrFile")}}
                 </div>
             </template>
         </div>
@@ -41,8 +41,11 @@ import { computed, ref, watch } from "vue";
 
 const props = withDefaults(defineProps<{
     mode?: CloudDriveItemPickerMode,
-    // The extensions of the files to show in FILES mode (all files are shown if empty)
-    fileExtFilter?: string[],
+    // The extensions of the files listed first, in that order (the other files are listed after them).
+    // In FILES mode, only these files can be picked (all files can be picked if empty): the other files are greyed out and not selectable.
+    preferredFileExts?: string[],
+    // Whether the files are also shown in FOLDERS mode (not by default): they are greyed out and not selectable.
+    showFilesInFoldersMode?: boolean,
     // The folder shown first in the picker, it is the first part of the breadcrumbs: when the parent sets another object, the picker starts again from there.
     rootFolder: CloudDriveItemPickerItem | null,
     // The names of the folders (from the root folder) of the folder to open when the picker starts: we stop at the last folder found.
@@ -53,7 +56,7 @@ const props = withDefaults(defineProps<{
     fetchFolderChildren: (folderId: string) => Promise<CloudDriveItemPickerItem[]>,
 }>(), {
     mode: CloudDriveItemPickerMode.FILES,
-    fileExtFilter: () => [],
+    preferredFileExts: () => [],
     initialFolderPathParts: () => [],
 });
 
@@ -94,11 +97,23 @@ watch(() => props.rootFolder, (rootFolder) => {
 
 async function getItemsToShow(folderId: string): Promise<CloudDriveItemPickerItem[]> {
     const children = await props.fetchFolderChildren(folderId).catch(() => [] as CloudDriveItemPickerItem[]);
-    // In FILES mode, folders are always kept so we can navigate into them.
-    // We show the folders first, then the files, both sorted by name.
+    // Files are only shown in FILES mode, or if requested in FOLDERS mode. We show the folders first, then the files grouped by extension
+    // (in the order of the preferred extensions, then all the other files), each group sorted by name.
+    const getRank = (item: CloudDriveItemPickerItem) => (item.isFolder) ? -1 : getPreferredFileExtIndex(item);
     return children
-        .filter((item) => item.isFolder || (props.mode == CloudDriveItemPickerMode.FILES && (props.fileExtFilter.length == 0 || props.fileExtFilter.some((ext) => item.name.endsWith(ext)))))
-        .sort((item1, item2) => (item1.isFolder == item2.isFolder) ? item1.name.localeCompare(item2.name) : ((item1.isFolder) ? -1 : 1));
+        .filter((item) => item.isFolder || props.mode == CloudDriveItemPickerMode.FILES || props.showFilesInFoldersMode)
+        .sort((item1, item2) => (getRank(item1) - getRank(item2)) || item1.name.localeCompare(item2.name));
+}
+
+// The index of the file's extension in the preferred extensions, or their count if it isn't one of them
+function getPreferredFileExtIndex(item: CloudDriveItemPickerItem): number {
+    const index = props.preferredFileExts.findIndex((ext) => item.name.endsWith(ext));
+    return (index == -1) ? props.preferredFileExts.length : index;
+}
+
+// (files can never be picked in FOLDERS mode)
+function isFilePickable(item: CloudDriveItemPickerItem): boolean {
+    return props.mode == CloudDriveItemPickerMode.FILES && (props.preferredFileExts.length == 0 || getPreferredFileExtIndex(item) < props.preferredFileExts.length);
 }
 
 // Opens the last folder of the given path (the new breadcrumbs), then, if folder names are given, follows them down as long as they are found.
@@ -134,7 +149,7 @@ function onItemClick(item: CloudDriveItemPickerItem) {
     if(item.isFolder){
         openPath([...breadcrumbs.value, item]);
     }
-    else{
+    else if(isFilePickable(item)){
         selectedFile.value = item;
     }
 }
@@ -174,5 +189,11 @@ function refreshContent() {
 .cloud-drive-item-picker-items > .list-group-item {
     padding: 4px 8px;
     overflow-wrap: anywhere;
+}
+
+// The entries that can't be picked are greyed out more than with Bootstrap's default disabled colour, so they stand out less
+// (we use the opacity rather than the colour so the file symbol, an emoji, is greyed out as well)
+.cloud-drive-item-picker-items > .list-group-item:disabled {
+    opacity: 0.5;
 }
 </style>

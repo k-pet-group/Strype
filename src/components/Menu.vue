@@ -899,10 +899,18 @@ export default defineComponent({
 
         changeTargetFocusOnMouseOver(event: MouseEvent) {
             // On the "load project dialog", entering a target button should "snap" the focus to it and select it.
-            // On the "save project dialog", entering a button just give an indication that the button can "clicked".
+            // On the "save project dialog", entering a button just give an indication that the button can be "clicked".
             // For both, we handle those visual aspects by setting the focus on the button -- CSS does the rest.
-            if(event.target){
+            // If an embedded project link gets focus (like the book projects link in the "load project dialog" case), then we need to remove the focus on the current primary target.
+            if(event.target && !(event.target as HTMLElement).classList.contains("open-menu-embedded-proj-link")){
                 (event.target as HTMLDivElement).focus();
+            }
+            else{
+                // We have an embedded project link: we find which primary target button has focus to blur it
+                const loadStrypePrimaryTargetButton = (document.querySelectorAll(`.${scssVars.projectTargetButtonClassName}.load-dlg:focus`));
+                if(loadStrypePrimaryTargetButton && loadStrypePrimaryTargetButton.length == 1){
+                    (loadStrypePrimaryTargetButton[0] as HTMLDivElement).blur();
+                }
             }
         },
 

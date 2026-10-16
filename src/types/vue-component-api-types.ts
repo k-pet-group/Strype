@@ -60,6 +60,7 @@ export type MenuComponentAPI = {
   setCurrentErrorNavIndex: (v: number) => void, 
   goToError: (event: MouseEvent | null, toNext: boolean) => void,
   getCurrentDriveLocation: () => string,
+  getRequestSaveAs: () => boolean,
   setRequestSaveAs: (v: boolean) => void,
   saveTargetChoice: (target: StrypeSyncTarget) => void,
   getRequestOpenProjectLater: () => boolean,

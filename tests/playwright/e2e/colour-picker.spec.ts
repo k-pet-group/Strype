@@ -259,6 +259,25 @@ test.describe("Graphics preview", () => {
         await visibleCancelButton(page).click();
     });
 
+    test("An invalid hex value disables OK, and Enter then doesn't validate the dialog", async ({page}) => {
+        await openIfFrame(page);
+        await openColourPickerViaShortcut(page);
+        await page.locator("button", {hasText: "Spectrum"}).click();
+        const hexInput = page.locator("#ColourPickerDlg-hex-input");
+        await hexInput.fill("#zz");
+        // (the OK button is disabled by its class, it doesn't have the "disabled" attribute)
+        await expect(visibleOKButton(page)).toHaveClass(/\bdisabled\b/);
+        await hexInput.press("Enter");
+        await expect(page.locator("#colourPickerDlg")).toBeVisible();
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(0);
+        // A valid value enables OK again, and Enter then validates the dialog
+        await hexInput.fill("#3366cc");
+        await expect(visibleOKButton(page)).not.toHaveClass(/\bdisabled\b/);
+        await hexInput.press("Enter");
+        await expect(page.locator("#colourPickerDlg")).toBeHidden();
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#3366cc\"");
+    });
+
     test("Typing an exact hex value in the fine-grained selector previews that exact colour", async ({page}) => {
         await openIfFrame(page);
         await openColourPickerViaShortcut(page);

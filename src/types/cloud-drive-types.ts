@@ -4,9 +4,15 @@
 
 import { StrypeSyncTarget } from "./types";
 
-// Small helper function to check if a target is a cloud based target
+// Small helper function check if a target is specifically a git-based target
+// (kept here rather than with the Git provider types, so these can be loaded without the rest of the app, e.g. in unit tests)
+export const isSyncTargetGitProvider = (target: StrypeSyncTarget): boolean => {
+    return [StrypeSyncTarget.gh, StrypeSyncTarget.gl].includes(target);
+};
+
+// Small helper function to check if a target is a cloud based target (or git-based that accept as a cloud)
 export const isSyncTargetCloudDrive = (target: StrypeSyncTarget): boolean => {
-    return [StrypeSyncTarget.gd, StrypeSyncTarget.od].includes(target);
+    return [StrypeSyncTarget.gd, StrypeSyncTarget.od].includes(target) || isSyncTargetGitProvider(target);
 };
 
 export interface SaveExistingCloudProjectInfos {
@@ -75,23 +81,11 @@ export enum CloudDriveItemPickerMode {
     FOLDERS,
 }
 
-export enum CloudDriveItemPickerFolderPathResolutionMode {
-    // The folder path resolution mode indicates whether the picker should resolves paths using item IDs (default) or item names.
-    // This is notably required for looking up a location in the picker.
-    BY_ID,
-    BY_NAME,
-}
-
 export interface CloudDriveItemPickerItem {
     id: string,
     name: string,
     isFolder: boolean, // We need this: an item without children can totally be a folder if that folder is empty
     parentId?: string // expected to be undefined or empty for root elements
-    hasVisitedFolder?: boolean // this is for the internal behaviour of the Picker, to know if we need to fetch the folder content (see CloudDriveItemPicker.vue)
-}
-
-export interface VTreeItemPickerItem extends CloudDriveItemPickerItem{
-    children: VTreeItemPickerItem[],
 }
 /* end picker related stuff */
 
@@ -104,7 +98,8 @@ export interface VTreeItemPickerItem extends CloudDriveItemPickerItem{
 export interface CloudDriveComponent {
     // Props
     onFileToLoadPicked: (cloudTarget: StrypeSyncTarget, fileId: string, fileName?: string) => void,
-    onFolderToSaveFilePicked: (cloudTarget: StrypeSyncTarget) => void,
+    // (Git providers also give the commit message, as the user enters it when choosing where to save)
+    onFolderToSaveFilePicked: (cloudTarget: StrypeSyncTarget, commitMessage?: string) => void,
     onFolderToSavePickCancelled: () => void,
     onUnsupportedByStrypeFilePicked: VoidFunction,
 
@@ -133,7 +128,8 @@ export interface CloudDriveComponent {
     loadPickedFileId: (id: string, otherParams: { fileName?: string }, onGettingFileMetadataSucces: (fileNameFromDrive: string, fileModifiedDateTime: string) => void,
         onGettingFileContentSuccess: (fileContent: string) => void, onGettingFileContentFailure: (errorRespStatus: number) => void, onFinally: VoidFunction) => void,
     checkIsFileLocked: (existingFileId: string, onSuccess: VoidFunction, onFailure: VoidFunction) => void,
-    doSaveFile: (saveFileId: string | undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number) => void) => void,
+    // (commitMessage is only used, and always given, for Git providers: saving is then a commit)
+    doSaveFile: (saveFileId: string | undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number, errorDetails?: string) => void, commitMessage?: string) => void,
     getCloudAPIStatusWhenLoadedOrFailed: () => Promise<CloudDriveAPIState>,
     getPublicSharedProjectContent: (sharedFileId: string) => Promise<{ isSuccess: boolean, projectName: string, decodedURIFileContent: string, errorMsg: string }>,
     getCurrentCloudFileCurrentSharingStatus: (saveFileId: string) => Promise<CloudFileSharingStatus>,

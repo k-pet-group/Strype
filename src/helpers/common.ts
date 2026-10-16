@@ -212,6 +212,11 @@ export const pythonFileExtension = "py";
 // For file names allow only A–Z a–z 0–9 _ - () spaces and unicode characters
 export const fileNameRegex = /^[\d\p{L} \-_()]+$/u;
 
+// Escapes text so it shows as is when inserted in HTML (for example, a message from an external service shown with v-html)
+export function escapeHTML(text: string): string {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 export function getDateTimeFormatted(dt: Date): string {
     // Returned "YYYY-MM-DD_HH-mm-ss" format string representation of a date
     const rawMonthOneIndexedVal = dt.getMonth() + 1;

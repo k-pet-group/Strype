@@ -31,7 +31,7 @@ export class GitHubAuthExpiredError extends GitAuthExpiredError {
     }
 }
 
-interface GhAuthConfig {clientId: string, redirectUri: string, installUrl: string}
+interface GhAuthConfig {clientId: string, installUrl: string}
 interface TokenResponse {access_token: string, expires_in?: number, refresh_token?: string, refresh_token_expires_in?: number}
 
 function base64Url(bytes: Uint8Array): string {
@@ -61,6 +61,12 @@ async function getConfig(): Promise<GhAuthConfig> {
         throw new Error(`Cannot reach the GitHub connection service (HTTP ${response.status})`);
     }
     return response.json();
+}
+
+// The URL GitHub sends the user back to: it must be one of the callback URLs registered in the GitHub App settings,
+// and be allowed by the gh-auth backend (GH_AUTH_REDIRECT_URI). It follows where the editor is served (e.g. /editor/, /microbit/).
+function getGitHubRedirectUri(): string {
+    return new URL(import.meta.env.BASE_URL + "gh-auth/callback.html", window.location.origin).href;
 }
 
 function toAuth(token: TokenResponse): GitHubAuth {
@@ -113,6 +119,7 @@ export function connectToGitHub(): Promise<GitHubConnection> {
 
     return (async (): Promise<GitHubConnection> => {
         const config = await getConfig();
+        const redirectUri = getGitHubRedirectUri();
         const state = randomString(16);
         const codeVerifier = randomString(32); // 43 characters once encoded
         const codeChallenge = base64Url(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier))));
@@ -129,7 +136,7 @@ export function connectToGitHub(): Promise<GitHubConnection> {
         });
         popup.location.href = "https://github.com/login/oauth/authorize?" + new URLSearchParams({
             client_id: config.clientId,
-            redirect_uri: config.redirectUri,
+            redirect_uri: redirectUri,
             state,
             code_challenge: codeChallenge,
             code_challenge_method: "S256",
@@ -141,7 +148,7 @@ export function connectToGitHub(): Promise<GitHubConnection> {
         let auth: GitHubAuth;
         let installed: boolean;
         try {
-            auth = toAuth(await postJson<TokenResponse>("token", {code, code_verifier: codeVerifier}));
+            auth = toAuth(await postJson<TokenResponse>("token", {code, code_verifier: codeVerifier, redirect_uri: redirectUri}));
             installed = await isGitHubAppInstalled(auth);
         }
         catch (error) {

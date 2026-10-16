@@ -4,7 +4,7 @@
 // A GitLab OAuth application only exists on the instance where it is registered: gitlab.com uses Strype's
 // application (VITE_GITLAB_COM_CLIENTID), and a self-managed instance needs its own one, registered by its administrator.
 
-import { GitAuthExpiredError, GitContentItem, GitHttpError, GitProviderAPI, GitRepository } from "@/types/git-provider-types";
+import { GitAuthExpiredError, GitContentItem, GitHttpError, GitProviderAPI, readGitErrorDetails, GitRepository } from "@/types/git-provider-types";
 
 export const GITLAB_COM_URL = "https://gitlab.com";
 const CHANNEL_NAME = "strype-gl-auth";
@@ -305,8 +305,8 @@ export async function gitLabFetch(auth: GitLabAuth, path: string, init: RequestI
 
 // Thrown when a GitLab API call fails, with the HTTP status of the response.
 export class GitLabHttpError extends GitHttpError {
-    constructor(status: number) {
-        super(status, "GitLab");
+    constructor(status: number, details?: string) {
+        super(status, "GitLab", details);
     }
 }
 
@@ -465,7 +465,8 @@ export async function commitGitLabFile(auth: GitLabAuth, projectFullPath: string
         body: JSON.stringify({branch, content, commit_message: commitMessage}),
     });
     if (!response.ok) {
-        throw new GitLabHttpError(response.status);
+        // (the provider explains why, for example when the branch is protected)
+        throw new GitLabHttpError(response.status, await readGitErrorDetails(response));
     }
 }
 

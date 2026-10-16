@@ -35,7 +35,7 @@ import {useStore} from "@/store/store";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { CustomEventTypes, getAppSimpleMsgDlgId, getCloudLoginErrorModalDlgId, getFrameUID, getSaveAsProjectModalDlg } from "@/helpers/editor";
-import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
+import { escapeHTML, pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { BootstrapDlgSize, LoadRequestReason, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
 import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, isSyncTargetCloudDrive, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
 import GoogleDriveComponent from "@/components/GoogleDriveComponent.vue";
@@ -676,11 +676,14 @@ export default defineComponent({
                 if(this.saveReason == SaveRequestReason.loadProject || vueComponentsAPIHandler.menuComponentAPI?.getRequestOpenProjectLater()) {
                     eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                 }
-            }, (errRespStatus: number) => {
+            }, (errRespStatus: number, errorDetails?: string) => {
+                // When the target explains why saving failed (for example, a Git provider for a protected branch), we show it to the user.
+                // (it's text from the target, shown in a dialog that renders HTML: we escape it)
+                const errorDetailsMsg = (errorDetails) ? this.$t("errorMessage.saveFailedDetails", {details: escapeHTML(errorDetails).replace(/\n+/g, "<br>")}) : "";
                 // Unlike with a Drive, committing a new file to a Git provider can fail for reasons the user should know about
                 // (for example, a protected branch): we tell the user (the case of an existing file is handled below for all targets).
                 if(isSyncTargetGitProvider(cloudTarget) && errRespStatus != 401 && this.saveFileId == undefined){
-                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.gitCommitFailed", {providername: cloudDriveComponent.driveName, error: errRespStatus});
+                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.gitCommitFailed", {providername: cloudDriveComponent.driveName, error: errRespStatus}) + errorDetailsMsg;
                     eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                     vueComponentsAPIHandler.menuComponentAPI?.setRequestSaveAs(false);
                     return;
@@ -694,7 +697,7 @@ export default defineComponent({
                     // We assume something went wrong regarding saving against the specified file id.
                     // This can notably happen if the file has been locked in the meantime that we tried to save it.
                     // We show a modal and remove saving mechanisms.
-                    this.appStore.simpleModalDlgMsg = this.$t((this.saveReason == SaveRequestReason.reloadBrowser) ? "errorMessage.driveNoFile" :"errorMessage.driveSaveFailed", {drivename: cloudDriveComponent.driveName});
+                    this.appStore.simpleModalDlgMsg = this.$t((this.saveReason == SaveRequestReason.reloadBrowser) ? "errorMessage.driveNoFile" :"errorMessage.driveSaveFailed", {drivename: cloudDriveComponent.driveName}) + errorDetailsMsg;
                     eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                     this.updateSignInStatus(cloudTarget,false);
                     // Reset the "Save As" flag of the Menu

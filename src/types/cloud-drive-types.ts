@@ -124,7 +124,7 @@ export interface CloudDriveComponent {
         onGettingFileContentSuccess: (fileContent: string) => void, onGettingFileContentFailure: (errorRespStatus: number) => void, onFinally: VoidFunction) => void,
     checkIsFileLocked: (existingFileId: string, onSuccess: VoidFunction, onFailure: VoidFunction) => void,
     // (commitMessage is only used, and always given, for Git providers: saving is then a commit)
-    doSaveFile: (saveFileId: string | undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number) => void, commitMessage?: string) => void,
+    doSaveFile: (saveFileId: string | undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number, errorDetails?: string) => void, commitMessage?: string) => void,
     getCloudAPIStatusWhenLoadedOrFailed: () => Promise<CloudDriveAPIState>,
     getPublicSharedProjectContent: (sharedFileId: string) => Promise<{ isSuccess: boolean, projectName: string, decodedURIFileContent: string, errorMsg: string }>,
     getCurrentCloudFileCurrentSharingStatus: (saveFileId: string) => Promise<CloudFileSharingStatus>,

@@ -101,6 +101,7 @@
     "gitCommitFailed": "Could not commit the project to {providername} (error: {error}).",
     "gitRepositoryCreationFailed": "Could not create the repository \"{name}\" on {providername}: {error}",
     "driveSaveFailed": "Could not save to {drivename}.",
+    "saveFailedDetails": "<br>Details: {details}",
     "fileNameError": "Project / File name can only contain letters, numbers, spaces, hyphens or parentheses",
     "shareProjectFailed": "Your project's sharing link could not be generated.<br>(Error: {error})",
     "sharingLinkTimedout": "Preparing the sharing link took too long.",

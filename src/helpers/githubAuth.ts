@@ -1,4 +1,4 @@
-import { GitAuthExpiredError, GitContentItem, GitHttpError, GitProviderAPI, GitRepository } from "@/types/git-provider-types";
+import { GitAuthExpiredError, GitContentItem, GitHttpError, GitProviderAPI, readGitErrorDetails, GitRepository } from "@/types/git-provider-types";
 
 const GH_AUTH_API = "/gh-auth/api"; // same origin; use an absolute URL if the editor is served elsewhere
 const GITHUB_API = "https://api.github.com";
@@ -311,8 +311,8 @@ async function getGitHubFolderItems(auth: GitHubAuth, repositoryFullName: string
 
 // Thrown when a GitHub API call fails, with the HTTP status of the response.
 export class GitHubHttpError extends GitHttpError {
-    constructor(status: number) {
-        super(status, "GitHub");
+    constructor(status: number, details?: string) {
+        super(status, "GitHub", details);
     }
 }
 
@@ -390,7 +390,8 @@ export async function commitGitHubFile(auth: GitHubAuth, repositoryFullName: str
         body: JSON.stringify({message: commitMessage, content: utf8ToBase64(content), branch, sha}),
     });
     if (!response.ok) {
-        throw new GitHubHttpError(response.status);
+        // (the provider explains why, for example when the branch is protected)
+        throw new GitHubHttpError(response.status, await readGitErrorDetails(response));
     }
 }
 

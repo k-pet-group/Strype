@@ -285,7 +285,7 @@ export function useGitProvider<Auth>(options: {
         onSuccess();
     }
 
-    async function doSaveFile(saveFileId: string | undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number) => void, commitMessage?: string) {
+    async function doSaveFile(saveFileId: string | undefined, projetLocation: string, fullFileName: string, fileContent: string, isExplictSave: boolean, onSuccess: (savedFileId: string) => void, onFailure: (errRespStatus: number, errorDetails?: string) => void, commitMessage?: string) {
         // Saving is committing the file (on the provider, so it is pushed at the same time). The file is the one we already save into if any,
         // or else a new file (or an existing file the user chose to overwrite) in the project's location.
         let gitFileId = parseGitFileId(saveFileId ?? "");
@@ -311,7 +311,7 @@ export function useGitProvider<Auth>(options: {
             onSuccess(toGitFileId(gitFileId));
         }
         catch(error){
-            onFailure((error instanceof GitHttpError) ? error.status : ((error instanceof GitAuthExpiredError) ? 401 : 0));
+            onFailure((error instanceof GitHttpError) ? error.status : ((error instanceof GitAuthExpiredError) ? 401 : 0), (error instanceof GitHttpError) ? error.details : undefined);
         }
     }
 

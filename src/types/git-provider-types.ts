@@ -41,11 +41,32 @@ export interface GitContentItem {
 export class GitAuthExpiredError extends Error {
 }
 
-// Thrown by a provider's API when a call fails, with the HTTP status of the response.
+// Thrown by a provider's API when a call fails, with the HTTP status of the response,
+// and the explanation the provider gave (if we read it, see readGitErrorDetails()).
 export class GitHttpError extends Error {
-    constructor(public status: number, providerName: string) {
-        super(`${providerName} error (HTTP ${status})`);
+    constructor(public status: number, providerName: string, public details?: string) {
+        super(`${providerName} error (HTTP ${status})` + ((details) ? `: ${details}` : ""));
     }
+}
+
+// The explanation a provider gives in the (JSON) body of a failed response, if any,
+// for example "Changes must be made through a pull request." on a protected branch.
+export async function readGitErrorDetails(response: Response): Promise<string | undefined> {
+    try {
+        const body = await response.json();
+        const message = body?.message ?? body?.error_description ?? body?.error;
+        if (typeof message === "string") {
+            return message.trim() || undefined;
+        }
+        if (message != null && typeof message === "object") {
+            // (GitLab gives validation errors per field, for example {"branch": ["is invalid"]})
+            return Object.entries(message).map(([field, fieldMessages]) => `${field} ${[fieldMessages].flat().join(", ")}`).join("\n") || undefined;
+        }
+    }
+    catch {
+        // The body isn't JSON: we have no details
+    }
+    return undefined;
 }
 
 // What each Git provider must offer for the parts of Strype shared by all Git providers (see useGitProvider()).

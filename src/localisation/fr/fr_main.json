@@ -93,6 +93,7 @@
     "EOFError": "Ce cadre ne peut pas être vide.",
     "cloudAPIFailed": "{apiname} ne s'est pas chargé.",
     "driveSaveFailed": "Enregistrement vers {drivename} impossible.",
+    "saveFailedDetails": "<br>Détails : {details}",
     "fileNameError": "Le nom de projet / fichier ne peut contenir que des lettres, des chiffres, des espaces, des tirets ou des parenthèses.",
     "shareProjectFailed": "Le lien de partage de votre projet n'a pas pu être généré.<br>(Erreur: {error})",
     "sharingLinkTimedout": "La préparation du lien de partage a pris trop de temps.",

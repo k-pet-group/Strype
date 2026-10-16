@@ -77,6 +77,7 @@
     "refresh": "refresh",
     "choose": "Choose",
     "reload": "Reload",
+    "connect": "Connect",
     "renameAllWithShortcut": "Rename all <span class=\"kb-shortcut\">({modifierkey}+R)</span>"
   },
   "errorMessage": {
@@ -152,6 +153,13 @@
     "clearAllRecent": "Clear all",
     "saveToTarget": "Save to:",
     "targetFS": "This device",
+    "gitLabConnectTitle": "Connect to GitLab",
+    "gitLabInstanceLabel": "Which GitLab do you use?",
+    "gitLabComDetails": "The public GitLab service.",
+    "gitLabSelfManaged": "Another GitLab server",
+    "gitLabSelfManagedDetails": "For example, your school's own GitLab. Its administrator must register Strype as an application on it and give you the application ID.",
+    "gitLabInstanceUrl": "GitLab server address",
+    "gitLabClientId": "Strype's application ID on this server",
     "gitRepository": "Repository:",
     "gitBranch": "Branch:",
     "gitLoadingError": "Could not get the content from {providername}: {error}",

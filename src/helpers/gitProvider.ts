@@ -207,7 +207,8 @@ export function useGitProvider<Auth>(options: {
     }
 
     function pickSaveLocation(fullFileName: string) {
-        // The user chooses where to save (by default, the root of the "Strype" repository) and gives the commit message.
+        // The user chooses where to save (by default, the location of the project loaded or saved last, or else the root of the "Strype" repository)
+        // and gives the commit message.
         // Then onSaveChosen() is called, or props.onFolderToSavePickCancelled() if cancelled (see the picker's events in the provider's component).
         filePicker.value?.openForSave(fullFileName);
     }
@@ -245,7 +246,7 @@ export function useGitProvider<Auth>(options: {
     }
 
     function openFilePicker(startingFromFolderId: string | undefined): Promise<void> {
-        // The "folder" is a Git location (see getFolderNameFromId()): the picker starts from its repository and branch if given, or else from the ones used last.
+        // The "folder" is a Git location (see getFolderNameFromId()): the picker starts from its repository, branch and folder if given, or else from the ones used last.
         return filePicker.value?.open(parseGitLocationId(startingFromFolderId ?? "") ?? undefined) ?? Promise.resolve();
     }
 
@@ -265,9 +266,10 @@ export function useGitProvider<Auth>(options: {
                 api.getFileLastCommitDate(oauthToken.value, repoId, branchId, path),
                 api.getFileContent(oauthToken.value, repoId, branchId, path),
             ]);
-            setProjectLocation(getGitFileLocation(gitFileId));
-            // Keep the branch and repository selected in the picker for the next time it's opened
-            filePicker.value?.rememberSelection(repoId, branchId);
+            const location = getGitFileLocation(gitFileId);
+            setProjectLocation(location);
+            // Keep the location (repository, branch and folder) selected in the picker for the next time it's opened
+            filePicker.value?.rememberSelection(location);
             onGettingFileMetadataSucces(fileName, lastCommitDate);
             onGettingFileContentSuccess(fileContent);
         }
@@ -306,8 +308,8 @@ export function useGitProvider<Auth>(options: {
         try{
             // (CloudDriveHandler always asks the user for a commit message, the file name is only a fallback)
             await api.commitFile(oauthToken.value, gitFileId.repoId, gitFileId.branchId, gitFileId.path, fileContent, commitMessage ?? fullFileName);
-            // Keep the branch and repository selected in the picker for the next time it's opened
-            filePicker.value?.rememberSelection(gitFileId.repoId, gitFileId.branchId);
+            // Keep the location (repository, branch and folder) selected in the picker for the next time it's opened
+            filePicker.value?.rememberSelection(getGitFileLocation(gitFileId));
             onSuccess(toGitFileId(gitFileId));
         }
         catch(error){

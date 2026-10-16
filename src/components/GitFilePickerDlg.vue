@@ -1,8 +1,11 @@
 /**
  * The file picker dialog shared by all Git providers: the user chooses a repository and a branch,
  * then browses that branch's files. The provider-specific queries are given by the parent.
- * The dialog can also be opened to save a project: the user then chooses a folder (by default, the root of the
- * "Strype" repository, which is proposed for creation if it doesn't exist) and gives the commit message.
+ * The dialog can also be opened to save a project: the user then chooses a folder (by default, the folder of the project
+ * loaded or saved last if the user can push there, or else the root of the "Strype" repository, which is proposed for
+ * creation if it doesn't exist) and gives the commit message.
+ * In both cases, when the dialog opens in the repository and branch of the project loaded or saved last, it also opens
+ * that project's folder (see rememberSelection()).
  */
 <template>
     <!-- When saving, the commit message input gets the focus: the dialog then selects its content, so the user can
@@ -29,7 +32,7 @@
             <span class="git-file-picker-tree-label">{{$t((isSaving) ? "appMessage.gitFolder" : "appMessage.gitFile")}}</span>
             <div class="git-file-picker-tree">
                 <CloudDriveItemPicker :mode="(isSaving) ? CloudDriveItemPickerMode.FOLDERS : CloudDriveItemPickerMode.FILES" :preferredFileExts="fileExtensions" showFilesInFoldersMode
-                    :rootFolder="pickerRootFolder" :fetchFolderChildren="fetchFolderChildren" @pickedItemChanged="pickedItem = $event" />
+                    :rootFolder="pickerRootFolder" :initialFolderPathParts="pickerInitialFolderPathParts" :fetchFolderChildren="fetchFolderChildren" @pickedItemChanged="pickedItem = $event" />
             </div>
             <template v-if="isSaving">
                 <label :for="commitMessageInputId">{{$t("appMessage.gitCommitMessage")}}</label>
@@ -47,7 +50,7 @@ import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { CustomEventTypes } from "@/helpers/editor";
 import { getDefaultGitCommitMessage } from "@/helpers/gitProvider";
 import { CloudDriveItemPickerItem, CloudDriveItemPickerMode } from "@/types/cloud-drive-types";
-import { GitContentItem, GitFileIdStruct, GitFilePickerQueries, GitRepository, GitSaveChoice, findStrypeRepository, isStrypeRepository, strypeRepositoryName } from "@/types/git-provider-types";
+import { GitContentItem, GitFileIdStruct, GitFilePickerQueries, GitLocationStruct, GitRepository, GitSaveChoice, findStrypeRepository, isStrypeRepository, strypeRepositoryName } from "@/types/git-provider-types";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
 
@@ -85,8 +88,14 @@ const repositories = ref<GitRepository[]>([]);
 const branches = ref<string[]>([]);
 const selectedRepository = ref("");
 const selectedBranch = ref("");
+// The location of the project loaded or saved last (see rememberSelection()): the dialog opens there next time, in the folder as well
+const rememberedLocation = ref<GitLocationStruct | null>(null);
 // The picker starts again from the root every time we set a new object here
 const pickerRootFolder = ref<CloudDriveItemPickerItem | null>(null);
+// When the picker starts in the remembered repository and branch, it goes down to the remembered folder (as far as it still exists)
+const pickerInitialFolderPathParts = computed(() => (rememberedLocation.value != null && rememberedLocation.value.repoId == selectedRepository.value && rememberedLocation.value.branchId == selectedBranch.value)
+    ? rememberedLocation.value.folderPath.split("/")
+    : []);
 // When saving, the folder opened in the picker; otherwise, the file selected in the picker
 const pickedItem = ref<CloudDriveItemPickerItem | null>(null);
 const errorMsg = ref("");
@@ -137,17 +146,20 @@ async function loadRepositories() {
         loadedRepositories = loadedRepositories.filter((repository) => repository.canPush);
     }
     repositories.value = loadedRepositories;
-    // When saving, we show the "Strype" repository (that may need to be created).
-    // Otherwise, we show the repository selected last time if it's available, or else the first one.
-    const repositoryToSelect = (isSaving.value)
-        ? (findStrypeRepository(loadedRepositories)?.fullName ?? newStrypeRepositoryValue)
-        : ((loadedRepositories.some((repository) => repository.fullName == selectedRepository.value))
-            ? selectedRepository.value
+    // When saving, we show the repository and branch of the project loaded or saved last if the user can push to it,
+    // or else the "Strype" repository (that may need to be created) and its default branch.
+    // Otherwise, we show the repository and branch selected last time if the repository is available, or else the first repository.
+    // (the picker then opens the remembered folder if we're in the remembered repository and branch, see pickerInitialFolderPathParts)
+    const repositoryToKeep = (isSaving.value) ? (rememberedLocation.value?.repoId ?? "") : selectedRepository.value;
+    const branchToKeep = (isSaving.value) ? (rememberedLocation.value?.branchId ?? "") : selectedBranch.value;
+    const canKeepRepository = loadedRepositories.some((repository) => repository.fullName == repositoryToKeep);
+    selectedRepository.value = (canKeepRepository)
+        ? repositoryToKeep
+        : ((isSaving.value)
+            ? (findStrypeRepository(loadedRepositories)?.fullName ?? newStrypeRepositoryValue)
             : (loadedRepositories[0]?.fullName ?? ""));
-    // (we keep the branch selected last time if we stay on the same repository, except when saving: we use the default branch)
-    const isSameRepository = (repositoryToSelect == selectedRepository.value);
-    selectedRepository.value = repositoryToSelect;
-    await onRepositorySelected(isSameRepository && !isSaving.value);
+    selectedBranch.value = (canKeepRepository) ? branchToKeep : "";
+    await onRepositorySelected(canKeepRepository);
 }
 
 async function onRepositorySelected(keepSelectedBranch?: boolean | Event) {
@@ -244,10 +256,10 @@ function show(saving: boolean): Promise<void> {
     return loadRepositories();
 }
 
-// Shows the dialog to pick a file to load, starting from the given repository and branch if any, or else from the ones used last.
-function open(startingSelection?: {repoId: string, branchId: string}): Promise<void> {
-    if(startingSelection){
-        rememberSelection(startingSelection.repoId, startingSelection.branchId);
+// Shows the dialog to pick a file to load, starting from the given location (repository, branch and folder) if any, or else from the one used last.
+function open(startingLocation?: GitLocationStruct): Promise<void> {
+    if(startingLocation){
+        rememberSelection(startingLocation);
     }
     return show(false);
 }
@@ -259,10 +271,12 @@ function openForSave(fileName: string): Promise<void> {
     return show(true);
 }
 
-// Selects a repository and a branch for the next time the dialog is opened (e.g. those of a file loaded by other means).
-function rememberSelection(repository: string, branch: string) {
-    selectedRepository.value = repository;
-    selectedBranch.value = branch;
+// Selects a location (repository, branch and folder) for the next time the dialog is opened, to load or to save
+// (e.g. that of a file loaded or saved).
+function rememberSelection(location: GitLocationStruct) {
+    rememberedLocation.value = {...location};
+    selectedRepository.value = location.repoId;
+    selectedBranch.value = location.branchId;
 }
 
 defineExpose({open, openForSave, rememberSelection});

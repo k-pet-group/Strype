@@ -12,7 +12,9 @@ const AUTH_TIMEOUT_MS = 5 * 60 * 1000;
 const REFRESH_MARGIN_MS = 5 * 60 * 1000;
 // "write_repository" only covers Git over HTTP, not the REST API: writing files through the API needs "api".
 const SCOPES = "api";
-const INSTANCE_CHOICE_STORAGE_KEY = "strypeGitLabInstanceChoice";
+const INSTANCES_HISTORY_STORAGE_KEY = "strypeGitLabInstances";
+// (where a single self-managed instance was remembered before: read once to fill in the history)
+const LEGACY_INSTANCE_CHOICE_STORAGE_KEY = "strypeGitLabInstanceChoice";
 
 export interface GitLabInstance {
     // Base URL of the instance, without trailing slash (it may contain a path, e.g. https://example.org/gitlab)
@@ -30,11 +32,12 @@ export interface GitLabAuth {
     refreshToken?: string;
 }
 
-// What the user chose in the "Connect to GitLab" dialog (remembered for the next time).
-export interface GitLabInstanceChoice {
-    useGitLabCom: boolean;
-    selfManagedUrl: string;
-    selfManagedClientId: string;
+// The GitLab instances the user connected to (remembered for the next time, to offer them in the "Connect to GitLab" dialog).
+export interface GitLabInstancesHistory {
+    // The self-managed instances, in the order they were first connected to
+    selfManagedInstances: GitLabInstance[];
+    // URL of the instance last connected to (GITLAB_COM_URL for gitlab.com)
+    lastUsedUrl: string;
 }
 
 // Thrown when the user must connect again (token revoked, or refresh failed).
@@ -78,37 +81,83 @@ export function normaliseGitLabInstanceUrl(input: string): string | undefined {
     return (url.origin + url.pathname).replace(/\/+$/, "");
 }
 
-// Returns the instance to connect to, or undefined if the choice is incomplete or invalid.
-export function getGitLabInstance(choice: GitLabInstanceChoice): GitLabInstance | undefined {
-    if (choice.useGitLabCom) {
-        return {url: GITLAB_COM_URL, clientId: import.meta.env.VITE_GITLAB_COM_CLIENTID ?? ""};
-    }
-    const url = normaliseGitLabInstanceUrl(choice.selfManagedUrl);
-    const clientId = choice.selfManagedClientId.trim();
-    return (url && clientId.length > 0) ? {url, clientId} : undefined;
+export function getGitLabComInstance(): GitLabInstance {
+    return {url: GITLAB_COM_URL, clientId: import.meta.env.VITE_GITLAB_COM_CLIENTID ?? ""};
 }
 
-export function loadGitLabInstanceChoice(): GitLabInstanceChoice {
-    const choice: GitLabInstanceChoice = {useGitLabCom: true, selfManagedUrl: "", selfManagedClientId: ""};
+// Returns the self-managed instance typed by the user, or undefined if its details are incomplete or invalid.
+export function getSelfManagedGitLabInstance(url: string, clientId: string): GitLabInstance | undefined {
+    const normalisedUrl = normaliseGitLabInstanceUrl(url);
+    const trimmedClientId = clientId.trim();
+    return (normalisedUrl && trimmedClientId.length > 0) ? {url: normalisedUrl, clientId: trimmedClientId} : undefined;
+}
+
+function isGitLabInstance(value: unknown): value is GitLabInstance {
+    return typeof (value as GitLabInstance)?.url === "string" && typeof (value as GitLabInstance)?.clientId === "string";
+}
+
+export function loadGitLabInstancesHistory(): GitLabInstancesHistory {
+    const history: GitLabInstancesHistory = {selfManagedInstances: [], lastUsedUrl: GITLAB_COM_URL};
     try {
-        const saved = JSON.parse(localStorage.getItem(INSTANCE_CHOICE_STORAGE_KEY) ?? "{}");
-        choice.useGitLabCom = saved.useGitLabCom ?? true;
-        choice.selfManagedUrl = saved.selfManagedUrl ?? "";
-        choice.selfManagedClientId = saved.selfManagedClientId ?? "";
+        const saved = JSON.parse(localStorage.getItem(INSTANCES_HISTORY_STORAGE_KEY) ?? "null");
+        if (saved) {
+            history.selfManagedInstances = Array.isArray(saved.selfManagedInstances) ? saved.selfManagedInstances.filter(isGitLabInstance) : [];
+            if (typeof saved.lastUsedUrl === "string" && history.selfManagedInstances.some((instance) => instance.url === saved.lastUsedUrl)) {
+                history.lastUsedUrl = saved.lastUsedUrl;
+            }
+        }
+        else {
+            // Nothing saved yet: keep the self-managed instance remembered by the previous versions of Strype, if any
+            const legacy = JSON.parse(localStorage.getItem(LEGACY_INSTANCE_CHOICE_STORAGE_KEY) ?? "{}");
+            const legacyInstance = getSelfManagedGitLabInstance(legacy.selfManagedUrl ?? "", legacy.selfManagedClientId ?? "");
+            if (legacyInstance) {
+                history.selfManagedInstances.push(legacyInstance);
+                if (legacy.useGitLabCom === false) {
+                    history.lastUsedUrl = legacyInstance.url;
+                }
+            }
+        }
     }
     catch {
         // Storage unavailable or corrupted: use the defaults
     }
-    return choice;
+    return history;
 }
 
-export function saveGitLabInstanceChoice(choice: GitLabInstanceChoice): void {
+function saveGitLabInstancesHistory(history: GitLabInstancesHistory): void {
     try {
-        localStorage.setItem(INSTANCE_CHOICE_STORAGE_KEY, JSON.stringify(choice));
+        localStorage.setItem(INSTANCES_HISTORY_STORAGE_KEY, JSON.stringify(history));
+        localStorage.removeItem(LEGACY_INSTANCE_CHOICE_STORAGE_KEY);
     }
     catch {
-        // Storage unavailable: the choice just won't be remembered
+        // Storage unavailable: the instances just won't be remembered
     }
+}
+
+// Remembers that the user connected to this instance (updating its application ID if it was already known).
+export function rememberGitLabInstance(instance: GitLabInstance): void {
+    const history = loadGitLabInstancesHistory();
+    if (instance.url !== GITLAB_COM_URL) {
+        const known = history.selfManagedInstances.find((knownInstance) => knownInstance.url === instance.url);
+        if (known) {
+            known.clientId = instance.clientId;
+        }
+        else {
+            history.selfManagedInstances.push({url: instance.url, clientId: instance.clientId});
+        }
+    }
+    history.lastUsedUrl = instance.url;
+    saveGitLabInstancesHistory(history);
+}
+
+// Removes a self-managed instance from the ones offered to the user.
+export function forgetGitLabInstance(url: string): void {
+    const history = loadGitLabInstancesHistory();
+    history.selfManagedInstances = history.selfManagedInstances.filter((instance) => instance.url !== url);
+    if (history.lastUsedUrl === url) {
+        history.lastUsedUrl = GITLAB_COM_URL;
+    }
+    saveGitLabInstancesHistory(history);
 }
 
 // The URL GitLab sends the user back to: it must be registered, exactly, in the GitLab application settings.

@@ -1,0 +1,15 @@
+- file: text-generation-v3.spy
+  image: text-generation.png
+  description: The third version of the text generation project
+
+- file: text-generation-v5.spy
+  image: text-generation.png
+  description: 4th version - Here we generalise to n-grams
+
+- file: text-generation-v5.spy
+  image: text-generation.png
+  description: In this version we optimise by using a dictionary
+
+- file: beatbox.spy
+  image: beatbox.png
+  description: Create your own beat loop with this interactive beatbox

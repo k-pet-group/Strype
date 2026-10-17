@@ -1,0 +1,45 @@
+#(=> Strype:1:std
+#(=> editorCommandsSplitterPane2Size:{"tabsCollapsed":42.09}
+#(=> peaExpandedSplitterPane2Size:{"tabsExpanded":50,"splitExpanded":50}
+'''text-generation, Version 0.5
+
+This is an advanced version that creates a dictionary (instead of a list) for instant lookup.
+
+This project is part of the book "Creative Python Programming with Strype".
+Authors: Michael Kölling and Neil C.C. Brown'''
+#(=> Section:Imports
+import random 
+from collections import defaultdict 
+#(=> Section:Definitions
+#(=> FrameState:FoldToHeader;Frozen
+def read_file (filename ) :
+    '''Reads the full content of the file and returns it as a string'''
+    with open(filename,encoding="utf-8")  as f  :
+        return f.read() 
+def make_ngrams (text,n ) :
+    '''Take a text as a parameter and return a list of the bigrams in the text.'''
+    words  = text.split() 
+    word_lists  = [words[i:] for i in range(n)] 
+    ngram_list  = list(zip(___strype_blank * word_lists)) 
+    ngrams  = defaultdict(list) 
+    for t  in ngram_list  :
+        ngrams[t[:-1]].append(t) 
+    return ngrams 
+def generate_next_word (prev_words,ngrams ) :
+    '''Given two previous words and a list of trigrams, return a next word by randomly selecting one of the trigrams that matches both words.'''
+    matches  = ngrams[prev_words] 
+    choice  = random.choice(matches) 
+    return choice[-1] 
+#(=> Section:Main
+#(=> Disabled:text  = read_file("/books/fairy-tales.txt") 
+text  = read_file("/books/sherlock-holmes.txt") 
+
+ngrams  = make_ngrams(text,4) 
+
+prev_words  = ("There","was","a") 
+print(___strype_blank * prev_words,end=" ") 
+for n  in range(80)  :
+    next_word  = generate_next_word(prev_words,ngrams) 
+    print(next_word,end=" ") 
+    prev_words  = prev_words[1:] + (next_word,___strype_blank) 
+#(=> Section:End

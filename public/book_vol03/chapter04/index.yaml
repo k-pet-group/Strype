@@ -1,12 +1,11 @@
 - file: text-generation-v1.spy
-  name: text-generation
+  image: text-generation.png
   description: The starting version of the text generation project
 
 - file: text-generation-v2.spy
+  image: text-generation.png
   description: The second version of the text generation project
 
-- file: text-generation-v3.spy
-  description: The third version of the text generation project
-
-- file: text-generation-advanced.spy
+- file: text-generation-advanced-syntax.spy
+  image: text-generation.png
   description: A version written with some more advanced Python syntax

@@ -3,10 +3,12 @@
   description: A starter for a text-based adventure game
 
 - file: haunted-mansion-v2.spy
+  image: haunted-mansion.png
   description: Second version of the adventure game
 
 - file: haunted-mansion-v3.spy
-  description: This version adds images and sounds
+  image: haunted-mansion.png
+  description: This version of the game adds images and sounds
 
 - file: adventure.spy
   image: adventure.png

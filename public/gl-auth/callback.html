@@ -21,7 +21,7 @@
         // (the code is useless without the PKCE verifier the editor kept).
         // BroadcastChannel is used rather than window.opener because GitLab's pages may sever the
         // opener link (Cross-Origin-Opener-Policy). It only works within the same origin, so this
-        // page must be served from the same origin as the editor.
+        // page must be served from the same origin as the editor (which will be the case when deploying the Strype built: it will be at the right place).
         (function () {
             var params = new URLSearchParams(window.location.search);
             // Remove the code from the address bar and history.

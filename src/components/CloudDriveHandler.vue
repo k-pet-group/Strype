@@ -706,29 +706,30 @@ export default defineComponent({
                     eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                 }
             }, (errRespStatus: number, errorDetails?: string) => {
+                // If we have an authorised error (for example, timed-out connexion) we should disconnect and warn the users
+                // (not to sure why rawResp.status doesn't give the right stuff, but based on debugging, this works...)
+                if(errRespStatus == 401){
+                    this.proceedFailedConnectionCheckOnSave(cloudTarget);
+                    return;
+                }
                 // When the target explains why saving failed (for example, a Git provider for a protected branch), we show it to the user.
                 // (it's text from the target, shown in a dialog that renders HTML: we escape it)
                 const errorDetailsMsg = (errorDetails) ? this.$t("errorMessage.saveFailedDetails", {details: escapeHTML(errorDetails).replace(/\n+/g, "<br>")}) : "";
                 // If a new file couldn't be created in the folder of the Python file the project comes from (for example, the user can't write in it),
                 // we don't save there anymore: the next save shows the save dialog.
-                if(isExplictSave && this.saveFileId == undefined && errRespStatus != 401
-                    && this.appStore.suggestedCloudSaveLocation?.target == cloudTarget && this.appStore.suggestedCloudSaveLocation.location == strypeProjectLocation){
+                if(isExplictSave && this.saveFileId == undefined
+                    &&this.appStore.suggestedCloudSaveLocation?.target == cloudTarget && this.appStore.suggestedCloudSaveLocation.location == strypeProjectLocation){
                     this.appStore.suggestedCloudSaveLocation = undefined;
                 }
                 // Unlike with a Drive, committing a new file to a Git provider can fail for reasons the user should know about
                 // (for example, a protected branch): we tell the user (the case of an existing file is handled below for all targets).
-                if(isSyncTargetGitProvider(cloudTarget) && errRespStatus != 401 && this.saveFileId == undefined){
+                if(isSyncTargetGitProvider(cloudTarget) && this.saveFileId == undefined){
                     this.appStore.simpleModalDlgMsg = this.$t("errorMessage.gitCommitFailed", {providername: cloudDriveComponent.driveName, error: errRespStatus}) + errorDetailsMsg;
                     eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                     vueComponentsAPIHandler.menuComponentAPI?.setRequestSaveAs(false);
                     return;
                 }
-                // If we have an authorised error (for example, timed-out connexion) we should disconnect and warn the users
-                // (not to sure why rawResp.status doesn't give the right stuff, but based on debugging, this works...)
-                if(errRespStatus == 401){
-                    this.proceedFailedConnectionCheckOnSave(cloudTarget);
-                }
-                else if(isExplictSave && this.saveFileId == undefined){
+                if(isExplictSave && this.saveFileId == undefined){
                     // A new file couldn't be created in the chosen folder (for example, the user can't write in it): we tell the user.
                     this.appStore.simpleModalDlgMsg = this.$t("errorMessage.driveSaveFailed", {drivename: cloudDriveComponent.driveName}) + errorDetailsMsg;
                     eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());

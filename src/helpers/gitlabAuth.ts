@@ -6,6 +6,7 @@
 
 import { GitAuthExpiredError, GitContentItem, GitHttpError, GitProviderAPI, readGitErrorDetails, GitRepository } from "@/types/git-provider-types";
 import { GITLAB_COM_URL, GitLabInstance } from "@/helpers/gitlabInstances";
+import { base64Url, randomBase64UrlString } from "@/helpers/common";
 
 const CHANNEL_NAME = "strype-gl-auth";
 const AUTH_TIMEOUT_MS = 5 * 60 * 1000;
@@ -30,14 +31,6 @@ export class GitLabAuthExpiredError extends GitAuthExpiredError {
 }
 
 interface TokenResponse {access_token: string, expires_in?: number, refresh_token?: string}
-
-function base64Url(bytes: Uint8Array): string {
-    return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function randomString(byteCount: number): string {
-    return base64Url(crypto.getRandomValues(new Uint8Array(byteCount)));
-}
 
 export function getGitLabComInstance(): GitLabInstance {
     return {url: GITLAB_COM_URL, clientId: import.meta.env.VITE_GITLAB_COM_CLIENTID ?? ""};
@@ -113,8 +106,8 @@ export function connectToGitLab(instance: GitLabInstance): Promise<GitLabAuth> {
 
     return (async (): Promise<GitLabAuth> => {
         const redirectUri = getGitLabRedirectUri();
-        const state = randomString(16);
-        const codeVerifier = randomString(32); // 43 characters once encoded
+        const state = randomBase64UrlString(16);
+        const codeVerifier = randomBase64UrlString(32); // 43 characters once encoded
         const codeChallenge = base64Url(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier))));
 
         // Listen before navigating the popup, so we cannot miss the reply.

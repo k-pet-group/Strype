@@ -1,4 +1,5 @@
 import { GitAuthExpiredError, GitContentItem, GitHttpError, GitProviderAPI, readGitErrorDetails, GitRepository } from "@/types/git-provider-types";
+import { base64Url, randomBase64UrlString } from "@/helpers/common";
 
 const GH_AUTH_API = "/gh-auth/api"; // same origin; use an absolute URL if the editor is served elsewhere
 const GITHUB_API = "https://api.github.com";
@@ -33,14 +34,6 @@ export class GitHubAuthExpiredError extends GitAuthExpiredError {
 
 interface GhAuthConfig {clientId: string, installUrl: string}
 interface TokenResponse {access_token: string, expires_in?: number, refresh_token?: string, refresh_token_expires_in?: number}
-
-function base64Url(bytes: Uint8Array): string {
-    return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function randomString(byteCount: number): string {
-    return base64Url(crypto.getRandomValues(new Uint8Array(byteCount)));
-}
 
 async function postJson<T>(endpoint: string, body: object): Promise<T> {
     const response = await fetch(`${GH_AUTH_API}/${endpoint}`, {
@@ -120,8 +113,8 @@ export function connectToGitHub(): Promise<GitHubConnection> {
     return (async (): Promise<GitHubConnection> => {
         const config = await getConfig();
         const redirectUri = getGitHubRedirectUri();
-        const state = randomString(16);
-        const codeVerifier = randomString(32); // 43 characters once encoded
+        const state = randomBase64UrlString(16);
+        const codeVerifier = randomBase64UrlString(32); // 43 characters once encoded
         const codeChallenge = base64Url(new Uint8Array(await crypto.subtle.digest("SHA-256", new TextEncoder().encode(codeVerifier))));
 
         // Listen before navigating the popup, so we cannot miss the reply.

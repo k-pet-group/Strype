@@ -271,3 +271,14 @@ export function removeIf<T>(arr: T[], predicate: (item: T, index: number, array:
         }
     }
 }
+
+// Encodes bytes in base64url without padding (RFC 4648 §5), as PKCE expects (RFC 7636).
+// The bytes are spread as arguments of String.fromCharCode, so this is only meant for small arrays (not for file contents).
+export function base64Url(bytes: Uint8Array): string {
+    return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+// Returns a random string (base64url encoded) made of the given number of random bytes, e.g. for an OAuth state or a PKCE code verifier.
+export function randomBase64UrlString(byteCount: number): string {
+    return base64Url(crypto.getRandomValues(new Uint8Array(byteCount)));
+}

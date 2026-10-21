@@ -594,8 +594,10 @@ export default defineComponent({
             }
             
             // The frame shortcuts below don't apply when typing in a text field outside the frames (e.g. in a dialog):
-            // the keys must act on that text field instead
-            const isTypingInTextField = event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement;
+            // the keys must act on that text field instead. (A frame cursor's invisible paste-focus <input> doesn't count:
+            // it is the focus target when at a frame cursor, see CaretContainer.vue.)
+            const isTypingInTextField = (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)
+                && !isCaretContainerFocusInputElement(event.target.id);
 
             // If we are at a frame cursor and they hit ctrl-x or ctrl-c or ctrl-d or ctrl-/ then we do cut/copy/duplicate/disable[enable]:
             if(!this.appStore.isEditing && !this.isPythonExecuting && !isTypingInTextField && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x" || event.key.toLowerCase() === "d" || event.key === "/")) {

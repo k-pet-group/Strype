@@ -24,7 +24,7 @@
             @keyup.backspace="onBackSpaceKeyUp"
             @keydown="onKeyDown($event)"
             @contentPastedInSlot="onCodePaste"
-            :class="{[scssVars.labelSlotInputClassName]: true, [scssVars.navigationPositionClassName]: isEditableSlot && !isFrozen, [scssVars.errorSlotClassName]: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised, readonly: (isPythonExecuting || isDisabled)}"
+            :class="{[scssVars.labelSlotInputClassName]: true, [scssVars.navigationPositionClassName]: isEditableSlot && !isFrozen, [scssVars.errorSlotClassName]: erroneous(), [scssVars.precompileErrorClassName]: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised, readonly: (isPythonExecuting || isDisabled)}"
             :id="UID"
             :key="UID"
             :style="spanBackgroundStyle"

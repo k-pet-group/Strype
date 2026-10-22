@@ -118,6 +118,7 @@
     "clouldFileRestoreSharingStatus":"An error occurred when trying to restore the file sharing status in {drivename}.<br>Details: {errordetails}",
     "unexpectedCharsPython": "unexpected character(s)",
     "matchFrameWithoutCase": "A match frame must contain at least one case frame.",
+    "tryFrameWithoutExceptOrFinally": "A try frame must have an except or finally frame.",
     "frameNotAllowedInParent": "This kind of frame is not allowed here.",
     "fileIO": {
       "openReadingError":"Strype ran into an internal error when opening the file (reading content issue).",
@@ -410,7 +411,8 @@
     "alpha": "Alpha"
   },
   "book": {
-    "dialogTitle": "Strype textbook"
+    "dialogTitle": "Strype textbook",
+    "noProjects": "This chapter has no associated projects"
   },
   "demos": {
     "dialogTitle": "Example programs",

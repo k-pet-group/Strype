@@ -34,6 +34,9 @@
 
             <!-- Right Pane: Dynamic Grid -->
             <div class="flex-grow-1 p-3 overflow-auto">
+                <div v-if="chapterLoaded && projectsInCurrentChapter.length == 0 && assetsInCurrentChapter.length == 0" class="d-flex align-items-center justify-content-center h-100 text-muted open-book-dlg-no-projects">
+                    {{ $t('book.noProjects') }}
+                </div>
                 <div class="d-flex flex-column">
                     <button
                         v-for="(item, i) in projectsInCurrentChapter"
@@ -105,6 +108,13 @@ const chapters: Chapter[] = [
     {volume: "Volume 2", name: "Chapter 4", path: "book_vol02/chapter04", content: getBuiltinDemos("book_vol02/chapter04")},
     {volume: "Volume 2", name: "Chapter 5", path: "book_vol02/chapter05", content: getBuiltinDemos("book_vol02/chapter05")},
     {volume: "Volume 2", name: "Chapter 6", path: "book_vol02/chapter06", content: getBuiltinDemos("book_vol02/chapter06")},
+    {volume: "Volume 3", name: "Chapter 1", path: "book_vol03/chapter01", content: getBuiltinDemos("book_vol03/chapter01")},
+    {volume: "Volume 3", name: "Chapter 2", path: "book_vol03/chapter02", content: getBuiltinDemos("book_vol03/chapter02")},
+    {volume: "Volume 3", name: "Chapter 3", path: "book_vol03/chapter03", content: getBuiltinDemos("book_vol03/chapter03")},
+    {volume: "Volume 3", name: "Chapter 4", path: "book_vol03/chapter04", content: getBuiltinDemos("book_vol03/chapter04")},
+    {volume: "Volume 3", name: "Chapter 5", path: "book_vol03/chapter05", content: getBuiltinDemos("book_vol03/chapter05")},
+    {volume: "Volume 3", name: "Chapter 6", path: "book_vol03/chapter06", content: getBuiltinDemos("book_vol03/chapter06")},
+    {volume: "Volume 3", name: "Chapter 7", path: "book_vol03/chapter07", content: getBuiltinDemos("book_vol03/chapter07")},
 ];
 
 const props = defineProps<{
@@ -113,6 +123,8 @@ const props = defineProps<{
 
 const selectedChapterIndex = ref(0);
 const selectedChapterProjectIndex = ref(0);
+// False while the selected chapter's content is still being fetched (so we don't flash the "no projects" message)
+const chapterLoaded = ref(false);
 const projectsInCurrentChapter = ref<{ name: string, description: string | undefined, imgURL: string | undefined, projectFile: () => Promise<string | undefined> }[]>([]);
 const assetsInCurrentChapter = ref<{ name: string, imgURL: string | undefined, mimeType: string, assetFileBase64: string | undefined }[]>([]);
 
@@ -154,6 +166,7 @@ function copyItem(mimeType: string, assetFileBase64: string) {
 
 async function changeBookDialogCategory(index: number) {
     selectedChapterIndex.value = index;
+    chapterLoaded.value = false;
     projectsInCurrentChapter.value = [];
     assetsInCurrentChapter.value = [];
     const foundProjects = [];
@@ -218,6 +231,7 @@ async function changeBookDialogCategory(index: number) {
     }
     projectsInCurrentChapter.value = foundProjects;
     assetsInCurrentChapter.value = foundAssets;
+    chapterLoaded.value = true;
 }
 
 function shown() {

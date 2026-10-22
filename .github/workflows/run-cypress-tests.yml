@@ -46,15 +46,15 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install Node.js and NPM via Volta
-        uses: volta-cli/action@v4
+        uses: volta-cli/action@v5
       - name: NPM Install
         # ci is better than npm install for CI jobs, apparently (quicker + more predictable):
         run: npm ci
       - name: Cache Pyodide
         id: cache-pyodide
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: public/pyodide
           key: ${{ runner.os }}-pyodide-${{ hashFiles('package-lock.json', 'scripts/download-pyodide-libs.cjs') }}

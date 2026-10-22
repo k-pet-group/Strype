@@ -112,4 +112,27 @@ test.describe("Book dialog chapter selection survives dialog opening", () => {
         await page.waitForTimeout(2000);
         await expect(fireworksEntry).toBeVisible();
     });
+    test("A chapter with no projects shows a centred message", async ({page}) => {
+        await page.click("#" + await strypeElIds.getEditorMenuUID());
+        await page.locator("." + scssVars.strypeMenuItemClassName, {hasText: "Book..."}).click();
+        // Volume 3, Chapter 3 is the third "Chapter 3" in the list and is deliberately empty:
+        await page.locator(".open-book-dlg-book-group-item", {hasText: "Chapter 3"}).nth(2).click();
+        const message = page.locator(".open-book-dlg-no-projects");
+        await expect(message).toHaveText("This chapter has no associated projects");
+        await expect(page.locator(".open-book-dlg-name")).toHaveCount(0);
+
+        // Check it's centred both ways within the right-hand pane:
+        const pane = await message.locator("xpath=..").boundingBox();
+        if (!pane) {
+            throw new Error("Could not find the right-hand pane");
+        }
+        const text = await message.evaluate((el) => {
+            const range = document.createRange();
+            range.selectNodeContents(el);
+            const r = range.getBoundingClientRect();
+            return {x: r.x + r.width / 2, y: r.y + r.height / 2};
+        });
+        expect(Math.abs(text.x - (pane.x + pane.width / 2))).toBeLessThan(10);
+        expect(Math.abs(text.y - (pane.y + pane.height / 2))).toBeLessThan(10);
+    });
 });

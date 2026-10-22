@@ -1,0 +1,57 @@
+#(=> Strype:1:std
+#(=> editorCommandsSplitterPane2Size:{"tabsCollapsed":40.1}
+'''sentiment-analysis, Version 1.0
+
+This project reads in a text and analyses how many positive and negative words occur in the text. This is based on a dictionary of words with additional information (such as sentiment).  
+
+The dictionary is a csv file; you can open it in Excel or Google Sheets if you\'d like to see the available information.
+Source: University of Notre Dame, https://sraf.nd.edu/loughranmcdonald-master-dictionary/
+
+This project is part of Volume 3 of the book series "Creative Python Programming with Strype".
+Authors: Michael Kölling and Neil C.C. Brown'''
+#(=> Section:Imports
+import pandas as pd 
+#(=> Section:Definitions
+#(=> FrameState:FoldToHeader;Frozen
+def read_file (filename ) :
+    '''Reads the full content of the file and returns it as a string'''
+    with open(filename,encoding="utf-8")  as f  :
+        return f.read() 
+def list_to_lower (list ) :
+    '''This function takes a list of strings and returns a copy of the list with all the strings converted to lower case.'''
+    #This code uses a list comprehension. See Appendix C in the book.
+    return [s.lower() for s in list] 
+def get_word_list (data_frame,label ) :
+    '''This function takes a data frame for the dictionary csv file, and the label for the column we are interested in ("Positive" or "Negative"). It returns a list of all the words flagged in that column, in lowercase.'''
+    #Create a data frame with just the rows in which the value in the column of interest is not 0
+    selected  = data_frame[data_frame[label] != 0] 
+    #Take just the "Word" column, convert it to a list, turn to lower case, and return
+    selected_list  = selected["Word"].to_list() 
+    return list_to_lower(selected_list) 
+def get_words (filename ) :
+    '''Read in the file "filename" and return a list of the words in it.'''
+    text  = read_file("frankenstein.txt") 
+    return text.split() 
+#(=> Section:Main
+#Read in the csv file as a pandas data frame
+df  = pd.read_csv("/data/Loughran-McDonald_MasterDictionary_1993-2025.csv") 
+
+positive_words  = get_word_list(df,"Positive") 
+print("Total known positive words: ",len(positive_words)) 
+
+negative_words  = get_word_list(df,"Negative") 
+print("Total known negative words: ",len(negative_words)) 
+
+words  = get_words("/books/frankenstein.txt") 
+print("Number of words in text: ",len(words)) 
+
+pos  = 0 
+neg  = 0 
+for word  in words  :
+    if word in negative_words  :
+        neg  = neg + 1 
+    elif word in positive_words  :
+        pos  = pos + 1 
+print("Positive words in text: ",pos) 
+print("Negative words in text: ",neg) 
+#(=> Section:End

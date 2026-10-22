@@ -6,6 +6,6 @@
   image: text-generation.png
   description: The second version of the text generation project
 
-- file: text-generation-advanced-syntax.spy
-  image: text-generation.png
-  description: A version written with some more advanced Python syntax
+- file: sentiment-analysis.spy
+  image: sentiment-analysis.png
+  description: Analyse how positive or negative a text is

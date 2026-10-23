@@ -5,8 +5,9 @@
     "scripts": {
         "serve:microbit": "cross-env STRYPE_PLATFORM=microbit vite --port 8081",
         "serve:python": "npm run compile-service-worker && cross-env STRYPE_PLATFORM=standard vite --port 8081",
+        "serve:gh-auth": "node --env-file=public/gh-auth/.env public/gh-auth/server.js",
         "serve:python:testing": "npm run compile-service-worker && cross-env STRYPE_PLATFORM=standard vite --port 8081 --mode e2e",
-        "serve:python:dist:playwright": "rimraf temp-scripts/playwright-server && npm run build:python && mkdirp temp-scripts/playwright-server/editor/ && mv dist/* temp-scripts/playwright-server/editor/ && npx serve -l 8081 temp-scripts/playwright-server",
+        "serve:python:dist:playwright": "rimraf temp-scripts/playwright-server && npm run build:python && mkdirp temp-scripts/playwright-server/editor/ && mv dist/* temp-scripts/playwright-server/editor/ && npx serve -l 8081 --no-etag temp-scripts/playwright-server",
         "build:microbit": "cross-env STRYPE_PLATFORM=microbit vite build",
         "build:python": "npm run compile-service-worker && cross-env STRYPE_PLATFORM=standard vite build",
         "build:github-pages": "npm run compile-service-worker && cross-env STRYPE_PLATFORM=standard VITE_GITHUB_PAGE=true vite build",
@@ -45,7 +46,6 @@
         "@types/path-browserify": "^1.0.3",
         "@types/sortablejs": "^1.10.6",
         "@vitejs/plugin-vue": "6.0.7",
-        "@wsfe/vue-tree": "^4.1.1",
         "audiobuffer-to-wav": "^1.0.0",
         "axios": "^0.33.0",
         "bootstrap": "^5.3.8",

@@ -176,6 +176,8 @@ import { isMacOSPlatform } from "@/helpers/common";
 import fsIcon from "@/assets/images/FSicon.png";
 import gdIcon from "@/assets/images/logoGDrive.png";
 import odIcon from "@/assets/images/logoOneDrive.svg";
+import ghIcon from "@/assets/images/logoGitHub.svg";
+import glIcon from "@/assets/images/logoGitLab.svg";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 import { clamp } from "lodash";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
@@ -287,6 +289,10 @@ export default defineComponent({
                 return gdIcon;
             case StrypeSyncTarget.od:
                 return odIcon;
+            case StrypeSyncTarget.gh:
+                return ghIcon;
+            case StrypeSyncTarget.gl:
+                return glIcon;
             default:
                 return "";
             }
@@ -299,6 +305,8 @@ export default defineComponent({
                 return this.$t("appMessage.targetFS");
             case StrypeSyncTarget.gd:
             case StrypeSyncTarget.od:
+            case StrypeSyncTarget.gh:
+            case StrypeSyncTarget.gl:
                 return (cloudDriveHandlerComponentAPI?.getDriveName())??"";
             default:
                 return "";

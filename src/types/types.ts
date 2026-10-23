@@ -1233,7 +1233,10 @@ export enum StrypeSyncTarget {
     gd, // Google Drive    
     od, // Microsoft One Drive
     ws, // Webstore: only used for default autosaving in the browser
+    gh, // GitHub
+    gl, // GitLab (both the base server and the self managed instances)
 }
+
 
 export enum ShareProjectMode {
     public, // A public sharing (generic cases)
@@ -1308,6 +1311,15 @@ export interface MIMEDesc {
 }
 
 export type ProjectLocation = (undefined | string | FileSystemFileHandle);
+
+// The folder of a Python file opened from a Cloud Drive or a Git provider: the project isn't synced with that target,
+// but its first save there is proposed in that folder (see CloudDriveHandler's loadPickedFileId() and saveFile())
+export interface SuggestedCloudSaveLocation {
+    target: StrypeSyncTarget,
+    location: string, // like strypeProjectLocation
+    alias: string, // like strypeProjectLocationAlias
+    path: string, // like strypeProjectLocationPath
+}
 
 export interface Locale {
     code: string, // a 2 letter code idenitifying the locale (e.g.: "en")

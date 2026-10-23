@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <!-- Do not leak the authorisation code in the URL to anything this page loads -->
+    <meta name="referrer" content="no-referrer">
+    <title>Strype - GitHub connection</title>
+    <link rel="icon" href="/images/favicon.png">
+    <style>
+        body {font-family: sans-serif; text-align: center; margin: 3em 1em; color: #333;}
+    </style>
+</head>
+<body>
+    <p id="message">Completing the connection to GitHub...</p>
+    <script>
+        // This page is both the GitHub App's "Callback URL" and its "Setup URL", opened in the popup started by the Strype editor:
+        //  - after the user authorises Strype, GitHub sends it ?code=...&state=... (or ?error=...).
+        //    We pass these to the editor, which checks "state" and exchanges the code via the gh-auth backend
+        //    (the code is useless without the PKCE verifier the editor kept). The editor then replies,
+        //    asking us either to close, or to go to the app installation page if Strype is not installed yet.
+        //  - after the user installs the app (or changes its repositories), GitHub sends it ?installation_id=...&setup_action=...
+        //    We tell the editor, so it can check the installation again.
+        // BroadcastChannel is used rather than window.opener because GitHub's pages may sever the
+        // opener link (Cross-Origin-Opener-Policy). It only works within the same origin, so this
+        // page must be served from the same origin as the editor (which will be the case when deploying the Strype built: it will be at the right place).
+        (function () {
+            var REPLY_TIMEOUT_MS = 30000;
+            var INSTALL_URL_PREFIX = "https://github.com/apps/";
+
+            var params = new URLSearchParams(window.location.search);
+            // Remove the code from the address bar and history.
+            history.replaceState(null, "", window.location.pathname);
+
+            var messageElement = document.getElementById("message");
+            function finish(text) {
+                messageElement.textContent = text + " You can close this window and return to Strype.";
+                window.close();
+            }
+
+            var channel;
+            try {
+                channel = new BroadcastChannel("strype-gh-auth");
+            }
+            catch (e) {
+                messageElement.textContent = "Your browser could not complete the connection to GitHub. Please try with an up-to-date browser.";
+                return;
+            }
+
+            if (params.has("setup_action")) {
+                channel.postMessage({
+                    type: "strype-gh-auth-installed",
+                    installationId: params.get("installation_id"),
+                    setupAction: params.get("setup_action")
+                });
+                channel.close();
+                finish("Strype's access to your GitHub repositories has been updated.");
+                return;
+            }
+
+            var state = params.get("state");
+            if (params.get("error") || !params.get("code")) {
+                channel.postMessage({type: "strype-gh-auth-callback", state: state, error: params.get("error") || "missing_code", errorDescription: params.get("error_description")});
+                channel.close();
+                finish("The connection to GitHub was not completed.");
+                return;
+            }
+
+            var timeout = setTimeout(function () {
+                channel.close();
+                finish("Connected to GitHub.");
+            }, REPLY_TIMEOUT_MS);
+            channel.onmessage = function (event) {
+                var reply = event.data;
+                if (!reply || reply.type !== "strype-gh-auth-continue" || reply.state !== state) {
+                    return;
+                }
+                clearTimeout(timeout);
+                channel.close();
+                if (typeof reply.installUrl === "string" && reply.installUrl.indexOf(INSTALL_URL_PREFIX) === 0) {
+                    messageElement.textContent = "Connected to GitHub. Taking you to choose which repositories Strype can use...";
+                    window.location.href = reply.installUrl;
+                }
+                else if (reply.error) {
+                    finish("The connection to GitHub was not completed.");
+                }
+                else {
+                    finish("Connected to GitHub.");
+                }
+            };
+            // Listening is set up before posting, so the editor's reply cannot be missed.
+            channel.postMessage({type: "strype-gh-auth-callback", code: params.get("code"), state: state});
+        })();
+    </script>
+</body>
+</html>

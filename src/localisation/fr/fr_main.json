@@ -77,7 +77,10 @@
     "choose": "Sélectionner",
     "reload": "Recharger",
     "renameAllWithShortcut": "Renommer tout <span class=\"kb-shortcut\">({modifierkey}+R)</span>",
-    "close": "Fermer"
+    "close": "Fermer",
+    "connect": "Se connecter",
+    "commit": "Valider (commit)",
+    "continueSave": "Continuer..."
   },
   "errorMessage": {
     "wrongDataFormat": "le format de données ne peut pas être lu",
@@ -133,7 +136,12 @@
       "closeInternalError": "Strype a rencontré une erreur interne lors de la fermeture du fichier (le fichier n'a pas été trouvé).",
       "cannotCreateDirectory": "La création de dossier n'est actuellement pas supportée."
     },
-    "editableSlotWithHash": "Ce champ ne peut pas contenir '#'"
+    "editableSlotWithHash": "Ce champ ne peut pas contenir '#'",
+    "saveFailedDetails": "<br>Détails : {details}",
+    "gitConnectionFailed": "Impossible de se connecter à {providername} : {error}",
+    "gitNotConnected": "Vous n'êtes pas connecté à {providername}.",
+    "gitCommitFailed": "Impossible de valider (commit) le projet vers {providername} (erreur : {error}).",
+    "gitRepositoryCreationFailed": "Impossible de créer le dépôt \"{name}\" sur {providername} : {error}"
   },
   "appMessage": {
     "loadEditorFile": "Chargement de votre fichier dans l'éditeur...",
@@ -163,7 +171,6 @@
     "cloudLockedFileAlreadyExists": "Ce projet est verrouillé à cet emplacement dans {drivename}.\nIl ne peut pas être enregistré avec ce nom.",
     "saved": "Enregistré",
     "modified": "Modifié",
-    "emptyCloudDrivePicker": "Votre {drivename} est vide...",
     "cloudDriveItemPickerLoadingFolderContent": "Chargement du dossier...",
     "lastSavedOn": "Dernier enregistrement : {lastSavedDate}",
     "lastSavedOnNDays": "Dernier enregistrement : il y a {nbLastSave} jours",
@@ -196,7 +203,33 @@
     "thisFunction": "cette fonction",
     "thisClass": "cette classe",
     "clearAllRecent": "Supprimer tout",
-    "downloadPEAConsole": "Préparation de la capture du terminal (cela peut prendre du temps)..."
+    "downloadPEAConsole": "Préparation de la capture du terminal (cela peut prendre du temps)...",
+    "cloudDriveItemPickerLocation": "Emplacement du dossier",
+    "cloudDriveItemPickerNoFolder": "Aucun dossier ici.",
+    "cloudDriveItemPickerNoFolderOrFile": "Aucun dossier ni fichier Strype/Python ici.",
+    "oneDriveRootBreadcrumb": "Racine OneDrive",
+    "gitLabConnectTitle": "Se connecter à GitLab",
+    "gitLabInstanceLabel": "Quel GitLab souhaitez-vous utiliser ?",
+    "gitLabComDetails": "Le service public de GitLab.",
+    "gitLabSelfManaged": "Un autre serveur GitLab...",
+    "gitLabForgetInstance": "Oublier ce serveur GitLab",
+    "gitLabSelfManagedDetails": "Par exemple, le GitLab propre à votre école. Son administrateur doit y enregistrer Strype en tant qu'application et vous fournir son identifiant (application ID).",
+    "gitLabInstanceUrl": "Adresse du serveur GitLab",
+    "gitLabClientId": "Identifiant de l'application Strype sur ce serveur",
+    "gitRepository": "Dépôt :",
+    "gitBranch": "Branche :",
+    "gitLoadingError": "Impossible d'obtenir le contenu à partir de {providername} : {error}",
+    "gitSaveTitle": "Enregistrer sur {providername}",
+    "gitNewRepository": "{name} (nouveau dépôt)",
+    "gitFolder": "Dossier :",
+    "gitFile": "Fichier :",
+    "gitRepositoryRootBreadcrumb": "Racine du dépôt",
+    "gitCreatingRepository": "Création du dépôt \"{name}\" en cours...",
+    "gitCommitTitle": "Valider (commit) vers {providername}",
+    "gitCommitDetails": "{filename} va être validé (commit) et poussé (push) vers {location}.",
+    "gitCommitMessage": "Message de validation (commit) :",
+    "gitCommitMessagePlaceholder": "Renseignez un message de validation (commit)",
+    "gitDefaultCommitMessage": "Modification du fichier ({datetime})"
   },
   "contextMenu": {
     "ctrl": "Ctrl",

@@ -20,24 +20,31 @@
             <ModalDlg :dlgId="loadProjectModalDlgId" showCloseBtn hideDlgBtns>
                 <div class="project-target-popup-content-container">
                     <span class="load-save-label">{{ $t("appMessage.loadToTarget") }}</span>
-                    <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
-                        <div id="loadFromGDStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncGDValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
-                            @mouseenter="changeTargetFocusOnMouseOver">
-                            <img src="@/assets/images/logoGDrive.png" alt="Google Drive"/> 
-                            <span>Google Drive</span>
+                    <div class="project-targets-container">
+                        <div :ref="loadProjectTargetButtonGpId" class="project-target-button-container">
+                            <div :id="loadFromFSStrypeButtonId" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
+                                @mouseenter="changeTargetFocusOnMouseOver">
+                                <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
+                                <span>{{ $t("appMessage.targetFS") }}</span>
+                            </div>
+                            <div :id="getTargetButtonId(primaryCloudTarget.target)" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(primaryCloudTarget.target)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
+                                @mouseenter="changeTargetFocusOnMouseOver">
+                                <img :src="primaryCloudTarget.logo" :alt="primaryCloudTarget.label"/>
+                                <span>{{ primaryCloudTarget.label }}</span>
+                            </div>
                         </div>
-                        <div id="loadFromODStrypeButton" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncODValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
-                            @mouseenter="changeTargetFocusOnMouseOver">
-                            <img src="@/assets/images/logoOneDrive.svg" alt="OneDrive"/> 
-                            <span>OneDrive</span>
+                        <div class="secondary-targets-container">
+                            <div v-for="cloudTarget in secondaryCloudTargets" :key="cloudTarget.target" :id="getTargetButtonId(cloudTarget.target)" :class="scssVars.projectTargetButtonClassName + ' load-dlg secondary-target'" tabindex="0"  @click="changeTempSyncTarget(cloudTarget.target)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
+                                @mouseenter="changeTargetFocusOnMouseOver">
+                                <img :src="cloudTarget.logo" :alt="cloudTarget.label"/>
+                                <span>{{ cloudTarget.label }}</span>
+                            </div>
                         </div>
-                        <div :id="loadFromFSStrypeButtonId" :class="scssVars.projectTargetButtonClassName + ' load-dlg'" tabindex="0"  @click="changeTempSyncTarget(syncFSValue)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
-                            @mouseenter="changeTargetFocusOnMouseOver">
-                            <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
-                            <span>{{ $t("appMessage.targetFS") }}</span>
+                        <div class="embedded-proj-links-container">
+                            <a class="open-menu-embedded-proj-link" tabindex="0" @click="onOpenMenuLinkClick('examples')" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)" @mouseenter="changeTargetFocusOnMouseOver">{{$t("appMenu.loadDemoProject")}}</a>
+                            <a class="open-menu-embedded-proj-link" tabindex="0" @click="onOpenMenuLinkClick('book')" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)" @mouseenter="changeTargetFocusOnMouseOver">{{$t("appMenu.book")}}</a>
                         </div>
                     </div>
-                    <div><a class="open-menu-embedded-proj-link" @click="onOpenMenuLinkClick('examples')">{{$t("appMenu.loadDemoProject")}}</a><a class="open-menu-embedded-proj-link" @click="onOpenMenuLinkClick('book')">{{$t("appMenu.book")}}</a></div>
                     <div class="recent-states-pane" v-if="showRecentUnsaved && recentLoadableStates && recentLoadableStates.length > 0">
                         <div class="d-flex justify-content-between align-items-baseline">
                             <span class="load-save-label">{{ $t("appMessage.loadRecentState") }}</span>
@@ -54,8 +61,8 @@
             </ModalDlg>
             <!-- save project -->
             <a :id="saveProjectLinkId" v-show="showMenu" :class="'strype-menu-link ' + scssVars.strypeMenuItemClassName" @click="handleSaveMenuClick">{{$t('appMenu.saveProject')}}<span class="strype-menu-kb-shortcut">{{saveProjectKBShortcut}}</span></a>
-            <a v-if="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !isSynced }" @click="handleSaveAsMenuClick">{{$t("appMenu.saveAsProject")}}</a>
-            <ModalDlg :dlgId="saveProjectModalDlgId" :okCustomTitle="$t('buttonLabel.save')" size="lg">
+            <a v-if="showMenu" :class="{['strype-menu-link ' + scssVars.strypeMenuItemClassName]: true, disabled: !canSaveAs }" @click="handleSaveAsMenuClick">{{$t("appMenu.saveAsProject")}}</a>
+            <ModalDlg :dlgId="saveProjectModalDlgId" :okCustomTitle="$t((isGitSaveTargetSelected) ? 'buttonLabel.continueSave' : 'buttonLabel.save')" size="lg">
                 <div class="save-project-modal-dlg-container">
                     <div class="modal-row">
                         <label class="load-save-label modal-cell">{{$t("appMessage.fileName")}}</label>
@@ -64,21 +71,25 @@
                     <div class="modal-row">
                         <span class="load-save-label modal-cell">{{$t("appMessage.saveToTarget")}}</span>
                         <div class="modal-cell">
-                            <div :ref="saveProjectTargetButtonGpId" class="project-target-button-container">
-                                <div id="saveToGDStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncGDValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
-                                    :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncGDValue || tempSyncTarget == noSyncTargetValue}">
-                                    <img src="@/assets/images/logoGDrive.png" alt="Google Drive"/> 
-                                    <span>Google Drive</span>
+                            <div class="project-targets-container">
+                                <div :ref="saveProjectTargetButtonGpId" class="project-target-button-container">
+                                    <div :id="saveToFSStrypeButtonId" tabindex="0" @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
+                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncFSValue}">
+                                        <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
+                                        <span>{{ $t("appMessage.targetFS") }}</span>
+                                    </div>
+                                    <div :id="getTargetButtonId(primaryCloudTarget.target, true)" tabindex="0" @click="changeTempSyncTarget(primaryCloudTarget.target, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
+                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == primaryCloudTarget.target || tempSyncTarget == noSyncTargetValue}">
+                                        <img :src="primaryCloudTarget.logo" :alt="primaryCloudTarget.label"/>
+                                        <span>{{ primaryCloudTarget.label }}</span>
+                                    </div>
                                 </div>
-                                <div id="saveToODStrypeButton" tabindex="0"  @click="changeTempSyncTarget(syncODValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
-                                    :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncODValue}">
-                                    <img src="@/assets/images/logoOneDrive.svg" alt="OneDrive"/> 
-                                    <span>OneDrive</span>
-                                </div>
-                                <div :id="saveToFSStrypeButtonId" tabindex="0"  @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
-                                    :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncFSValue}">
-                                    <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
-                                    <span>{{ $t("appMessage.targetFS") }}</span>
+                                <div class="secondary-targets-container">
+                                    <div v-for="cloudTarget in secondaryCloudTargets" :key="cloudTarget.target" :id="getTargetButtonId(cloudTarget.target, true)" tabindex="0" @click="changeTempSyncTarget(cloudTarget.target, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
+                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg secondary-target']: true, saveTargetSelected: tempSyncTarget == cloudTarget.target}">
+                                        <img :src="cloudTarget.logo" :alt="cloudTarget.label"/>
+                                        <span>{{ cloudTarget.label }}</span>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -269,13 +280,17 @@ import appPackageJson from "@/../package.json";
 import { checkCodeErrors, getAboveFrameCaretPosition, getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import scssVars from "@/assets/style/_export.module.scss";
 import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
-import { CloudFileSharingStatus, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
+import { CloudFileSharingStatus, isSyncTargetCloudDrive, isSyncTargetGitProvider } from "@/types/cloud-drive-types";
 import {deflateRaw} from "pako";
 import {Base64} from "js-base64";
 import disabledUndoImgPath from "@/assets/images/disabledUndo.svg";
 import disabledRedoImgPath from "@/assets/images/disabledRedo.svg";
 import undoImgPath from "@/assets/images/undo.svg";
 import redoImgPath from "@/assets/images/redo.svg";
+import gdLogoImgPath from "@/assets/images/logoGDrive.png";
+import odLogoImgPath from "@/assets/images/logoOneDrive.svg";
+import ghLogoImgPath from "@/assets/images/logoGitHub.svg";
+import glLogoImgPath from "@/assets/images/logoGitLab.svg";
 import { useI18n } from "vue-i18n";
 import { BButton, BvTriggerableEvent } from "bootstrap-vue-next";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
@@ -292,6 +307,19 @@ const defaultSharingProjectMode = ShareProjectMode.public;
 // The browser doesn't change during a session, so we detect it once here rather than calling
 // useBrowserDetect() (which allocates a new reactive object) on every keydown event.
 const { isSafari } = useBrowserDetect();
+// The cloud targets' buttons of the load/save project dialogs: the first one (Google Drive) is the default primary cloud target,
+// the others are the secondary targets, in this order (see primaryCloudTarget and secondaryCloudTargets).
+interface ProjectCloudTargetButtonInfos {
+    target: StrypeSyncTarget,
+    logo: string,
+    label: string,
+}
+const projectCloudTargetButtonsInfos: ProjectCloudTargetButtonInfos[] = [
+    {target: StrypeSyncTarget.gd, logo: gdLogoImgPath, label: "Google Drive"},
+    {target: StrypeSyncTarget.od, logo: odLogoImgPath, label: "OneDrive"},
+    {target: StrypeSyncTarget.gh, logo: ghLogoImgPath, label: "GitHub"},
+    {target: StrypeSyncTarget.gl, logo: glLogoImgPath, label: "GitLab"},
+];
 export default defineComponent({
     name: "Menu",
     
@@ -339,6 +367,9 @@ export default defineComponent({
             goToError: this.goToError,
             getCurrentDriveLocation: () => {
                 return this.currentDriveLocation;
+            },
+            getRequestSaveAs: () => {
+                return this.requestSaveAs;
             },
             setRequestSaveAs: (value: boolean) => {
                 this.requestSaveAs = value;
@@ -526,6 +557,12 @@ export default defineComponent({
             return this.appStore.syncTarget != StrypeSyncTarget.none;
         },
 
+        canSaveAs(): boolean {
+            // "Save As" is available when "Save" doesn't show the save dialog: when the project is synced,
+            // or when it comes from a Python file opened from a Cloud Drive or a Git provider (see saveToSuggestedCloudLocation())
+            return this.isSynced || this.appStore.suggestedCloudSaveLocation != undefined;
+        },
+
         noSyncTargetValue(): StrypeSyncTarget {
             return StrypeSyncTarget.none;
         },
@@ -534,12 +571,21 @@ export default defineComponent({
             return StrypeSyncTarget.fs;
         },
 
-        syncGDValue(): StrypeSyncTarget {
-            return StrypeSyncTarget.gd;
+        primaryCloudTarget(): ProjectCloudTargetButtonInfos {
+            // The cloud target shown as a primary target, next to the local file system (Google Drive by default, see settingsStore.promotedCloudTarget)
+            return projectCloudTargetButtonsInfos.find((cloudTarget) => cloudTarget.target == this.settingsStore.promotedCloudTarget) ?? projectCloudTargetButtonsInfos[0];
         },
 
-        syncODValue(): StrypeSyncTarget {
-            return StrypeSyncTarget.od;
+        secondaryCloudTargets(): ProjectCloudTargetButtonInfos[] {
+            // The other cloud targets: when a target is promoted as primary target, Google Drive takes its place in the secondary targets
+            const defaultPrimaryCloudTarget = projectCloudTargetButtonsInfos[0];
+            return projectCloudTargetButtonsInfos.slice(1)
+                .map((cloudTarget) => (cloudTarget.target == this.primaryCloudTarget.target) ? defaultPrimaryCloudTarget : cloudTarget);
+        },
+
+        isGitSaveTargetSelected(): boolean {
+            // For a Git provider, the location is chosen (with the commit message) in a next dialog: the save dialog only "continues" to it
+            return isSyncTargetGitProvider(this.tempSyncTarget);
         },
 
         isSyncingToCloud(): boolean {
@@ -549,7 +595,12 @@ export default defineComponent({
         currentDriveLocation(): string {
             // The current Drive location (folder of a project) depends on whether we are already
             // "connected" to a Drive: if there is no Drive or if the user selects a target that is
-            // NOT the current target, then the default destination is "Strype". 
+            // NOT the current target, then the default destination is "Strype".
+            // When not connected, a project that comes from a Python file opened from the selected Drive is saved in the folder of that file.
+            const suggestedLocation = this.appStore.suggestedCloudSaveLocation;
+            if(!this.isSynced && suggestedLocation?.alias && suggestedLocation.target == this.tempSyncTarget){
+                return suggestedLocation.alias;
+            }
             return(this.appStore.strypeProjectLocationAlias && (this.appStore.syncTarget == this.tempSyncTarget))? this.appStore.strypeProjectLocationAlias : "Strype";
         },
 
@@ -863,15 +914,35 @@ export default defineComponent({
                 this.saveCurrentProject();
             }
             else{
-                eventBus.emit(CustomEventTypes.showStrypeModal, this.saveProjectModalDlgId);
                 // When we are saving a "browser" project (that is, not from FS or GD) we need to be able to trigger the "Open" later, so we set a flag
                 this.requestOpenProjectLater = (saveReason == SaveRequestReason.loadProject);
+                if(this.appStore.suggestedCloudSaveLocation){
+                    this.saveToSuggestedCloudLocation();
+                }
+                else{
+                    eventBus.emit(CustomEventTypes.showStrypeModal, this.saveProjectModalDlgId);
+                }
             }
+        },
+
+        saveToSuggestedCloudLocation(){
+            // A project that comes from a Python file opened from a Cloud Drive or a Git provider isn't synced, but it is saved
+            // without the save dialog, in the folder of that file, as a Strype file of the same name ("Save As" shows the dialog).
+            // (for a Git provider, the user is still asked for the commit message)
+            const suggestedLocation = this.appStore.suggestedCloudSaveLocation;
+            if(!suggestedLocation){
+                return;
+            }
+            this.showMenu = false;
+            vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.setSaveFileName(this.appStore.projectName);
+            this.appStore.trackStorageLocation(suggestedLocation.target);
+            this.appStore.flushAnalyticsQueue("critical");
+            vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.saveFile(suggestedLocation.target, SaveRequestReason.saveProjectAtLocation);
         },
 
         handleSaveAsMenuClick(){
             // Don't do anything if "save as" is grayed out
-            if(this.isSynced){
+            if(this.canSaveAs){
                 // This is used to set the "save as" flag, and open the modal; the saving mechanism is handled via the modal.
                 this.requestSaveAs = true;
                 eventBus.emit(CustomEventTypes.showStrypeModal, this.saveProjectModalDlgId);
@@ -899,11 +970,10 @@ export default defineComponent({
 
         changeTargetFocusOnMouseOver(event: MouseEvent) {
             // On the "load project dialog", entering a target button should "snap" the focus to it and select it.
-            // On the "save project dialog", entering a button just give an indication that the button can "clicked".
+            // On the "save project dialog", entering a button just give an indication that the button can be "clicked".
             // For both, we handle those visual aspects by setting the focus on the button -- CSS does the rest.
-            if(event.target){
-                (event.target as HTMLDivElement).focus();
-            }
+            // The embedded project links of the "load project dialog" (examples and book) behave the same way.
+            (event.target as HTMLElement | null)?.focus();
         },
 
         changeTempSyncTarget(target: StrypeSyncTarget, isSaveAction?: boolean) {
@@ -924,6 +994,23 @@ export default defineComponent({
             eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "ok", componentId: this.loadProjectModalDlgId});
         },
 
+        getTargetButtonId(target: StrypeSyncTarget, isSaveAction?: boolean): string {
+            // The ID of a target's button in the load or save project dialog (the primary cloud target's when there is no target yet)
+            const prefix = (isSaveAction) ? "saveTo" : "loadFrom";
+            switch((target == StrypeSyncTarget.none) ? this.primaryCloudTarget.target : target){
+            case StrypeSyncTarget.od:
+                return prefix + "ODStrypeButton";
+            case StrypeSyncTarget.fs:
+                return (isSaveAction) ? this.saveToFSStrypeButtonId : this.loadFromFSStrypeButtonId;
+            case StrypeSyncTarget.gh:
+                return prefix + "GHStrypeButton";
+            case StrypeSyncTarget.gl:
+                return prefix + "GLStrypeButton";
+            default:
+                return prefix + "GDStrypeButton";
+            }
+        },
+
         getTargetSelectVal(): StrypeSyncTarget {
             // Get the target selected as the selected button from the button group; 
             // In the case we do not use the dialog popup ("Save" action when synced), then we keep current synced destination
@@ -932,7 +1019,7 @@ export default defineComponent({
             }
             // The new UI (changing combobox to buttons) means we can't directly check the HTML component to get the selection (unless using CSS).
             // Instead, we use the temp flag we've added in this Menu component, or the value for Google Drive (default) is no changed has been made.
-            return (this.tempSyncTarget != StrypeSyncTarget.none) ? this.tempSyncTarget : StrypeSyncTarget.gd;
+            return (this.tempSyncTarget != StrypeSyncTarget.none) ? this.tempSyncTarget : this.primaryCloudTarget.target;
         },
 
         onOpenMenuLinkClick(target: "examples" | "book"): void {
@@ -948,13 +1035,23 @@ export default defineComponent({
         },
 
         onSaveTargetChanged(){
-            this.showCloudSaveLocation = isSyncTargetCloudDrive(this.getTargetSelectVal());
+            // (a Git provider's location is chosen in a next dialog, see isGitSaveTargetSelected)
+            const selectedTarget = this.getTargetSelectVal();
+            this.showCloudSaveLocation = isSyncTargetCloudDrive(selectedTarget) && !isSyncTargetGitProvider(selectedTarget);
         },
 
         saveTargetChoice(target: StrypeSyncTarget){
             this.appStore.syncTarget = target;
             this.localSyncTarget = target;
             this.tempSyncTarget = target;
+            // A cloud target that has been used (to load or save) becomes the primary cloud target in the load/save dialogs
+            if(isSyncTargetCloudDrive(target) && target != this.settingsStore.promotedCloudTarget){
+                this.settingsStore.setPromotedCloudTarget(target);
+            }
+            // Once the project is linked to a target, the location suggested for its first save (see suggestedCloudSaveLocation) isn't relevant anymore
+            if(target != StrypeSyncTarget.none){
+                this.appStore.suggestedCloudSaveLocation = undefined;
+            }
             // In case there is a Cloud Drive file ID or other Drive related info are handling when we are saving as a file on the FS, we make sure we remove that
             if(target == StrypeSyncTarget.fs || target == StrypeSyncTarget.none){
                 this.appStore.currentCloudSaveFileId = undefined;
@@ -1041,6 +1138,11 @@ export default defineComponent({
             else if (dlgId == this.loadBookProjectModalDlgId) {
                 (this.$refs.openBookDlg as InstanceType<typeof OpenBookDlg>).shown();
             }
+            else if (dlgId == this.saveProjectModalDlgId && !this.isSynced && this.appStore.suggestedCloudSaveLocation) {
+                // A project that comes from a Python file opened from a Cloud Drive or a Git provider is proposed to be saved there
+                // (in the folder of that file, see currentDriveLocation)
+                this.tempSyncTarget = this.appStore.suggestedCloudSaveLocation.target;
+            }
         },
 
         onStrypeMenuShownModalDlg(event: BvTriggerableEvent) {
@@ -1083,23 +1185,19 @@ export default defineComponent({
                     this.getSharingLink(defaultSharingProjectMode, true);
                 }, 2000);
             }
+            else if(dlgId == this.shareProjectChooseMethodDlgId){
+                // When the share method dialog opens, we focus the first method (snapshot) by default
+                setTimeout(() => {
+                    (document.querySelector(`#${dlgId} .${scssVars.projectTargetButtonClassName}`) as HTMLDivElement | null)?.focus();
+                }, 100);
+            }
             else if (dlgId != this.loadDemoProjectModalDlgId && dlgId != this.loadBookProjectModalDlgId) {
                 // (The Examples... and Book... dialogs' own "shown" work happens earlier, in
                 // onStrypeMenuShowModalDlg -- see its comment for why.)
-                // When the load or save project dialogs are opened, we focus the Google Drive selector by default when we don't have information about the source target
+                // When the load or save project dialogs are opened, we focus the button of the current target (Google Drive's by default when we don't have information about the source target).
+                // The search is scoped to the opened dialog, so it does nothing for dialogs without target buttons.
                 setTimeout(() => {
-                    const targetToFocusButton =[...document.querySelectorAll(`#${dlgId} .${scssVars.projectTargetButtonClassName}`)].find((targetButton) => {
-                        // As the moment we only have 2 possible source targets, we can simply check whether "Google" is in the button or not...
-                        if(this.tempSyncTarget == this.noSyncTargetValue || this.tempSyncTarget == this.syncGDValue) {
-                            return targetButton.querySelector("span")?.textContent?.includes("Google");
-                        }
-                        else {
-                            return !targetButton.querySelector("span")?.textContent?.includes("Google");
-                        }
-                    });
-                    if(targetToFocusButton){
-                        (targetToFocusButton as HTMLDivElement).focus();
-                    }
+                    (document.querySelector(`#${dlgId} #${this.getTargetButtonId(this.tempSyncTarget, dlgId == this.saveProjectModalDlgId)}`) as HTMLDivElement | null)?.focus();
                 }, 100);
             } 
         },
@@ -1617,22 +1715,45 @@ export default defineComponent({
         onTargetButtonKeyDown(event: KeyboardEvent, dlgId : string) {
             // Handle some basic keyboard logic for the target selection.
 
-            // Space, left/right arrows should trigger a change of target
-            if(event.key.toLowerCase() == " " || event.key.toLowerCase() == "arrowleft" || event.key.toLowerCase() == "arrowright"){
-                const currentFocusedElementID = document.activeElement?.id??"";
-                const targetButtons = [...document.querySelectorAll(`#${dlgId} .${scssVars.projectTargetButtonClassName}`)];
-                const focusedButtonIndex = targetButtons.findIndex((target) => {
-                    return target.id == currentFocusedElementID;
-                });
+            // Space, left/right and up/down arrows should trigger a change of target
+            const lowCaseEventKey = event.key.toLowerCase();
+            if(lowCaseEventKey == " " || lowCaseEventKey == "arrowleft" || lowCaseEventKey == "arrowright" || lowCaseEventKey == "arrowup" || lowCaseEventKey == "arrowdown"){
+                // The targets are laid out in rows: the primary targets on the first row, the secondary targets (if any)
+                // on the second row, and, for the load dialog, the embedded project links (examples, book) on the last row.
+                // Left/right (and space) loop through all of them in DOM order (row by row), up/down switch between the rows.
+                const allTargetButtons = [...document.querySelectorAll(`#${dlgId} .${scssVars.projectTargetButtonClassName}`)] as HTMLElement[];
+                const rows = [
+                    allTargetButtons.filter((target) => !target.classList.contains("secondary-target")),
+                    allTargetButtons.filter((target) => target.classList.contains("secondary-target")),
+                    (dlgId == this.loadProjectModalDlgId) ? [...document.querySelectorAll(`#${dlgId} .open-menu-embedded-proj-link`)] as HTMLElement[] : [],
+                ].filter((row) => row.length > 0);
+                const targetButtons = rows.flat();
+                const focusedButtonIndex = targetButtons.findIndex((target) => target == event.target);
                 if(focusedButtonIndex > -1){
-                    const newFocousedButtonIndex = (event.key.toLowerCase() == "arrowleft") 
-                        ? (((focusedButtonIndex - 1) >= 0) ? focusedButtonIndex - 1 : targetButtons.length - 1)
-                        : (((focusedButtonIndex + 1) < targetButtons.length) ? focusedButtonIndex + 1 : 0); 
-                    (targetButtons[newFocousedButtonIndex] as HTMLDivElement).focus();
-                    if(dlgId != this.loadProjectModalDlgId) {
-                        // Save and share-method immediately click:
-                        (targetButtons[newFocousedButtonIndex] as HTMLDivElement).click();
-                    }                    
+                    let newFocusedButton: HTMLElement | undefined;
+                    if(lowCaseEventKey == "arrowup" || lowCaseEventKey == "arrowdown"){
+                        // Only relevant if we have several rows (looping like left/right). Going to a row lands on its first target.
+                        if(rows.length > 1){
+                            const focusedRowIndex = rows.findIndex((row) => row.includes(targetButtons[focusedButtonIndex]));
+                            const newRowIndex = (lowCaseEventKey == "arrowup")
+                                ? ((focusedRowIndex - 1 >= 0) ? focusedRowIndex - 1 : rows.length - 1)
+                                : ((focusedRowIndex + 1 < rows.length) ? focusedRowIndex + 1 : 0);
+                            newFocusedButton = rows[newRowIndex][0];
+                        }
+                    }
+                    else{
+                        const newFocusedButtonIndex = (lowCaseEventKey == "arrowleft")
+                            ? (((focusedButtonIndex - 1) >= 0) ? focusedButtonIndex - 1 : targetButtons.length - 1)
+                            : (((focusedButtonIndex + 1) < targetButtons.length) ? focusedButtonIndex + 1 : 0);
+                        newFocusedButton = targetButtons[newFocusedButtonIndex];
+                    }
+                    if(newFocusedButton){
+                        newFocusedButton.focus();
+                        if(dlgId == this.saveProjectModalDlgId) {
+                            // Save immediately clicks (it only selects the target, it doesn't trigger an action):
+                            newFocusedButton.click();
+                        }
+                    }
                 }
                 event.stopImmediatePropagation();
                 event.stopPropagation();
@@ -1643,10 +1764,12 @@ export default defineComponent({
             // Enter should act as a button validation, if one of the target is focused.
             if(event.key.toLowerCase() == "enter"){
                 const focusedTarget = document.activeElement;
-                if(focusedTarget && focusedTarget.classList.contains(scssVars.projectTargetButtonClassName)){
-                    (focusedTarget as HTMLDivElement).click();
-                    if(dlgId != this.loadProjectModalDlgId){
+                const isEmbeddedProjLink = !!focusedTarget?.classList.contains("open-menu-embedded-proj-link");
+                if(focusedTarget && (isEmbeddedProjLink || focusedTarget.classList.contains(scssVars.projectTargetButtonClassName))){
+                    (focusedTarget as HTMLElement).click();
+                    if(dlgId != this.loadProjectModalDlgId || isEmbeddedProjLink){
                         // On the save and share method dialogs, the action doesn't validate the modal dialog
+                        // (and neither do the embedded project links of the load dialog, they open another dialog)
                         event.stopPropagation();
                         event.stopImmediatePropagation();
                         event.preventDefault();
@@ -1857,6 +1980,60 @@ export default defineComponent({
     margin-right: 5px;
 }
 
+// The targets rows (and the embedded project links row) are wrapped in a block that shrinks to fit them, centered
+// in the dialog: the primary targets are pushed to its sides, and the secondary targets fill the 3 equal columns
+// of a grid spanning its full width, so both rows are aligned on their left and right sides. The embedded project
+// links are laid out on the same grid, each spanning 2 columns, so they are centered between 2 secondary targets.
+.project-targets-container {
+    width: fit-content;
+    margin-left: auto;
+    margin-right: auto;
+}
+
+.secondary-targets-container,
+.embedded-proj-links-container {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    column-gap: 10px;
+}
+
+.secondary-targets-container {
+    margin-top: 15px;
+    margin-bottom: 20px;
+}
+
+.embedded-proj-links-container {
+    margin-bottom: 10px;
+}
+
+.embedded-proj-links-container > * {
+    grid-row: 1;
+    justify-self: center;
+}
+
+.embedded-proj-links-container > :nth-child(1) {
+    grid-column: 1 / span 2;
+}
+
+.embedded-proj-links-container > :nth-child(2) {
+    grid-column: 2 / span 2;
+}
+
+.secondary-target {
+    flex-direction: row !important;
+    justify-content: center !important;
+    gap: 8px;
+    font-size: 90%; // between the primary targets' font size and the embedded project links' (smaller)
+    padding: 4px 10px !important;
+    width: auto !important;
+    border-radius: 6px !important;
+}
+
+.secondary-target img {
+    width: 24px;
+    height: 24px;
+}
+
 .clear-all-label {
     font-size: 80%;
     text-decoration: underline;
@@ -1864,7 +2041,7 @@ export default defineComponent({
     cursor: pointer;
 }
 
-.open-menu-embedded-proj-link{
+.open-menu-embedded-proj-link {
     font-size: smaller;
     cursor: pointer;
     color: inherit;
@@ -1879,13 +2056,6 @@ export default defineComponent({
     border-color: #007bff;
     box-shadow: 2px 2px 5px rgb(141, 140, 140);
     outline: none;
-}
-
-div:has(> a.open-menu-embedded-proj-link) {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-    margin-top: 5px;
 }
 
 .save-project-modal-dlg-container {
@@ -1958,10 +2128,8 @@ div:has(> a.open-menu-embedded-proj-link) {
 
 .project-target-button-container {
     display: flex;
-    flex-wrap: nowrap;
-    gap: 20px;
     justify-content: space-between;
-    align-items: center;
+    column-gap: 40px;
 }
 
 .#{$strype-classname-project-target-button} {

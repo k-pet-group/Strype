@@ -2163,6 +2163,13 @@ export default defineComponent({
     box-shadow: 2px 2px 5px rgb(141, 140, 140);
 }
 
+// The primary targets grow to share the width of the targets block (set by the secondary targets row) so that
+// only the container's column gap separates them, rather than a large empty space in the middle.
+.project-target-button-container > .#{$strype-classname-project-target-button} {
+    flex: 1 1 0;
+    min-width: 150px;
+}
+
 .project-target-button-container img {
     width: 64px;
     height: 64px;

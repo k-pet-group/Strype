@@ -189,7 +189,7 @@
     "shareProjectPublicModeDetailsNoDirectDownload": "(with {drivename} sharing, users will be invited to download the project before being able to use it)",
     "shareProjectWithinCloudDriveMode":"Managed by {drivename}",
     "shareProjectWithinCloudDriveModeDetails":"Only people with permission in {drivename}",
-    "publicSharedProjectUserDownloadAttempt":"Strype will try to open an another page for you to download the project.",
+    "publicSharedProjectUserDownloadAttempt":"Strype will try to open another page for you to download the project.",
     "cloudFileAlreadyExists": "A project with the same name already exists in the {drivename} location.\nWould you like to replace it?",
     "cloudLockedFileAlreadyExists": "This project is locked in the {drivename} location.\nIt cannot be saved with this name.",
     "saved": "Saved",

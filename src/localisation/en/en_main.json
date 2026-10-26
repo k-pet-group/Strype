@@ -78,7 +78,6 @@
     "choose": "Choose",
     "reload": "Reload",
     "connect": "Connect",
-    "commit": "Commit",
     "continueSave": "Continue…",
     "renameAllWithShortcut": "Rename all <span class=\"kb-shortcut\">({modifierkey}+R)</span>"
   },

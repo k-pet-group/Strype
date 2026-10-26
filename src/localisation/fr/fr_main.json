@@ -79,7 +79,6 @@
     "renameAllWithShortcut": "Renommer tout <span class=\"kb-shortcut\">({modifierkey}+R)</span>",
     "close": "Fermer",
     "connect": "Se connecter",
-    "commit": "Valider (commit)",
     "continueSave": "Continuer..."
   },
   "errorMessage": {

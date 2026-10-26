@@ -118,6 +118,7 @@
       "notConnectedToCloud": "l'accès aux fichiers lors d'opérations d'entrées/sorties n'est possible qu'à partir d'un projet Strype enregistré dans le Cloud.",
       "parentDirRefNotSupported": "références à un dossier parent dans les chemins d'accès (\"..\") n'est pas supporté par Strype.",
       "fileLocationNotFound": "l'emplacement du fichier \"{filename}\" n'a pas été trouvé.",
+      "gitFilesReadOnly": "les fichiers de {providername} ne peuvent qu'être lus.",
       "unsupportedFile": "Strype interdit les opérations de lecture sur ce fichier \"{filename}\", à cause de son type.",
       "fileNotWritableErr": "le fichier n'est pas ouvert en mode écriture.",
       "fileWriteNotBytesErr": "un objet de type tableau d'octets est requis, pas '{type}'",
@@ -404,6 +405,7 @@
   "fileSystemTab": {
     "builtIn": "Fichiers intégrés",
     "cloud": "Cloud",
+    "gitReadOnly": "Git (fichiers en lecture seule)",
     "local": "Fichiers locaux",
     "cwd": "Ceci est le répertoire de travail actuel lorsque votre code s'exécute",
     "download": "Télécharger",

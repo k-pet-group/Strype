@@ -293,11 +293,11 @@ export async function listGitHubFolderContent(auth: GitHubAuth, repositoryFullNa
     const items = await getGitHubFolderItems(auth, repositoryFullName, branch, folderPath);
     // Other types are symbolic links and submodules, which we cannot browse.
     return items.filter((item) => item.type === "file" || item.type === "dir")
-        .map((item) => ({name: item.name, path: item.path, isFolder: item.type === "dir"}));
+        .map((item) => ({name: item.name, path: item.path, isFolder: item.type === "dir", size: (item.type === "file") ? item.size : undefined}));
 }
 
 // The raw description of the items directly inside a folder ("" for the root) of a repository's branch.
-async function getGitHubFolderItems(auth: GitHubAuth, repositoryFullName: string, branch: string, folderPath: string): Promise<{name: string, path: string, type: string, sha: string}[]> {
+async function getGitHubFolderItems(auth: GitHubAuth, repositoryFullName: string, branch: string, folderPath: string): Promise<{name: string, path: string, type: string, sha: string, size: number}[]> {
     const encodedPath = encodeGitHubPath(folderPath);
     const response = await gitHubFetch(auth, `/repos/${repositoryFullName}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`);
     if (response.status === 404 && encodedPath.length === 0) {
@@ -320,14 +320,24 @@ function encodeGitHubPath(path: string): string {
     return path.split("/").filter((part) => part.length > 0).map(encodeURIComponent).join("/");
 }
 
-// Returns the (UTF-8) text content of a file in a repository's branch.
+// Returns the response with the raw content of a file in a repository's branch.
 // We ask for the raw content: the default (JSON) answer only contains the content for files up to 1 MB.
-export async function getGitHubFileContent(auth: GitHubAuth, repositoryFullName: string, branch: string, filePath: string): Promise<string> {
+async function fetchGitHubRawFile(auth: GitHubAuth, repositoryFullName: string, branch: string, filePath: string): Promise<Response> {
     const response = await gitHubFetch(auth, `/repos/${repositoryFullName}/contents/${encodeGitHubPath(filePath)}?ref=${encodeURIComponent(branch)}`, {headers: {"Accept": "application/vnd.github.raw+json"}});
     if (!response.ok) {
         throw new GitHubHttpError(response.status);
     }
-    return response.text();
+    return response;
+}
+
+// Returns the (UTF-8) text content of a file in a repository's branch.
+export async function getGitHubFileContent(auth: GitHubAuth, repositoryFullName: string, branch: string, filePath: string): Promise<string> {
+    return (await fetchGitHubRawFile(auth, repositoryFullName, branch, filePath)).text();
+}
+
+// Returns the raw content of a file in a repository's branch.
+export async function getGitHubFileBytes(auth: GitHubAuth, repositoryFullName: string, branch: string, filePath: string): Promise<Uint8Array> {
+    return new Uint8Array(await (await fetchGitHubRawFile(auth, repositoryFullName, branch, filePath)).arrayBuffer());
 }
 
 // Returns the date (ISO 8601) of the last commit that changed a file in a repository's branch,
@@ -428,6 +438,7 @@ export const gitHubAPI: GitProviderAPI<GitHubAuth> = {
     listBranches: listGitHubBranches,
     listFolderContent: listGitHubFolderContent,
     getFileContent: getGitHubFileContent,
+    getFileBytes: getGitHubFileBytes,
     getFileLastCommitDate: getGitHubFileLastCommitDate,
     canPushToRepository: canPushToGitHubRepository,
     commitFile: commitGitHubFile,

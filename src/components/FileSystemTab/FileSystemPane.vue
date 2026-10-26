@@ -42,12 +42,13 @@
                 </div>
             </div>
             <div class="file-system-pane-root" v-if="cloudRoot">
-                <h4>{{ $t("fileSystemTab.cloud") }}</h4>
+                <!-- The files of a Git provider can only be read (see isCloudMountReadOnly()) -->
+                <h4>{{ isCloudReadOnly ? $t("fileSystemTab.gitReadOnly") : $t("fileSystemTab.cloud") }}</h4>
                 <FileSystemTree
                     :node="cloudRoot"
                     label-override="/cloud/"
                     start-expanded
-                    allow-upload
+                    :allow-upload="!isCloudReadOnly"
                     :executing="isPythonExecuting"
                     :is-cwd="cwdRoot === '/cloud'"
                     @download="(n) => onDownload(n, '/cloud')"
@@ -115,6 +116,7 @@ import {
     downloadFsFile,
     FsRoot,
     isCloudMounted,
+    isCloudMountReadOnly,
     listFsRootTree,
     readFsFileBytes,
     togglePinLocal,
@@ -213,6 +215,10 @@ export default defineComponent({
         // matches the mounting logic in python-execution.ts's executePython() (startInSlashCloud).
         cwdRoot(): "/local" | "/cloud" {
             return isCloudMounted() ? "/cloud" : "/local";
+        },
+
+        isCloudReadOnly(): boolean {
+            return isCloudMountReadOnly();
         },
     },
 

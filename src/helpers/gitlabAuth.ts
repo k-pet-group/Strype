@@ -273,14 +273,24 @@ export async function listGitLabFolderContent(auth: GitLabAuth, projectFullPath:
         .map((item) => ({name: item.name, path: item.path, isFolder: item.type === "tree"}));
 }
 
-// Returns the (UTF-8) text content of a file in a project's branch.
-export async function getGitLabFileContent(auth: GitLabAuth, projectFullPath: string, branch: string, filePath: string): Promise<string> {
+// Returns the response with the raw content of a file in a project's branch.
+async function fetchGitLabRawFile(auth: GitLabAuth, projectFullPath: string, branch: string, filePath: string): Promise<Response> {
     // (the file path is a single URL parameter here: its slashes must be encoded too)
     const response = await gitLabFetch(auth, `${projectApiPath(projectFullPath)}/repository/files/${encodeURIComponent(filePath)}/raw?ref=${encodeURIComponent(branch)}`);
     if (!response.ok) {
         throw new GitLabHttpError(response.status);
     }
-    return response.text();
+    return response;
+}
+
+// Returns the (UTF-8) text content of a file in a project's branch.
+export async function getGitLabFileContent(auth: GitLabAuth, projectFullPath: string, branch: string, filePath: string): Promise<string> {
+    return (await fetchGitLabRawFile(auth, projectFullPath, branch, filePath)).text();
+}
+
+// Returns the raw content of a file in a project's branch.
+export async function getGitLabFileBytes(auth: GitLabAuth, projectFullPath: string, branch: string, filePath: string): Promise<Uint8Array> {
+    return new Uint8Array(await (await fetchGitLabRawFile(auth, projectFullPath, branch, filePath)).arrayBuffer());
 }
 
 // Returns the date (ISO 8601) of the last commit that changed a file in a project's branch,
@@ -379,6 +389,7 @@ export const gitLabAPI: GitProviderAPI<GitLabAuth> = {
     listBranches: listGitLabBranches,
     listFolderContent: listGitLabFolderContent,
     getFileContent: getGitLabFileContent,
+    getFileBytes: getGitLabFileBytes,
     getFileLastCommitDate: getGitLabFileLastCommitDate,
     canPushToRepository: canPushToGitLabProject,
     commitFile: commitGitLabFile,

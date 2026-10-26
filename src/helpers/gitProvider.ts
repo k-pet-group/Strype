@@ -322,25 +322,46 @@ export function useGitProvider<Auth>(options: {
         return Promise.reject("Not implemented yet");
     }
 
-    function searchCloudDriveElements(elementName: string | undefined, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]> {
-        //TODO
-        return Promise.resolve([]);
+    async function searchCloudDriveElements(elementName: string | undefined, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]> {
+        // Git providers have no search: we list the folder (a Git location, see getFolderNameFromId()) and keep the matching items,
+        // the files getting Git file IDs and the folders Git location IDs (so they can be searched in turn).
+        // (searchOptions are about sorting and fields to get from a Drive's search, there is nothing equivalent here)
+        const location = parseGitLocationId(elementLocationId);
+        if(location == null){
+            return [];
+        }
+        const items = await api.listFolderContent(getAuth(), location.repoId, location.branchId, location.folderPath);
+        return items
+            .filter((item) => (elementName == undefined || item.name == elementName)
+                && (!searchAllSPYFiles || (!item.isFolder && item.name.endsWith("." + strypeFileExtension))))
+            .map((item) => ({
+                name: item.name,
+                id: (item.isFolder)
+                    ? toGitLocationId({...location, folderPath: item.path})
+                    : toGitFileId({repoId: location.repoId, branchId: location.branchId, path: item.path, fileName: item.name}),
+                isDir: item.isFolder,
+                // (when the provider doesn't give the size, reading the file still gets all its content)
+                fileSize: item.size ?? 0,
+            }));
     }
 
     // FileIO
+    // The files of a Git provider are read-only for the user code: writing would mean a commit for every
+    // file written (the Python file system mounted for them is read-only, see executePython()).
     function checkIsCloudDriveFileReadonly(file: CloudDriveFile): boolean {
-        //TODO
-        return false;
+        return true;
     }
 
-    function readFileContentForIO(fileId: string, filePath: string): Promise<Uint8Array> {
-        //TODO
-        return Promise.reject("Not implemented yet");
+    async function readFileContentForIO(fileId: string, filePath: string): Promise<Uint8Array> {
+        const gitFileId = parseGitFileId(fileId);
+        if(gitFileId == null){
+            throw new Error(i18n.global.t("errorMessage.fileIO.fileLocationNotFound", {filename: filePath}));
+        }
+        return api.getFileBytes(getAuth(), gitFileId.repoId, gitFileId.branchId, gitFileId.path);
     }
 
     function writeFileContentForIO(fileContent: string | Uint8Array, fileInfos: { filePath: string, fileName: string, folderId: string } | { filePath: string, fileId: string }): Promise<string> {
-        //TODO
-        return Promise.reject("Not implemented yet");
+        return Promise.reject(i18n.global.t("errorMessage.fileIO.gitFilesReadOnly", {providername: driveName}));
     }
 
     // A <script setup> component is "closed": CloudDriveHandler can only access (via its template ref)

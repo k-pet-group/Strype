@@ -125,6 +125,7 @@
       "notConnectedToCloud":"access to files for IO operations is only possible from a Strype project saved in the Cloud.",
       "parentDirRefNotSupported":"parent directory references in paths (\"..\") are not supported by Strype.",
       "fileLocationNotFound":"the location of the file \"{filename}\" could not be found.",
+      "gitFilesReadOnly":"files from {providername} can only be read.",
       "unsupportedFile":"Strype forbids reading operations to this file \"{filename}\", because of its type.",
       "fileNotWritableErr":"file not open for writing.",
       "fileWriteNotBytesErr":"a bytes-like array object is required, not '{type}'",
@@ -324,6 +325,7 @@
   "fileSystemTab": {
     "builtIn": "Built-in files",
     "cloud": "Cloud",
+    "gitReadOnly": "Git (readonly files)",
     "local": "Local files",
     "cwd": "This is the current working directory when your code runs",
     "download": "Download",

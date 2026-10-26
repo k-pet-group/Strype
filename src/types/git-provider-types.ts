@@ -28,6 +28,8 @@ export interface GitContentItem {
    // From the repository's root, without a leading "/"
    path: string,
    isFolder: boolean,
+   // The size of a file in bytes, if the provider gives it when listing a folder (GitHub does, GitLab doesn't)
+   size?: number,
 }
 
 // Thrown by a provider's API when the user must connect again (token revoked, or refresh failed).
@@ -74,6 +76,8 @@ export interface GitProviderAPI<Auth> {
    listFolderContent(auth: Auth, repoId: string, branch: string, folderPath: string): Promise<GitContentItem[]>,
    // The (UTF-8) text content of a file
    getFileContent(auth: Auth, repoId: string, branch: string, filePath: string): Promise<string>,
+   // The raw content of a file (for the user code's file IO, where files aren't necessarily text)
+   getFileBytes(auth: Auth, repoId: string, branch: string, filePath: string): Promise<Uint8Array>,
    // The date (ISO 8601) of the last commit that changed a file, as Git doesn't keep a modification date for files
    getFileLastCommitDate(auth: Auth, repoId: string, branch: string, filePath: string): Promise<string>,
    canPushToRepository(auth: Auth, repoId: string): Promise<boolean>,

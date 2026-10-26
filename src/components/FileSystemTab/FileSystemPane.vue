@@ -168,6 +168,11 @@ export default defineComponent({
         FileViewerDlg,
     },
 
+    props: {
+        // Bumped by PythonExecutionArea.vue when a project is loaded
+        projectLoadCount: { type: Number, default: 0 },
+    },
+
     data() {
         return {
             loading: true,
@@ -185,6 +190,11 @@ export default defineComponent({
             viewingFile: null as ViewingFile | null,
             // Pending re-list of /local caused by the running program's file changes -- see the watcher
             refreshLocalTimer: null as number | null,
+            // Pending re-list of everything caused by loading a project or changing where it lives -- see the watchers
+            refreshAllTimer: null as number | null,
+            // Incremented by each refresh(), so that a slower earlier one (e.g. listing a cloud drive) doesn't
+            // overwrite the result of a later one
+            refreshSequence: 0,
         };
     },
 
@@ -230,6 +240,9 @@ export default defineComponent({
         if (this.refreshLocalTimer != null) {
             window.clearTimeout(this.refreshLocalTimer);
         }
+        if (this.refreshAllTimer != null) {
+            window.clearTimeout(this.refreshAllTimer);
+        }
     },
 
     watch: {
@@ -244,17 +257,51 @@ export default defineComponent({
                 }, 100);
             }
         },
+
+        // The pane is only listed when it's mounted, so if it's showing when a project is loaded, or when the project
+        // starts living somewhere else (for example, saved to a cloud drive), we must list it again.
+        // Loading a project can change these several times in a row (e.g. the location is only set once its content
+        // is loaded), so we only re-list once things have settled.
+        projectLoadCount() {
+            this.scheduleRefresh();
+        },
+
+        "appStore.strypeProjectLocation"() {
+            this.scheduleRefresh();
+        },
+
+        "appStore.syncTarget"() {
+            this.scheduleRefresh();
+        },
     },
 
     methods: {
+        scheduleRefresh(): void {
+            if (this.refreshAllTimer != null) {
+                window.clearTimeout(this.refreshAllTimer);
+            }
+            this.refreshAllTimer = window.setTimeout(() => {
+                this.refreshAllTimer = null;
+                void this.refresh();
+            }, 100);
+        },
+
         async refresh(): Promise<void> {
             this.loading = true;
+            const sequence = ++this.refreshSequence;
             const roots = assetsRoots();
             const [assetTrees, localRoot, cloudRoot] = await Promise.all([
                 Promise.all(roots.map((root) => listFsRootTree(root))),
                 listFsRootTree("/local"),
-                isCloudMounted() ? listFsRootTree("/cloud") : Promise.resolve(null),
+                // (if the cloud can't be listed, e.g. the connection expired, we still show the other files)
+                isCloudMounted() ? listFsRootTree("/cloud").catch((error) => {
+                    console.warn("Could not list the cloud files", error);
+                    return null;
+                }) : Promise.resolve(null),
             ]);
+            if (sequence != this.refreshSequence) {
+                return;
+            }
             this.assetRoots = roots
                 .map((root, i) => ({root, tree: assetTrees[i]}))
                 .filter((entry): entry is { root: FsRoot, tree: FsTreeNode } => entry.tree != null);

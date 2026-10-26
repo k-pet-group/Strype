@@ -142,24 +142,25 @@
                     </div>
                 </div>
             </ModalDlg>
-            <ModalDlg :dlgId="shareProjectModalDlgId" :okCustomTitle="$t('buttonLabel.copyLink')" :okDisabled="isSharingLinkGenerationPending" :useLoadingOK="isSharingLinkGenerationPending" 
-                :dlgTitle="$t('appMessage.createShareProjectLink')" :elementToFocusId="shareCloudDriveProjectPublicRadioBtnId">
+            <ModalDlg :dlgId="shareProjectModalDlgId" :okCustomTitle="$t('buttonLabel.copyLink')" :okDisabled="isSharingLinkGenerationPending" :useLoadingOK="isSharingLinkGenerationPending"
+                :dlgTitle="$t('appMessage.createShareProjectLink')" :elementToFocusId="(publicShareUnavailableMsg.length > 0) ? shareCloudDriveProjectWithinRadioBtnId : shareCloudDriveProjectPublicRadioBtnId">
                         <div>
                             <span class="share-mode-buttons-container-title">{{$t('appMessage.shareProjectModeLabel')}}</span>
                             <div class="share-mode-buttons-container">
                                 <div class="share-mode-button-group">
                                     <input type="radio" :id="shareCloudDriveProjectPublicRadioBtnId" name="shareCloudDriveModeRadioGroup"
-                                        v-model="shareProjectMode" :value="shareProjectPublicModeValue" />
+                                        v-model="shareProjectMode" :value="shareProjectPublicModeValue" :disabled="publicShareUnavailableMsg.length > 0" />
                                     <div>
                                         <label :for="shareCloudDriveProjectPublicRadioBtnId" >{{$t("appMessage.shareProjectPublicMode")}}</label>
                                         <span>{{$t("appMessage.shareProjectPublicModeDetails") + ((isSharingPublicNotDirectDownload) ? " " + shareProjectPublicCloudDriveNotDirectDownloadLabel : "")}}</span>
+                                        <span v-if="publicShareUnavailableMsg.length > 0" class="share-mode-unavailable">{{publicShareUnavailableMsg}}</span>
                                     </div>
                                 </div>
                                 <div class="share-mode-button-group">
-                                    <input type="radio" id="shareCloudDriveProjectWithGDRadioBtn" name="shareCloudDriveModeRadioGroup" 
+                                    <input type="radio" :id="shareCloudDriveProjectWithinRadioBtnId" name="shareCloudDriveModeRadioGroup"
                                         v-model="shareProjectMode" :value="shareProjectWithinCloudDriveModeValue" />
                                     <div>
-                                        <label for="shareCloudDriveProjectWithGDRadioBtn">{{shareProjectWithinCloudDriveModeLabel}}</label>
+                                        <label :for="shareCloudDriveProjectWithinRadioBtnId">{{shareProjectWithinCloudDriveModeLabel}}</label>
                                         <span>{{shareProjectWithinCloudDriveModeDetailsLabel}}</span>
                                     </div>
                                 </div>
@@ -281,6 +282,7 @@ import { checkCodeErrors, getAboveFrameCaretPosition, getFrameSectionIdFromFrame
 import scssVars from "@/assets/style/_export.module.scss";
 import OpenDemoDlg from "@/components/OpenDemoDlg.vue";
 import { CloudFileSharingStatus, isSyncTargetCloudDrive, isSyncTargetGitProvider } from "@/types/cloud-drive-types";
+import { parseGitFileId } from "@/types/git-provider-types";
 import {deflateRaw} from "pako";
 import {Base64} from "js-base64";
 import disabledUndoImgPath from "@/assets/images/disabledUndo.svg";
@@ -423,6 +425,8 @@ export default defineComponent({
             shareProjectMode: defaultSharingProjectMode, // flag for the sharing mode
             publicModeProjectSharingLink: "", // the project sharing link (for the public mode) to copy to the clipboard, only valid when the share modal is active!
             shareProjectInitialCall: true, // this flag is essential to allow a delay on the first link generation when the popup is opened (see getSharingLink())
+            publicShareUnavailableMsg: "", // when not empty, the project can't be shared with anyone (e.g. it is in a private Git repository): the reason why, shown in the sharing popup
+            isShareProjectModeForced: false, // flag set when the sharing mode was changed (from the user's choice) because the project couldn't be shared with anyone
             // Flags for opening a shared project: the ID (main flag) and the target (for the moment it's only Google Drive...)
             openSharedProjectId: "",
             openSharedProjectTarget: StrypeSyncTarget.none,
@@ -689,6 +693,10 @@ export default defineComponent({
             return "shareCloudDriveProjectPublicRadioBtnId";
         },
 
+        shareCloudDriveProjectWithinRadioBtnId(): string {
+            return "shareCloudDriveProjectWithGDRadioBtn";
+        },
+
         canShareProjectViaCloud(): boolean {
             return isSyncTargetCloudDrive(this.appStore.syncTarget);
         },
@@ -830,6 +838,11 @@ export default defineComponent({
 
     watch: {
         shareProjectMode(){
+            // The mode can be changed when the popup opens (see onStrypeMenuShowModalDlg()): the link is then generated once the popup is shown
+            // (see onStrypeMenuShownModalDlg()), as a link generated before would be discarded (see areShareProjectActionStillValid()).
+            if(this.appStore.currentModalDlgId != this.shareProjectModalDlgId){
+                return;
+            }
             // Whenever the sharing mode changes, we make sure we trigger a new link generation mechanism that will:
             // 1) reset the shared link, and 2) reset the timer associated with the generation.
             this.shareProjectInitialCall = false;
@@ -1108,6 +1121,11 @@ export default defineComponent({
                 const cloudDriveHandlerComponentAPI = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI;
                 cloudDriveHandlerComponentAPI?.getCurrentCloudFileCurrentSharingStatus(this.appStore.syncTarget)
                     .then((prevCloudFileSharingStatus) => {
+                        // A Git provider can't make a single file public, only a whole repository, which we don't do: if the repository isn't public,
+                        // the project can only be shared with the people who can access it (see the sharing part of gitProvider.ts)
+                        this.publicShareUnavailableMsg = (isSyncTargetGitProvider(this.appStore.syncTarget) && prevCloudFileSharingStatus != CloudFileSharingStatus.PUBLIC_SHARED)
+                            ? this.$t("errorMessage.gitSharePrivateRepository", {repository: parseGitFileId(this.appStore.currentCloudSaveFileId ?? "")?.repoId ?? "", providername: cloudDriveHandlerComponentAPI.getDriveName()})
+                            : "";
                         // Save the status and then open the dialog.
                         cloudDriveHandlerComponentAPI?.backupPreviousCloudFileSharingStatus(this.appStore.syncTarget, prevCloudFileSharingStatus).then(() => {
                             eventBus.emit(CustomEventTypes.showStrypeModal, this.shareProjectModalDlgId);                             
@@ -1142,6 +1160,18 @@ export default defineComponent({
             }
             else if (dlgId == this.loadBookProjectModalDlgId) {
                 (this.$refs.openBookDlg as InstanceType<typeof OpenBookDlg>).shown();
+            }
+            else if (dlgId == this.shareProjectModalDlgId) {
+                // If the project can't be shared with anyone, we select the other mode (and we select the default mode back the next time it can).
+                // (no link is generated here, see the shareProjectMode watcher)
+                if(this.publicShareUnavailableMsg.length > 0){
+                    this.isShareProjectModeForced = true;
+                    this.shareProjectMode = ShareProjectMode.withinCloudDrive;
+                }
+                else if(this.isShareProjectModeForced){
+                    this.isShareProjectModeForced = false;
+                    this.shareProjectMode = defaultSharingProjectMode;
+                }
             }
             else if (dlgId == this.saveProjectModalDlgId && !this.isSynced && this.appStore.suggestedCloudSaveLocation) {
                 // A project that comes from a Python file opened from a Cloud Drive or a Git provider is proposed to be saved there
@@ -1183,7 +1213,11 @@ export default defineComponent({
                 }, 500);           
             }
             else if(dlgId == this.shareProjectModalDlgId){
-                // When the popup opens, we try to generate the link to share for the default (public) sharing mode
+                // When the popup opens, we try to generate the link to share for the default (public) sharing mode,
+                // unless the project can't be shared with anyone (then the other mode is selected, which needs no generation)
+                if(this.publicShareUnavailableMsg.length > 0){
+                    return;
+                }
                 setTimeout(() => {
                     // In case retrieving the link is quite fast (working or not) and the user hasn't yet made their choice as to how to share, 
                     // we should allow some time before getting in their face with a result!
@@ -2107,8 +2141,12 @@ export default defineComponent({
     display: block;
 }
 
-.share-mode-buttons-container > .share-mode-button-group:first-child span {
+.share-mode-buttons-container > .share-mode-button-group:first-child span:last-child {
     margin-bottom: 20px;
+}
+
+.share-mode-unavailable {
+    color: #d66;
 }
 
 .error-nav-enabled {

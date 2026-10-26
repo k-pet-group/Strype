@@ -74,12 +74,12 @@
                             <div class="project-targets-container">
                                 <div :ref="saveProjectTargetButtonGpId" class="project-target-button-container">
                                     <div :id="saveToFSStrypeButtonId" tabindex="0" @click="changeTempSyncTarget(syncFSValue, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
-                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncFSValue}">
+                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == syncFSValue || tempSyncTarget == noSyncTargetValue}">
                                         <img src="@/assets/images/FSicon.png" :alt="$t('appMessage.targetFS')"/> 
                                         <span>{{ $t("appMessage.targetFS") }}</span>
                                     </div>
                                     <div :id="getTargetButtonId(primaryCloudTarget.target, true)" tabindex="0" @click="changeTempSyncTarget(primaryCloudTarget.target, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
-                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == primaryCloudTarget.target || tempSyncTarget == noSyncTargetValue}">
+                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg']: true, saveTargetSelected: tempSyncTarget == primaryCloudTarget.target}">
                                         <img :src="primaryCloudTarget.logo" :alt="primaryCloudTarget.label"/>
                                         <span>{{ primaryCloudTarget.label }}</span>
                                     </div>
@@ -995,9 +995,9 @@ export default defineComponent({
         },
 
         getTargetButtonId(target: StrypeSyncTarget, isSaveAction?: boolean): string {
-            // The ID of a target's button in the load or save project dialog (the primary cloud target's when there is no target yet)
+            // The ID of a target's button in the load or save project dialog (the file system's when there is no target yet)
             const prefix = (isSaveAction) ? "saveTo" : "loadFrom";
-            switch((target == StrypeSyncTarget.none) ? this.primaryCloudTarget.target : target){
+            switch((target == StrypeSyncTarget.none) ? StrypeSyncTarget.fs : target){
             case StrypeSyncTarget.od:
                 return prefix + "ODStrypeButton";
             case StrypeSyncTarget.fs:
@@ -1018,8 +1018,8 @@ export default defineComponent({
                 return this.appStore.syncTarget;
             }
             // The new UI (changing combobox to buttons) means we can't directly check the HTML component to get the selection (unless using CSS).
-            // Instead, we use the temp flag we've added in this Menu component, or the value for Google Drive (default) is no changed has been made.
-            return (this.tempSyncTarget != StrypeSyncTarget.none) ? this.tempSyncTarget : this.primaryCloudTarget.target;
+            // Instead, we use the temp flag we've added in this Menu component, or the file system (default) if no change has been made.
+            return (this.tempSyncTarget != StrypeSyncTarget.none) ? this.tempSyncTarget : StrypeSyncTarget.fs;
         },
 
         onOpenMenuLinkClick(target: "examples" | "book"): void {
@@ -1194,7 +1194,7 @@ export default defineComponent({
             else if (dlgId != this.loadDemoProjectModalDlgId && dlgId != this.loadBookProjectModalDlgId) {
                 // (The Examples... and Book... dialogs' own "shown" work happens earlier, in
                 // onStrypeMenuShowModalDlg -- see its comment for why.)
-                // When the load or save project dialogs are opened, we focus the button of the current target (Google Drive's by default when we don't have information about the source target).
+                // When the load or save project dialogs are opened, we focus the button of the current target (the file system's by default when we don't have information about the source target).
                 // The search is scoped to the opened dialog, so it does nothing for dialogs without target buttons.
                 setTimeout(() => {
                     (document.querySelector(`#${dlgId} #${this.getTargetButtonId(this.tempSyncTarget, dlgId == this.saveProjectModalDlgId)}`) as HTMLDivElement | null)?.focus();

@@ -28,7 +28,7 @@ export interface GitContentItem {
    // From the repository's root, without a leading "/"
    path: string,
    isFolder: boolean,
-   // The size of a file in bytes, if the provider gives it when listing a folder (GitHub does, GitLab doesn't)
+   // The size of a file in bytes, if known (see GitProviderAPI.listFolderContent())
    size?: number,
 }
 
@@ -72,8 +72,10 @@ export interface GitProviderAPI<Auth> {
    // The repositories the user can access, even read-only (in any order)
    listRepositories(auth: Auth): Promise<GitRepository[]>,
    listBranches(auth: Auth, repoId: string): Promise<string[]>,
-   // The files and folders directly inside a folder ("" for the root) of a repository's branch
-   listFolderContent(auth: Auth, repoId: string, branch: string, folderPath: string): Promise<GitContentItem[]>,
+   // The files and folders directly inside a folder ("" for the root) of a repository's branch.
+   // The files' sizes are given when withSizes is set, and may be given anyway if they come at no extra cost
+   // (GitHub gives them when listing a folder, GitLab needs another query).
+   listFolderContent(auth: Auth, repoId: string, branch: string, folderPath: string, withSizes?: boolean): Promise<GitContentItem[]>,
    // The (UTF-8) text content of a file
    getFileContent(auth: Auth, repoId: string, branch: string, filePath: string): Promise<string>,
    // The raw content of a file (for the user code's file IO, where files aren't necessarily text)

@@ -330,7 +330,7 @@ export function useGitProvider<Auth>(options: {
         if(location == null){
             return [];
         }
-        const items = await api.listFolderContent(getAuth(), location.repoId, location.branchId, location.folderPath);
+        const items = await api.listFolderContent(getAuth(), location.repoId, location.branchId, location.folderPath, true);
         return items
             .filter((item) => (elementName == undefined || item.name == elementName)
                 && (!searchAllSPYFiles || (!item.isFolder && item.name.endsWith("." + strypeFileExtension))))
@@ -340,7 +340,7 @@ export function useGitProvider<Auth>(options: {
                     ? toGitLocationId({...location, folderPath: item.path})
                     : toGitFileId({repoId: location.repoId, branchId: location.branchId, path: item.path, fileName: item.name}),
                 isDir: item.isFolder,
-                // (when the provider doesn't give the size, reading the file still gets all its content)
+                // (if the size couldn't be got, reading the file still gets all its content)
                 fileSize: item.size ?? 0,
             }));
     }

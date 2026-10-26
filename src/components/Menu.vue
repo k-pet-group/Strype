@@ -135,7 +135,7 @@
                              @mouseenter="changeTargetFocusOnMouseOver">
                             <img src="@/assets/images/logoOneDrive.svg" alt="$t('appMessage.methodCloudLink')"/>
                             <span class="share-method-title">{{ $t("appMessage.methodCloudLink") }}</span>
-                            <span class="share-method-explanation">{{ $t("appMessage.methodCloudLinkExplanation") }}</span>
+                            <span class="share-method-explanation">{{ methodCloudLinkExplanation }}</span>
                             <span class="share-method-warning" v-if="!canShareProjectViaCloud">{{ $t("appMessage.cloudShareUnavailable") }}</span>
                             <span class="share-method-warning" v-if="warnCloudModifiedProject">{{ $t("appMessage.cloudShareNotSaved") }}</span>
                         </div>
@@ -691,6 +691,11 @@ export default defineComponent({
 
         canShareProjectViaCloud(): boolean {
             return isSyncTargetCloudDrive(this.appStore.syncTarget);
+        },
+
+        methodCloudLinkExplanation(): string {
+            // A Git file is shared at the commit of its last save, so the link doesn't follow future changes (see getSharedFileId() in gitProvider.ts)
+            return this.$t((isSyncTargetGitProvider(this.appStore.syncTarget)) ? "appMessage.methodCloudLinkGitExplanation" : "appMessage.methodCloudLinkExplanation");
         },
 
         warnCloudModifiedProject(): boolean {
@@ -1301,7 +1306,9 @@ export default defineComponent({
                     // The sharing link creation has succeed and we need to have a user action to allow a copy to the clipboard, which we do here.
                     // If the sharing mode is public, we have already stored the sharing link in a flag. If the sharing mode is "within Google Drive",
                     // we set the link value now.
-                    navigator.clipboard.writeText((this.shareProjectMode == ShareProjectMode.public) ? this.publicModeProjectSharingLink : `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${this.appStore.currentCloudSaveFileId}`);
+                    // (the file ID is encoded: a Git provider's one is JSON, see toGitFileId())
+                    const sharedFileId = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getSharedFileId(this.appStore.syncTarget) ?? this.appStore.currentCloudSaveFileId ?? "";
+                    navigator.clipboard.writeText((this.shareProjectMode == ShareProjectMode.public) ? this.publicModeProjectSharingLink : `${window.location}?${sharedStrypeProjectTargetKey}=${this.appStore.syncTarget}&${sharedStrypeProjectIdKey}=${encodeURIComponent(sharedFileId)}`);
                     // If we have set the sharing to internal (within the Cloud Drive) then we might need to restore the previous sharing state as it was
                     if(this.shareProjectMode == ShareProjectMode.withinCloudDrive){
                         vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.restoreCloudDriveFileSharingStatus(this.appStore.syncTarget)

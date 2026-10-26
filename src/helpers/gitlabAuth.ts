@@ -361,28 +361,45 @@ export async function getGitLabFileBytes(auth: GitLabAuth, projectFullPath: stri
     return new Uint8Array(await (await fetchGitLabRawFile(auth, projectFullPath, branch, filePath)).arrayBuffer());
 }
 
-// Returns the date (ISO 8601) of the last commit that changed a file in a project's branch,
+// Returns the SHA and the date (ISO 8601) of the last commit that changed a file in a project's branch,
 // as Git doesn't keep a modification date for files.
-export async function getGitLabFileLastCommitDate(auth: GitLabAuth, projectFullPath: string, branch: string, filePath: string): Promise<string> {
+export async function getGitLabFileLastCommit(auth: GitLabAuth, projectFullPath: string, branch: string, filePath: string): Promise<{sha: string, date: string}> {
     const response = await gitLabFetch(auth, `${projectApiPath(projectFullPath)}/repository/commits?` + new URLSearchParams({ref_name: branch, path: filePath, per_page: "1"}));
     if (!response.ok) {
         throw new GitLabHttpError(response.status);
     }
-    const commits: {committed_date: string}[] = await response.json();
+    const commits: {id: string, committed_date: string}[] = await response.json();
     if (commits.length == 0) {
         throw new GitLabHttpError(404);
     }
-    return commits[0].committed_date;
+    return {sha: commits[0].id, date: commits[0].committed_date};
+}
+
+// Returns the details of a project ("group/project").
+async function getGitLabProject(auth: GitLabAuth, projectFullPath: string): Promise<{visibility: string, permissions?: GitLabPermissions}> {
+    const response = await gitLabFetch(auth, projectApiPath(projectFullPath));
+    if (!response.ok) {
+        throw new GitLabHttpError(response.status);
+    }
+    return response.json();
 }
 
 // Returns whether the user can push to a project ("group/project"), that is whether they have the Developer role or above
 // in the project itself or through its group.
 export async function canPushToGitLabProject(auth: GitLabAuth, projectFullPath: string): Promise<boolean> {
-    const response = await gitLabFetch(auth, projectApiPath(projectFullPath));
-    if (!response.ok) {
-        throw new GitLabHttpError(response.status);
-    }
-    return hasGitLabPushAccess((await response.json()).permissions);
+    return hasGitLabPushAccess((await getGitLabProject(auth, projectFullPath)).permissions);
+}
+
+// Returns whether anyone can read a project ("group/project"). (An "internal" project is only readable by the users signed in to the instance.)
+export async function isGitLabProjectPublic(auth: GitLabAuth, projectFullPath: string): Promise<boolean> {
+    return (await getGitLabProject(auth, projectFullPath)).visibility === "public";
+}
+
+// The URL of a file's raw content at a commit of a project ("group/project") of an instance. For a public project, anyone can read it,
+// and the API allows CORS requests from any origin (when they come without credentials), so Strype can load it without being signed in.
+// (we don't use the "/-/raw/" URLs of the web pages: they may not allow CORS requests)
+export function getGitLabPublicFileUrl(instanceUrl: string, projectFullPath: string, commitSha: string, filePath: string): string {
+    return `${instanceUrl}/api/v4${projectApiPath(projectFullPath)}/repository/files/${encodeURIComponent(filePath)}/raw?ref=${encodeURIComponent(commitSha)}`;
 }
 
 // The user's access to a project, as given with the project's details
@@ -458,8 +475,11 @@ export const gitLabAPI: GitProviderAPI<GitLabAuth> = {
     listFolderContent: listGitLabFolderContent,
     getFileContent: getGitLabFileContent,
     getFileBytes: getGitLabFileBytes,
-    getFileLastCommitDate: getGitLabFileLastCommitDate,
+    getFileLastCommit: getGitLabFileLastCommit,
     canPushToRepository: canPushToGitLabProject,
     commitFile: commitGitLabFile,
     createRepository: createGitLabProject,
+    isRepositoryPublic: isGitLabProjectPublic,
+    getPublicFileUrl: (auth, projectFullPath, commitSha, filePath) => getGitLabPublicFileUrl(auth.instance.url, projectFullPath, commitSha, filePath),
+    getServerUrl: (auth) => auth.instance.url,
 };

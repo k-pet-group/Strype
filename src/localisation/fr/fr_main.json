@@ -141,7 +141,8 @@
     "gitConnectionFailed": "Impossible de se connecter à {providername} : {error}",
     "gitNotConnected": "Vous n'êtes pas connecté à {providername}.",
     "gitCommitFailed": "Impossible de valider (commit) le projet vers {providername} (erreur : {error}).",
-    "gitRepositoryCreationFailed": "Impossible de créer le dépôt \"{name}\" sur {providername} : {error}"
+    "gitRepositoryCreationFailed": "Impossible de créer le dépôt \"{name}\" sur {providername} : {error}",
+    "gitSharePrivateRepository": "Le dépôt \"{repository}\" est privé. Seul un projet sauvegardé dans un dépôt public peut être partagé avec tout le monde : vous pouvez rendre le dépôt public sur {providername}, ou partager le projet avec les personnes qui ont accès au dépôt sur {providername}."
   },
   "appMessage": {
     "loadEditorFile": "Chargement de votre fichier dans l'éditeur...",
@@ -194,6 +195,7 @@
     "methodSnapshotLinkExplanation": "Le code actuel (via un long lien)",
     "methodCloudLink": "Lien cloud",
     "methodCloudLinkExplanation": "Le fichier du cloud (incluant les modifications futures)",
+    "methodCloudLinkGitExplanation": "Le fichier Git (tel que sauvegardé en dernier avant le partage)",
     "snapshotLinkTooLarge": "Attention: ce lien peut être trop long pour certains navigateurs, notamment à cause des images/sons dans le code.",
     "cloudShareUnavailable": "Vous devez d'abord sauvegarder le projet dans un service cloud.",
     "cloudShareNotSaved": "Vous avez actuellement des modifications non enregistrées.",

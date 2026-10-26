@@ -80,14 +80,20 @@ export interface GitProviderAPI<Auth> {
    getFileContent(auth: Auth, repoId: string, branch: string, filePath: string): Promise<string>,
    // The raw content of a file (for the user code's file IO, where files aren't necessarily text)
    getFileBytes(auth: Auth, repoId: string, branch: string, filePath: string): Promise<Uint8Array>,
-   // The date (ISO 8601) of the last commit that changed a file, as Git doesn't keep a modification date for files
-   getFileLastCommitDate(auth: Auth, repoId: string, branch: string, filePath: string): Promise<string>,
+   // The last commit that changed a file: its SHA, and its date (ISO 8601), as Git doesn't keep a modification date for files
+   getFileLastCommit(auth: Auth, repoId: string, branch: string, filePath: string): Promise<{sha: string, date: string}>,
    canPushToRepository(auth: Auth, repoId: string): Promise<boolean>,
    // Commits (and therefore pushes, as it is done on the provider) a file's (UTF-8) text content to a branch,
    // creating the file if it doesn't exist yet
    commitFile(auth: Auth, repoId: string, branch: string, filePath: string, content: string, commitMessage: string): Promise<void>,
    // Creates a (private, empty) repository owned by the user. Its default branch is empty if the provider doesn't tell it.
    createRepository(auth: Auth, name: string): Promise<GitRepository>,
+   // Whether anyone, even not signed in, can read the repository
+   isRepositoryPublic(auth: Auth, repoId: string): Promise<boolean>,
+   // The URL of a file's raw content at a commit, that anyone can read (without being signed in) if the repository is public
+   getPublicFileUrl(auth: Auth, repoId: string, commitSha: string, filePath: string): string,
+   // The server the connection is for, when the provider has several (GitLab's instances)
+   getServerUrl?(auth: Auth): string,
 }
 
 // The name of the repository Strype uses by default (created when the user saves into it if it doesn't exist)
@@ -125,7 +131,11 @@ export interface GitFileIdStruct {
    repoId: string,
    branchId: string,
    path: string,
-   fileName: string
+   fileName: string,
+   // Only in the file ID of a share link, for a provider with several servers: the server the file is on (see GitProviderAPI.getServerUrl())
+   serverUrl?: string,
+   // Only in the file ID of a share link: the commit the file is shared at (the file is then read at that commit rather than on its branch)
+   commitSha?: string,
 }
 
 // The Cloud Drive handler (and the state) only deal with string file IDs: a Git file ID is the JSON of its GitFileIdStruct.

@@ -136,6 +136,8 @@ export interface CloudDriveComponent {
     shareCloudDriveFile: (saveFileId: string) => Promise<boolean>,
     restoreCloudDriveFileSharingStatus: (saveFileId: string) => Promise<void>,
     getPublicShareLink: (saveFileId: string) => Promise<{ respStatus: number, webLink: string }>,
+    // The file ID to give in a "shared within the Drive" link, when it isn't the saved file's ID as is
+    getSharedFileId?: (saveFileId: string) => string,
     searchCloudDriveElements: (elementName: string | undefined, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>) => Promise<CloudDriveFile[]>,
     //FileIO
     checkIsCloudDriveFileReadonly: (file: CloudDriveFile) => boolean,

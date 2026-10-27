@@ -293,11 +293,11 @@ export async function listGitHubFolderContent(auth: GitHubAuth, repositoryFullNa
     const items = await getGitHubFolderItems(auth, repositoryFullName, branch, folderPath);
     // Other types are symbolic links and submodules, which we cannot browse.
     return items.filter((item) => item.type === "file" || item.type === "dir")
-        .map((item) => ({name: item.name, path: item.path, isFolder: item.type === "dir"}));
+        .map((item) => ({name: item.name, path: item.path, isFolder: item.type === "dir", size: (item.type === "file") ? item.size : undefined}));
 }
 
 // The raw description of the items directly inside a folder ("" for the root) of a repository's branch.
-async function getGitHubFolderItems(auth: GitHubAuth, repositoryFullName: string, branch: string, folderPath: string): Promise<{name: string, path: string, type: string, sha: string}[]> {
+async function getGitHubFolderItems(auth: GitHubAuth, repositoryFullName: string, branch: string, folderPath: string): Promise<{name: string, path: string, type: string, sha: string, size: number}[]> {
     const encodedPath = encodeGitHubPath(folderPath);
     const response = await gitHubFetch(auth, `/repos/${repositoryFullName}/contents/${encodedPath}?ref=${encodeURIComponent(branch)}`);
     if (response.status === 404 && encodedPath.length === 0) {
@@ -320,37 +320,63 @@ function encodeGitHubPath(path: string): string {
     return path.split("/").filter((part) => part.length > 0).map(encodeURIComponent).join("/");
 }
 
-// Returns the (UTF-8) text content of a file in a repository's branch.
+// Returns the response with the raw content of a file in a repository's branch.
 // We ask for the raw content: the default (JSON) answer only contains the content for files up to 1 MB.
-export async function getGitHubFileContent(auth: GitHubAuth, repositoryFullName: string, branch: string, filePath: string): Promise<string> {
+async function fetchGitHubRawFile(auth: GitHubAuth, repositoryFullName: string, branch: string, filePath: string): Promise<Response> {
     const response = await gitHubFetch(auth, `/repos/${repositoryFullName}/contents/${encodeGitHubPath(filePath)}?ref=${encodeURIComponent(branch)}`, {headers: {"Accept": "application/vnd.github.raw+json"}});
     if (!response.ok) {
         throw new GitHubHttpError(response.status);
     }
-    return response.text();
+    return response;
 }
 
-// Returns the date (ISO 8601) of the last commit that changed a file in a repository's branch,
+// Returns the (UTF-8) text content of a file in a repository's branch.
+export async function getGitHubFileContent(auth: GitHubAuth, repositoryFullName: string, branch: string, filePath: string): Promise<string> {
+    return (await fetchGitHubRawFile(auth, repositoryFullName, branch, filePath)).text();
+}
+
+// Returns the raw content of a file in a repository's branch.
+export async function getGitHubFileBytes(auth: GitHubAuth, repositoryFullName: string, branch: string, filePath: string): Promise<Uint8Array> {
+    return new Uint8Array(await (await fetchGitHubRawFile(auth, repositoryFullName, branch, filePath)).arrayBuffer());
+}
+
+// Returns the SHA and the date (ISO 8601) of the last commit that changed a file in a repository's branch,
 // as Git doesn't keep a modification date for files.
-export async function getGitHubFileLastCommitDate(auth: GitHubAuth, repositoryFullName: string, branch: string, filePath: string): Promise<string> {
+export async function getGitHubFileLastCommit(auth: GitHubAuth, repositoryFullName: string, branch: string, filePath: string): Promise<{sha: string, date: string}> {
     const response = await gitHubFetch(auth, `/repos/${repositoryFullName}/commits?` + new URLSearchParams({sha: branch, path: filePath, per_page: "1"}));
     if (!response.ok) {
         throw new GitHubHttpError(response.status);
     }
-    const commits: {commit: {committer: {date: string}}}[] = await response.json();
+    const commits: {sha: string, commit: {committer: {date: string}}}[] = await response.json();
     if (commits.length == 0) {
         throw new GitHubHttpError(404);
     }
-    return commits[0].commit.committer.date;
+    return {sha: commits[0].sha, date: commits[0].commit.committer.date};
 }
 
-// Returns whether the user can push to a repository ("owner/repo").
-export async function canPushToGitHubRepository(auth: GitHubAuth, repositoryFullName: string): Promise<boolean> {
+// Returns the details of a repository ("owner/repo").
+async function getGitHubRepository(auth: GitHubAuth, repositoryFullName: string): Promise<{private: boolean, permissions?: {push?: boolean}}> {
     const response = await gitHubFetch(auth, `/repos/${repositoryFullName}`);
     if (!response.ok) {
         throw new GitHubHttpError(response.status);
     }
-    return (await response.json()).permissions?.push === true;
+    return response.json();
+}
+
+// Returns whether the user can push to a repository ("owner/repo").
+export async function canPushToGitHubRepository(auth: GitHubAuth, repositoryFullName: string): Promise<boolean> {
+    return (await getGitHubRepository(auth, repositoryFullName)).permissions?.push === true;
+}
+
+// Returns whether anyone can read a repository ("owner/repo"). (An "internal" repository of an enterprise is private for that matter.)
+export async function isGitHubRepositoryPublic(auth: GitHubAuth, repositoryFullName: string): Promise<boolean> {
+    return (await getGitHubRepository(auth, repositoryFullName)).private === false;
+}
+
+// The URL of a file's raw content at a commit of a repository ("owner/repo"). For a public repository, anyone can read it,
+// and it is served with CORS headers allowing any origin, so Strype can load it without being signed in.
+export function getGitHubPublicFileUrl(repositoryFullName: string, commitSha: string, filePath: string): string {
+    return `https://raw.githubusercontent.com/${repositoryFullName}/${commitSha}/${encodeGitHubPath(filePath)}`;
 }
 
 // The base64 encoding of a text's UTF-8 bytes (btoa() alone only accepts Latin-1 text).
@@ -428,8 +454,11 @@ export const gitHubAPI: GitProviderAPI<GitHubAuth> = {
     listBranches: listGitHubBranches,
     listFolderContent: listGitHubFolderContent,
     getFileContent: getGitHubFileContent,
-    getFileLastCommitDate: getGitHubFileLastCommitDate,
+    getFileBytes: getGitHubFileBytes,
+    getFileLastCommit: getGitHubFileLastCommit,
     canPushToRepository: canPushToGitHubRepository,
     commitFile: commitGitHubFile,
     createRepository: createGitHubRepository,
+    isRepositoryPublic: isGitHubRepositoryPublic,
+    getPublicFileUrl: (auth, repositoryFullName, commitSha, filePath) => getGitHubPublicFileUrl(repositoryFullName, commitSha, filePath),
 };

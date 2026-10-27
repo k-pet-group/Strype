@@ -220,7 +220,7 @@ export function trackFrameConvert(toType: string): void {
 }
 
 export function trackStorageLocation(target: StrypeSyncTarget): void {
-    // For cloud saves, cloudProvider says which cloud (so new clouds only need a new case here).
+    // For cloud or git saves, cloudProvider says which cloud (so new clouds only need a new case here).
     // storageLocation is kept as the coarse local/cloud split for compatibility with existing data.
     if (target == StrypeSyncTarget.fs) {
         enqueueAnalyticsEvent("save", {storageLocation: "local"});
@@ -230,5 +230,11 @@ export function trackStorageLocation(target: StrypeSyncTarget): void {
     }
     else if (target == StrypeSyncTarget.od) {
         enqueueAnalyticsEvent("save", {storageLocation: "cloud", cloudProvider: "onedrive"});
+    }
+    else if (target == StrypeSyncTarget.gh) {
+        enqueueAnalyticsEvent("save", {storageLocation: "cloud", cloudProvider: "github"});
+    }
+    else if (target == StrypeSyncTarget.gl) {
+        enqueueAnalyticsEvent("save", {storageLocation: "cloud", cloudProvider: "gitlab"});
     }
 }

@@ -407,7 +407,7 @@
   "fileSystemTab": {
     "builtIn": "Fichiers intégrés",
     "cloud": "Cloud",
-    "gitReadOnly": "Git (fichiers en lecture seule)",
+    "gitReadOnly": "Git (lecture seule)",
     "local": "Fichiers locaux",
     "cwd": "Ceci est le répertoire de travail actuel lorsque votre code s'exécute",
     "download": "Télécharger",

@@ -327,7 +327,7 @@
   "fileSystemTab": {
     "builtIn": "Built-in files",
     "cloud": "Cloud",
-    "gitReadOnly": "Git (readonly files)",
+    "gitReadOnly": "Git (readonly)",
     "local": "Local files",
     "cwd": "This is the current working directory when your code runs",
     "download": "Download",

@@ -1122,8 +1122,8 @@ export default defineComponent({
         onStrypeMenuShowModalDlg(event: BvTriggerableEvent) {
             // This fires just before the dialog becomes visible/interactable (unlike
             // onStrypeMenuShownModalDlg below, which fires just after). The Examples... and
-            // Book... dialogs reset their category/chapter selection to the first entry whenever
-            // they're opened -- that reset needs to happen here, before the dialog can be
+            // Book projects... dialogs reset their category/chapter selection to the first entry 
+            // whenever they're opened -- that reset needs to happen here, before the dialog can be
             // interacted with, rather than in the "shown" handler. Doing it on "shown" left a
             // window where a fast click (or, in CI, Playwright) could select a different
             // category/chapter while the dialog was already interactable but the "shown" event
@@ -1192,7 +1192,7 @@ export default defineComponent({
                 }, 100);
             }
             else if (dlgId != this.loadDemoProjectModalDlgId && dlgId != this.loadBookProjectModalDlgId) {
-                // (The Examples... and Book... dialogs' own "shown" work happens earlier, in
+                // (The Examples... and Book projects... dialogs' own "shown" work happens earlier, in
                 // onStrypeMenuShowModalDlg -- see its comment for why.)
                 // When the load or save project dialogs are opened, we focus the button of the current target (Google Drive's by default when we don't have information about the source target).
                 // The search is scoped to the opened dialog, so it does nothing for dialogs without target buttons.

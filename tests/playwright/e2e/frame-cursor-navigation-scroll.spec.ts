@@ -25,10 +25,10 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
     await page.setViewportSize({width: 1280, height: 800});
 });
 
-// Loads a project from the Strype textbook's "Book..." dialog, by chapter and exact project name.
+// Loads a project from the Strype textbook's "Book projects..." dialog, by chapter and exact project name.
 async function loadBookProject(page: Page, chapter: string, projectName: string) : Promise<void> {
     await page.click("#" + await strypeElIds.getEditorMenuUID());
-    await page.locator("." + scssVars.strypeMenuItemClassName, {hasText: "Book..."}).click();
+    await page.locator("." + scssVars.strypeMenuItemClassName, {hasText: "Book projects..."}).click();
     await page.locator(".open-book-dlg-book-group-item", {hasText: chapter}).first().click();
     await page.locator(".open-book-dlg-name", {hasText: new RegExp(`^${projectName}$`)}).click({clickCount: 2});
     await expect(page.locator(".project-name")).toHaveText(projectName, {timeout: 30000});

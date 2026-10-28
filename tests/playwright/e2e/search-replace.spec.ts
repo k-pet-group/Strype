@@ -213,25 +213,57 @@ test("Closing the widget leaves the current match selected in the editor", async
     expect(await getSavedCode(page)).toEqual(projectCode.replace("greet(myString)", "greet(someText)"));
 });
 
-test("Closing the widget after a replacement leaves the caret after the replacement in the editor", async ({page}) => {
+test("Closing the widget after a replacement leaves the next match selected in the editor", async ({page}) => {
     await page.keyboard.press(searchReplaceShortcut);
     await searchInput(page).fill("myString");
     await replaceInput(page).fill("someone");
     await expect(status(page)).toHaveText(/of 5$/);
-    // Go to the last match: greet(myString), and replace it (the current match is then another one)
-    while (await status(page).textContent() != "5 of 5") {
+    // Go to the match before last: print(myString), and replace it (the current match is then the next one: greet(myString))
+    while (await status(page).textContent() != "4 of 5") {
         await searchInput(page).press("Enter");
     }
     await replaceInput(page).press("Enter");
-    await expect(status(page)).toHaveText(/of 4$/);
+    await expect(status(page)).toHaveText("4 of 4");
     await replaceInput(page).press("Escape");
     await expect(widget(page)).toBeHidden();
-    await page.keyboard.type("Else");
+    await page.keyboard.type("someText");
     // Close the autocompletion, then leave the slot
     await page.keyboard.press("Escape");
     await page.keyboard.press("Escape");
     await waitForEditorSettled(page);
-    expect(await getSavedCode(page)).toEqual(projectCode.replace("greet(myString)", "greet(someoneElse)"));
+    expect(await getSavedCode(page)).toEqual(projectCode.replace("print(myString)", "print(someone)").replace("greet(myString)", "greet(someText)"));
+});
+
+test("Closing the widget after replacing the only match leaves the caret after the replacement in the editor", async ({page}) => {
+    await page.keyboard.press(searchReplaceShortcut);
+    await searchInput(page).fill("Hello");
+    await replaceInput(page).fill("Bye");
+    await expect(status(page)).toHaveText("1 of 1");
+    await replaceInput(page).press("Enter");
+    await expect(status(page)).toHaveText("No results");
+    await replaceInput(page).press("Escape");
+    await expect(widget(page)).toBeHidden();
+    await page.keyboard.type("!");
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await waitForEditorSettled(page);
+    expect(await getSavedCode(page)).toEqual(projectCode.replace("Hello from", "Bye! from"));
+});
+
+test("Closing the widget after replacing all leaves the caret after the last replacement in the editor", async ({page}) => {
+    await page.keyboard.press(searchReplaceShortcut);
+    await searchInput(page).fill("myString");
+    await replaceInput(page).fill("someone");
+    await expect(status(page)).toHaveText(/of 5$/);
+    await page.locator("#searchReplaceReplaceAllButton").click();
+    await expect(status(page)).toHaveText("5 replaced");
+    await replaceInput(page).press("Escape");
+    await expect(widget(page)).toBeHidden();
+    await page.keyboard.type("Else");
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await waitForEditorSettled(page);
+    expect(await getSavedCode(page)).toEqual(projectCode.replaceAll("myString", "someone").replace("greet(someone)", "greet(someoneElse)"));
 });
 
 test("Pasting in the widget pastes in its fields, not in the editor", async ({page}) => {

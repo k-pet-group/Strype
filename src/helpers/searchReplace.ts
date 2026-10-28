@@ -343,10 +343,12 @@ export function replaceMatch(match: SearchMatch, replacementText: string): numbe
     return (insertedLength < 0) ? -1 : match.start + insertedLength;
 }
 
-// Replaces all the matches (that are not read-only). Returns the number of replacements done and the ids of the modified frames.
-export function replaceAllMatches(matches: SearchMatch[], replacementText: string): {count: number, frameIds: number[]} {
+// Replaces all the matches (that are not read-only). Returns the number of replacements done, the ids of the modified frames,
+// and where the last replacement ends (the offset in its label's searchable text), if any was done.
+export function replaceAllMatches(matches: SearchMatch[], replacementText: string): {count: number, frameIds: number[], lastReplacementEnd: {frameId: number, labelIndex: number, offset: number} | null} {
     let count = 0;
     const frameIds = new Set<number>();
+    let lastReplacementEnd: {frameId: number, labelIndex: number, offset: number} | null = null;
     // The edits are grouped by label, so each label is changed once (matches are in the document order already)
     const editsPerLabel = new Map<string, {frameId: number, labelIndex: number, edits: LabelEdit[]}>();
     matches.filter((match) => !match.readOnly).forEach((match) => {
@@ -357,12 +359,17 @@ export function replaceAllMatches(matches: SearchMatch[], replacementText: strin
         editsPerLabel.get(key)?.edits.push({start: match.start, end: match.end, replacement: replacementText});
     });
     editsPerLabel.forEach((labelEdits) => {
-        if (replaceInLabel(labelEdits.frameId, labelEdits.labelIndex, labelEdits.edits) >= 0) {
+        const insertedLength = replaceInLabel(labelEdits.frameId, labelEdits.labelIndex, labelEdits.edits);
+        if (insertedLength >= 0) {
             count += labelEdits.edits.length;
             frameIds.add(labelEdits.frameId);
+            // The last replacement of the label is shifted by the other replacements before it
+            const lastEdit = labelEdits.edits[labelEdits.edits.length - 1];
+            const shift = labelEdits.edits.slice(0, -1).reduce((total, edit) => total + edit.replacement.length - (edit.end - edit.start), 0);
+            lastReplacementEnd = {frameId: labelEdits.frameId, labelIndex: labelEdits.labelIndex, offset: lastEdit.start + shift + insertedLength};
         }
     });
-    return {count, frameIds: [...frameIds]};
+    return {count, frameIds: [...frameIds], lastReplacementEnd};
 }
 
 // The keyboard shortcuts for opening the search and replace widget: Ctrl+F (Cmd+F on macOS) to find (the replace part is folded),

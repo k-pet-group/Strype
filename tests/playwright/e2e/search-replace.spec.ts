@@ -378,6 +378,74 @@ test("Replacements can change the structure of the code", async ({page}) => {
         .replace("\"Hello from myString\"", "\"Hello('you') + from myString\""));
 });
 
+// Gets how the slots of the frames of the main code are rendered: for each frame header, the text and the classes
+// of each of its slots (code, string, operator with its precedence spacing tier...)
+async function getRenderedMainCodeSlots(page: Page): Promise<string[][]> {
+    const scssVars = await page.evaluate(() => (window as any)["StrypeSCSSVarsGlobals"]);
+    const headers = page.locator("#frameContainer_-3 ." + scssVars.frameHeaderClassName);
+    const result: string[][] = [];
+    for (const header of await headers.all()) {
+        result.push(await header.locator("." + scssVars.labelSlotInputClassName).evaluateAll((slots) => slots.map((slot) =>
+            (slot.textContent ?? "").replace(/​/g, "") + " [" + [...slot.classList].sort().join(" ") + "]")));
+    }
+    return result;
+}
+
+test("Replacements with operators render the slots as if the code was loaded", async ({page}) => {
+    await loadContent(page, `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+total  = price + tax
+if price and tax  :
+    print(price * tax, total)
+#(=> Section:End
+`);
+    await waitForEditorSettled(page);
+    await page.keyboard.press(searchReplaceShortcut);
+    await widget(page).getByLabel("Match case").check();
+    // A textual operator replaced by a symbol operator
+    await searchInput(page).fill("and");
+    await replaceInput(page).fill("-");
+    await expect(status(page)).toHaveText("1 of 1");
+    await replaceInput(page).press("Enter");
+    await expect(status(page)).toHaveText("No results");
+    // A symbol operator replaced by textual operators (typed without spaces around them, as the search shows the symbol)
+    await searchInput(page).fill("+");
+    await replaceInput(page).fill("and not");
+    await expect(status(page)).toHaveText("1 of 1");
+    await page.locator("#searchReplaceReplaceAllButton").click();
+    await expect(status(page)).toHaveText("1 replaced");
+    // Operators of different precedences, in a match spanning several slots and in a match within a single slot
+    await searchInput(page).fill("price * tax");
+    await replaceInput(page).fill("price//tax+1");
+    await expect(status(page)).toHaveText("1 of 1");
+    await replaceInput(page).press("Enter");
+    await expect(status(page)).toHaveText("No results");
+    await widget(page).getByLabel("Whole word").check();
+    await searchInput(page).fill("total");
+    await replaceInput(page).fill("subtotal**2");
+    // (the first one is the assignment's left-hand side)
+    await expect(status(page)).toHaveText(/of 2$/);
+    while (await status(page).textContent() != "2 of 2") {
+        await searchInput(page).press("Enter");
+    }
+    await replaceInput(page).press("Enter");
+    await expect(status(page)).toHaveText("1 of 1");
+    await replaceInput(page).press("Escape");
+    await expect(widget(page)).toBeHidden();
+    await page.keyboard.press("Escape");
+    await waitForEditorSettled(page);
+
+    const savedCode = await getSavedCode(page);
+    // (we don't check the exact spacing of the saved code)
+    expect(savedCode.replace(/ +/g, " ").replace(/ $/gm, "")).toContain("total = price and not tax\nif price - tax :\n print(price // tax + 1,subtotal ** 2)\n");
+    const renderedSlots = await getRenderedMainCodeSlots(page);
+    await loadContent(page, savedCode);
+    await waitForEditorSettled(page);
+    expect(renderedSlots).toEqual(await getRenderedMainCodeSlots(page));
+});
+
 test("The widget can be opened from the frame context menu, and the project is marked modified after a replacement", async ({page}) => {
     await page.locator(".frame-header:has-text('print')").first().click({button: "right"});
     await page.getByRole("menuitem", {name: new RegExp("^" + escapeRegExp(en.contextMenu.searchReplace))}).click({timeout: 2000});

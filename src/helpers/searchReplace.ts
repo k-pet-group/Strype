@@ -295,9 +295,19 @@ function replaceInLabel(frameId: number, labelIndex: number, edits: LabelEdit[])
     // media literals placeholders replaced back by the media literals' code (the media literals within a match are removed)
     const mediaSegments = label.segments.filter((seg) => seg.flatSlot?.type == SlotType.media);
     const keptMediaSlots = mediaSegments.filter((seg) => !edits.some((edit) => seg.start >= edit.start && seg.start < edit.end)).map((seg) => seg.flatSlot as FlatSlotBase & {mediaType?: string});
-    let newText = "", lastPos = 0;
+    // The operators that aren't keywords have no spaces around them in the searchable text: a match starting [resp. ending] with
+    // such an operator (or a bracket...) separates the code before [resp. after] it from the replacement. If that code and the replacement
+    // are both words (e.g. "+" replaced by "and" in "a+b"), we add a space between them so they remain separate tokens.
+    const isWordChar = (char: string | undefined) => char != undefined && /[\p{L}\p{N}_]/u.test(char);
+    let newText = "", lastPos = 0, lastEditStartInNewText = 0, lastEditInsertedLength = 0;
     edits.forEach((edit) => {
-        newText += label.text.substring(lastPos, edit.start) + edit.replacement.replaceAll(MEDIA_PLACEHOLDER, "");
+        const replacement = edit.replacement.replaceAll(MEDIA_PLACEHOLDER, "");
+        const spaceBefore = (isWordChar(label.text[edit.start - 1]) && !isWordChar(label.text[edit.start]) && isWordChar(replacement[0])) ? " " : "";
+        const spaceAfter = (isWordChar(label.text[edit.end]) && !isWordChar(label.text[edit.end - 1]) && isWordChar(replacement[replacement.length - 1])) ? " " : "";
+        newText += label.text.substring(lastPos, edit.start);
+        lastEditStartInNewText = newText.length;
+        lastEditInsertedLength = spaceBefore.length + replacement.length + spaceAfter.length;
+        newText += spaceBefore + replacement + spaceAfter;
         lastPos = edit.end;
     });
     newText += label.text.substring(lastPos);
@@ -321,11 +331,10 @@ function replaceInLabel(frameId: number, labelIndex: number, edits: LabelEdit[])
     // replacement has become, we look where the end of the text (after the last match) starts in the new text, if we can find it.
     const newLabelText = buildSearchableLabel(frame, labelIndex).text;
     const textAfterLastMatch = label.text.substring(lastEdit.end);
-    const lastEditStartInNewText = newText.length - (label.text.length - lastEdit.start) - lastEdit.replacement.length;
     if (newLabelText.endsWith(textAfterLastMatch) && newLabelText.length - textAfterLastMatch.length >= lastEditStartInNewText) {
         return newLabelText.length - textAfterLastMatch.length - lastEditStartInNewText;
     }
-    return lastEdit.replacement.length;
+    return lastEditInsertedLength;
 }
 
 // Replaces a single match. Returns the offset (in the label's searchable text) where the search for the next match should start, or -1 if the replacement wasn't done.

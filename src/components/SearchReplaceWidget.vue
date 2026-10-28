@@ -1,7 +1,8 @@
 <!-- The search and replace widget: a popup over the top of the editor's code (see App.vue), which can be moved (by its header) so the code
      remains visible. Interacting with anything else in Strype (clicking or moving the focus outside the popup) closes it. It uses Bootstrap's popover
      classes to look like the other popups of the editor (e.g. the rename identifiers popup). The search only covers the code of the editor, see helpers/searchReplace.ts.
-     The replace part can be folded: it is when the popup is opened to find (Ctrl/Cmd+F), and isn't when it is opened to find and replace (Ctrl/Cmd+Shift+F). -->
+     The replace part can be folded: it is when the popup is opened to find (Ctrl/Cmd+F), and isn't when it is opened to find and replace (Ctrl/Cmd+Shift+F).
+     The keyboard and clipboard events are kept within the popup, so the editor doesn't act on them (e.g. the frame cursor's paste, see CaretContainer.vue). -->
 <template>
     <div
         v-if="isOpened"
@@ -13,6 +14,9 @@
         :aria-label="titleText"
         @keydown.stop="onKeyDown"
         @keyup.stop="onKeyUp"
+        @paste.stop
+        @copy.stop
+        @cut.stop
         @mousedown.stop
         @contextmenu.stop
     >

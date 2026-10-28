@@ -234,6 +234,23 @@ test("Closing the widget after a replacement leaves the caret after the replacem
     expect(await getSavedCode(page)).toEqual(projectCode.replace("greet(myString)", "greet(someoneElse)"));
 });
 
+test("Pasting in the widget pastes in its fields, not in the editor", async ({page}) => {
+    await page.keyboard.press(searchReplaceShortcut);
+    await expect(searchInput(page)).toBeFocused();
+    // (the frame cursor, still shown in the editor, mustn't take the paste: the browser's own paste in the field must happen)
+    const isPasteCancelled = await page.evaluate(() => {
+        const pasteEvent = new ClipboardEvent("paste", {bubbles: true, cancelable: true, clipboardData: new DataTransfer()});
+        pasteEvent.clipboardData?.setData("text/plain", "x = 1");
+        document.activeElement?.dispatchEvent(pasteEvent);
+        return pasteEvent.defaultPrevented;
+    });
+    expect(isPasteCancelled).toBe(false);
+    await expect(widget(page)).toBeVisible();
+    await page.keyboard.press("Escape");
+    await waitForEditorSettled(page);
+    expect(await getSavedCode(page)).toEqual(projectCode);
+});
+
 test("The match options work", async ({page}) => {
     await page.keyboard.press(findShortcut);
     await page.keyboard.type("mystring");

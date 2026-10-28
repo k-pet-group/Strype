@@ -50,7 +50,7 @@
                                         v-on:[CustomEventTypes.appResetProject]="resetStrypeProject"
                                         class="noselect no-print col flex-grow-0"
                                     />
-                                    <div class="col">
+                                    <div class="col editor-code-column">
                                         <div
                                             :id="editorUID"
                                             :class="{'editor-code-div noselect print-full-height':true, 'has-frame-numbers-gutter': settingsStore.frameNumbersEnabled, ...layoutClassesForStandardVersion}"
@@ -80,6 +80,8 @@
                                                 :frameType="container.frameType"
                                             />
                                         </div>
+                                        <!-- The search and replace popup shows over the code (at the top, it can be moved), see SearchReplaceWidget.vue -->
+                                        <SearchReplaceWidget />
                                     </div>
                                 </div>
                             </div>
@@ -153,6 +155,8 @@ import EditSoundDlg from "@/components/EditSoundDlg.vue";
 import RecordImageDlg from "@/components/RecordImageDlg.vue";
 import RecordSoundDlg from "@/components/RecordSoundDlg.vue";
 import ColourPickerDlg from "@/components/ColourPickerDlg.vue";
+import SearchReplaceWidget from "@/components/SearchReplaceWidget.vue";
+import { isSearchReplaceShortcut } from "@/helpers/searchReplace";
 import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
 import {loadDivider, loadPinnedLocalFiles, testingShowingHeader} from "@/helpers/load-save";
@@ -209,6 +213,7 @@ export default defineComponent({
         RecordImageDlg,
         RecordSoundDlg,
         ColourPickerDlg,
+        SearchReplaceWidget,
         MediaPreviewPopup,
         Menu,
         ModalDlg,
@@ -461,6 +466,17 @@ export default defineComponent({
             // The media editor dialogs also register an event listener which callback will be called after this one.
             // So when we detect one of the dialogs is opened, we just ignore this callback method.
             if(this.appStore.isModalDlgShown && (this.appStore.currentModalDlgId == "editImageDlg" || this.appStore.currentModalDlgId == "editSoundDlg")){
+                return;
+            }
+
+            // Handle the search and replace shortcut, unless a dialog or the app menu are opened.
+            // When the widget is already opened and has the focus, it handles this shortcut itself.
+            if(isSearchReplaceShortcut(event) && !this.appStore.isModalDlgShown && !this.appStore.isAppMenuOpened){
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                event.stopPropagation();
+                getActiveContextMenu()?.dispatchEvent(new KeyboardEvent("keydown", {key: "Escape"}));
+                this.openSearchReplace();
                 return;
             }
 
@@ -2191,6 +2207,13 @@ export default defineComponent({
             }
         },
 
+        // Opens the search and replace widget (from its keyboard shortcut). If some text is selected in a slot
+        // (on a single line), it is used as the search text, otherwise the previous search text is kept.
+        openSearchReplace() {
+            const selectedText = (this.appStore.isEditing) ? (document.getSelection()?.toString() ?? "").replace(/\u200B/g, "") : "";
+            vueComponentsAPIHandler.searchReplaceWidgetComponentAPI?.open((selectedText.includes("\n")) ? undefined : selectedText);
+        },
+
         // Opens the colour-picker dialog at the current caret position (triggered via the slot
         // shortcuts pane's "c" shortcut -- see Commands.vue's triggerSlotShortcut, which passes the
         // currently-focused slot's SlotCoreInfos here). Three cases, per the same synchronous-capture
@@ -2392,6 +2415,11 @@ body.#{$strype-classname-dragging-frame} {
 #editor {
     height: 100vh;
     max-height: 100vh;
+}
+
+.editor-code-column {
+    // The search and replace popup is positioned (absolutely) within the column, so it doesn't scroll with the code
+    position: relative;
 }
 
 .editor-code-div {

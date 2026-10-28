@@ -66,6 +66,7 @@ import { getFrameDefType, SlotType, MediaDataAndDim} from "@/types/types";
 import { getFrameLabelSlotsStructureUID, getLabelSlotUID } from "@/helpers/editor";
 import { preparePasteMediaData } from "@/helpers/media";
 import { getParentOrJointParent } from "@/helpers/storeMethods";
+import { getSearchReplaceShortcutLabel, openSearchReplaceFromContextMenu } from "@/helpers/searchReplace";
 // #v-endif
 
 //////////////////////
@@ -377,7 +378,8 @@ export default defineComponent({
             // Create the menu content here and open it
             this.frameContextMenuItems.splice(0);
             this.frameContextMenuItems.push({label: this.$t("contextMenu.paste"), onClick: () => this.paste()}, {divided: "self"});
-            this.frameContextMenuItems.push({label: this.$t("contextMenu.insert"), children: this.insertFrameMenuItems});                                    
+            this.frameContextMenuItems.push({label: this.$t("contextMenu.insert"), children: this.insertFrameMenuItems}, {divided: "self"});
+            this.frameContextMenuItems.push({label: this.$t("contextMenu.searchReplace"), onClick: openSearchReplaceFromContextMenu, shortcut: getSearchReplaceShortcutLabel()});
             this.showContextMenuAtCoordPos.x = event.x;
             this.showContextMenuAtCoordPos.y = event.y;
             this.showContextMenuAtCoordPos.pos = positionForMenu;

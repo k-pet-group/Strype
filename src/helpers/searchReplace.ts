@@ -5,8 +5,8 @@
 // is what the user sees for it in the editor, with these conventions:
 //  - string quotes are the quote characters of the code (" or '), not the typographic quotes shown in the UI,
 //  - keyword operators (and, or, not, in...) are surrounded by a space, the other operators have no spaces around
-//    them (the UI spaces them more or less depending on their precedence: in the normal and extended modes, the spaces
-//    around operators and brackets in the search text are optional, so the user can search the code as they see it),
+//    them (the UI spaces them more or less depending on their precedence: the spaces around operators and brackets
+//    in the search text are optional, so the user can search the code as they see it),
 //  - a media literal (image, sound, colour) counts as a single (unmatchable in practice) character.
 // A match never spans 2 labels (and therefore never spans 2 frames).
 //
@@ -24,14 +24,7 @@ import { isMacOSPlatform } from "@/helpers/common";
 import { invalidateParamPromptCache } from "@/autocompletion/acManager";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 
-export enum SearchMode {
-    normal = "normal", // the search text is used as is
-    extended = "extended", // the search text (and replacement text) can contain escapes: \n, \r, \t, \0, \\, \xHH, \uHHHH
-    regex = "regex", // the search text is a regular expression (JavaScript flavour); the replacement can refer to groups ($1, $<name>...)
-}
-
 export interface SearchOptions {
-    mode: SearchMode;
     matchCase: boolean;
     wholeWord: boolean;
 }
@@ -63,39 +56,13 @@ export interface SearchMatch {
     start: number;
     end: number;
     readOnly: boolean;
-    // The regex execution result that produced this match (used for expanding a regex replacement)
-    execResult: RegExpExecArray;
-    labelText: string;
-}
-
-// Interprets the escapes of the extended mode. Unknown escapes are kept as they are.
-export function unescapeExtended(text: string): string {
-    return text.replace(/\\(?:x([0-9a-fA-F]{2})|u([0-9a-fA-F]{4})|(.))/gs, (match, hex2: string | undefined, hex4: string | undefined, char: string | undefined) => {
-        if (hex2 || hex4) {
-            return String.fromCharCode(parseInt((hex2 ?? hex4) as string, 16));
-        }
-        switch (char) {
-        case "n":
-            return "\n";
-        case "r":
-            return "\r";
-        case "t":
-            return "\t";
-        case "0":
-            return "\0";
-        case "\\":
-            return "\\";
-        default:
-            return match;
-        }
-    });
 }
 
 function escapeRegExp(text: string): string {
     return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
-// The characters of the operators and brackets, around which spaces are optional in a (normal or extended) search
+// The characters of the operators and brackets, around which spaces are optional in a search
 const SPACE_INSENSITIVE_CHARS = ".+-/*%:&|~^<>=!,()[]{}";
 
 // Gets the regular expression source for a literal search text, in which the spaces around operators and brackets
@@ -112,35 +79,17 @@ function getLiteralSearchRegExpSource(text: string): string {
     }).join("");
 }
 
-// Builds the (global) regular expression for a search, or returns an error message if the search can't be compiled
-// (an invalid regular expression). An empty search returns null.
-export function buildSearchRegExp(searchText: string, options: SearchOptions): RegExp | null | {error: string} {
+// Builds the (global) regular expression for a search. An empty search returns null.
+export function buildSearchRegExp(searchText: string, options: SearchOptions): RegExp | null {
     if (searchText.length == 0) {
         return null;
     }
-    let source = (options.mode == SearchMode.regex)
-        ? searchText
-        : getLiteralSearchRegExpSource((options.mode == SearchMode.extended) ? unescapeExtended(searchText) : searchText);
+    const source = getLiteralSearchRegExpSource(searchText);
     const flags = "gm" + (options.matchCase ? "" : "i");
-    // Whole words: the match must not be preceded or followed by a "word" character.
-    // We try a Unicode aware version first (identifiers can contain non-ASCII letters), but a regular expression
-    // written by the user may not compile with the Unicode flag, so we fall back on ASCII word characters then.
-    const tryCompile = (src: string, fl: string): RegExp | {error: string} => {
-        try {
-            return new RegExp(src, fl);
-        }
-        catch (e) {
-            return {error: (e as Error).message};
-        }
-    };
-    if (options.wholeWord) {
-        const unicodeRegExp = tryCompile("(?<![\\p{L}\\p{N}_])(?:" + source + ")(?![\\p{L}\\p{N}_])", flags + "u");
-        if (unicodeRegExp instanceof RegExp) {
-            return unicodeRegExp;
-        }
-        source = "(?<!\\w)(?:" + source + ")(?!\\w)";
-    }
-    return tryCompile(source, flags);
+    // Whole words: the match must not be preceded or followed by a "word" character (identifiers can contain non-ASCII letters)
+    return (options.wholeWord)
+        ? new RegExp("(?<![\\p{L}\\p{N}_])(?:" + source + ")(?![\\p{L}\\p{N}_])", flags + "u")
+        : new RegExp(source, flags);
 }
 
 // Gets the frames in the order they appear in the editor: depth first, a frame's body before its joint frames.
@@ -208,65 +157,16 @@ function getSearchableLabels(): SearchableLabel[] {
     return labels;
 }
 
-// Finds all the (non-empty) matches of a search in the editor, in the document order.
+// Finds all the matches of a search in the editor, in the document order.
 export function findAllMatches(regExp: RegExp): SearchMatch[] {
     const matches: SearchMatch[] = [];
     getSearchableLabels().forEach((label, labelOrder) => {
-        regExp.lastIndex = 0;
-        let execResult: RegExpExecArray | null;
-        while ((execResult = regExp.exec(label.text)) != null) {
-            if (execResult[0].length == 0) {
-                // We ignore empty matches (e.g. "^" or "a*") and make sure we progress in the text
-                regExp.lastIndex++;
-                continue;
-            }
+        for (const execResult of label.text.matchAll(regExp)) {
             matches.push({frameId: label.frameId, labelIndex: label.labelIndex, labelOrder, start: execResult.index, end: execResult.index + execResult[0].length,
-                readOnly: label.readOnly, execResult, labelText: label.text});
+                readOnly: label.readOnly});
         }
     });
     return matches;
-}
-
-// Expands the replacement for a match: in regex mode, $&, $1, $<name>, $`, $' and $$ are interpreted like
-// in JavaScript's String.replace(); in the other modes the replacement is used literally.
-export function getReplacementForMatch(match: SearchMatch, replacementText: string, options: SearchOptions): string {
-    if (options.mode == SearchMode.normal) {
-        return replacementText;
-    }
-    const unescapedReplacement = unescapeExtended(replacementText);
-    if (options.mode == SearchMode.extended) {
-        return unescapedReplacement;
-    }
-    const execResult = match.execResult;
-    return unescapedReplacement.replace(/\$(\$|&|`|'|<([^>]*)>|(\d{1,2}))/g, (token, what: string, groupName: string | undefined, groupNum: string | undefined) => {
-        if (what == "$") {
-            return "$";
-        }
-        if (what == "&") {
-            return execResult[0];
-        }
-        if (what == "`") {
-            return match.labelText.substring(0, match.start);
-        }
-        if (what == "'") {
-            return match.labelText.substring(match.end);
-        }
-        if (groupName != undefined) {
-            return (execResult.groups) ? (execResult.groups[groupName] ?? "") : token;
-        }
-        if (groupNum != undefined) {
-            // Like JavaScript, we use a 2 digits group if it exists, otherwise a single digit group, otherwise it's literal
-            const twoDigitsGroup = parseInt(groupNum);
-            if (groupNum.length == 2 && twoDigitsGroup > 0 && twoDigitsGroup < execResult.length) {
-                return execResult[twoDigitsGroup] ?? "";
-            }
-            const oneDigitGroup = parseInt(groupNum[0]);
-            if (oneDigitGroup > 0 && oneDigitGroup < execResult.length) {
-                return (execResult[oneDigitGroup] ?? "") + groupNum.substring(1);
-            }
-        }
-        return token;
-    });
 }
 
 function getSlotCoreInfos(frameId: number, labelIndex: number, flatSlot: FlatSlotBase): SlotCoreInfos {
@@ -429,13 +329,13 @@ function replaceInLabel(frameId: number, labelIndex: number, edits: LabelEdit[])
 }
 
 // Replaces a single match. Returns the offset (in the label's searchable text) where the search for the next match should start, or -1 if the replacement wasn't done.
-export function replaceMatch(match: SearchMatch, replacementText: string, options: SearchOptions): number {
-    const insertedLength = replaceInLabel(match.frameId, match.labelIndex, [{start: match.start, end: match.end, replacement: getReplacementForMatch(match, replacementText, options)}]);
+export function replaceMatch(match: SearchMatch, replacementText: string): number {
+    const insertedLength = replaceInLabel(match.frameId, match.labelIndex, [{start: match.start, end: match.end, replacement: replacementText}]);
     return (insertedLength < 0) ? -1 : match.start + insertedLength;
 }
 
 // Replaces all the matches (that are not read-only). Returns the number of replacements done and the ids of the modified frames.
-export function replaceAllMatches(matches: SearchMatch[], replacementText: string, options: SearchOptions): {count: number, frameIds: number[]} {
+export function replaceAllMatches(matches: SearchMatch[], replacementText: string): {count: number, frameIds: number[]} {
     let count = 0;
     const frameIds = new Set<number>();
     // The edits are grouped by label, so each label is changed once (matches are in the document order already)
@@ -445,7 +345,7 @@ export function replaceAllMatches(matches: SearchMatch[], replacementText: strin
         if (!editsPerLabel.has(key)) {
             editsPerLabel.set(key, {frameId: match.frameId, labelIndex: match.labelIndex, edits: []});
         }
-        editsPerLabel.get(key)?.edits.push({start: match.start, end: match.end, replacement: getReplacementForMatch(match, replacementText, options)});
+        editsPerLabel.get(key)?.edits.push({start: match.start, end: match.end, replacement: replacementText});
     });
     editsPerLabel.forEach((labelEdits) => {
         if (replaceInLabel(labelEdits.frameId, labelEdits.labelIndex, labelEdits.edits) >= 0) {
@@ -456,15 +356,21 @@ export function replaceAllMatches(matches: SearchMatch[], replacementText: strin
     return {count, frameIds: [...frameIds]};
 }
 
-// The keyboard shortcut for opening the search and replace widget: Ctrl+Shift+F (Cmd+Shift+F on macOS).
-// (A simple "find" is left to the browser's own Ctrl/Cmd+F.)
-export function isSearchReplaceShortcut(event: KeyboardEvent): boolean {
+// The keyboard shortcuts for opening the search and replace widget: Ctrl+F (Cmd+F on macOS) to find (the replace part is folded),
+// with Shift to find and replace (the replace part is unfolded). Returns which one the event is, if any.
+// (Ctrl/Cmd+F replaces the browser's own find, which doesn't know about frames.)
+export function getSearchReplaceShortcut(event: KeyboardEvent): "find" | "replace" | null {
     const isModifierKey = (isMacOSPlatform()) ? (event.metaKey && !event.ctrlKey) : (event.ctrlKey && !event.metaKey);
-    return isModifierKey && event.shiftKey && !event.altKey && event.key.toLowerCase() == "f";
+    if (!isModifierKey || event.altKey || event.key.toLowerCase() != "f") {
+        return null;
+    }
+    return (event.shiftKey) ? "replace" : "find";
 }
 
-export function getSearchReplaceShortcutLabel(): string {
-    return (isMacOSPlatform()) ? "⌘⇧F" : i18n.global.t("shortcut.ctrlPlus") + i18n.global.t("shortcut.shiftPlus") + "F";
+export function getSearchReplaceShortcutLabel(withReplace: boolean): string {
+    return (isMacOSPlatform())
+        ? ((withReplace) ? "⌘⇧F" : "⌘F")
+        : i18n.global.t("shortcut.ctrlPlus") + ((withReplace) ? i18n.global.t("shortcut.shiftPlus") : "") + "F";
 }
 
 // Gets the position (label order, offset in the label's text) of the editor's caret, as a starting point for a search
@@ -523,8 +429,8 @@ export function revealFrame(frameId: number): boolean {
     return false;
 }
 
-// Opens the search and replace widget from a context menu (frames, frame caret)
-export function openSearchReplaceFromContextMenu(): void {
+// Opens the search and replace widget from a context menu (frames, frame caret), with the replace part folded or not
+export function openSearchReplaceFromContextMenu(withReplace: boolean): void {
     // The context menu is closing: we let it finish so it doesn't take the focus back from the widget
-    setTimeout(() => vueComponentsAPIHandler.searchReplaceWidgetComponentAPI?.open(), 0);
+    setTimeout(() => vueComponentsAPIHandler.searchReplaceWidgetComponentAPI?.open(withReplace), 0);
 }

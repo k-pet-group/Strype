@@ -379,7 +379,8 @@ export default defineComponent({
             this.frameContextMenuItems.splice(0);
             this.frameContextMenuItems.push({label: this.$t("contextMenu.paste"), onClick: () => this.paste()}, {divided: "self"});
             this.frameContextMenuItems.push({label: this.$t("contextMenu.insert"), children: this.insertFrameMenuItems}, {divided: "self"});
-            this.frameContextMenuItems.push({label: this.$t("contextMenu.searchReplace"), onClick: openSearchReplaceFromContextMenu, shortcut: getSearchReplaceShortcutLabel()});
+            this.frameContextMenuItems.push({label: this.$t("contextMenu.find"), onClick: () => openSearchReplaceFromContextMenu(false), shortcut: getSearchReplaceShortcutLabel(false)},
+                {label: this.$t("contextMenu.searchReplace"), onClick: () => openSearchReplaceFromContextMenu(true), shortcut: getSearchReplaceShortcutLabel(true)});
             this.showContextMenuAtCoordPos.x = event.x;
             this.showContextMenuAtCoordPos.y = event.y;
             this.showContextMenuAtCoordPos.pos = positionForMenu;

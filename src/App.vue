@@ -156,7 +156,7 @@ import RecordImageDlg from "@/components/RecordImageDlg.vue";
 import RecordSoundDlg from "@/components/RecordSoundDlg.vue";
 import ColourPickerDlg from "@/components/ColourPickerDlg.vue";
 import SearchReplaceWidget from "@/components/SearchReplaceWidget.vue";
-import { isSearchReplaceShortcut } from "@/helpers/searchReplace";
+import { getSearchReplaceShortcut } from "@/helpers/searchReplace";
 import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
 import {loadDivider, loadPinnedLocalFiles, testingShowingHeader} from "@/helpers/load-save";
@@ -469,14 +469,15 @@ export default defineComponent({
                 return;
             }
 
-            // Handle the search and replace shortcut, unless a dialog or the app menu are opened.
-            // When the widget is already opened and has the focus, it handles this shortcut itself.
-            if(isSearchReplaceShortcut(event) && !this.appStore.isModalDlgShown && !this.appStore.isAppMenuOpened){
+            // Handle the find (instead of the browser's) and find and replace shortcuts, unless a dialog or the app menu are opened.
+            // When the widget is already opened and has the focus, it handles these shortcuts itself.
+            const searchReplaceShortcut = getSearchReplaceShortcut(event);
+            if(searchReplaceShortcut && !this.appStore.isModalDlgShown && !this.appStore.isAppMenuOpened){
                 event.preventDefault();
                 event.stopImmediatePropagation();
                 event.stopPropagation();
                 getActiveContextMenu()?.dispatchEvent(new KeyboardEvent("keydown", {key: "Escape"}));
-                this.openSearchReplace();
+                this.openSearchReplace(searchReplaceShortcut == "replace");
                 return;
             }
 
@@ -2207,11 +2208,11 @@ export default defineComponent({
             }
         },
 
-        // Opens the search and replace widget (from its keyboard shortcut). If some text is selected in a slot
-        // (on a single line), it is used as the search text, otherwise the previous search text is kept.
-        openSearchReplace() {
+        // Opens the search and replace widget (from its keyboard shortcuts), with the replace part folded or not. If some text is selected
+        // in a slot (on a single line), it is used as the search text, otherwise the previous search text is kept.
+        openSearchReplace(withReplace: boolean) {
             const selectedText = (this.appStore.isEditing) ? (document.getSelection()?.toString() ?? "").replace(/\u200B/g, "") : "";
-            vueComponentsAPIHandler.searchReplaceWidgetComponentAPI?.open((selectedText.includes("\n")) ? undefined : selectedText);
+            vueComponentsAPIHandler.searchReplaceWidgetComponentAPI?.open(withReplace, (selectedText.includes("\n")) ? undefined : selectedText);
         },
 
         // Opens the colour-picker dialog at the current caret position (triggered via the slot

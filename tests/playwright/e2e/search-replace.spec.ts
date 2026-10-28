@@ -12,6 +12,7 @@ function escapeRegExp(text: string): string {
 
 // Tests for the search and replace widget (SearchReplaceWidget.vue, helpers/searchReplace.ts)
 
+const findShortcut = "ControlOrMeta+f";
 const searchReplaceShortcut = "ControlOrMeta+Shift+f";
 
 const projectCode = `#(=> Strype:1:std
@@ -34,6 +35,7 @@ const widget = (page: Page) => page.locator("#searchReplaceWidget");
 const searchInput = (page: Page) => page.locator("#searchReplaceSearchInput");
 const replaceInput = (page: Page) => page.locator("#searchReplaceReplaceInput");
 const status = (page: Page) => page.locator("#searchReplaceStatus");
+const toggleReplaceButton = (page: Page) => page.locator("#searchReplaceToggleReplaceButton");
 
 async function getBox(locator: Locator): Promise<{x: number, y: number, width: number, height: number}> {
     const box = await locator.boundingBox();
@@ -73,11 +75,41 @@ test("The shortcut opens the widget and the matches wrap around", async ({page})
     expect(await getSavedCode(page)).toEqual(projectCode);
 });
 
-test("The search text is empty at first, then the editor's selected text or the previous search text", async ({page}) => {
-    // A simple find is left to the browser
-    await page.keyboard.press("ControlOrMeta+f");
+test("Find only, with the replace part folded, which can be unfolded", async ({page}) => {
+    await page.keyboard.press(findShortcut);
+    await expect(widget(page)).toBeVisible();
+    await expect(widget(page).locator(".search-replace-title")).toHaveText("Find");
+    await expect(searchInput(page)).toBeFocused();
+    await expect(replaceInput(page)).toBeHidden();
+    await expect(toggleReplaceButton(page)).toHaveAttribute("aria-expanded", "false");
+    await page.keyboard.type("myString");
+    await expect(status(page)).toHaveText(/^\d of 5$/);
+    const firstIndex = parseInt(await status(page).textContent() as string);
+    // The previous and next buttons
+    await page.locator("#searchReplaceNextButton").click();
+    await expect(status(page)).toHaveText(`${(firstIndex % 5) + 1} of 5`);
+    await page.locator("#searchReplacePreviousButton").click();
+    await expect(status(page)).toHaveText(`${firstIndex} of 5`);
+    // Unfolding the replace part (the focus goes in the replace field), and folding it again
+    await toggleReplaceButton(page).click();
+    await expect(replaceInput(page)).toBeFocused();
+    await expect(toggleReplaceButton(page)).toHaveAttribute("aria-expanded", "true");
+    await expect(widget(page).locator(".search-replace-title")).toHaveText("Find and replace");
+    await toggleReplaceButton(page).click();
+    await expect(replaceInput(page)).toBeHidden();
+    await expect(searchInput(page)).toBeFocused();
+    // The shortcuts, when the widget is already opened, fold or unfold the replace part
+    await page.keyboard.press(searchReplaceShortcut);
+    await expect(replaceInput(page)).toBeVisible();
+    await expect(searchInput(page)).toBeFocused();
+    await page.keyboard.press(findShortcut);
+    await expect(replaceInput(page)).toBeHidden();
+    await page.keyboard.press("Escape");
     await expect(widget(page)).toBeHidden();
+    expect(await getSavedCode(page)).toEqual(projectCode);
+});
 
+test("The search text is empty at first, then the editor's selected text or the previous search text", async ({page}) => {
     await page.keyboard.press(searchReplaceShortcut);
     await expect(searchInput(page)).toBeFocused();
     await expect(searchInput(page)).toHaveValue("");
@@ -133,11 +165,16 @@ test("The widget can be moved by its header, and closed by its cross", async ({p
     const closeBox = await getBox(closeButton);
     expect(closeBox.y - widgetBox.y).toBeLessThan(widgetBox.height / 4);
     expect(widgetBox.x + widgetBox.width - (closeBox.x + closeBox.width)).toBeLessThan(widgetBox.width / 4);
-    // The replace input is just below the search input
+    // The buttons are on the right of their input, and the replace part is below the search part
     const searchBox = await getBox(searchInput(page));
+    const nextBox = await getBox(page.locator("#searchReplaceNextButton"));
     const replaceBox = await getBox(replaceInput(page));
+    const replaceAllBox = await getBox(page.locator("#searchReplaceReplaceAllButton"));
+    expect(nextBox.x).toBeGreaterThan(searchBox.x + searchBox.width);
+    expect(nextBox.y).toBeLessThan(searchBox.y + searchBox.height);
+    expect(replaceAllBox.x).toBeGreaterThan(replaceBox.x + replaceBox.width);
+    expect(replaceAllBox.y).toBeLessThan(replaceBox.y + replaceBox.height);
     expect(replaceBox.y).toBeGreaterThan(searchBox.y + searchBox.height);
-    expect(replaceBox.y - (searchBox.y + searchBox.height)).toBeLessThan(searchBox.height);
     // Drag the header to the left and down
     const headerBox = await getBox(header);
     await page.mouse.move(headerBox.x + 20, headerBox.y + headerBox.height / 2);
@@ -197,30 +234,19 @@ test("Closing the widget after a replacement leaves the caret after the replacem
     expect(await getSavedCode(page)).toEqual(projectCode.replace("greet(myString)", "greet(someoneElse)"));
 });
 
-test("The match options and modes work", async ({page}) => {
-    await page.keyboard.press(searchReplaceShortcut);
+test("The match options work", async ({page}) => {
+    await page.keyboard.press(findShortcut);
     await page.keyboard.type("mystring");
     await expect(status(page)).toHaveText(/of 5$/);
-    await widget(page).getByTitle("Match case").click();
+    await widget(page).getByLabel("Match case").check();
     await expect(status(page)).toHaveText("No results");
-    await widget(page).getByTitle("Match case").click();
+    await widget(page).getByLabel("Match case").uncheck();
     await searchInput(page).fill("String");
     await expect(status(page)).toHaveText(/of 5$/);
-    await widget(page).getByTitle("Match whole word").click();
+    await widget(page).getByLabel("Whole word").check();
     await expect(status(page)).toHaveText("No results");
-    await widget(page).getByTitle("Match whole word").click();
-    // Regular expressions
-    await page.locator("#searchReplaceModeSelect").selectOption("regex");
-    await searchInput(page).fill("my\\w+g\\b");
+    await widget(page).getByLabel("Whole word").uncheck();
     await expect(status(page)).toHaveText(/of 5$/);
-    await searchInput(page).fill("my(");
-    await expect(status(page)).toHaveText("Invalid expression");
-    // Extended: the escapes allow searching for new lines (in the function's documentation)
-    await page.locator("#searchReplaceModeSelect").selectOption("extended");
-    await searchInput(page).fill("someone\\n");
-    await expect(status(page)).toHaveText("1 of 1");
-    await page.locator("#searchReplaceModeSelect").selectOption("normal");
-    await expect(status(page)).toHaveText("No results");
 });
 
 test("Replace one by one, undo, and the project is modified", async ({page}) => {
@@ -264,15 +290,13 @@ test("Replace all, as a single undo step", async ({page}) => {
 
 test("Replacements can change the structure of the code", async ({page}) => {
     await page.keyboard.press(searchReplaceShortcut);
-    await page.locator("#searchReplaceModeSelect").selectOption("regex");
-    // A match across several slots (function call's name, brackets and argument), with groups in the replacement
-    await searchInput(page).fill("print\\((\\w+)\\)");
-    await replaceInput(page).fill("print(len($1) + 1)");
+    // A match across several slots (function call's name, brackets and argument)
+    await searchInput(page).fill("print(myString)");
+    await replaceInput(page).fill("print(len(myString) + 1)");
     await expect(status(page)).toHaveText("1 of 1");
     await page.locator("#searchReplaceReplaceAllButton").click();
     await expect(status(page)).toHaveText("1 replaced");
     // A replacement in a string remains in the string, a match spanning an operator and a slot gets re-parsed
-    await page.locator("#searchReplaceModeSelect").selectOption("normal");
     await searchInput(page).fill("+ name");
     await replaceInput(page).fill("+ name.upper()");
     await expect(status(page)).toHaveText("1 of 1");
@@ -294,6 +318,7 @@ test("The widget can be opened from the frame context menu, and the project is m
     await page.getByRole("menuitem", {name: new RegExp("^" + escapeRegExp(en.contextMenu.searchReplace))}).click({timeout: 2000});
     await expect(widget(page)).toBeVisible();
     await expect(searchInput(page)).toBeFocused();
+    await expect(replaceInput(page)).toBeVisible();
     await page.keyboard.type("greet");
     await replaceInput(page).fill("welcome");
     await page.locator("#searchReplaceReplaceAllButton").click();

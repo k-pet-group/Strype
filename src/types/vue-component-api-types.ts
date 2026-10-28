@@ -169,7 +169,7 @@ export type ColourPickerDlgComponentAPI = {
 }
 
 export type SearchReplaceWidgetComponentAPI = {
-  open: (initialSearchText?: string) => void,
+  open: (withReplace: boolean, initialSearchText?: string) => void,
   isOpened: () => boolean,
 }
 

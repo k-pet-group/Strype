@@ -1,6 +1,7 @@
 <!-- The search and replace widget: a popup over the top of the editor's code (see App.vue), which can be moved (by its header) so the code
      remains visible. Interacting with anything else in Strype (clicking or moving the focus outside the popup) closes it. It uses Bootstrap's popover
-     classes to look like the other popups of the editor (e.g. the rename identifiers popup). The search only covers the code of the editor, see helpers/searchReplace.ts. -->
+     classes to look like the other popups of the editor (e.g. the rename identifiers popup). The search only covers the code of the editor, see helpers/searchReplace.ts.
+     The replace part can be folded: it is when the popup is opened to find (Ctrl/Cmd+F), and isn't when it is opened to find and replace (Ctrl/Cmd+Shift+F). -->
 <template>
     <div
         v-if="isOpened"
@@ -9,24 +10,24 @@
         class="popover search-replace-widget"
         :style="widgetPositionStyle"
         role="dialog"
-        :aria-label="$t('searchReplace.title')"
+        :aria-label="titleText"
         @keydown.stop="onKeyDown"
         @keyup.stop="onKeyUp"
         @mousedown.stop
         @contextmenu.stop
     >
         <div class="popover-header search-replace-header" @mousedown="onHeaderMouseDown">
-            <span class="search-replace-title">{{ $t("searchReplace.title") }}</span>
+            <span class="search-replace-title">{{ titleText }}</span>
             <button type="button" class="search-replace-icon-btn search-replace-close-btn" :title="$t('searchReplace.close')" :aria-label="$t('searchReplace.close')" @click="close(true)">&#10005;</button>
         </div>
         <div class="popover-body search-replace-body">
-            <div class="search-replace-row">
+            <div class="search-replace-row search-replace-input-row">
                 <input
                     :id="searchInputId"
                     ref="searchInput"
                     type="text"
                     class="search-replace-input"
-                    :class="{'search-replace-input-invalid': errorMessage.length > 0 || (searchText.length > 0 && matches.length == 0)}"
+                    :class="{'search-replace-input-invalid': searchText.length > 0 && matches.length == 0}"
                     v-model="searchText"
                     :placeholder="$t('searchReplace.find')"
                     :aria-label="$t('searchReplace.find')"
@@ -34,37 +35,51 @@
                     autocomplete="off"
                     @keydown="onSearchInputKeyDown"
                 />
-                <button type="button" class="search-replace-icon-btn" :title="$t('searchReplace.previous')" :disabled="matches.length == 0" @click="goToMatch(false)">&#8593;</button>
-                <button type="button" class="search-replace-icon-btn" :title="$t('searchReplace.next')" :disabled="matches.length == 0" @click="goToMatch(true)">&#8595;</button>
+                <BButton :id="previousButtonId" variant="primary" class="search-replace-btn" :title="$t('searchReplace.previousTooltip')" :disabled="matches.length == 0" @click="goToMatch(false)">{{ $t("searchReplace.previous") }}</BButton>
+                <BButton :id="nextButtonId" variant="primary" class="search-replace-btn" :title="$t('searchReplace.nextTooltip')" :disabled="matches.length == 0" @click="goToMatch(true)">{{ $t("searchReplace.next") }}</BButton>
             </div>
             <div class="search-replace-row">
-                <input
-                    :id="replaceInputId"
-                    ref="replaceInput"
-                    type="text"
-                    class="search-replace-input"
-                    v-model="replaceText"
-                    :placeholder="$t('searchReplace.replace')"
-                    :aria-label="$t('searchReplace.replace')"
-                    spellcheck="false"
-                    autocomplete="off"
-                    @keydown="onReplaceInputKeyDown"
-                />
-            </div>
-            <div class="search-replace-row">
-                <button type="button" :class="{'search-replace-toggle': true, 'search-replace-toggle-on': matchCase}" :title="$t('searchReplace.matchCase')" :aria-pressed="matchCase ? 'true' : 'false'" @click="matchCase = !matchCase">Aa</button>
-                <button type="button" :class="{'search-replace-toggle': true, 'search-replace-toggle-on': wholeWord}" :title="$t('searchReplace.wholeWord')" :aria-pressed="wholeWord ? 'true' : 'false'" @click="wholeWord = !wholeWord"><u>ab</u></button>
-                <select :id="modeSelectId" v-model="mode" class="search-replace-mode" :title="$t('searchReplace.searchMode')" :aria-label="$t('searchReplace.searchMode')">
-                    <option :value="SearchMode.normal">{{ $t("searchReplace.modeNormal") }}</option>
-                    <option :value="SearchMode.extended">{{ $t("searchReplace.modeExtended") }}</option>
-                    <option :value="SearchMode.regex">{{ $t("searchReplace.modeRegex") }}</option>
-                </select>
+                <label class="search-replace-option">
+                    <input :id="matchCaseCheckboxId" type="checkbox" v-model="matchCase" />
+                    {{ $t("searchReplace.matchCase") }}
+                </label>
+                <label class="search-replace-option">
+                    <input :id="wholeWordCheckboxId" type="checkbox" v-model="wholeWord" />
+                    {{ $t("searchReplace.wholeWord") }}
+                </label>
                 <span class="search-replace-spacer"></span>
-                <span :id="statusId" class="search-replace-status" :class="{'search-replace-status-error': errorMessage.length > 0}" :title="errorMessage" aria-live="polite">{{ statusText }}</span>
+                <span :id="statusId" class="search-replace-status" aria-live="polite">{{ statusText }}</span>
             </div>
-            <div class="search-replace-row search-replace-buttons-row">
-                <BButton :id="replaceButtonId" variant="primary" class="search-replace-btn" :disabled="!canReplace" @click="replaceCurrent" v-html="replaceButtonLabel"></BButton>
-                <BButton :id="replaceAllButtonId" variant="primary" class="search-replace-btn" :disabled="!canReplace" @click="replaceAll" v-html="replaceAllButtonLabel"></BButton>
+            <div class="search-replace-row">
+                <button
+                    :id="toggleReplaceButtonId"
+                    type="button"
+                    class="search-replace-fold-btn"
+                    :aria-expanded="isReplaceUnfolded ? 'true' : 'false'"
+                    :aria-controls="replacePartId"
+                    @click="toggleReplace"
+                >
+                    <span :class="{'search-replace-fold-chevron': true, 'search-replace-fold-chevron-unfolded': isReplaceUnfolded}">&#9656;</span>
+                    {{ $t("searchReplace.replace") }}
+                </button>
+            </div>
+            <div v-if="isReplaceUnfolded" :id="replacePartId" class="search-replace-replace-part">
+                <div class="search-replace-row search-replace-input-row">
+                    <input
+                        :id="replaceInputId"
+                        ref="replaceInput"
+                        type="text"
+                        class="search-replace-input"
+                        v-model="replaceText"
+                        :placeholder="$t('searchReplace.replaceWith')"
+                        :aria-label="$t('searchReplace.replaceWith')"
+                        spellcheck="false"
+                        autocomplete="off"
+                        @keydown="onReplaceInputKeyDown"
+                    />
+                    <BButton :id="replaceButtonId" variant="primary" class="search-replace-btn" :disabled="!canReplace" @click="replaceCurrent" v-html="replaceButtonLabel"></BButton>
+                    <BButton :id="replaceAllButtonId" variant="primary" class="search-replace-btn" :disabled="!canReplace" @click="replaceAll" v-html="replaceAllButtonLabel"></BButton>
+                </div>
             </div>
         </div>
     </div>
@@ -76,7 +91,7 @@ import { mapStores } from "pinia";
 import { useStore } from "@/store/store";
 import { PythonExecRunningState, SlotCoreInfos, SlotCursorInfos } from "@/types/types";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
-import { buildSearchRegExp, findAllMatches, getEditorCaretSearchAnchor, getMatchDOMRanges, getMatchSingleSlot, isSearchReplaceShortcut, replaceAllMatches, replaceMatch, revealFrame, SearchMatch, SearchMode, SearchOptions } from "@/helpers/searchReplace";
+import { buildSearchRegExp, findAllMatches, getEditorCaretSearchAnchor, getMatchDOMRanges, getMatchSingleSlot, getSearchReplaceShortcut, replaceAllMatches, replaceMatch, revealFrame, SearchMatch, SearchOptions } from "@/helpers/searchReplace";
 import { CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, isFullyInViewport, setDocumentSelection } from "@/helpers/editor";
 import { checkCodeErrors } from "@/helpers/storeMethods";
 import { isMacOSPlatform } from "@/helpers/common";
@@ -112,15 +127,14 @@ export default defineComponent({
             isOpened: false,
             searchText: "",
             replaceText: "",
-            mode: SearchMode.normal,
+            // When the replace part is folded, the popup only finds (and nothing can be replaced)
+            isReplaceUnfolded: false,
             matchCase: false,
             wholeWord: false,
             matches: [] as SearchMatch[],
             currentMatchIndex: -1,
-            errorMessage: "",
             // A message replacing the matches count for a short while after an action (e.g. "5 replaced")
             actionMessage: "",
-            SearchMode,
             searchTimeoutHandle: -1,
             // The position of the popup within the editor's column once the user has moved it (null: the default position, at the top right).
             // It's kept when the popup is closed, so it opens again where the user left it.
@@ -160,8 +174,28 @@ export default defineComponent({
             return "searchReplaceReplaceInput";
         },
 
-        modeSelectId(): string {
-            return "searchReplaceModeSelect";
+        matchCaseCheckboxId(): string {
+            return "searchReplaceMatchCaseCheckbox";
+        },
+
+        wholeWordCheckboxId(): string {
+            return "searchReplaceWholeWordCheckbox";
+        },
+
+        toggleReplaceButtonId(): string {
+            return "searchReplaceToggleReplaceButton";
+        },
+
+        replacePartId(): string {
+            return "searchReplaceReplacePart";
+        },
+
+        previousButtonId(): string {
+            return "searchReplacePreviousButton";
+        },
+
+        nextButtonId(): string {
+            return "searchReplaceNextButton";
         },
 
         statusId(): string {
@@ -181,7 +215,11 @@ export default defineComponent({
         },
 
         searchOptions(): SearchOptions {
-            return {mode: this.mode, matchCase: this.matchCase, wholeWord: this.wholeWord};
+            return {matchCase: this.matchCase, wholeWord: this.wholeWord};
+        },
+
+        titleText(): string {
+            return this.$t((this.isReplaceUnfolded) ? "searchReplace.title" : "searchReplace.titleFind");
         },
 
         isPythonExecuting(): boolean {
@@ -197,13 +235,10 @@ export default defineComponent({
         },
 
         canReplace(): boolean {
-            return !this.isPythonExecuting && this.matches.some((match) => !match.readOnly);
+            return this.isReplaceUnfolded && !this.isPythonExecuting && this.matches.some((match) => !match.readOnly);
         },
 
         statusText(): string {
-            if (this.errorMessage.length > 0) {
-                return this.$t("searchReplace.invalidRegex");
-            }
             if (this.actionMessage.length > 0) {
                 return this.actionMessage;
             }
@@ -244,14 +279,15 @@ export default defineComponent({
     },
 
     methods: {
-        // Opens the widget, with the focus in the search field. The search text is the given text (e.g. the text selected in the editor)
-        // or, when there is none, the previous search text (empty the first time).
-        open(initialSearchText?: string) {
+        // Opens the widget, with the replace part folded (to find) or not (to find and replace), and the focus in the search field.
+        // The search text is the given text (e.g. the text selected in the editor) or, when there is none, the previous search text (empty the first time).
+        open(withReplace: boolean, initialSearchText?: string) {
             if (initialSearchText != undefined && initialSearchText.length > 0) {
                 this.searchText = initialSearchText;
             }
             const wasOpened = this.isOpened;
             this.isOpened = true;
+            this.isReplaceUnfolded = withReplace;
             this.setOutsideInteractionListened(true);
             this.actionMessage = "";
             this.caretAfterReplacement = null;
@@ -287,6 +323,19 @@ export default defineComponent({
                 // We leave the editor with the current match selected (when it's in a single editable slot), so the user can carry on from there
                 this.$nextTick(() => this.selectMatchInEditor(currentMatch));
             }
+        },
+
+        // Folds or unfolds the replace part, moving the focus to the replace field when it's unfolded (and to the search field otherwise)
+        toggleReplace() {
+            this.isReplaceUnfolded = !this.isReplaceUnfolded;
+            this.$nextTick(() => {
+                if (this.isReplaceUnfolded) {
+                    (this.$refs.replaceInput as HTMLInputElement | undefined)?.focus();
+                }
+                else {
+                    this.focusSearchInput();
+                }
+            });
         },
 
         // The rest of Strype remains usable while the popup is opened, but interacting with it closes the popup:
@@ -407,8 +456,7 @@ export default defineComponent({
             }
             const previousMatch = this.matches[this.currentMatchIndex];
             const regExp = buildSearchRegExp(this.searchText, this.searchOptions);
-            this.errorMessage = (regExp != null && !(regExp instanceof RegExp)) ? regExp.error : "";
-            if (!(regExp instanceof RegExp)) {
+            if (regExp == null) {
                 this.matches = [];
                 this.currentMatchIndex = -1;
                 this.updateHighlights(false);
@@ -455,7 +503,7 @@ export default defineComponent({
                 return;
             }
             const stateBeforeChanges = this.appStore.cloneStateForUndo([match.frameId]);
-            const nextSearchOffset = replaceMatch(match, this.replaceText, this.searchOptions);
+            const nextSearchOffset = replaceMatch(match, this.replaceText);
             if (nextSearchOffset < 0) {
                 this.goToMatch(true);
                 return;
@@ -477,7 +525,7 @@ export default defineComponent({
                 return;
             }
             const stateBeforeChanges = this.appStore.cloneStateForUndo();
-            const {count, frameIds} = replaceAllMatches(this.matches, this.replaceText, this.searchOptions);
+            const {count, frameIds} = replaceAllMatches(this.matches, this.replaceText);
             this.caretAfterReplacement = null;
             if (count > 0) {
                 // A single undo/redo step for all the replacements: this also marks the project as modified
@@ -493,8 +541,11 @@ export default defineComponent({
         onKeyDown(event: KeyboardEvent) {
             // All the keys are kept within the widget (the editor mustn't react to them, see the template's ".stop"),
             // apart from a few shortcuts that are relevant in the widget itself.
-            if (isSearchReplaceShortcut(event)) {
+            const searchReplaceShortcut = getSearchReplaceShortcut(event);
+            if (searchReplaceShortcut) {
+                // (we also stop the browser's own find)
                 event.preventDefault();
+                this.isReplaceUnfolded = (searchReplaceShortcut == "replace");
                 this.focusSearchInput();
             }
             else if (event.key == "Escape") {
@@ -580,7 +631,7 @@ export default defineComponent({
     position: absolute !important;
     top: 8px;
     right: 24px;
-    width: 26rem;
+    width: 36rem;
     max-width: calc(100% - 16px) !important;
 }
 
@@ -618,8 +669,17 @@ export default defineComponent({
     flex-grow: 1;
 }
 
-.search-replace-buttons-row {
-    justify-content: flex-end;
+// A text input with its buttons on its right: they stay on the same line (the input shrinks if needed)
+.search-replace-input-row {
+    flex-wrap: nowrap;
+}
+
+// (the buttons are thinner than Bootstrap's default, so they're about as high as the inputs)
+.search-replace-input-row .search-replace-btn {
+    flex-shrink: 0;
+    padding: 0 8px;
+    line-height: 1.5;
+    white-space: nowrap;
 }
 
 .search-replace-input {
@@ -635,7 +695,7 @@ export default defineComponent({
     outline-color: #d9534f;
 }
 
-.search-replace-toggle, .search-replace-icon-btn {
+.search-replace-icon-btn {
     min-width: 1.8rem;
     padding: 0 4px;
     border: 1px solid transparent;
@@ -644,34 +704,49 @@ export default defineComponent({
     line-height: 1.5;
 }
 
-.search-replace-toggle:hover, .search-replace-icon-btn:hover:not(:disabled) {
+.search-replace-icon-btn:hover {
     background-color: #dcdcdc;
 }
 
-.search-replace-toggle-on {
-    border-color: #0d6efd;
-    background-color: #d6e6ff;
+.search-replace-option {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-right: 8px;
+    white-space: nowrap;
+    cursor: pointer;
 }
 
-.search-replace-icon-btn:disabled {
-    opacity: 0.4;
+// The button folding/unfolding the replace part is plain text, with a chevron pointing right (folded) or down (unfolded)
+.search-replace-fold-btn {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 4px 0 0;
+    border: none;
+    background: transparent;
+    color: black;
 }
 
-.search-replace-mode {
-    padding: 1px 2px;
-    border: 1px solid #a0a0a0;
-    border-radius: 2px;
-    background-color: white;
+.search-replace-fold-chevron {
+    display: inline-block;
+    transition: transform 0.15s;
+}
+
+.search-replace-fold-chevron-unfolded {
+    transform: rotate(90deg);
+}
+
+.search-replace-replace-part {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
 }
 
 .search-replace-status {
     text-align: right;
     white-space: nowrap;
     color: #555555;
-}
-
-.search-replace-status-error {
-    color: #d9534f;
 }
 
 // Same as the rename identifiers popup's button (see LabelSlotsStructure.vue)

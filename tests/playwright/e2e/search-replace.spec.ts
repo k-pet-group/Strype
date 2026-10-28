@@ -288,6 +288,54 @@ test("Replace all, as a single undo step", async ({page}) => {
     expect(await getSavedCode(page)).toEqual(projectCode);
 });
 
+test("Undoing a replacement puts the text cursor after the replaced text", async ({page}) => {
+    await page.keyboard.press(searchReplaceShortcut);
+    await searchInput(page).fill("myString");
+    await replaceInput(page).fill("message");
+    await expect(status(page)).toHaveText(/of 5$/);
+    await page.locator("#searchReplaceReplaceAllButton").click();
+    await expect(status(page)).toHaveText("5 replaced");
+    // (the replace all button, now disabled, doesn't keep the focus)
+    await replaceInput(page).press("Escape");
+    await expect(widget(page)).toBeHidden();
+    // The text cursor goes after the first replaced text: in the project documentation
+    await page.keyboard.press("ControlOrMeta+z");
+    await waitForEditorSettled(page);
+    await page.keyboard.type("X");
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await waitForEditorSettled(page);
+    expect(await getSavedCode(page)).toEqual(projectCode.replace("about myString", "about myStringX"));
+});
+
+test("Redoing a replacement puts the text cursor after the replacement", async ({page}) => {
+    await page.keyboard.press(searchReplaceShortcut);
+    await searchInput(page).fill("myString");
+    await replaceInput(page).fill("message");
+    await expect(status(page)).toHaveText(/of 5$/);
+    // Replace the last match: greet(myString)
+    while (await status(page).textContent() != "5 of 5") {
+        await searchInput(page).press("Enter");
+    }
+    await replaceInput(page).press("Enter");
+    await expect(status(page)).toHaveText(/of 4$/);
+    // Closing leaves the text cursor after the replacement: we leave the slot (the frame caret is then elsewhere)
+    await replaceInput(page).press("Escape");
+    await expect(widget(page)).toBeHidden();
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await waitForEditorSettled(page);
+    await page.keyboard.press("ControlOrMeta+z");
+    await waitForEditorSettled(page);
+    await page.keyboard.press("ControlOrMeta+y");
+    await waitForEditorSettled(page);
+    await page.keyboard.type("Y");
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await waitForEditorSettled(page);
+    expect(await getSavedCode(page)).toEqual(projectCode.replace("greet(myString)", "greet(messageY)"));
+});
+
 test("Replacements can change the structure of the code", async ({page}) => {
     await page.keyboard.press(searchReplaceShortcut);
     // A match across several slots (function call's name, brackets and argument)

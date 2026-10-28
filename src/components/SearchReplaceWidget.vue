@@ -89,7 +89,7 @@
 import { defineComponent } from "vue";
 import { mapStores } from "pinia";
 import { useStore } from "@/store/store";
-import { PythonExecRunningState, SlotCoreInfos, SlotCursorInfos } from "@/types/types";
+import { CaretPosition, CriticalActionPositioning, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos } from "@/types/types";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { buildSearchRegExp, findAllMatches, getEditorCaretSearchAnchor, getMatchDOMRanges, getMatchSingleSlot, getSearchReplaceShortcut, replaceAllMatches, replaceMatch, revealFrame, SearchMatch, SearchOptions } from "@/helpers/searchReplace";
 import { CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, isFullyInViewport, setDocumentSelection } from "@/helpers/editor";
@@ -503,16 +503,18 @@ export default defineComponent({
                 return;
             }
             const stateBeforeChanges = this.appStore.cloneStateForUndo([match.frameId]);
+            const positioningBeforeChanges = this.getUndoRedoPositioningAt(match.frameId, match.labelIndex, match.end);
             const nextSearchOffset = replaceMatch(match, this.replaceText);
             if (nextSearchOffset < 0) {
                 this.goToMatch(true);
                 return;
             }
-            // Save the changes for undo/redo: this also marks the project as modified
-            this.appStore.saveStateChanges(stateBeforeChanges);
+            // Save the changes for undo/redo (undo [resp. redo] puts the text cursor after the replaced text [resp. the replacement]):
+            // this also marks the project as modified
+            const positioningAfterChanges = this.getUndoRedoPositioningAt(match.frameId, match.labelIndex, nextSearchOffset);
+            this.appStore.saveStateChanges(stateBeforeChanges, {beforeChanges: positioningBeforeChanges, afterChanges: positioningAfterChanges});
             checkCodeErrors([match.frameId]);
-            const slotAfterReplacement = getMatchSingleSlot({frameId: match.frameId, labelIndex: match.labelIndex, start: nextSearchOffset, end: nextSearchOffset});
-            this.caretAfterReplacement = (slotAfterReplacement) ? {slotInfos: slotAfterReplacement.slotInfos, cursorPos: slotAfterReplacement.end} : null;
+            this.caretAfterReplacement = positioningAfterChanges?.lastCriticalSlotCursorInfos ?? null;
             this.$nextTick(() => {
                 // The next match is searched from the end of the replacement (so the replacement itself isn't matched again)
                 this.doSearch(false, {labelOrder: match.labelOrder, offset: nextSearchOffset});
@@ -525,17 +527,36 @@ export default defineComponent({
                 return;
             }
             const stateBeforeChanges = this.appStore.cloneStateForUndo();
+            // Undo [resp. redo] puts the text cursor after the first replaced text [resp. replacement]
+            // (the first replacement of a label isn't shifted by the others, but if the label is re-parsed, its position may not be exact)
+            const firstMatch = this.matches.find((match) => !match.readOnly);
+            const positioningBeforeChanges = (firstMatch) ? this.getUndoRedoPositioningAt(firstMatch.frameId, firstMatch.labelIndex, firstMatch.end) : undefined;
             const {count, frameIds} = replaceAllMatches(this.matches, this.replaceText);
             this.caretAfterReplacement = null;
             if (count > 0) {
                 // A single undo/redo step for all the replacements: this also marks the project as modified
-                this.appStore.saveStateChanges(stateBeforeChanges);
+                const positioningAfterChanges = (firstMatch) ? this.getUndoRedoPositioningAt(firstMatch.frameId, firstMatch.labelIndex, firstMatch.start + this.replaceText.length) : undefined;
+                this.appStore.saveStateChanges(stateBeforeChanges, {beforeChanges: positioningBeforeChanges, afterChanges: positioningAfterChanges});
                 checkCodeErrors(frameIds);
             }
             this.$nextTick(() => {
                 this.doSearch(false);
                 this.actionMessage = this.$t("searchReplace.replacedCount", {count});
             });
+        },
+
+        // Gets the position for undo/redo to restore (see the store's saveStateChanges()) to have the text cursor at a position of a label's text,
+        // when it is in an editable slot (otherwise, undo/redo restores the default position)
+        getUndoRedoPositioningAt(frameId: number, labelIndex: number, offset: number): CriticalActionPositioning | undefined {
+            const slot = getMatchSingleSlot({frameId, labelIndex, start: offset, end: offset});
+            if (!slot) {
+                return undefined;
+            }
+            // (when editing a slot, the frame caret is in the body of the slot's frame, or below it: see LabelSlot.vue)
+            return {
+                lastCriticalCaretPosition: {id: frameId, caretPosition: (this.appStore.getAllowedChildren(frameId)) ? CaretPosition.body : CaretPosition.below},
+                lastCriticalSlotCursorInfos: {slotInfos: slot.slotInfos, cursorPos: slot.end},
+            };
         },
 
         onKeyDown(event: KeyboardEvent) {

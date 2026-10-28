@@ -330,6 +330,12 @@ export interface SlotCursorInfos {
     cursorPos: number;
 }
 
+// The position in the editor (frame caret, and text cursor if editing a slot) restored by undo/redo (see the store's lastCriticalActionPositioning)
+export interface CriticalActionPositioning {
+    lastCriticalCaretPosition: CurrentFrame;
+    lastCriticalSlotCursorInfos?: SlotCursorInfos;
+}
+
 export interface EditableFocusPayload extends SlotCoreInfos {
     focused: boolean;
 }

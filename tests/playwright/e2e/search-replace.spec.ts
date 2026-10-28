@@ -368,7 +368,7 @@ test("Redoing a replacement puts the text cursor after the replacement", async (
     }
     await replaceInput(page).press("Enter");
     await expect(status(page)).toHaveText(/of 4$/);
-    // Closing leaves the text cursor after the replacement: we leave the slot (the frame caret is then elsewhere)
+    // Closing selects the next match: we leave its slot (the frame caret is then elsewhere)
     await replaceInput(page).press("Escape");
     await expect(widget(page)).toBeHidden();
     await page.keyboard.press("Escape");

@@ -59,8 +59,15 @@ const initialState = initialStates["initialEmptyState"] as StateAppObject;
 // These are deliberately held outside the store because:
 // (a) we used to blank them on page load anyway
 // (b) there was a bug where sometimes we could end up diffing-the-diffs which led to quadratic memory and CPU consumption.
-const diffToPreviousState : ObjectPropertyDiff[][] = [];
-const diffToNextState: ObjectPropertyDiff[][] = [];
+// Each step also keeps the positions in the editor before and after its action: undo restores the position before the action,
+// redo the position after it. (A same state can be reached by undoing the next action or by redoing its own action,
+// and the position to restore isn't the same in both cases, so it can't be kept by the state itself.)
+interface UndoRedoStep {
+    changes: ObjectPropertyDiff[];
+    positionings: {beforeChanges: CriticalActionPositioning, afterChanges: CriticalActionPositioning};
+}
+const diffToPreviousState : UndoRedoStep[] = [];
+const diffToNextState: UndoRedoStep[] = [];
 
 export const useStore = defineStore("app", {
     state: () => {
@@ -1497,7 +1504,7 @@ export const useStore = defineStore("app", {
             stateCopy.isEditing = !this.isEditing;
 
             const diffs = getObjectPropertiesDifferences(stateCopy, previousState);
-            diffToPreviousState.push(diffs);
+            diffToPreviousState.push({changes: diffs, positionings: {beforeChanges: cloneDeep(previousState.lastCriticalActionPositioning), afterChanges: cloneDeep(this.lastCriticalActionPositioning)}});
 
             // Don't exceed the maximum of undo steps allowed
             if(diffToPreviousState.length > undoMaxSteps) {
@@ -1533,13 +1540,12 @@ export const useStore = defineStore("app", {
             }
 
             // Performing the change if there is any change recorded in the state
-            let changeList = [] as ObjectPropertyDiff[];
+            const undoRedoStep = (isUndo) ? diffToPreviousState.pop() : diffToNextState.pop();
+            const changeList = undoRedoStep?.changes ?? [];
             if(isUndo) {
-                changeList = diffToPreviousState.pop()??[];
                 this.diffToPreviousStateCounter--;
             }
             else {
-                changeList = diffToNextState.pop()??[];
                 this.diffToNextStateCounter--;
             }
             
@@ -1599,7 +1605,12 @@ export const useStore = defineStore("app", {
                             arrayToClean.splice(arrayIndex,1);
                         }
                     }
-                }); 
+                });
+
+                // The position to restore is the one before the undone action, or after the redone action (see UndoRedoStep)
+                if(undoRedoStep){
+                    this.lastCriticalActionPositioning = cloneDeep((isUndo) ? undoRedoStep.positionings.beforeChanges : undoRedoStep.positionings.afterChanges);
+                }
 
                 // We make sure the current selection of the document is in sync with what we have in the store
                 nextTick(() => {
@@ -1676,13 +1687,15 @@ export const useStore = defineStore("app", {
                 stateCopy.isEditing = !this.isEditing;
 
                 const stateDifferences = getObjectPropertiesDifferences(stateCopy, stateBeforeChanges);
+                // (the step being undone [resp. redone] is the same action, so it keeps the same positions)
+                const oppositeStep: UndoRedoStep = {changes: stateDifferences, positionings: (undoRedoStep as UndoRedoStep).positionings};
                 if(isUndo){
-                    diffToNextState.push(stateDifferences);
+                    diffToNextState.push(oppositeStep);
                     this.diffToNextStateCounter++;
                 }
                 else{
-                    diffToPreviousState.push(stateDifferences);    
-                    this.diffToPreviousStateCounter++;    
+                    diffToPreviousState.push(oppositeStep);
+                    this.diffToPreviousStateCounter++;
                 }
             }
         },  

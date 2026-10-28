@@ -74,7 +74,7 @@
 import { defineComponent } from "vue";
 import { mapStores } from "pinia";
 import { useStore } from "@/store/store";
-import { PythonExecRunningState, SlotCursorInfos } from "@/types/types";
+import { PythonExecRunningState, SlotCoreInfos, SlotCursorInfos } from "@/types/types";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { buildSearchRegExp, findAllMatches, getEditorCaretSearchAnchor, getMatchDOMRanges, getMatchSingleSlot, isSearchReplaceShortcut, replaceAllMatches, replaceMatch, revealFrame, SearchMatch, SearchMode, SearchOptions } from "@/helpers/searchReplace";
 import { CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, isFullyInViewport, setDocumentSelection } from "@/helpers/editor";
@@ -126,6 +126,9 @@ export default defineComponent({
             // It's kept when the popup is closed, so it opens again where the user left it.
             position: null as {left: number, top: number} | null,
             dragStart: null as {mouseX: number, mouseY: number, left: number, top: number} | null,
+            // Where the caret goes back in the editor when the popup is closed after a replacement (the end of the replacement,
+            // when it is in an editable slot), so the user can carry on editing there. Moving to another match, or changing the search, forgets it.
+            caretAfterReplacement: null as SlotCursorInfos | null,
         };
     },
 
@@ -251,6 +254,7 @@ export default defineComponent({
             this.isOpened = true;
             this.setOutsideInteractionListened(true);
             this.actionMessage = "";
+            this.caretAfterReplacement = null;
             this.$nextTick(() => {
                 // (the editor may have been resized since the popup was moved)
                 this.keepWithinEditor();
@@ -266,6 +270,7 @@ export default defineComponent({
                 return;
             }
             const currentMatch = this.matches[this.currentMatchIndex];
+            const caretAfterReplacement = this.caretAfterReplacement;
             this.isOpened = false;
             this.setOutsideInteractionListened(false);
             this.onDragEnd();
@@ -273,7 +278,12 @@ export default defineComponent({
             window.clearTimeout(this.searchTimeoutHandle);
             this.matches = [];
             this.currentMatchIndex = -1;
-            if (restoreEditorFocus && currentMatch) {
+            this.caretAfterReplacement = null;
+            if (restoreEditorFocus && caretAfterReplacement) {
+                // We leave the editor in the slot of the last replacement, after it, so the user can carry on editing there
+                this.$nextTick(() => this.selectInEditor(caretAfterReplacement.slotInfos, caretAfterReplacement.cursorPos, caretAfterReplacement.cursorPos));
+            }
+            else if (restoreEditorFocus && currentMatch) {
                 // We leave the editor with the current match selected (when it's in a single editable slot), so the user can carry on from there
                 this.$nextTick(() => this.selectMatchInEditor(currentMatch));
             }
@@ -353,18 +363,25 @@ export default defineComponent({
 
         selectMatchInEditor(match: SearchMatch) {
             const singleSlot = getMatchSingleSlot(match);
-            if (!singleSlot || match.readOnly || this.isPythonExecuting) {
+            if (singleSlot && !match.readOnly) {
+                this.selectInEditor(singleSlot.slotInfos, singleSlot.start, singleSlot.end);
+            }
+        },
+
+        // Puts the editor into edition in a slot, with the [start, end) part of its code selected (the caret is at end)
+        selectInEditor(slotInfos: SlotCoreInfos, start: number, end: number) {
+            if (this.isPythonExecuting) {
                 return;
             }
-            const slotElement = document.getElementById(getLabelSlotUID(singleSlot.slotInfos));
+            const slotElement = document.getElementById(getLabelSlotUID(slotInfos));
             if (!slotElement) {
                 return;
             }
-            const anchorCursorInfos: SlotCursorInfos = {slotInfos: singleSlot.slotInfos, cursorPos: singleSlot.start};
-            const focusCursorInfos: SlotCursorInfos = {slotInfos: singleSlot.slotInfos, cursorPos: singleSlot.end};
+            const anchorCursorInfos: SlotCursorInfos = {slotInfos, cursorPos: start};
+            const focusCursorInfos: SlotCursorInfos = {slotInfos, cursorPos: end};
             // The DOM focus, when editing, is held by the label's container (see LabelSlot.vue's onGetCaret()), then the slot is notified
-            // it gets the caret (which gets the editor into edition), and when that's done, we can select the match.
-            document.getElementById(getFrameLabelSlotsStructureUID(singleSlot.slotInfos.frameId, singleSlot.slotInfos.labelSlotsIndex))?.focus();
+            // it gets the caret (which gets the editor into edition), and when that's done, we can set the selection.
+            document.getElementById(getFrameLabelSlotsStructureUID(slotInfos.frameId, slotInfos.labelSlotsIndex))?.focus();
             slotElement.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
             setTimeout(() => {
                 setDocumentSelection(anchorCursorInfos, focusCursorInfos);
@@ -386,6 +403,7 @@ export default defineComponent({
             }
             if (searchChanged) {
                 this.actionMessage = "";
+                this.caretAfterReplacement = null;
             }
             const previousMatch = this.matches[this.currentMatchIndex];
             const regExp = buildSearchRegExp(this.searchText, this.searchOptions);
@@ -414,6 +432,7 @@ export default defineComponent({
 
         goToMatch(next: boolean) {
             this.actionMessage = "";
+            this.caretAfterReplacement = null;
             if (this.matches.length == 0) {
                 this.doSearch(true);
                 return;
@@ -444,6 +463,8 @@ export default defineComponent({
             // Save the changes for undo/redo: this also marks the project as modified
             this.appStore.saveStateChanges(stateBeforeChanges);
             checkCodeErrors([match.frameId]);
+            const slotAfterReplacement = getMatchSingleSlot({frameId: match.frameId, labelIndex: match.labelIndex, start: nextSearchOffset, end: nextSearchOffset});
+            this.caretAfterReplacement = (slotAfterReplacement) ? {slotInfos: slotAfterReplacement.slotInfos, cursorPos: slotAfterReplacement.end} : null;
             this.$nextTick(() => {
                 // The next match is searched from the end of the replacement (so the replacement itself isn't matched again)
                 this.doSearch(false, {labelOrder: match.labelOrder, offset: nextSearchOffset});
@@ -457,6 +478,7 @@ export default defineComponent({
             }
             const stateBeforeChanges = this.appStore.cloneStateForUndo();
             const {count, frameIds} = replaceAllMatches(this.matches, this.replaceText, this.searchOptions);
+            this.caretAfterReplacement = null;
             if (count > 0) {
                 // A single undo/redo step for all the replacements: this also marks the project as modified
                 this.appStore.saveStateChanges(stateBeforeChanges);

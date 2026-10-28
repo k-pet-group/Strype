@@ -176,6 +176,27 @@ test("Closing the widget leaves the current match selected in the editor", async
     expect(await getSavedCode(page)).toEqual(projectCode.replace("greet(myString)", "greet(someText)"));
 });
 
+test("Closing the widget after a replacement leaves the caret after the replacement in the editor", async ({page}) => {
+    await page.keyboard.press(searchReplaceShortcut);
+    await searchInput(page).fill("myString");
+    await replaceInput(page).fill("someone");
+    await expect(status(page)).toHaveText(/of 5$/);
+    // Go to the last match: greet(myString), and replace it (the current match is then another one)
+    while (await status(page).textContent() != "5 of 5") {
+        await searchInput(page).press("Enter");
+    }
+    await replaceInput(page).press("Enter");
+    await expect(status(page)).toHaveText(/of 4$/);
+    await replaceInput(page).press("Escape");
+    await expect(widget(page)).toBeHidden();
+    await page.keyboard.type("Else");
+    // Close the autocompletion, then leave the slot
+    await page.keyboard.press("Escape");
+    await page.keyboard.press("Escape");
+    await waitForEditorSettled(page);
+    expect(await getSavedCode(page)).toEqual(projectCode.replace("greet(myString)", "greet(someoneElse)"));
+});
+
 test("The match options and modes work", async ({page}) => {
     await page.keyboard.press(searchReplaceShortcut);
     await page.keyboard.type("mystring");

@@ -274,16 +274,17 @@ function getSlotCoreInfos(frameId: number, labelIndex: number, flatSlot: FlatSlo
 }
 
 // Gets the slot of a match if that match lies entirely in a single (directly) editable slot,
-// with the positions of the match inside that slot's code.
+// with the positions of the match inside that slot's code. (An empty match, i.e. a position, at the boundary between
+// an editable slot and an operator, a bracket... is in the editable slot.)
 export function getMatchSingleSlot(match: {frameId: number, labelIndex: number, start: number, end: number}): {slotInfos: SlotCoreInfos, start: number, end: number} | null {
     const frame = useStore().frameObjects[match.frameId];
     if (!frame || !frame.labelSlotsDict[match.labelIndex]) {
         return null;
     }
     const label = buildSearchableLabel(frame, match.labelIndex);
-    const segment = label.segments.find((seg) => seg.flatSlot != null && match.start >= seg.start && match.end <= seg.start + seg.text.length);
-    if (segment && segment.flatSlot && segment.flatSlot.type != SlotType.operator && segment.flatSlot.type != SlotType.media
-        && !isSlotBracketType(segment.flatSlot.type) && !isSlotQuoteType(segment.flatSlot.type)) {
+    const segment = label.segments.find((seg) => seg.flatSlot != null && match.start >= seg.start && match.end <= seg.start + seg.text.length
+        && seg.flatSlot.type != SlotType.operator && seg.flatSlot.type != SlotType.media && !isSlotBracketType(seg.flatSlot.type) && !isSlotQuoteType(seg.flatSlot.type));
+    if (segment && segment.flatSlot) {
         return {slotInfos: getSlotCoreInfos(match.frameId, match.labelIndex, segment.flatSlot), start: match.start - segment.start, end: match.end - segment.start};
     }
     return null;

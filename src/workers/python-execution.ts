@@ -441,6 +441,8 @@ const executePython = pyodideExpose(async (
     micropipLibraries: string[],
     userLibrariesFileIndexes: { [url: string]: Record<string, string>},
     startInSlashCloud: boolean,
+    // Whether the files in /cloud can only be read (the project is saved with a Git provider, see getFSForEmscripten()):
+    slashCloudReadOnly: boolean,
     // Important all requests (sync and async) go through one function to avoid them racing each other:
     makeRawRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
 ) : Promise<PyodideErrorDetails | null> => {
@@ -805,7 +807,7 @@ runner`);
             }
             try {
                 // We have done the mkdir("/cloud") in the one time Pyodide initialisation, earlier.
-                pyodide.FS.mount(pyodide.FS.filesystems.CLOUDFS, {}, "/cloud");
+                pyodide.FS.mount(pyodide.FS.filesystems.CLOUDFS, {readOnly: slashCloudReadOnly}, "/cloud");
                 pyodide.FS.chdir("/cloud");
             }
             catch (e) {

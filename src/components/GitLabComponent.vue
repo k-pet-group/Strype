@@ -38,6 +38,7 @@ import { CustomEventTypes } from "@/helpers/editor";
 import { connectToGitLab, getGitLabComInstance, GitLabAuth, gitLabAPI } from "@/helpers/gitlabAuth";
 import { forgetGitLabInstance, getSelfManagedGitLabInstance, GITLAB_COM_URL, GitLabInstance, loadGitLabInstancesHistory, rememberGitLabInstance } from "@/helpers/gitlabInstances";
 import { GitProviderComponentProps, useGitProvider } from "@/helpers/gitProvider";
+import { parseGitFileId } from "@/types/git-provider-types";
 import { StrypeSyncTarget } from "@/types/types";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
@@ -81,10 +82,22 @@ onBeforeUnmount(() => {
 });
 
 function signIn(callback: (cloudTarget: StrypeSyncTarget) => void) {
-    // We first ask which GitLab to connect to (preselecting the one last connected to): the connection is done when that dialog is validated.
+    // We first ask which GitLab to connect to (preselecting the one last connected to, or the one of the shared project we're opening):
+    // the connection is done when that dialog is validated.
     pendingSignInCallback = callback;
     instancesHistory.value = loadGitLabInstancesHistory();
     selectedOption.value = instancesHistory.value.lastUsedUrl;
+    const sharedProjectInstanceUrl = parseGitFileId(props.openSharedProjectFileId)?.serverUrl;
+    if(sharedProjectInstanceUrl){
+        if(sharedProjectInstanceUrl == GITLAB_COM_URL || instancesHistory.value.selfManagedInstances.some((instance) => instance.url == sharedProjectInstanceUrl)){
+            selectedOption.value = sharedProjectInstanceUrl;
+        }
+        else{
+            // An instance the user never connected to: they still need to give Strype's application ID on it
+            selectedOption.value = newInstanceOption;
+            newInstanceUrl.value = sharedProjectInstanceUrl;
+        }
+    }
     eventBus.emit(CustomEventTypes.showStrypeModal, instanceDlgId);
 }
 

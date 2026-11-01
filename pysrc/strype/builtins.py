@@ -13,7 +13,8 @@ def get_connected_cloud():
     # type: () -> str | None
     """
     Use this function to check the Cloud provider name where this Strype project lives.
-    (Currently, the Cloud providers Strype supports are `"Google Drive"` and `"Microsoft OneDrive"`.) 
+    (Currently, the Cloud providers Strype supports are `"Google Drive"`, `"Microsoft OneDrive"`, `"GitHub"` and `"GitLab"`.
+    The files of a project living on GitHub or GitLab can only be read, not written.) 
 
     :return: The name of the Cloud provider where this Strype project lives, `None` if the Strype project does not live on the Cloud.
     """

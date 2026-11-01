@@ -57,7 +57,8 @@ export function cloudLookupFile(parent: CloudFileId, name: string) : Promise<Clo
                 return Promise.resolve(undefined);
             }
         },
-        (error) => Promise.reject(error.result));
+        // (Google Drive gives the error details in its result, other targets reject with the error itself)
+        (error) => Promise.reject(error?.result ?? error));
 }
 
 export function cloudListDir(parent: CloudFileId) : Promise<CloudFileInfo[]> {
@@ -78,7 +79,8 @@ export function cloudListDir(parent: CloudFileId) : Promise<CloudFileInfo[]> {
                 };
             }));
         },
-        (error) => Promise.reject(error.result));
+        // (Google Drive gives the error details in its result, other targets reject with the error itself)
+        (error) => Promise.reject(error?.result ?? error));
 }
 
 

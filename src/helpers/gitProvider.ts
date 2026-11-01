@@ -27,6 +27,8 @@ export interface GitProviderComponentProps {
     onFolderToSaveFilePicked: (cloudTarget: StrypeSyncTarget, commitMessage?: string) => void,
     onFolderToSavePickCancelled: VoidFunction,
     onUnsupportedByStrypeFilePicked: VoidFunction,
+    // The file ID given by a "shared within the provider" link, empty when not opening such a link (see getSharedFileId())
+    openSharedProjectFileId: string,
 }
 
 // What useGitProvider() gives to the provider's component
@@ -58,9 +60,10 @@ export function useGitProvider<Auth>(options: {
     const isFileLocked = ref(false);
     const previousCloudFileSharingStatus = ref(CloudFileSharingStatus.UNKNOWN);
 
-    const modifiedDataSearchOptionName = ""; //TODO
-    const fileMoreFieldsForIO = ""; //TODO
-    const fileBasicFieldsForIO = ""; //TODO
+    // These fields are unused for Git providers
+    const modifiedDataSearchOptionName = "";
+    const fileMoreFieldsForIO = "";
+    const fileBasicFieldsForIO = "";
 
     function getAuth(): Auth {
         if(oauthToken.value == null){
@@ -239,18 +242,20 @@ export function useGitProvider<Auth>(options: {
             return;
         }
         const {repoId, branchId, path, fileName} = gitFileId;
+        // (a file opened from a share link is read at the commit it was shared at, see getSharedFileId(): the providers take a commit SHA in place of a branch)
+        const ref = gitFileId.commitSha ?? branchId;
         try{
             // Git doesn't keep a modification date for files, we use the date of the last commit that changed the file.
             // Both queries are independent, so we run them together.
-            const [lastCommitDate, fileContent] = await Promise.all([
-                api.getFileLastCommitDate(oauthToken.value, repoId, branchId, path),
-                api.getFileContent(oauthToken.value, repoId, branchId, path),
+            const [lastCommit, fileContent] = await Promise.all([
+                api.getFileLastCommit(oauthToken.value, repoId, ref, path),
+                api.getFileContent(oauthToken.value, repoId, ref, path),
             ]);
             const location = getGitFileLocation(gitFileId);
             setProjectLocation(location);
             // Keep the location (repository, branch and folder) selected in the picker for the next time it's opened
             filePicker.value?.rememberSelection(location);
-            onGettingFileMetadataSucces(fileName, lastCommitDate);
+            onGettingFileMetadataSucces(fileName, lastCommit.date);
             onGettingFileContentSuccess(fileContent);
         }
         catch(error){
@@ -297,50 +302,111 @@ export function useGitProvider<Auth>(options: {
         }
     }
 
+    // Sharing: a Git provider can't share a single file, only give access to a whole repository. So we never change anything
+    // on the provider: a project can be shared with anyone only if its repository is already public (the link is then the file's
+    // raw content, which Strype loads like any shared URL), and otherwise, only with the people who can access the repository
+    // (the link then gives the file ID, and they must connect to the provider to open it).
+    // Either way, the file is shared at the commit of its last save rather than on its branch: the link always gives the project
+    // as it was shared (that commit is the one of the user's save, as long as nobody else committed to the file since).
+    // We get that commit when the sharing dialog is opened (see getCurrentCloudFileCurrentSharingStatus()), as the link for people
+    // with access is made when the dialog is validated, where we can't wait for the provider (the link is copied to the clipboard then).
+    let sharedFileCommitSha: string | undefined = undefined;
+
     function getPublicSharedProjectContent(sharedFileId: string): Promise<{ isSuccess: boolean, projectName: string, decodedURIFileContent: string, errorMsg: string }> {
-        //TODO
-        return Promise.reject("Not implemented yet");
+        // A public link is the URL of the file's raw content (see getPublicShareLink()), so we don't get here.
+        return Promise.resolve({isSuccess: false, projectName: "", decodedURIFileContent: "", errorMsg: "Not supported."});
     }
 
+    // (the sharing methods reject with a message: the menu shows it as is)
     function getCurrentCloudFileCurrentSharingStatus(saveFileId: string): Promise<CloudFileSharingStatus> {
-        //TODO
-        return Promise.resolve(CloudFileSharingStatus.UNKNOWN);
+        const gitFileId = parseGitFileId(saveFileId);
+        if(gitFileId == null){
+            return Promise.reject(i18n.global.t("errorMessage.driveNoFile", {drivename: driveName}));
+        }
+        sharedFileCommitSha = undefined;
+        return Promise.resolve()
+            .then(() => {
+                const auth = getAuth();
+                return Promise.all([api.isRepositoryPublic(auth, gitFileId.repoId), api.getFileLastCommit(auth, gitFileId.repoId, gitFileId.branchId, gitFileId.path)]);
+            })
+            .then(([isPublic, lastCommit]) => {
+                sharedFileCommitSha = lastCommit.sha;
+                return (isPublic) ? CloudFileSharingStatus.PUBLIC_SHARED : CloudFileSharingStatus.INTERNAL_SHARED;
+            }, (error) => Promise.reject((error as Error).message));
     }
 
     function shareCloudDriveFile(saveFileId: string): Promise<boolean> {
-        //TODO
-        return Promise.resolve(false);
+        // We don't make a repository public (that would expose all of it): we only check that it is (the status was got just before, see Menu.copyCloudLink())
+        if(previousCloudFileSharingStatus.value != CloudFileSharingStatus.PUBLIC_SHARED){
+            return Promise.reject(i18n.global.t("errorMessage.gitSharePrivateRepository", {repository: parseGitFileId(saveFileId)?.repoId ?? "", providername: driveName}));
+        }
+        return Promise.resolve(true);
     }
 
     function restoreCloudDriveFileSharingStatus(saveFileId: string): Promise<void> {
-        //TODO
+        // We never change the sharing status (see shareCloudDriveFile()), so there is nothing to restore.
         return Promise.resolve();
     }
 
     function getPublicShareLink(saveFileId: string): Promise<{ respStatus: number, webLink: string }> {
-        //TODO
-        return Promise.reject("Not implemented yet");
+        const gitFileId = parseGitFileId(saveFileId);
+        if(gitFileId == null || oauthToken.value == null || sharedFileCommitSha == undefined){
+            return Promise.resolve({respStatus: (oauthToken.value == null) ? 401 : 404, webLink: ""});
+        }
+        return Promise.resolve({respStatus: 200, webLink: api.getPublicFileUrl(oauthToken.value, gitFileId.repoId, sharedFileCommitSha, gitFileId.path)});
     }
 
-    function searchCloudDriveElements(elementName: string | undefined, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]> {
-        //TODO
-        return Promise.resolve([]);
+    function getSharedFileId(saveFileId: string): string {
+        // The file ID of a "shared within the provider" link: it tells the commit to read the file at, and for a provider with several servers,
+        // the server the file is on, so that it is the one proposed when connecting to open the link (see the GitLab component's signIn()).
+        const gitFileId = parseGitFileId(saveFileId);
+        if(gitFileId == null){
+            return saveFileId;
+        }
+        const serverUrl = (oauthToken.value != null) ? api.getServerUrl?.(oauthToken.value) : undefined;
+        return toGitFileId({...gitFileId, commitSha: sharedFileCommitSha, serverUrl});
+    }
+
+    async function searchCloudDriveElements(elementName: string | undefined, elementLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]> {
+        // Git providers have no search: we list the folder (a Git location, see getFolderNameFromId()) and keep the matching items,
+        // the files getting Git file IDs and the folders Git location IDs (so they can be searched in turn).
+        // (searchOptions are about sorting and fields to get from a Drive's search, there is nothing equivalent here)
+        const location = parseGitLocationId(elementLocationId);
+        if(location == null){
+            return [];
+        }
+        const items = await api.listFolderContent(getAuth(), location.repoId, location.branchId, location.folderPath, true);
+        return items
+            .filter((item) => (elementName == undefined || item.name == elementName)
+                && (!searchAllSPYFiles || (!item.isFolder && item.name.endsWith("." + strypeFileExtension))))
+            .map((item) => ({
+                name: item.name,
+                id: (item.isFolder)
+                    ? toGitLocationId({...location, folderPath: item.path})
+                    : toGitFileId({repoId: location.repoId, branchId: location.branchId, path: item.path, fileName: item.name}),
+                isDir: item.isFolder,
+                // (if the size couldn't be got, reading the file still gets all its content)
+                fileSize: item.size ?? 0,
+            }));
     }
 
     // FileIO
+    // The files of a Git provider are read-only for the user code: writing would mean a commit for every
+    // file written (the Python file system mounted for them is read-only, see executePython()).
     function checkIsCloudDriveFileReadonly(file: CloudDriveFile): boolean {
-        //TODO
-        return false;
+        return true;
     }
 
-    function readFileContentForIO(fileId: string, filePath: string): Promise<Uint8Array> {
-        //TODO
-        return Promise.reject("Not implemented yet");
+    async function readFileContentForIO(fileId: string, filePath: string): Promise<Uint8Array> {
+        const gitFileId = parseGitFileId(fileId);
+        if(gitFileId == null){
+            throw new Error(i18n.global.t("errorMessage.fileIO.fileLocationNotFound", {filename: filePath}));
+        }
+        return api.getFileBytes(getAuth(), gitFileId.repoId, gitFileId.branchId, gitFileId.path);
     }
 
     function writeFileContentForIO(fileContent: string | Uint8Array, fileInfos: { filePath: string, fileName: string, folderId: string } | { filePath: string, fileId: string }): Promise<string> {
-        //TODO
-        return Promise.reject("Not implemented yet");
+        return Promise.reject(i18n.global.t("errorMessage.fileIO.gitFilesReadOnly", {providername: driveName}));
     }
 
     // A <script setup> component is "closed": CloudDriveHandler can only access (via its template ref)
@@ -371,6 +437,7 @@ export function useGitProvider<Auth>(options: {
             getFolderNameFromId,
             getPublicSharedProjectContent,
             getPublicShareLink,
+            getSharedFileId,
             get isFileLocked() {
                 return isFileLocked.value;
             },

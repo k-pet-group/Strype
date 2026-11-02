@@ -10,7 +10,7 @@ import { strypeElIds } from "../support/proxy";
 const loadDlgSelector = "#load-strype-project-modal-dlg";
 
 // Values of StrypeSyncTarget
-const StrypeSyncTargetFS = 1, StrypeSyncTargetGH = 5;
+const StrypeSyncTargetFS = 1, StrypeSyncTargetOD = 3;
 
 async function seedPromotedCloudTarget(page: Page, promotedCloudTarget: number) {
     // Must be called before the page is loaded (i.e. before setupStrypeTest)
@@ -37,11 +37,12 @@ test.describe("Load/save dialogs' targets order", () => {
     });
 
     test("swaps Google Drive with the promoted cloud target saved in the settings", async ({page, browserName}, testInfo) => {
-        await seedPromotedCloudTarget(page, StrypeSyncTargetGH);
+        // (GitHub and GitLab are currently disabled, and so can't be promoted: we use OneDrive)
+        await seedPromotedCloudTarget(page, StrypeSyncTargetOD);
         await setupStrypeTest(page, browserName, testInfo, {timeoutMs: 60000, skipPyodide: true});
         expect(await openLoadDialogAndGetTargetsIds(page)).toEqual({
-            primary: ["loadFromFSStrypeButton", "loadFromGHStrypeButton"],
-            secondary: ["loadFromODStrypeButton", "loadFromGDStrypeButton", "loadFromGLStrypeButton"],
+            primary: ["loadFromFSStrypeButton", "loadFromODStrypeButton"],
+            secondary: ["loadFromGDStrypeButton", "loadFromGHStrypeButton", "loadFromGLStrypeButton"],
         });
     });
 

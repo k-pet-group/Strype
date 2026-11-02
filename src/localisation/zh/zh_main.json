@@ -89,6 +89,7 @@
     "loadToTarget": "打开自:",
     "saveToTarget": "保存至:",
     "targetFS": "此设备",
+    "targetNotAvailableYet": "此功能暂不可用。",
     "fileName": "文件名：",
     "cloudFileAlreadyExists": "{drivename} 位置中已存在同名项目。\n是否要替换它？",
     "cloudLockedFileAlreadyExists": "此项目已锁定在 {drivename} 位置。\n无法使用此名称保存。",

@@ -243,7 +243,7 @@ export default defineComponent({
             return this.oauthToken == null;
         },
 
-        async testCloudConnection(onSuccessCallback: () => void, onFailureCallBack: () => void){
+        async testCloudConnection(onSuccessCallback: () => void, onFailureCallBack: () => void, onNetworkErrorCallBack?: () => void){
             const token = await this.getToken(OneDriveTokenPurpose.GRAPH_CHECK_FOLDER).catch((_) => {
                 onFailureCallBack();
                 return null;
@@ -259,9 +259,13 @@ export default defineComponent({
                 headers: {
                     Authorization: `Bearer ${token}`,
                 },
-            });
+            }).catch((_) => null);
 
-            if(!resp.ok){
+            if(resp == null){
+                // The request didn't reach Microsoft (no network, TLS failure...) so we know nothing about the token.
+                onNetworkErrorCallBack?.();
+            }
+            else if(!resp.ok){
                 onFailureCallBack();                
             }
             else{

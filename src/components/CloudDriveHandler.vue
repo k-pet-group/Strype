@@ -288,6 +288,9 @@ export default defineComponent({
             }, () => {
                 cloudDriveComponent.resetOAuthToken();
                 this.signInFn();
+            }, () => {
+                this.appStore.simpleModalDlgMsg = this.$t("errorMessage.cloudConnectionFailed", {drivename: cloudDriveComponent.driveName});
+                eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
             });
         },
         

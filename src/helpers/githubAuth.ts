@@ -424,6 +424,7 @@ async function isGitHubConnectionValid(auth: GitHubAuth): Promise<boolean> {
 // GitHub for the parts of Strype shared by all Git providers. A repository is identified by its full name ("owner/repo").
 export const gitHubAPI: GitProviderAPI<GitHubAuth> = {
     isConnectionValid: isGitHubConnectionValid,
+    revokeConnection: disconnectFromGitHub,
     listRepositories: listGitHubRepositoriesDetails,
     listBranches: listGitHubBranches,
     listFolderContent: listGitHubFolderContent,

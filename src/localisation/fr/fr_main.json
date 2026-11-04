@@ -80,7 +80,9 @@
     "close": "Fermer",
     "connect": "Se connecter",
     "commit": "Valider (commit)",
-    "continueSave": "Continuer..."
+    "continueSave": "Continuer...",
+    "saveAndSignOut": "Enregistrer et se déconnecter",
+    "signOutWithoutSaving": "Se déconnecter sans enregistrer"
   },
   "errorMessage": {
     "wrongDataFormat": "le format de données ne peut pas être lu",
@@ -96,6 +98,7 @@
     "EOFError": "Ce cadre ne peut pas être vide.",
     "cloudAPIFailed": "{apiname} ne s'est pas chargé.",
     "cloudConnectionFailed": "Impossible de joindre {drivename}. Vérifiez votre connexion réseau et réessayez.",
+    "cloudSignOutFailed": "Strype n'a pas pu confirmer auprès de {providername} que votre session est terminée (par exemple à cause d'un problème réseau ou parce que la fenêtre a été fermée).<br>Strype a supprimé vos informations de connexion de cette page. Pour plus de sûreté, vous pouvez aussi vous déconnecter de {providername} sur son site.",
     "driveSaveFailed": "Enregistrement vers {drivename} impossible.",
     "fileNameError": "Le nom de projet / fichier ne peut contenir que des lettres, des chiffres, des espaces, des tirets ou des parenthèses.",
     "shareProjectFailed": "Le lien de partage de votre projet n'a pas pu être généré.<br>(Erreur: {error})",
@@ -171,6 +174,8 @@
     "publicSharedProjectUserDownloadAttempt": "Strype va tenter d'ouvrir une autre page pour que vous puissiez télécharger le projet.",
     "cloudFileAlreadyExists": "Un projet du même nom existe déjà à cet emplacement dans {drivename}.\nVoulez-vous le remplacer ?",
     "cloudLockedFileAlreadyExists": "Ce projet est verrouillé à cet emplacement dans {drivename}.\nIl ne peut pas être enregistré avec ce nom.",
+    "signOutFromCloud": "Se déconnecter de {providername}",
+    "signOutUnsavedProject": "Ce projet a des modifications qui ne sont pas encore enregistrées dans {providername}.\nVoulez-vous les enregistrer avant de vous déconnecter ?",
     "saved": "Enregistré",
     "modified": "Modifié",
     "cloudDriveItemPickerLoadingFolderContent": "Chargement du dossier...",

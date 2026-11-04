@@ -239,6 +239,36 @@ export default defineComponent({
             this.oauthToken = null;
         },
 
+        async signOut(): Promise<boolean> {
+            // We end the user's session at Microsoft (Entra ID logout endpoint, in a popup like for signing in).
+            // MSAL also deletes its cache (in sessionStorage): the ID, access and refresh tokens are gone from the only place they were kept.
+            // (Microsoft has no endpoint for an app to revoke the refresh token of a single-page application: the session's
+            // end and the deletion of the tokens is what can be done; such refresh tokens expire after 24h anyway.)
+            this.resetOAuthToken();
+            this.isPersonalAccount = false;
+            this.baseUrl = "https://onedrive.live.com/picker";
+            const app = new PublicClientApplication(this.msalParamsInit);
+            let isSessionEnded = true;
+            try{
+                await app.initialize();
+                const account = app.getActiveAccount() ?? app.getAllAccounts()[0];
+                if(account){
+                    await app.logoutPopup({account: account, postLogoutRedirectUri: this.redirectURI});
+                }
+            }
+            catch(error){
+                // For example, the popup was blocked or closed by the user, or there is no network
+                console.warn(`Could not end the OneDrive session: ${(error as Error).message}`);
+                isSessionEnded = false;
+            }
+            finally{
+                // Whatever happened at Microsoft, nothing must remain locally (including other accounts' tokens, if any).
+                await app.clearCache().catch(() => {});
+                this.app = null;
+            }
+            return isSessionEnded;
+        },
+
         isOAuthTokenNotSet(){
             return this.oauthToken == null;
         },

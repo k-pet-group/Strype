@@ -117,6 +117,9 @@ export interface CloudDriveComponent {
     // Methods
     signIn: (signInCalBack: (cloudTarget: StrypeSyncTarget) => void) => void,
     resetOAuthToken: () => void,
+    // Signs the user out: asks the provider to invalidate the tokens Strype holds (or end the session), then forgets them locally.
+    // Resolves to false if the provider couldn't be reached or refused (the tokens are forgotten locally in any case). Never rejects.
+    signOut: () => Promise<boolean>,
     isOAuthTokenNotSet: () => boolean,
     // onNetworkErrorCallBack is called when the test couldn't reach the provider at all (so the token's validity is unknown)
     testCloudConnection: (onSuccessCallBack: VoidFunction, onFailureCallBack: VoidFunction, onNetworkErrorCallBack?: VoidFunction) => void,

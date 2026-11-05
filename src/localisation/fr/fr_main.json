@@ -434,6 +434,8 @@
     "unzipContents": "Extraire le contenu",
     "overwriteDialogTitle": "Ce fichier existe déjà",
     "overwriteDialogMessage": "Un fichier nommé \"{name}\" existe déjà à cet emplacement. Voulez-vous le remplacer ?",
-    "overwrite": "Écraser"
+    "overwrite": "Écraser",
+    "uploadBlockedType": "\"{name}\" ne peut pas être importé : les fichiers exécutables et les scripts (comme .exe, .bat, .sh, .jar ou .js) ne sont pas autorisés.",
+    "uploadBlockedArchive": "\"{name}\" ne peut pas être importé car il contient des fichiers d'un type non autorisé (exécutables ou scripts) : {files}"
   }
 }

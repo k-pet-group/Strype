@@ -354,7 +354,9 @@
     "unzipContents": "Unzip contents",
     "overwriteDialogTitle": "File already exists",
     "overwriteDialogMessage": "A file named \"{name}\" already exists here. Do you want to overwrite it?",
-    "overwrite": "Overwrite"
+    "overwrite": "Overwrite",
+    "uploadBlockedType": "\"{name}\" can't be uploaded: executable and script files (such as .exe, .bat, .sh, .jar or .js) aren't allowed.",
+    "uploadBlockedArchive": "\"{name}\" can't be uploaded because it contains files of a type that isn't allowed (executables or scripts): {files}"
   },
   "media": {
     "edit": "Edit",

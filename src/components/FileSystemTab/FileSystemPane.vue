@@ -25,7 +25,7 @@
                     :executing="isPythonExecuting"
                     @download="(n) => onDownload(n, '/local')"
                     @downloadDir="(n) => onDownloadDir(n, '/local')"
-                    @upload="(n, file) => onUpload(n, file, '/local')"
+                    @upload="(n, file) => void onUpload(n, file, '/local')"
                     @delete="onDeleteLocal"
                     @pin="onPinLocal"
                     @view="(n) => onView(n, '/local')"
@@ -52,7 +52,7 @@
                     :is-cwd="cwdRoot === '/cloud'"
                     @download="(n) => onDownload(n, '/cloud')"
                     @downloadDir="(n) => onDownloadDir(n, '/cloud')"
-                    @upload="(n, file) => onUpload(n, file, '/cloud')"
+                    @upload="(n, file) => void onUpload(n, file, '/cloud')"
                     @view="(n) => onView(n, '/cloud')"
                 />
             </div>
@@ -109,11 +109,13 @@ import OverwriteConfirmDialog from "@/components/FileSystemTab/OverwriteConfirmD
 import FileViewerDlg from "@/components/FileSystemTab/FileViewerDlg.vue";
 import {
     assetsRoots,
+    blockedUploadFileNames,
     deleteFromLocal,
     dirHasEntryNamed,
     downloadFsDirectoryAsZip,
     downloadFsFile,
     FsRoot,
+    isBlockedUploadFile,
     isCloudMounted,
     listFsRootTree,
     readFsFileBytes,
@@ -121,14 +123,15 @@ import {
     uploadEntriesToCloud,
     uploadEntriesToLocal,
 } from "@/helpers/fileSystemTabIO";
-import { ArchiveEntry, isZipFile, unzipEntries } from "@/helpers/archive";
+import { ArchiveEntry, isZipFile, listZipEntryPaths, unzipEntries } from "@/helpers/archive";
 import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
 import { runChangeCount } from "@/helpers/localFsCache";
 import { eventBus } from "@/helpers/appContext";
-import { CustomEventTypes } from "@/helpers/editor";
+import { CustomEventTypes, getAppSimpleMsgDlgId } from "@/helpers/editor";
 import { decodeAsTextIfValid, MAX_PREVIEWABLE_FILE_SIZE, mimeTypeForExtension, previewKindForExtension } from "@/helpers/filePreview";
 import { drawSoundOnCanvas } from "@/helpers/media";
 import { saveAs } from "file-saver";
+import { escapeHTML } from "@/helpers/common";
 
 // Waveform image size for the "view file" sound preview -- wider than MediaPreviewPopup.vue's own
 // 200x50 (a small hover popup) since this renders in a full-width modal dialog instead.
@@ -385,10 +388,38 @@ export default defineComponent({
             if (!file || this.localRoot == null) {
                 return;
             }
-            this.onUpload(this.localRoot, file, "/local");
+            void this.onUpload(this.localRoot, file, "/local");
         },
 
-        onUpload(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): void {
+        // Every upload (from either upload button, /local or /cloud) comes through here first, so
+        // this is where disallowed file types are refused (by name or MIME type) -- see
+        // fileSystemTabIO.ts's upload validation. Checked before the overwrite prompt, so the user
+        // is never asked to confirm replacing a file with something that's then refused anyway. A
+        // zip's own entries are vetted here too (by name only -- read from the archive's directory
+        // without extracting anything), and a zip containing any disallowed file is refused
+        // outright -- both for "Unzip contents" and for "Keep as zip", since a kept zip can be
+        // downloaded and extracted elsewhere just the same.
+        async onUpload(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): Promise<void> {
+            if (isBlockedUploadFile(file)) {
+                this.showUploadRefused(this.$t("fileSystemTab.uploadBlockedType", {name: escapeHTML(file.name)}) as string);
+                return;
+            }
+            if (isZipFile(file)) {
+                let entryPaths: string[] | null = null;
+                try {
+                    entryPaths = await listZipEntryPaths(file);
+                }
+                catch {
+                    // Not a readable zip despite the extension -- nothing can be extracted from it
+                    // (unzipping will fail just as it did before this check existed), so let the
+                    // usual keep/unzip dialog handle it as an opaque file.
+                }
+                const blocked = blockedUploadFileNames(entryPaths ?? []);
+                if (blocked.length > 0) {
+                    this.showUploadRefused(this.$t("fileSystemTab.uploadBlockedArchive", {name: escapeHTML(file.name), files: escapeHTML(blocked.join(", "))}) as string);
+                    return;
+                }
+            }
             if (dirHasEntryNamed(dirNode, file.name)) {
                 // Ask for confirmation before silently overwriting an existing entry -- see
                 // onConfirmOverwrite() below, triggered from OverwriteConfirmDialog.vue.
@@ -397,6 +428,14 @@ export default defineComponent({
                 return;
             }
             this.proceedWithUpload(dirNode, file, root);
+        },
+
+        // The app's shared message dialog (SimpleMsgModalDlg.vue) renders its message as HTML, so
+        // callers must escape anything user-controlled they put in it -- a file name, or worse, a
+        // zip entry name chosen by whoever made the archive -- see escapeHTML() at the call sites.
+        showUploadRefused(message: string): void {
+            this.appStore.simpleModalDlgMsg = message;
+            eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
         },
 
         onConfirmOverwrite(): void {

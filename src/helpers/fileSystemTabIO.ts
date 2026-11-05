@@ -15,7 +15,7 @@ import { serviceWorkerChannel } from "@/stryperuntime/main_thread_python_handler
 import * as localFsCache from "@/helpers/localFsCache";
 import { cloudCloseFile, cloudCreate, cloudListDir, cloudReadFile, cloudWriteFile } from "@/helpers/cloudFileIO";
 import { useStore } from "@/store/store";
-import { ArchiveEntry } from "@/helpers/archive";
+import type { ArchiveEntry } from "@/helpers/archive";
 import { assetsFilePrefixes, buildAssetTree } from "@/stryperuntime/assets_file_index";
 
 // "/local" and "/cloud" are the two writeable roots; anything else is one of the read-only asset
@@ -238,6 +238,109 @@ export function togglePinLocal(node: FsTreeNode): void {
     localFsCache.setPinned(node.path, !currentlyPinned);
 }
 
+// ---- Upload validation ----
+// A reject list of file types that must never be written into the user-visible file system
+// ("/local", "/cloud"), whether uploaded directly, extracted from a zip, or restored from a project
+// file's pinned files (see load-save.ts's loadPinnedLocalFiles()).
+//
+// Strype only ever runs Python code (inside Pyodide), so none of these types is needed for anything
+// it does. They're refused because the File system tab can hand files back out again (download,
+// and /cloud syncs to a real cloud drive), so accepting them would let Strype act as a carrier for
+// native executables, OS scripts or JavaScript. HTML/XHTML files are deliberately *not* refused:
+// they're legitimate data for Python programs (e.g. parsing or generating web pages), and Strype
+// never renders them as HTML itself -- FileViewerDlg.vue shows them as plain text.
+//
+// Matched on the file's final extension, case-insensitively (see uploadExtensionOf()), plus -- for
+// a direct upload only -- the MIME type the browser reports for it (see BLOCKED_UPLOAD_MIME_TYPES).
+// Python files, data files, images, sounds, text, web pages, and zip archives (whose contents are
+// checked separately, see FileSystemPane.vue's onUpload()) all remain allowed.
+const BLOCKED_UPLOAD_EXTENSIONS: ReadonlySet<string> = new Set([
+    // Windows executables, installers, libraries and shortcuts:
+    "exe", "msi", "msp", "msix", "appx", "dll", "com", "scr", "cpl", "sys", "drv", "ocx", "lnk", "pif", "reg",
+    // Windows scripts:
+    "bat", "cmd", "ps1", "psm1", "psd1", "vbs", "vbe", "wsf", "wsh", "hta", "jse",
+    // Unix/macOS executables, scripts, libraries and packages. Not ".bin": despite the name it's
+    // the conventional extension for raw binary *data* (e.g. a Python program's own
+    // open("data.bin", "wb") output), so refusing it would block legitimate files:
+    "sh", "bash", "zsh", "csh", "ksh", "command", "run", "elf", "so", "dylib", "app", "dmg", "pkg", "deb", "rpm",
+    // Java / Android:
+    "jar", "war", "ear", "class", "apk",
+    // JavaScript:
+    "js", "mjs", "cjs", "jsx",
+]);
+
+// The same categories as BLOCKED_UPLOAD_EXTENSIONS, as MIME types. A browser doesn't sniff a file's
+// content to fill in File.type: it derives it from the extension, using the OS's own file-type
+// registrations (and leaves it empty when it doesn't know). So this is a secondary check rather
+// than a content check: it catches an extension the list above doesn't name but which the user's
+// OS knows to be one of these types. It only applies where a MIME type exists at all, i.e. a direct
+// upload -- zip entries and pinned project files carry just a name.
+const BLOCKED_UPLOAD_MIME_TYPES: ReadonlySet<string> = new Set([
+    // Windows executables and installers:
+    "application/x-msdownload", "application/x-msdos-program", "application/x-dosexec",
+    "application/vnd.microsoft.portable-executable", "application/x-ms-installer", "application/x-msi",
+    "application/x-ms-shortcut", "application/hta",
+    // Windows scripts:
+    "application/x-bat", "application/x-msbatch", "application/x-ms-powershell",
+    // Unix/macOS executables, scripts and packages:
+    "application/x-executable", "application/x-elf", "application/x-sharedlib", "application/x-mach-binary",
+    "application/x-sh", "application/x-shellscript", "application/x-csh", "text/x-shellscript",
+    "application/x-apple-diskimage", "application/x-debian-package", "application/vnd.debian.binary-package",
+    "application/x-rpm", "application/x-redhat-package-manager",
+    // Java / Android:
+    "application/java-archive", "application/x-java-archive", "application/java-vm", "application/x-java-class",
+    "application/vnd.android.package-archive",
+    // JavaScript:
+    "text/javascript", "application/javascript", "application/x-javascript", "application/ecmascript", "text/ecmascript",
+]);
+
+// The extension that actually determines how an OS/browser would treat the file, lowercased:
+// trailing dots and whitespace are stripped first since Windows ignores them ("evil.exe." or
+// "evil.exe " both end up as "evil.exe" once saved there). Only the *last* extension counts, so
+// "photo.jpg.exe" is caught while "notes.exe.txt" is a plain text file. Returns "" if there's no
+// extension at all (including dot-files like ".bashrc", which have a name but no extension).
+function uploadExtensionOf(fileName: string): string {
+    // Only the base name -- a zip entry path like "folder.js/readme.txt" must not be judged on its
+    // folder's name:
+    const baseName = fileName.split(/[/\\]/).pop() ?? "";
+    const trimmed = baseName.replace(/[.\s]+$/, "");
+    const dotIndex = trimmed.lastIndexOf(".");
+    if (dotIndex <= 0) {
+        return "";
+    }
+    return trimmed.slice(dotIndex + 1).toLowerCase();
+}
+
+// Whether a file with this name (or zip entry path) must be refused -- see
+// BLOCKED_UPLOAD_EXTENSIONS above.
+export function isBlockedUploadFileName(fileName: string): boolean {
+    return BLOCKED_UPLOAD_EXTENSIONS.has(uploadExtensionOf(fileName));
+}
+
+// Whether a directly-uploaded file must be refused, by its name or by the MIME type the browser
+// gives it ("text/javascript; charset=utf-8" is treated as "text/javascript").
+export function isBlockedUploadFile(file: { name: string, type: string }): boolean {
+    const mimeType = file.type.split(";")[0].trim().toLowerCase();
+    return isBlockedUploadFileName(file.name) || BLOCKED_UPLOAD_MIME_TYPES.has(mimeType);
+}
+
+// The subset of the given names/paths that are refused, in their original order -- used to name
+// the offending entries when rejecting a whole archive.
+export function blockedUploadFileNames(fileNames: string[]): string[] {
+    return fileNames.filter(isBlockedUploadFileName);
+}
+
+// Last line of defence for both upload functions below: FileSystemPane.vue already refuses blocked
+// file types (see the upload validation above) before calling either, with a message for the user, so
+// this should never actually throw -- it's here so that no future caller can write one by mistake.
+// All-or-nothing, like unzipEntries()'s own refusal, so a rejected batch leaves nothing behind.
+function assertNoBlockedEntries(entries: ArchiveEntry[]): void {
+    const blocked = blockedUploadFileNames(entries.map((entry) => entry.path));
+    if (blocked.length > 0) {
+        throw new Error("Refusing to upload file(s) of a type that isn't allowed: " + blocked.join(", "));
+    }
+}
+
 // Uploads a set of files (a single plain upload becomes a one-entry array -- see
 // FileSystemPane.vue's uploadPlainFile()/onUnzipContents(), the only two callers) into "/local" at
 // the given directory node's path (e.g. "/local" itself, or a subfolder), preserving each entry's
@@ -248,6 +351,7 @@ export function togglePinLocal(node: FsTreeNode): void {
 // (see terminateAndRestartPyodide(), main_thread_python_handler.ts), so a write made mid-run here
 // would silently be lost when that run's own snapshot is taken at the end.
 export async function uploadEntriesToLocal(dirNode: FsTreeNode, entries: ArchiveEntry[]): Promise<void> {
+    assertNoBlockedEntries(entries);
     for (const entry of entries) {
         const path = dirNode.path === "/local" ? `/local/${entry.path}` : `${dirNode.path}/${entry.path}`;
         localFsCache.writeFile(path, entry.data);
@@ -269,6 +373,7 @@ export async function uploadEntriesToCloud(dirNode: FsTreeNode, entries: Archive
     if (dirNode.cloudFileId == null) {
         return;
     }
+    assertNoBlockedEntries(entries);
     for (const entry of entries) {
         const name = entry.path.split("/").pop() as string;
         const filePath = `${dirNode.path}/${name}`;

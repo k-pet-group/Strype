@@ -67,6 +67,8 @@ export async function readGitErrorDetails(response: Response): Promise<string | 
 export interface GitProviderAPI<Auth> {
    // Whether the connection is (still) valid
    isConnectionValid(auth: Auth): Promise<boolean>,
+   // Asks the provider to revoke the token (when the user signs out)
+   revokeConnection(auth: Auth): Promise<void>,
    // The repositories the user can access, even read-only (in any order)
    listRepositories(auth: Auth): Promise<GitRepository[]>,
    listBranches(auth: Auth, repoId: string): Promise<string[]>,

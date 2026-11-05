@@ -20,6 +20,16 @@
                 <input :id="gitCommitMessageInputId" v-model="gitCommitMessage" :placeholder="$t('appMessage.gitCommitMessagePlaceholder')" type="text" autocomplete="off" class="form-control" />
             </div>
         </ModalDlg>
+        <!-- Asks what to do with the unsaved changes of the project before signing out (see requestSignOut()) -->
+        <ModalDlg :dlgId="signOutUnsavedProjectModalDlgId" :dlgTitle="$t('appMessage.signOutFromCloud', {providername: signOutDriveName})" size="lg"
+            :elementToFocusId="saveAndSignOutButtonId" showCloseBtn>
+            <span style="white-space:pre-wrap">{{$t('appMessage.signOutUnsavedProject', {providername: signOutDriveName})}}</span>
+            <template #modal-footer-content="{ok, cancel}">
+                <BButton variant="secondary" @click="signOutChoice = null;cancel()">{{$t('buttonLabel.cancel')}}</BButton>
+                <BButton variant="primary" @click="signOutChoice = 'discard';ok()">{{$t('buttonLabel.signOutWithoutSaving')}}</BButton>
+                <BButton :id="saveAndSignOutButtonId" variant="primary" @click="signOutChoice = 'save';ok()">{{$t('buttonLabel.saveAndSignOut')}}</BButton>
+            </template>
+        </ModalDlg>
         <!-- Each specific drive is created here, but typing inference is done in getSpecificCloudDriveComponent() -->
         <GoogleDriveComponent ref="googleDriveComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
         <OneDriveComponent ref="oneDriveComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
@@ -105,6 +115,7 @@ export default defineComponent({
             },
             saveFile: this.saveFile,
             loadFile: this.loadFile,
+            requestSignOut: this.requestSignOut,
             modifiedDataSearchOptionName: (cloudTarget: StrypeSyncTarget) => {
                 return this.getSpecificCloudDriveComponent(cloudTarget)?.modifiedDataSearchOptionName;
             },
@@ -117,11 +128,13 @@ export default defineComponent({
     mounted() {
         eventBus.on(CustomEventTypes.strypeModalShown, this.onGitCommitDlgShown);
         eventBus.on(CustomEventTypes.strypeModalHidden, this.onGitCommitDlgHidden);
+        eventBus.on(CustomEventTypes.strypeModalHidden, this.onSignOutUnsavedProjectDlgHidden);
     },
 
     beforeUnmount() {
         eventBus.off(CustomEventTypes.strypeModalShown, this.onGitCommitDlgShown);
         eventBus.off(CustomEventTypes.strypeModalHidden, this.onGitCommitDlgHidden);
+        eventBus.off(CustomEventTypes.strypeModalHidden, this.onSignOutUnsavedProjectDlgHidden);
     },
 
     props: {
@@ -147,6 +160,12 @@ export default defineComponent({
             pendingGitCommit: null as ((commitMessage: string) => void) | null,
             // When the user chose where to save in a Git provider's dialog, they also gave the commit message there (see savePickedFolder())
             gitCommitMessageFromSaveChoice: undefined as string | undefined,
+            // For signing out (see requestSignOut()): the target to sign out from, what the user chose to do with the unsaved changes,
+            // and what to do once the project is saved, or failed to (see settleSaveForSignOut())
+            signOutTarget: StrypeSyncTarget.none,
+            signOutDriveName: "",
+            signOutChoice: null as "save" | "discard" | null,
+            pendingSaveForSignOut: null as ((isSaved: boolean) => void) | null,
         };
     },
 
@@ -197,6 +216,14 @@ export default defineComponent({
 
         gitCommitMessageInputId(): string {
             return "gitCommitMessageInput";
+        },
+
+        signOutUnsavedProjectModalDlgId(): string {
+            return "signOutUnsavedProjectModalDlg";
+        },
+
+        saveAndSignOutButtonId(): string {
+            return "saveAndSignOutButton";
         },
     },
    
@@ -288,6 +315,9 @@ export default defineComponent({
             }, () => {
                 cloudDriveComponent.resetOAuthToken();
                 this.signInFn();
+            }, () => {
+                this.appStore.simpleModalDlgMsg = this.$t("errorMessage.cloudConnectionFailed", {drivename: cloudDriveComponent.driveName});
+                eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
             });
         },
         
@@ -573,6 +603,8 @@ export default defineComponent({
                         this.doSaveFile(cloudTarget, this.appStore.strypeProjectLocation as string);
                     }
                     else{
+                        // (nothing could be saved)
+                        this.settleSaveForSignOut(false);
                         // Notify the application that if we were saving for loading now we are done
                         if(this.saveReason == SaveRequestReason.loadProject) {
                             eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
@@ -593,6 +625,7 @@ export default defineComponent({
                         continueSavingProcess();
                     })
                     .catch((responseStatusCode) => {
+                        this.settleSaveForSignOut(false);
                         // In this generic Cloud Drive handler, we are not sure what the nature of responseStatusCode is: it can be number, a number as string, or
                         // a proper response object that contains the status property. So we evaluate if the status property exists on responseStatusCode first and 
                         // if it doesn't exist, we assume responseStatusCode is a number-like variable.
@@ -664,6 +697,7 @@ export default defineComponent({
             else{
                 // The save is cancelled: we only reset the "Save As" flag of the Menu
                 vueComponentsAPIHandler.menuComponentAPI?.setRequestSaveAs(false);
+                this.settleSaveForSignOut(false);
             }
         },
 
@@ -705,7 +739,9 @@ export default defineComponent({
                 if(this.saveReason == SaveRequestReason.loadProject || vueComponentsAPIHandler.menuComponentAPI?.getRequestOpenProjectLater()) {
                     eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
                 }
+                this.settleSaveForSignOut(true);
             }, (errRespStatus: number, errorDetails?: string) => {
+                this.settleSaveForSignOut(false);
                 // If we have an authorised error (for example, timed-out connexion) we should disconnect and warn the users
                 // (not to sure why rawResp.status doesn't give the right stuff, but based on debugging, this works...)
                 if(errRespStatus == 401){
@@ -761,7 +797,8 @@ export default defineComponent({
             // save to load + unload --> try to reconnect, if failed, stop sync + modal message
             // Even if the user may sign-in again, we first make sure everything shows as "not syncing" in case the signing process is not completed
             // (because if the user just drop the signing action, we have no way to get events on that...)
-            this.getSpecificCloudDriveComponent(cloudTarget)?.resetOAuthToken(); 
+            this.settleSaveForSignOut(false);
+            this.getSpecificCloudDriveComponent(cloudTarget)?.resetOAuthToken();
             this.updateSignInStatus(cloudTarget, false);
             if(this.saveReason == SaveRequestReason.loadProject || this.saveReason == SaveRequestReason.unloadPage){
                 const modalMsg = (this.saveReason == SaveRequestReason.loadProject) ? this.$t("errorMessage.gdriveConnectionSaveToLoadProjFailed") : this.$t("errorMessage.gdriveConnectionSaveToUnloadPageFailed") ;
@@ -999,6 +1036,73 @@ export default defineComponent({
             this.appStore.projectLastSaveDate = -1;
             this.saveFileId = undefined;
         },
+
+        /**
+         * Signing out
+         */
+        requestSignOut(cloudTarget: StrypeSyncTarget){
+            // Entry point when the user asks to sign out from the Cloud Drive the project is synced with.
+            // If the project has changes not saved to the Drive yet, we ask the user if they should be saved first.
+            this.signOutTarget = cloudTarget;
+            this.signOutDriveName = this.getSpecificCloudDriveComponent(cloudTarget)?.driveName ?? "";
+            if(this.appStore.isEditorContentModified){
+                // (the default choice, if the dialog is validated with the Enter key)
+                this.signOutChoice = "save";
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.signOutUnsavedProjectModalDlgId);
+            }
+            else{
+                this.signOut(cloudTarget);
+            }
+        },
+
+        onSignOutUnsavedProjectDlgHidden(event: BvTriggerableEvent){
+            // We act once the dialog is closed, as saving to a Git provider shows another dialog (for the commit message)
+            if(event.componentId != this.signOutUnsavedProjectModalDlgId || event.trigger != "ok" || this.signOutChoice == null){
+                return;
+            }
+            const cloudTarget = this.signOutTarget;
+            if(this.signOutChoice == "discard"){
+                this.signOut(cloudTarget);
+                return;
+            }
+            // Save to the project's file in the Drive (as the autosave does), and only sign out if it worked
+            // (if saving failed, the user is told why by the saving mechanism and stays signed in)
+            this.pendingSaveForSignOut = (isSaved: boolean) => {
+                if(isSaved){
+                    this.signOut(cloudTarget);
+                }
+            };
+            this.saveFile(cloudTarget, SaveRequestReason.autosave);
+        },
+
+        settleSaveForSignOut(isSaved: boolean){
+            // Called when a save ended (successfully or not): if the user asked to save before signing out, we continue (once).
+            const pendingSaveForSignOut = this.pendingSaveForSignOut;
+            this.pendingSaveForSignOut = null;
+            pendingSaveForSignOut?.(isSaved);
+        },
+
+        signOut(cloudTarget: StrypeSyncTarget){
+            const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
+            if(!cloudDriveComponent){
+                return;
+            }
+            // The project is no longer synced with the Drive (it stays in the editor, and in the browser's storage, as any unsynced project)
+            vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
+            this.cleanCloudDriveRelatedInfosInState();
+            // The project's backup in the browser's storage (IndexedDB) is rewritten now, so it no longer holds the Drive's file and folder
+            // IDs (otherwise they would stay there until the next autosave). Only the browser storage save is left at this point (the
+            // Drive's save function was removed by saveTargetChoice() above), so this doesn't save to the Drive.
+            eventBus.emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.autosave);
+            // Then the provider is asked to invalidate the tokens (or end the session), which are forgotten locally in any case
+            cloudDriveComponent.signOut().then((isSignedOutAtProvider) => {
+                if(!isSignedOutAtProvider){
+                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.cloudSignOutFailed", {providername: cloudDriveComponent.driveName});
+                    eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
+                }
+            });
+        },
+        /** end Signing out */
 
         searchCloudDriveElements(cloudTarget: StrypeSyncTarget, fileName: string | undefined, fileLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]> {
             return this.getSpecificCloudDriveComponent(cloudTarget)?.searchCloudDriveElements(fileName, fileLocationId,searchAllSPYFiles, searchOptions)??Promise.reject("No Cloud target!"); // We should never get to the reject clause here, keep TS happy

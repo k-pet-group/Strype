@@ -86,6 +86,7 @@
     "loadToTarget": "Abierto desde:",
     "saveToTarget": "Guardar en:",
     "targetFS": "Este dispositivo",
+    "targetNotAvailableYet": "Esta función aún no está disponible.",
     "fileName": "Nombre del archivo:",
     "cloudFileAlreadyExists": "Ya existe un proyecto con este nombre en la ubicación de {drivename}.\n/¿Quieres reemplazarlo?",
     "cloudLockedFileAlreadyExists": "Este proyecto está bloqueado en la unicación de {drivename}.\nNo se puede guardar con este nombre.",

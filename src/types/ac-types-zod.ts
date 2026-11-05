@@ -40,4 +40,4 @@ export const AcResultTypeSchema = z.object({
 });
 
 // Define AcResultsWithCategory: a record of category → array of AcResultType
-export const AcResultsWithCategorySchema = z.record(z.array(AcResultTypeSchema));
+export const AcResultsWithCategorySchema = z.record(z.string(), z.array(AcResultTypeSchema));

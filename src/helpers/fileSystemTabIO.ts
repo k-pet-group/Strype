@@ -259,8 +259,10 @@ const BLOCKED_UPLOAD_EXTENSIONS: ReadonlySet<string> = new Set([
     "exe", "msi", "msp", "msix", "appx", "dll", "com", "scr", "cpl", "sys", "drv", "ocx", "lnk", "pif", "reg",
     // Windows scripts:
     "bat", "cmd", "ps1", "psm1", "psd1", "vbs", "vbe", "wsf", "wsh", "hta", "jse",
-    // Unix/macOS executables, scripts, libraries and packages:
-    "sh", "bash", "zsh", "csh", "ksh", "command", "run", "bin", "elf", "so", "dylib", "app", "dmg", "pkg", "deb", "rpm",
+    // Unix/macOS executables, scripts, libraries and packages. Not ".bin": despite the name it's
+    // the conventional extension for raw binary *data* (e.g. a Python program's own
+    // open("data.bin", "wb") output), so refusing it would block legitimate files:
+    "sh", "bash", "zsh", "csh", "ksh", "command", "run", "elf", "so", "dylib", "app", "dmg", "pkg", "deb", "rpm",
     // Java / Android:
     "jar", "war", "ear", "class", "apk",
     // JavaScript:

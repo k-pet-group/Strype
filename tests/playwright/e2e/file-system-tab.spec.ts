@@ -923,7 +923,7 @@ test.describe("File system tab -- refused file types", () => {
     test("still accepts look-alike names whose real (last) extension is allowed", async ({ page }) => {
         await openFilesTab(page);
         const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
-        const acceptedNames = ["my_program.py", "notes.exe.txt", "data.json", "readme.md", "Makefile", "javascript-notes.txt"];
+        const acceptedNames = ["my_program.py", "notes.exe.txt", "data.json", "raw-data.bin", "readme.md", "Makefile", "javascript-notes.txt"];
         for (const name of acceptedNames) {
             await localUploadInput(page).setInputFiles(payload(name));
             await expect(localSection.locator(".file-system-tree-file", { hasText: name })).toBeVisible();

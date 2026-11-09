@@ -942,9 +942,10 @@ export const isInsideTestFunction = function (frameId: number, caretPosition: Ca
 export const isAncestorGatedFrameTypeAllowed = function (frameId: number, caretPosition: CaretPosition, targetType: string): boolean {
     switch(targetType){
     case AllFrameTypesIdentifier.global:
-        return isContainedInFrame(frameId, caretPosition, [DefsContainerDefinition.type]);
+        // In the Defs section, or inside any function (functions in the Testing section, too):
+        return isContainedInFrame(frameId, caretPosition, [DefsContainerDefinition.type, AllFrameTypesIdentifier.funcdef]);
     case AllFrameTypesIdentifier.return:
-        return isContainedInFrame(frameId, caretPosition, [DefsContainerDefinition.type])
+        return isContainedInFrame(frameId, caretPosition, [DefsContainerDefinition.type, AllFrameTypesIdentifier.funcdef])
             || isContainedInFrame(frameId, caretPosition, [AllFrameTypesIdentifier.case]);
     case AllFrameTypesIdentifier.break:
     case AllFrameTypesIdentifier.continue:

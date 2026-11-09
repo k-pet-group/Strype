@@ -1061,7 +1061,7 @@ export default defineComponent({
                     const failures = results.results.filter((r) => r.outcome != "passed");
                     output = `${results.results.length - failures.length} passed, ${failures.length} failed\n`;
                     for (const failure of failures) {
-                        output += `\nFAILED ${failure.nodeId}\n${failureDetailsToShow(failure.message)}\n`;
+                        output += `\nFAILED ${failure.nodeId.split("::").pop()}:\n${failureDetailsToShow(failure.message)}\n`;
                     }
                     this.highlightTestFailures(failures, parser, testsParser, testsFileLinesBeforeTestsCode);
                     this.recordTestOutcomes(results.results);

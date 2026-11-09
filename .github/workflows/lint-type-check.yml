@@ -23,9 +23,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install Node.js and NPM via Volta
-        uses: volta-cli/action@v4
+        uses: volta-cli/action@v5
       - name: NPM Install
         # ci is better than npm install for CI jobs, apparently (quicker + more predictable):
         run: npm ci
@@ -36,9 +36,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install Node.js and NPM via Volta
-        uses: volta-cli/action@v4
+        uses: volta-cli/action@v5
       - name: NPM Install
         # ci is better than npm install for CI jobs, apparently (quicker + more predictable):
         run: npm ci
@@ -49,9 +49,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install Node.js and NPM via Volta
-        uses: volta-cli/action@v4
+        uses: volta-cli/action@v5
       - name: NPM Install
         # ci is better than npm install for CI jobs, apparently (quicker + more predictable):
         run: npm ci

@@ -46,7 +46,7 @@ def show_intro ( ) :
     print() 
     show_room_description(current_room) 
 def show_room_description (room ) :
-    '''Show the description of the given room. This includes the text describing the room, its exits, and anything else the palyer sees.'''
+    '''Show the description of the given room. This includes the text describing the room, its exits, and anything else the player sees.'''
     print("You are",current_room.description) 
     #show items
     items_in_room  = items.get(current_room) 
@@ -61,7 +61,7 @@ def show_room_description (room ) :
         print(exit,end=" ") 
     print() 
 def get_command ( ) :
-    '''Get a one-wrod or two-word command from the user, via text input. This will return two words (command and second_word). The commnand returned will be a string, the second work is either a string or None.'''
+    '''Get a one-word or two-word command from the user, via text input. This will return two words (command and second_word). The command returned will be a string, the second work is either a string or None.'''
     print() 
     words  = [] 
     while len(words) == 0  :

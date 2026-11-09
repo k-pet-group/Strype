@@ -11,9 +11,30 @@
                 <BButton :id="saveExistingFileOverwriteButtonId" v-if="!checkIsFileLockedProp()" variant="primary" @click="onSaveCloudExistingFileAction(Actions.overwrite);ok()">{{$t('buttonLabel.overwriteProject')}}</BButton>
             </template>
         </ModalDlg>
+        <!-- For Git providers, saving is committing: the user gives the commit message (see doSaveFile()) -->
+        <ModalDlg :dlgId="gitCommitModalDlgId" :dlgTitle="$t('appMessage.gitCommitTitle', {providername: getDriveName()})" :okCustomTitle="$t('buttonLabel.commit')"
+            :okDisabled="gitCommitMessage.trim().length == 0" :elementToFocusId="gitCommitMessageInputId" size="lg" showCloseBtn>
+            <div class="git-commit-dlg-container">
+                <span>{{gitCommitDetails}}</span>
+                <label :for="gitCommitMessageInputId">{{$t("appMessage.gitCommitMessage")}}</label>
+                <input :id="gitCommitMessageInputId" v-model="gitCommitMessage" :placeholder="$t('appMessage.gitCommitMessagePlaceholder')" type="text" autocomplete="off" class="form-control" />
+            </div>
+        </ModalDlg>
+        <!-- Asks what to do with the unsaved changes of the project before signing out (see requestSignOut()) -->
+        <ModalDlg :dlgId="signOutUnsavedProjectModalDlgId" :dlgTitle="$t('appMessage.signOutFromCloud', {providername: signOutDriveName})" size="lg"
+            :elementToFocusId="saveAndSignOutButtonId" showCloseBtn>
+            <span style="white-space:pre-wrap">{{$t('appMessage.signOutUnsavedProject', {providername: signOutDriveName})}}</span>
+            <template #modal-footer-content="{ok, cancel}">
+                <BButton variant="secondary" @click="signOutChoice = null;cancel()">{{$t('buttonLabel.cancel')}}</BButton>
+                <BButton variant="primary" @click="signOutChoice = 'discard';ok()">{{$t('buttonLabel.signOutWithoutSaving')}}</BButton>
+                <BButton :id="saveAndSignOutButtonId" variant="primary" @click="signOutChoice = 'save';ok()">{{$t('buttonLabel.saveAndSignOut')}}</BButton>
+            </template>
+        </ModalDlg>
         <!-- Each specific drive is created here, but typing inference is done in getSpecificCloudDriveComponent() -->
         <GoogleDriveComponent ref="googleDriveComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
         <OneDriveComponent ref="oneDriveComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
+        <GitHubComponent ref="gitHubComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
+        <GitLabComponent ref="gitLabComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
     </div>
 </template>
 
@@ -24,15 +45,19 @@ import {useStore} from "@/store/store";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
 import { CustomEventTypes, getAppSimpleMsgDlgId, getCloudLoginErrorModalDlgId, getFrameUID, getSaveAsProjectModalDlg } from "@/helpers/editor";
-import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
+import { escapeHTML, pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { BootstrapDlgSize, LoadRequestReason, SaveRequestReason, StrypeSyncTarget } from "@/types/types";
-import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, isSyncTargetCloudDrive, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
+import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, isSyncTargetCloudDrive, isSyncTargetGitProvider, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
 import GoogleDriveComponent from "@/components/GoogleDriveComponent.vue";
 import OneDriveComponent from "@/components/OneDriveComponent.vue";
 import { generateSPYFileContent } from "@/helpers/load-save";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { AppSPYFullPrefix, eventBus } from "@/helpers/appContext";
-import { BButton } from "bootstrap-vue-next";
+import { BButton, BvTriggerableEvent } from "bootstrap-vue-next";
+import GitHubComponent from "@/components/GitHubComponent.vue";
+import GitLabComponent from "@/components/GitLabComponent.vue";
+import { GitProviderComponent, parseGitFileId } from "@/types/git-provider-types";
+import { getDefaultGitCommitMessage } from "@/helpers/gitProvider";
 
 // This enum is used for flaging the action taken when a request to save a file on a Cloud Drive
 // has been done, and a file of the same name already exists on the Drive
@@ -50,6 +75,8 @@ export default defineComponent({
         ModalDlg,
         GoogleDriveComponent,
         OneDriveComponent,
+        GitHubComponent,
+        GitLabComponent,
         BButton,
     },
 
@@ -88,6 +115,7 @@ export default defineComponent({
             },
             saveFile: this.saveFile,
             loadFile: this.loadFile,
+            requestSignOut: this.requestSignOut,
             modifiedDataSearchOptionName: (cloudTarget: StrypeSyncTarget) => {
                 return this.getSpecificCloudDriveComponent(cloudTarget)?.modifiedDataSearchOptionName;
             },
@@ -95,6 +123,18 @@ export default defineComponent({
                 return this.getSpecificCloudDriveComponent(cloudTarget)?.fileMoreFieldsForIO;
             },
         };
+    },
+
+    mounted() {
+        eventBus.on(CustomEventTypes.strypeModalShown, this.onGitCommitDlgShown);
+        eventBus.on(CustomEventTypes.strypeModalHidden, this.onGitCommitDlgHidden);
+        eventBus.on(CustomEventTypes.strypeModalHidden, this.onSignOutUnsavedProjectDlgHidden);
+    },
+
+    beforeUnmount() {
+        eventBus.off(CustomEventTypes.strypeModalShown, this.onGitCommitDlgShown);
+        eventBus.off(CustomEventTypes.strypeModalHidden, this.onGitCommitDlgHidden);
+        eventBus.off(CustomEventTypes.strypeModalHidden, this.onSignOutUnsavedProjectDlgHidden);
     },
 
     props: {
@@ -114,6 +154,18 @@ export default defineComponent({
             saveFileName: "", // The file name, will be set via the Menu when a name is provided for saving, or when loading a project            
             Actions, // this is required to be accessible in the template
             saveExistingCloudProjectInfos: {} as SaveExistingCloudProjectInfos,
+            // For the commit dialog of Git providers (see doSaveFile())
+            gitCommitDetails: "",
+            gitCommitMessage: "",
+            pendingGitCommit: null as ((commitMessage: string) => void) | null,
+            // When the user chose where to save in a Git provider's dialog, they also gave the commit message there (see savePickedFolder())
+            gitCommitMessageFromSaveChoice: undefined as string | undefined,
+            // For signing out (see requestSignOut()): the target to sign out from, what the user chose to do with the unsaved changes,
+            // and what to do once the project is saved, or failed to (see settleSaveForSignOut())
+            signOutTarget: StrypeSyncTarget.none,
+            signOutDriveName: "",
+            signOutChoice: null as "save" | "discard" | null,
+            pendingSaveForSignOut: null as ((isSaved: boolean) => void) | null,
         };
     },
 
@@ -157,6 +209,22 @@ export default defineComponent({
         saveExistingFileOverwriteButtonId(): string {
             return "saveExistingFileOverwriteButton";
         },
+
+        gitCommitModalDlgId(): string {
+            return "gitCommitModalDlg";
+        },
+
+        gitCommitMessageInputId(): string {
+            return "gitCommitMessageInput";
+        },
+
+        signOutUnsavedProjectModalDlgId(): string {
+            return "signOutUnsavedProjectModalDlg";
+        },
+
+        saveAndSignOutButtonId(): string {
+            return "saveAndSignOutButton";
+        },
     },
    
     methods: {  
@@ -173,18 +241,27 @@ export default defineComponent({
             let component = null as CloudDriveComponent | null;
             if(cloudTarget == StrypeSyncTarget.gd){
                 // Google Drive
-                component = this.$refs.googleDriveComponent as CloudDriveComponent;
+                // ("satisfies" checks that the component implements CloudDriveComponent, as $refs are untyped)
+                component = this.$refs.googleDriveComponent as InstanceType<typeof GoogleDriveComponent> satisfies CloudDriveComponent;
+            }
+            else if(cloudTarget == StrypeSyncTarget.od){
+                // OneDrive
+                component = this.$refs.oneDriveComponent as InstanceType<typeof OneDriveComponent> satisfies CloudDriveComponent;
+            }
+            else if(cloudTarget == StrypeSyncTarget.gl){
+                // GitLab (the CloudDriveComponent check is done in the component itself, on what it exposes)
+                component = this.$refs.gitLabComponent as CloudDriveComponent;
             }
             else{
-                // OneDrive
-                component = this.$refs.oneDriveComponent as CloudDriveComponent;
+                // GitHub (the CloudDriveComponent check is done in the component itself, on what it exposes)
+                component = this.$refs.gitHubComponent as CloudDriveComponent;
             }
             // We only update the specific Drive's method delegates when needed (that is when the cloudTarget changes)
             if(this.currentCloudTarget != cloudTarget){
                 const resetToDefault = (cloudTarget ==  StrypeSyncTarget.none || cloudTarget == StrypeSyncTarget.fs);
-                this.getDriveName = (resetToDefault) ? () => "" : () => (component as CloudDriveComponent).driveName;
-                this.checkIsFileLockedProp = (resetToDefault) ? () => false : () => (component as CloudDriveComponent).isFileLocked;
-                this.signInFn = (resetToDefault) ? () => {} : () => (component as CloudDriveComponent).signIn((cloudTarget: StrypeSyncTarget) => { 
+                this.getDriveName = (resetToDefault) ? () => "" : () => component.driveName;
+                this.checkIsFileLockedProp = (resetToDefault) ? () => false : () => component.isFileLocked;
+                this.signInFn = (resetToDefault) ? () => {} : () => component.signIn((cloudTarget: StrypeSyncTarget) => { 
                     if(this.currentAction == "load"){
                         this.doLoadFile(cloudTarget, this.loadReason, this.openSharedProjectFileId, this.isSwappingCloudDriveTarget(cloudTarget));
                     }
@@ -238,6 +315,9 @@ export default defineComponent({
             }, () => {
                 cloudDriveComponent.resetOAuthToken();
                 this.signInFn();
+            }, () => {
+                this.appStore.simpleModalDlgMsg = this.$t("errorMessage.cloudConnectionFailed", {drivename: cloudDriveComponent.driveName});
+                eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
             });
         },
         
@@ -324,8 +404,8 @@ export default defineComponent({
                     });
                 }
                 else{
-                // We test the connection to make sure it's still valid: if so, we continue with the loading, and if not we reset the token and
-                // call this method again so signing will be requested
+                    // We test the connection to make sure it's still valid: if so, we continue with the loading, and if not we reset the token and
+                    // call this method again so signing will be requested
                     this.testCloudConnection(cloudTarget);
                 }
             }
@@ -434,19 +514,66 @@ export default defineComponent({
             this.currentAction = "save";
             this.saveReason = saveReason;
             
+            // (a commit message given in a previous, unfinished, save can't be used for this one)
+            this.gitCommitMessageFromSaveChoice = undefined;
+
+            // If the project comes from a Python file opened from this Drive, its first save there is done in the folder of that file
+            // (or, when saving at another location, the folder picker starts there).
+            // For a Git provider, that's only for "Save" (see Menu's saveToSuggestedCloudLocation()): with "Save As", the user chooses
+            // the location in the provider's save dialog as usual (which already opens in the folder of the file loaded last).
+            const suggestedLocation = this.appStore.suggestedCloudSaveLocation;
+            const isSavingToSuggestedLocation = suggestedLocation != undefined && suggestedLocation.target == cloudTarget
+                && this.appStore.syncTarget == StrypeSyncTarget.none
+                && (saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation)
+                && (!isSyncTargetGitProvider(cloudTarget) || (saveReason == SaveRequestReason.saveProjectAtLocation && !vueComponentsAPIHandler.menuComponentAPI?.getRequestSaveAs()));
+            if(isSavingToSuggestedLocation){
+                this.appStore.strypeProjectLocation = suggestedLocation.location;
+                this.appStore.strypeProjectLocationAlias = suggestedLocation.alias;
+                this.appStore.strypeProjectLocationPath = suggestedLocation.path;
+            }
+
             const continueSavingProcess = () => {
                 // When an explicit save is requested, it acts as a "save as" and we generate a new file in the specified Cloud Drive.
                 // In any other case, we only save a file if there is a save file id set
-                if(saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation){
+                if(isSyncTargetGitProvider(cloudTarget) && !isSavingToSuggestedLocation && (saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation)){
+                    // For a Git provider, the save dialog doesn't propose a location: once we know the connection is valid (signing in if needed,
+                    // after which this method is called again), the user chooses where to save in the provider's own dialog, with the commit message.
+                    // (the save continues in savePickedFolder() when that's done)
+                    // When saving in the folder of the Python file the project comes from, we save like for a Drive below (the user is only asked for the commit message).
+                    const startGitSaveChoice = () => {
+                        eventBus.emit(CustomEventTypes.addFunctionToEditorProjectSave, {syncTarget: cloudTarget, function: (saveReason: SaveRequestReason) => this.saveFile(cloudTarget, saveReason)});
+                        (cloudDriveComponent as CloudDriveComponent & GitProviderComponent).pickSaveLocation(this.saveFileName + "." + strypeFileExtension);
+                    };
+                    if(!cloudDriveComponent || cloudDriveComponent.isOAuthTokenNotSet()){
+                        this.proceedFailedConnectionCheckOnSave(cloudTarget);
+                    }
+                    else{
+                        cloudDriveComponent.testCloudConnection(startGitSaveChoice, () => this.proceedFailedConnectionCheckOnSave(cloudTarget));
+                    }
+                }
+                else if(saveReason == SaveRequestReason.saveProjectAtLocation || saveReason == SaveRequestReason.saveProjectAtOtherLocation){
                     // If we don't have a set location, we ask for the location (with /Strype as the default location -- which is created if non existant)
                     // We detect the need for checking/creating "Strype" when the target is a cloud drive different than the current cloud drive target,
                     // and the folder is "Strype". In the case we know the user didn't explictly request to save a given location so we target "Strype".
                     let isStrypeForNewCloudDriveTargetSave = saveReason == SaveRequestReason.saveProjectAtLocation 
                         && this.isSwappingCloudDriveTarget(cloudTarget)
                         && (vueComponentsAPIHandler.menuComponentAPI?.getCurrentDriveLocation() == "Strype");
-                    const updateStrypeProjectLocation =  isStrypeForNewCloudDriveTargetSave || (typeof this.appStore.strypeProjectLocation != "string") || this.appStore.syncTarget == StrypeSyncTarget.none;
+                    // (when saving in the folder of the Python file the project comes from, we only check that folder)
+                    const updateStrypeProjectLocation = !isSavingToSuggestedLocation
+                        && (isStrypeForNewCloudDriveTargetSave || (typeof this.appStore.strypeProjectLocation != "string") || this.appStore.syncTarget == StrypeSyncTarget.none);
                     const createStrypeFolder = updateStrypeProjectLocation || !(this.appStore.strypeProjectLocation);
                     cloudDriveComponent?.checkDriveStrypeOrOtherFolder(createStrypeFolder, createStrypeFolder, (strypeFolderId: string | null) => {
+                        if(isSavingToSuggestedLocation && strypeFolderId == null){
+                            // The folder of the Python file isn't available anymore: we forget it and let the user choose where to save
+                            // in the save dialog, as for any other project (in "Strype" by default)
+                            this.appStore.suggestedCloudSaveLocation = undefined;
+                            this.appStore.strypeProjectLocation = undefined;
+                            this.appStore.strypeProjectLocationAlias = "";
+                            this.appStore.strypeProjectLocationPath = "";
+                            eventBus.emit(CustomEventTypes.showStrypeModal, getSaveAsProjectModalDlg());
+                            return Promise.resolve();
+                        }
+
                         // Show the file picker to select a folder (with default location) if the location specified doesn't exist, or if the user asked for changing it
                         if(strypeFolderId != null && (this.appStore.strypeProjectLocation == undefined  || updateStrypeProjectLocation)){
                             // No location is set, we set the Strype folder
@@ -476,6 +603,8 @@ export default defineComponent({
                         this.doSaveFile(cloudTarget, this.appStore.strypeProjectLocation as string);
                     }
                     else{
+                        // (nothing could be saved)
+                        this.settleSaveForSignOut(false);
                         // Notify the application that if we were saving for loading now we are done
                         if(this.saveReason == SaveRequestReason.loadProject) {
                             eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
@@ -496,6 +625,7 @@ export default defineComponent({
                         continueSavingProcess();
                     })
                     .catch((responseStatusCode) => {
+                        this.settleSaveForSignOut(false);
                         // In this generic Cloud Drive handler, we are not sure what the nature of responseStatusCode is: it can be number, a number as string, or
                         // a proper response object that contains the status property. So we evaluate if the status property exists on responseStatusCode first and 
                         // if it doesn't exist, we assume responseStatusCode is a number-like variable.
@@ -524,12 +654,64 @@ export default defineComponent({
         },
 
         doSaveFile(cloudTarget: StrypeSyncTarget, strypeProjectLocation: string){
+            if(!isSyncTargetGitProvider(cloudTarget)){
+                this.proceedSaveFile(cloudTarget, strypeProjectLocation);
+                return;
+            }
+            // For a Git provider, saving is committing (and pushing) the file: we need a commit message.
+            // If the user just chose where to save in the provider's dialog, they gave it there.
+            if(this.gitCommitMessageFromSaveChoice != undefined){
+                const commitMessage = this.gitCommitMessageFromSaveChoice;
+                this.gitCommitMessageFromSaveChoice = undefined;
+                this.proceedSaveFile(cloudTarget, strypeProjectLocation, commitMessage);
+                return;
+            }
+            // Otherwise we ask the user for it, with a default one.
+            // Nothing is changed before the user confirms, so cancelling leaves the project as it was (not saved).
+            const isExplictSave = (this.saveReason == SaveRequestReason.saveProjectAtLocation || this.saveReason == SaveRequestReason.saveProjectAtOtherLocation);
+            // (when we save into an existing file, we commit to that file, see the provider's doSaveFile())
+            const fileName = parseGitFileId((isExplictSave) ? "" : (this.saveFileId ?? ""))?.fileName ?? (this.getProjectNameForSave(isExplictSave) + "." + strypeFileExtension);
+            this.gitCommitDetails = this.$t("appMessage.gitCommitDetails", {filename: fileName, location: this.appStore.strypeProjectLocationAlias});
+            this.gitCommitMessage = getDefaultGitCommitMessage();
+            this.pendingGitCommit = (commitMessage: string) => this.proceedSaveFile(cloudTarget, strypeProjectLocation, commitMessage);
+            eventBus.emit(CustomEventTypes.showStrypeModal, this.gitCommitModalDlgId);
+        },
+
+        onGitCommitDlgShown(event: BvTriggerableEvent){
+            if(event.componentId == this.gitCommitModalDlgId){
+                // The default message is selected, so the user can simply type their own message instead
+                (document.getElementById(this.gitCommitMessageInputId) as HTMLInputElement | null)?.select();
+            }
+        },
+
+        onGitCommitDlgHidden(event: BvTriggerableEvent){
+            if(event.componentId != this.gitCommitModalDlgId){
+                return;
+            }
+            const pendingGitCommit = this.pendingGitCommit;
+            this.pendingGitCommit = null;
+            if(event.trigger == "ok"){
+                // (the dialog can't be validated with an empty message, which Git doesn't allow)
+                pendingGitCommit?.(this.gitCommitMessage.trim());
+            }
+            else{
+                // The save is cancelled: we only reset the "Save As" flag of the Menu
+                vueComponentsAPIHandler.menuComponentAPI?.setRequestSaveAs(false);
+                this.settleSaveForSignOut(false);
+            }
+        },
+
+        getProjectNameForSave(isExplictSave: boolean): string {
+            // We need to set the name properly by what the user set in the save dialog (if applicable)
+            return (isExplictSave || this.saveReason == SaveRequestReason.overwriteExistingProject) ? this.saveFileName  : this.appStore.projectName;
+        },
+
+        proceedSaveFile(cloudTarget: StrypeSyncTarget, strypeProjectLocation: string, commitMessage?: string){
             const isExplictSave = (this.saveReason == SaveRequestReason.saveProjectAtLocation || this.saveReason == SaveRequestReason.saveProjectAtOtherLocation);
             if(isExplictSave){
                 this.saveFileId = undefined;
             }
-            // We need to set the name properly by what the user set in the save dialog (if applicable)
-            const newProjectName = (isExplictSave || this.saveReason == SaveRequestReason.overwriteExistingProject) ? this.saveFileName  : this.appStore.projectName;
+            const newProjectName = this.getProjectNameForSave(isExplictSave);
             this.appStore.projectName = newProjectName;
             const fileContent = generateSPYFileContent(); 
             // The file name depends on the context: normal save, we use the filed this.saveName that is in line with what the user provided in the input field
@@ -556,18 +738,44 @@ export default defineComponent({
                 // Notify the application that if we were saving for loading now we are done
                 if(this.saveReason == SaveRequestReason.loadProject || vueComponentsAPIHandler.menuComponentAPI?.getRequestOpenProjectLater()) {
                     eventBus.emit(CustomEventTypes.saveStrypeProjectDoneForLoad);
-                }                
-            }, (errRespStatus: number) => {
+                }
+                this.settleSaveForSignOut(true);
+            }, (errRespStatus: number, errorDetails?: string) => {
+                this.settleSaveForSignOut(false);
                 // If we have an authorised error (for example, timed-out connexion) we should disconnect and warn the users
                 // (not to sure why rawResp.status doesn't give the right stuff, but based on debugging, this works...)
                 if(errRespStatus == 401){
                     this.proceedFailedConnectionCheckOnSave(cloudTarget);
+                    return;
+                }
+                // When the target explains why saving failed (for example, a Git provider for a protected branch), we show it to the user.
+                // (it's text from the target, shown in a dialog that renders HTML: we escape it)
+                const errorDetailsMsg = (errorDetails) ? this.$t("errorMessage.saveFailedDetails", {details: escapeHTML(errorDetails).replace(/\n+/g, "<br>")}) : "";
+                // If a new file couldn't be created in the folder of the Python file the project comes from (for example, the user can't write in it),
+                // we don't save there anymore: the next save shows the save dialog.
+                if(isExplictSave && this.saveFileId == undefined
+                    &&this.appStore.suggestedCloudSaveLocation?.target == cloudTarget && this.appStore.suggestedCloudSaveLocation.location == strypeProjectLocation){
+                    this.appStore.suggestedCloudSaveLocation = undefined;
+                }
+                // Unlike with a Drive, committing a new file to a Git provider can fail for reasons the user should know about
+                // (for example, a protected branch): we tell the user (the case of an existing file is handled below for all targets).
+                if(isSyncTargetGitProvider(cloudTarget) && this.saveFileId == undefined){
+                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.gitCommitFailed", {providername: cloudDriveComponent.driveName, error: errRespStatus}) + errorDetailsMsg;
+                    eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
+                    vueComponentsAPIHandler.menuComponentAPI?.setRequestSaveAs(false);
+                    return;
+                }
+                if(isExplictSave && this.saveFileId == undefined){
+                    // A new file couldn't be created in the chosen folder (for example, the user can't write in it): we tell the user.
+                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.driveSaveFailed", {drivename: cloudDriveComponent.driveName}) + errorDetailsMsg;
+                    eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
+                    vueComponentsAPIHandler.menuComponentAPI?.setRequestSaveAs(false);
                 }
                 else if((errRespStatus??400) >= 400 && this.saveFileId != undefined){
                     // We assume something went wrong regarding saving against the specified file id.
                     // This can notably happen if the file has been locked in the meantime that we tried to save it.
                     // We show a modal and remove saving mechanisms.
-                    this.appStore.simpleModalDlgMsg = this.$t((this.saveReason == SaveRequestReason.reloadBrowser) ? "errorMessage.driveNoFile" :"errorMessage.driveSaveFailed", {drivename: cloudDriveComponent.driveName});
+                    this.appStore.simpleModalDlgMsg = this.$t((this.saveReason == SaveRequestReason.reloadBrowser) ? "errorMessage.driveNoFile" :"errorMessage.driveSaveFailed", {drivename: cloudDriveComponent.driveName}) + errorDetailsMsg;
                     eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
                     this.updateSignInStatus(cloudTarget,false);
                     // Reset the "Save As" flag of the Menu
@@ -580,7 +788,7 @@ export default defineComponent({
                         this.appStore.strypeProjectLocationPath = "";
                     }
                 }
-            });
+            }, commitMessage);
         },       
 
         proceedFailedConnectionCheckOnSave(cloudTarget: StrypeSyncTarget){
@@ -589,7 +797,8 @@ export default defineComponent({
             // save to load + unload --> try to reconnect, if failed, stop sync + modal message
             // Even if the user may sign-in again, we first make sure everything shows as "not syncing" in case the signing process is not completed
             // (because if the user just drop the signing action, we have no way to get events on that...)
-            this.getSpecificCloudDriveComponent(cloudTarget)?.resetOAuthToken(); 
+            this.settleSaveForSignOut(false);
+            this.getSpecificCloudDriveComponent(cloudTarget)?.resetOAuthToken();
             this.updateSignInStatus(cloudTarget, false);
             if(this.saveReason == SaveRequestReason.loadProject || this.saveReason == SaveRequestReason.unloadPage){
                 const modalMsg = (this.saveReason == SaveRequestReason.loadProject) ? this.$t("errorMessage.gdriveConnectionSaveToLoadProjFailed") : this.$t("errorMessage.gdriveConnectionSaveToUnloadPageFailed") ;
@@ -638,8 +847,22 @@ export default defineComponent({
                 const isPurePython = otherParams.fileName?.endsWith(`.${pythonFileExtension}`)??false;
                 const isSpyNewFormat = (otherParams.fileName?.endsWith(`.${strypeFileExtension}`)??false) && fileContent.startsWith(AppSPYFullPrefix);
                 if(isPurePython){
-                    // The loading mechanisms for a Python file differs from a Strype file AND it doens't maintain a "link" to Google Drive.
+                    // The loading mechanisms for a Python file differs from a Strype file AND it doens't maintain a "link" to the Drive.
+                    // However, we keep the file's folder (set by the Drive when the file was picked) so the first save there is proposed in that folder,
+                    // as a Strype file with the same name (except for a shared file: the user may not be able to write in its folder).
                     vueComponentsAPIHandler.appComponentAPI?.setStateFromPythonFile(fileContent, otherParams.fileName as string, lastSaveDate, false, "cloud").then(() => {
+                        if(this.openSharedProjectFileId.length == 0 && this.appStore.strypeProjectLocation && typeof this.appStore.strypeProjectLocation == "string"){
+                            const suggestedLocation = {target: cloudTarget, location: this.appStore.strypeProjectLocation, alias: this.appStore.strypeProjectLocationAlias, path: this.appStore.strypeProjectLocationPath};
+                            this.appStore.suggestedCloudSaveLocation = suggestedLocation;
+                            // (Google Drive gets the folder's name asynchronously when the file is picked, it may not be there yet)
+                            if(!suggestedLocation.alias){
+                                cloudDriveComponent.getFolderNameFromId(suggestedLocation.location).then((folderNameAndPath) => {
+                                    if(this.appStore.suggestedCloudSaveLocation?.target == cloudTarget && this.appStore.suggestedCloudSaveLocation.location == suggestedLocation.location){
+                                        this.appStore.suggestedCloudSaveLocation = {...suggestedLocation, alias: folderNameAndPath.name, path: folderNameAndPath.path??""};
+                                    }
+                                }, () => {});
+                            }
+                        }
                         this.saveFileId = undefined;
                         this.updateSignInStatus(cloudTarget, false);
                         this.appStore.strypeProjectLocation = undefined;
@@ -736,9 +959,11 @@ export default defineComponent({
             });
         },
 
-        savePickedFolder(cloudTarget: StrypeSyncTarget){
+        savePickedFolder(cloudTarget: StrypeSyncTarget, commitMessage?: string){
             // Doesn't matter the extact nature of the reason for saving, as long as we specify one of the 2 values for explicit saving.
             this.saveReason = SaveRequestReason.saveProjectAtLocation;
+            // (for a Git provider, the commit message the user gave with the location, used by doSaveFile())
+            this.gitCommitMessageFromSaveChoice = commitMessage;
             this.lookForAvailableProjectFileName(cloudTarget, this.appStore.strypeProjectLocation as string);
         },
 
@@ -781,7 +1006,14 @@ export default defineComponent({
                 // User chose "overwrite": we do an overwriting save with the existing file Id (on Drive)
                 this.saveReason = SaveRequestReason.overwriteExistingProject;
                 this.saveFileId = this.saveExistingCloudProjectInfos.existingFileId;
-                this.saveExistingCloudProjectInfos.resumeProcessCallback();
+                // We resume once this dialog is closed: for a Git provider, resuming shows another dialog (to get the commit message)
+                const onSaveExistingDlgHidden = (event: BvTriggerableEvent) => {
+                    if(event.componentId == this.saveExistingCloudProjectModalDlgId){
+                        eventBus.off(CustomEventTypes.strypeModalHidden, onSaveExistingDlgHidden);
+                        this.saveExistingCloudProjectInfos.resumeProcessCallback();
+                    }
+                };
+                eventBus.on(CustomEventTypes.strypeModalHidden, onSaveExistingDlgHidden);
             }
             else if(action == Actions.copy){
                 // User chose "copy": we invite the user to choose a new name in the next Vue rendering
@@ -804,6 +1036,73 @@ export default defineComponent({
             this.appStore.projectLastSaveDate = -1;
             this.saveFileId = undefined;
         },
+
+        /**
+         * Signing out
+         */
+        requestSignOut(cloudTarget: StrypeSyncTarget){
+            // Entry point when the user asks to sign out from the Cloud Drive the project is synced with.
+            // If the project has changes not saved to the Drive yet, we ask the user if they should be saved first.
+            this.signOutTarget = cloudTarget;
+            this.signOutDriveName = this.getSpecificCloudDriveComponent(cloudTarget)?.driveName ?? "";
+            if(this.appStore.isEditorContentModified){
+                // (the default choice, if the dialog is validated with the Enter key)
+                this.signOutChoice = "save";
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.signOutUnsavedProjectModalDlgId);
+            }
+            else{
+                this.signOut(cloudTarget);
+            }
+        },
+
+        onSignOutUnsavedProjectDlgHidden(event: BvTriggerableEvent){
+            // We act once the dialog is closed, as saving to a Git provider shows another dialog (for the commit message)
+            if(event.componentId != this.signOutUnsavedProjectModalDlgId || event.trigger != "ok" || this.signOutChoice == null){
+                return;
+            }
+            const cloudTarget = this.signOutTarget;
+            if(this.signOutChoice == "discard"){
+                this.signOut(cloudTarget);
+                return;
+            }
+            // Save to the project's file in the Drive (as the autosave does), and only sign out if it worked
+            // (if saving failed, the user is told why by the saving mechanism and stays signed in)
+            this.pendingSaveForSignOut = (isSaved: boolean) => {
+                if(isSaved){
+                    this.signOut(cloudTarget);
+                }
+            };
+            this.saveFile(cloudTarget, SaveRequestReason.autosave);
+        },
+
+        settleSaveForSignOut(isSaved: boolean){
+            // Called when a save ended (successfully or not): if the user asked to save before signing out, we continue (once).
+            const pendingSaveForSignOut = this.pendingSaveForSignOut;
+            this.pendingSaveForSignOut = null;
+            pendingSaveForSignOut?.(isSaved);
+        },
+
+        signOut(cloudTarget: StrypeSyncTarget){
+            const cloudDriveComponent = this.getSpecificCloudDriveComponent(cloudTarget);
+            if(!cloudDriveComponent){
+                return;
+            }
+            // The project is no longer synced with the Drive (it stays in the editor, and in the browser's storage, as any unsynced project)
+            vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
+            this.cleanCloudDriveRelatedInfosInState();
+            // The project's backup in the browser's storage (IndexedDB) is rewritten now, so it no longer holds the Drive's file and folder
+            // IDs (otherwise they would stay there until the next autosave). Only the browser storage save is left at this point (the
+            // Drive's save function was removed by saveTargetChoice() above), so this doesn't save to the Drive.
+            eventBus.emit(CustomEventTypes.requestEditorProjectSaveNow, SaveRequestReason.autosave);
+            // Then the provider is asked to invalidate the tokens (or end the session), which are forgotten locally in any case
+            cloudDriveComponent.signOut().then((isSignedOutAtProvider) => {
+                if(!isSignedOutAtProvider){
+                    this.appStore.simpleModalDlgMsg = this.$t("errorMessage.cloudSignOutFailed", {providername: cloudDriveComponent.driveName});
+                    eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
+                }
+            });
+        },
+        /** end Signing out */
 
         searchCloudDriveElements(cloudTarget: StrypeSyncTarget, fileName: string | undefined, fileLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>): Promise<CloudDriveFile[]> {
             return this.getSpecificCloudDriveComponent(cloudTarget)?.searchCloudDriveElements(fileName, fileLocationId,searchAllSPYFiles, searchOptions)??Promise.reject("No Cloud target!"); // We should never get to the reject clause here, keep TS happy
@@ -836,3 +1135,16 @@ export default defineComponent({
         
 });
 </script>
+
+<style lang="scss">
+.git-commit-dlg-container {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.git-commit-dlg-container > label {
+    margin-top: 10px;
+    font-weight: 600;
+}
+</style>

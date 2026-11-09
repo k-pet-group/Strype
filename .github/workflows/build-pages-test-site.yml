@@ -28,16 +28,16 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
             - name: Setup Pages
-              uses: actions/configure-pages@v5
+              uses: actions/configure-pages@v6
             - name: Install Node.js and NPM
-              uses: volta-cli/action@v4
+              uses: volta-cli/action@v5
             - name: NPM Install
               run: npm install
             - name: Cache Pyodide
               id: cache-pyodide
-              uses: actions/cache@v4
+              uses: actions/cache@v6
               with:
                 path: public/pyodide
                 key: ${{ runner.os }}-pyodide-${{ hashFiles('package-lock.json', 'scripts/download-pyodide-libs.cjs') }}
@@ -47,7 +47,7 @@ jobs:
             - name: NPM Build
               run: npm run build:github-pages
             - name: Upload artifact
-              uses: actions/upload-pages-artifact@v3
+              uses: actions/upload-pages-artifact@v5
               with:
                   path: dist/
 
@@ -64,7 +64,7 @@ jobs:
         steps:
             - name: Deploy to GitHub Pages
               id: deployment
-              uses: actions/deploy-pages@v4
+              uses: actions/deploy-pages@v5
 
     # --- Branch-preview scheme (opt-in via PAGES_BRANCH_PREVIEWS repo variable) ---
     # Branch names become URL path segments (Strype/<branch>/), so skip any branch whose name
@@ -92,14 +92,14 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - name: Checkout
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
             - name: Install Node.js and NPM
-              uses: volta-cli/action@v4
+              uses: volta-cli/action@v5
             - name: NPM Install
               run: npm install
             - name: Cache Pyodide
               id: cache-pyodide
-              uses: actions/cache@v4
+              uses: actions/cache@v6
               with:
                 path: public/pyodide
                 key: ${{ runner.os }}-pyodide-${{ hashFiles('package-lock.json', 'scripts/download-pyodide-libs.cjs') }}
@@ -111,7 +111,7 @@ jobs:
               env:
                   VITE_GITHUB_PAGE_BRANCH: ${{ github.ref_name }}
             - name: Upload build output
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: dist
                   path: dist/
@@ -125,7 +125,7 @@ jobs:
             cancel-in-progress: false
         steps:
             - name: Download build output
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@v8
               with:
                   name: dist
                   path: dist
@@ -148,7 +148,7 @@ jobs:
             cancel-in-progress: false
         steps:
             - name: Checkout gh-pages
-              uses: actions/checkout@v6
+              uses: actions/checkout@v7
               with:
                   ref: gh-pages
             - name: Remove previews for deleted branches and refresh index

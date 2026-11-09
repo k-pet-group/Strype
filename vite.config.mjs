@@ -139,6 +139,10 @@ function removeFilesPlugin(isStandardPython) {
                     "./dist/pyi",
                 ];
 
+            // The gh-auth backend lives in public/gh-auth/ for development (see "npm run serve:gh-auth"), but it is deployed
+            // separately: it must never be served with the editor, as its .env contains the GitHub App's client secret.
+            pathsToRemove.push("./dist/gh-auth/server.js", "./dist/gh-auth/.env");
+
             for (const p of pathsToRemove) {
                 fs.rmSync(p,{recursive: true, force: true});
             }
@@ -252,7 +256,15 @@ export default defineConfig(({mode}) => {
             hmr: mode !== "e2e", // disable HMR during Cypress
             watch: mode !== "e2e" ? undefined : { // This is also needed to disable HMR
                  ignored: ['**/*']
-            }
+            },
+            // Mirrors the production Apache forwarding to the GitHub authentication backend
+            // (ProxyPass /gh-auth/api/ http://127.0.0.1:3031/), which runs with "npm run serve:gh-auth":
+            proxy: {
+                "/gh-auth/api/": {
+                    target: "http://127.0.0.1:3031",
+                    rewrite: (path) => path.replace(/^\/gh-auth\/api/, ""),
+                },
+            },
         }
     };
 });

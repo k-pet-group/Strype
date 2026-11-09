@@ -10,10 +10,14 @@
                         <div :class="scssVars.strypeProjectNameContainerClassName">
                             <span class="project-name">{{projectName}}</span>
                             <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
-                                <img v-if="isProjectFromCloudDrive" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
-                                <img v-else-if="isProjectFromFS" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
+                                <img v-if="isProjectFromCloudDrive" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/>
+                                <img v-else-if="isProjectFromFS" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/>
                                 <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag">{{ $t("appMessage.saved") }}</span>
                                 <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" :class="{'modifed-label-span': isProjectNotSourced}">{{ $t("appMessage.modified") }}</span>
+                                <button v-if="isProjectFromCloudDrive" type="button" id="signOutFromCloudButton" class="cloud-sign-out-btn" @click="requestSignOutFromCloud"
+                                    :title="$t('appMessage.signOutFromCloud', {providername: syncedTargetName})" :aria-label="$t('appMessage.signOutFromCloud', {providername: syncedTargetName})">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                </button>
                             </div>
                         </div>
                         <div class="commands-flex-fill" @mousedown.prevent.stop @mouseup.prevent.stop>
@@ -176,6 +180,8 @@ import { isMacOSPlatform } from "@/helpers/common";
 import fsIcon from "@/assets/images/FSicon.png";
 import gdIcon from "@/assets/images/logoGDrive.png";
 import odIcon from "@/assets/images/logoOneDrive.svg";
+import ghIcon from "@/assets/images/logoGitHub.svg";
+import glIcon from "@/assets/images/logoGitLab.svg";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 import { clamp } from "lodash";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
@@ -287,6 +293,10 @@ export default defineComponent({
                 return gdIcon;
             case StrypeSyncTarget.od:
                 return odIcon;
+            case StrypeSyncTarget.gh:
+                return ghIcon;
+            case StrypeSyncTarget.gl:
+                return glIcon;
             default:
                 return "";
             }
@@ -299,6 +309,8 @@ export default defineComponent({
                 return this.$t("appMessage.targetFS");
             case StrypeSyncTarget.gd:
             case StrypeSyncTarget.od:
+            case StrypeSyncTarget.gh:
+            case StrypeSyncTarget.gl:
                 return (cloudDriveHandlerComponentAPI?.getDriveName())??"";
             default:
                 return "";
@@ -965,6 +977,10 @@ export default defineComponent({
             return getAddFrameCmdElementUID(commandType);
         },
 
+        requestSignOutFromCloud(){
+            vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.requestSignOut(this.appStore.syncTarget);
+        },
+
         // Inserts the frame matching this (lowercased) shortcut key -- by its original shortcut, its
         // legacy shortcut (see getLegacyShortcut, editor.ts), or a hidden shorthand -- exactly as the
         // direct top-level dispatch always has. Returns whether a match was found and dispatched, so
@@ -1510,6 +1526,21 @@ export default defineComponent({
     height: 16px;
     margin-left: 15px;
     margin-right: 5px;
+}
+
+.cloud-sign-out-btn {
+    border: none;
+    background: none;
+    padding: 0 2px;
+    margin-left: 6px;
+    font-size: 12px;
+    line-height: 1;
+    color: #6c757d;
+    cursor: pointer;
+}
+
+.cloud-sign-out-btn:hover, .cloud-sign-out-btn:focus-visible {
+    color: #274D19;
 }
 
 .gdrive-sync-label {

@@ -60,6 +60,7 @@ export type MenuComponentAPI = {
   setCurrentErrorNavIndex: (v: number) => void, 
   goToError: (event: MouseEvent | null, toNext: boolean) => void,
   getCurrentDriveLocation: () => string,
+  getRequestSaveAs: () => boolean,
   setRequestSaveAs: (v: boolean) => void,
   saveTargetChoice: (target: StrypeSyncTarget) => void,
   getRequestOpenProjectLater: () => boolean,
@@ -90,6 +91,7 @@ export type CloudDriveHandlerComponentAPI = {
   setSaveFileName: (v: string) => void,
   saveFile: (cloudTarget: StrypeSyncTarget, saveReason: SaveRequestReason) => void,
   loadFile: (cloudTarget: StrypeSyncTarget, loadReason?: LoadRequestReason) => void,
+  requestSignOut: (cloudTarget: StrypeSyncTarget) => void,
   modifiedDataSearchOptionName(cloudTarget: StrypeSyncTarget): string | undefined,
   fileMoreFieldsForIO(cloudTarget: StrypeSyncTarget): string | undefined,
 }

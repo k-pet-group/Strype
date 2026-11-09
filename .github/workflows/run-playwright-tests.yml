@@ -93,13 +93,13 @@ jobs:
             browser: chromium
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v6
-    - uses: volta-cli/action@v4
+    - uses: actions/checkout@v7
+    - uses: volta-cli/action@v5
     - name: Install dependencies
       run: npm ci
     - name: Cache Pyodide
       id: cache-pyodide
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: public/pyodide
         key: ${{ runner.os }}-pyodide-${{ hashFiles('package-lock.json', 'scripts/download-pyodide-libs.cjs') }}

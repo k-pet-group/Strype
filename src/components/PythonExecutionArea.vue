@@ -102,7 +102,7 @@ import { defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { mapStores } from "pinia";
-import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEATabContentContainerDivId, hasPrecompiledCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
+import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEATabContentContainerDivId, hasNonRuntimeCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
 import { AllFrameTypesIdentifier, BaseSlot, CoordPosition, defaultEmptyStrypeLayoutDividerSettings, PythonExecRunningState, StrypeContextMenuItem, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import SVGIcon from "@/components/SVGIcon.vue";
@@ -708,7 +708,7 @@ export default defineComponent({
             // We DELAY the action to make sure every other UI actions has been done, notably the error checking from LabelSlotsStructure.
             setTimeout(async () => {
                 // In case the error happens in the current frame (empty body) we have to give the UI time to update to be able to notify changes
-                if(hasPrecompiledCodeError()) {
+                if(hasNonRuntimeCodeError()) {
                     this.$nextTick().then(() => {
                         this.reachFirstError();   
                         // If we have an error, the code didn't actually run so we need to reflect this properly in the running state
@@ -719,7 +719,6 @@ export default defineComponent({
 
                 const parser = new Parser();
                 const userCode = parser.getFullCode();
-                parser.getErrorsFormatted(userCode);
                 // Clear the graphics area:
                 if (targetCanvas != null) {
                     targetContext?.clearRect(0, 0, targetCanvas.width, targetCanvas.height);

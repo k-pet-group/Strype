@@ -5,6 +5,7 @@ import { useStore } from "@/store/store";
 import {StrypeLayoutDividerSettings, StrypePEALayoutMode} from "@/types/types";
 import { AppName, AppPlatform, AppSPYFullPrefix, AppSPYSaveVersion } from "./appContext";
 import * as localFsCache from "@/helpers/localFsCache";
+import { isBlockedUploadFileName } from "@/helpers/fileSystemTabIO";
 
 export function saveDivider(divider: StrypeLayoutDividerSettings | undefined) : string | undefined {
     if (divider === undefined) {
@@ -77,6 +78,14 @@ export function loadPinnedLocalFiles(headers: Record<string, string>): void {
         const value = headers[key];
         const separatorIndex = value.lastIndexOf(":");
         const relativePath = value.substring(0, separatorIndex);
+        // A project file is untrusted input (it may have been hand-edited or come from someone
+        // else), so it mustn't be a way around the File system tab's upload reject list -- see
+        // fileSystemTabIO.ts's upload validation. Skipped rather than failing the whole load, since the rest of
+        // the project is still perfectly usable without it:
+        if (isBlockedUploadFileName(relativePath)) {
+            console.warn("Not restoring pinned file of a disallowed type: " + relativePath);
+            continue;
+        }
         const base64Data = value.substring(separatorIndex + 1);
         const bytes = inflateRaw(Base64.toUint8Array(base64Data)) as Uint8Array;
         const path = `/local/${relativePath}`;

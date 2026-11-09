@@ -7,7 +7,7 @@
         <!-- keep the tabIndex attribute, it is necessary to handle focus with Safari -->
         <div 
             :style="frameStyle" 
-            :class="{[scssVars.frameDivClassName]: true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame, [scssVars.errorClassName]: hasParsingError, disabled: isDisabled}"
+            :class="{[scssVars.frameDivClassName]: true, blockFrameDiv: isBlockFrame && !isJointFrame, statementFrameDiv: !isBlockFrame && !isJointFrame, [scssVars.errorClassName]: hasParsingError, [scssVars.precompileErrorClassName]: hasParsingError, disabled: isDisabled}"
             :id="UID"
             :data-frameType="frameType.type"
             @click="toggleCaret($event)"
@@ -34,7 +34,7 @@
                 :frameId="frameId"
                 :frameType="frameType.type"
                 :labels="frameType.labels"
-                :class="{[scssVars.frameHeaderClassName]: true, [scssVars.errorClassName]: hasRuntimeError}"
+                :class="{[scssVars.frameHeaderClassName]: true, [scssVars.errorClassName]: hasRuntimeError, [scssVars.runtimeErrorClassName]: hasRuntimeError}"
                 :style="frameMarginStyle['header']"
                 :frameAllowChildren="allowChildren"
                 :frameAllowedCollapsedStates="frameType.allowedCollapsedStates"

@@ -593,8 +593,14 @@ export default defineComponent({
                 return;
             }
             
+            // The frame shortcuts below don't apply when typing in a text field outside the frames (e.g. in a dialog):
+            // the keys must act on that text field instead. (A frame cursor's invisible paste-focus <input> doesn't count:
+            // it is the focus target when at a frame cursor, see CaretContainer.vue.)
+            const isTypingInTextField = (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)
+                && !isCaretContainerFocusInputElement(event.target.id);
+
             // If we are at a frame cursor and they hit ctrl-x or ctrl-c or ctrl-d or ctrl-/ then we do cut/copy/duplicate/disable[enable]:
-            if(!this.appStore.isEditing && !this.isPythonExecuting && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x" || event.key.toLowerCase() === "d" || event.key === "/")) {
+            if(!this.appStore.isEditing && !this.isPythonExecuting && !isTypingInTextField && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x" || event.key.toLowerCase() === "d" || event.key === "/")) {
                 // We emit an event to be picked up by the first frame in the current selection:
                 // The frames themselves decide whether to act based on whether they are the first frame in the selection:
                 let customEvent = "";
@@ -632,7 +638,7 @@ export default defineComponent({
                 return;
             }
             
-            if (!this.appStore.isEditing && !this.isPythonExecuting && !event.ctrlKey && !event.metaKey && event.key === ".") {
+            if (!this.appStore.isEditing && !this.isPythonExecuting && !isTypingInTextField && !event.ctrlKey && !event.metaKey && event.key === ".") {
                 // The relevant frames are the selection, or otherwise the frame *after* the caret:
                 let frameIds: number[] = [];
                 if (this.appStore.selectedFrames.length > 0) {
@@ -1064,6 +1070,10 @@ export default defineComponent({
                 }
                 if(savedSettingsState.frameNumbersEnabled) {
                     this.settingsStore.setFrameNumbersEnabled(savedSettingsState.frameNumbersEnabled);
+                }
+                // (only a cloud target can be promoted: if the saved value isn't one, we keep the default)
+                if(savedSettingsState.promotedCloudTarget !== undefined && isSyncTargetCloudDrive(savedSettingsState.promotedCloudTarget)) {
+                    this.settingsStore.promotedCloudTarget = savedSettingsState.promotedCloudTarget;
                 }
                 if(!savedSettingsState.locale) {
                     // There is no locale saved. Maybe the user wants to use the default English, but maybe

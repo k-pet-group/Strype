@@ -78,7 +78,12 @@
     "choose": "Sélectionner",
     "reload": "Recharger",
     "renameAllWithShortcut": "Renommer tout <span class=\"kb-shortcut\">({modifierkey}+R)</span>",
-    "close": "Fermer"
+    "close": "Fermer",
+    "connect": "Se connecter",
+    "commit": "Valider (commit)",
+    "continueSave": "Continuer...",
+    "saveAndSignOut": "Enregistrer et se déconnecter",
+    "signOutWithoutSaving": "Se déconnecter sans enregistrer"
   },
   "errorMessage": {
     "wrongDataFormat": "le format de données ne peut pas être lu",
@@ -93,6 +98,8 @@
     "errorUserDefinedVarMsg": "Variable définie par l'utilisateur\nune affectation de cette variable contient des erreurs",
     "EOFError": "Ce cadre ne peut pas être vide.",
     "cloudAPIFailed": "{apiname} ne s'est pas chargé.",
+    "cloudConnectionFailed": "Impossible de joindre {drivename}. Vérifiez votre connexion réseau et réessayez.",
+    "cloudSignOutFailed": "Strype n'a pas pu confirmer auprès de {providername} que votre session est terminée (par exemple à cause d'un problème réseau ou parce que la fenêtre a été fermée).<br>Strype a supprimé vos informations de connexion de cette page. Pour plus de sûreté, vous pouvez aussi vous déconnecter de {providername} sur son site.",
     "driveSaveFailed": "Enregistrement vers {drivename} impossible.",
     "fileNameError": "Le nom de projet / fichier ne peut contenir que des lettres, des chiffres, des espaces, des tirets ou des parenthèses.",
     "shareProjectFailed": "Le lien de partage de votre projet n'a pas pu être généré.<br>(Erreur: {error})",
@@ -110,6 +117,7 @@
     "cloudDrivePublicShareFailed": "Le projet n'a pas pu être partagé publiquement.<br>(Erreur : {error})",
     "clouldFileRestoreSharingStatus": "Une erreur est survenue lors de la tentative de restauration du partage de ficher dans {drivename}.<br>Détails : {errordetails}",
     "matchFrameWithoutCase": "Un cadre match doit au moins contenir un cadre case.",
+    "tryFrameWithoutExceptOrFinally": "Un cadre try doit avoir un cadre except ou finally.",
     "frameNotAllowedInParent": "Ce type de cadre n'est pas autorisé ici.",
     "fileIO": {
       "openReadingError": "Strype a rencontré une erreur interne lors de l'ouverture du fichier (problème de lecture du contenu).",
@@ -133,7 +141,12 @@
       "closeInternalError": "Strype a rencontré une erreur interne lors de la fermeture du fichier (le fichier n'a pas été trouvé).",
       "cannotCreateDirectory": "La création de dossier n'est actuellement pas supportée."
     },
-    "editableSlotWithHash": "Ce champ ne peut pas contenir '#'"
+    "editableSlotWithHash": "Ce champ ne peut pas contenir '#'",
+    "saveFailedDetails": "<br>Détails : {details}",
+    "gitConnectionFailed": "Impossible de se connecter à {providername} : {error}",
+    "gitNotConnected": "Vous n'êtes pas connecté à {providername}.",
+    "gitCommitFailed": "Impossible de valider (commit) le projet vers {providername} (erreur : {error}).",
+    "gitRepositoryCreationFailed": "Impossible de créer le dépôt \"{name}\" sur {providername} : {error}"
   },
   "appMessage": {
     "loadEditorFile": "Chargement de votre fichier dans l'éditeur...",
@@ -158,6 +171,7 @@
     "loadRecentState": "Projets récents non enregistrés :",
     "saveToTarget": "Enregister vers :",
     "targetFS": "Cet ordinateur",
+    "targetNotAvailableYet": "Cette fonctionnalité n'est pas encore disponible.",
     "fileName": "Nom de fichier :",
     "createShareProjectLink": "Créer un lien de partage pour projet Strype",
     "shareProjectModeLabel": "Utilisateurs pouvant accéder ce projet :",
@@ -169,9 +183,10 @@
     "publicSharedProjectUserDownloadAttempt": "Strype va tenter d'ouvrir une autre page pour que vous puissiez télécharger le projet.",
     "cloudFileAlreadyExists": "Un projet du même nom existe déjà à cet emplacement dans {drivename}.\nVoulez-vous le remplacer ?",
     "cloudLockedFileAlreadyExists": "Ce projet est verrouillé à cet emplacement dans {drivename}.\nIl ne peut pas être enregistré avec ce nom.",
+    "signOutFromCloud": "Se déconnecter de {providername}",
+    "signOutUnsavedProject": "Ce projet a des modifications qui ne sont pas encore enregistrées dans {providername}.\nVoulez-vous les enregistrer avant de vous déconnecter ?",
     "saved": "Enregistré",
     "modified": "Modifié",
-    "emptyCloudDrivePicker": "Votre {drivename} est vide...",
     "cloudDriveItemPickerLoadingFolderContent": "Chargement du dossier...",
     "lastSavedOn": "Dernier enregistrement : {lastSavedDate}",
     "lastSavedOnNDays": "Dernier enregistrement : il y a {nbLastSave} jours",
@@ -204,7 +219,33 @@
     "thisFunction": "cette fonction",
     "thisClass": "cette classe",
     "clearAllRecent": "Supprimer tout",
-    "downloadPEAConsole": "Préparation de la capture du terminal (cela peut prendre du temps)..."
+    "downloadPEAConsole": "Préparation de la capture du terminal (cela peut prendre du temps)...",
+    "cloudDriveItemPickerLocation": "Emplacement du dossier",
+    "cloudDriveItemPickerNoFolder": "Aucun dossier ici.",
+    "cloudDriveItemPickerNoFolderOrFile": "Aucun dossier ni fichier Strype/Python ici.",
+    "oneDriveRootBreadcrumb": "Racine OneDrive",
+    "gitLabConnectTitle": "Se connecter à GitLab",
+    "gitLabInstanceLabel": "Quel GitLab souhaitez-vous utiliser ?",
+    "gitLabComDetails": "Le service public de GitLab.",
+    "gitLabSelfManaged": "Un autre serveur GitLab...",
+    "gitLabForgetInstance": "Oublier ce serveur GitLab",
+    "gitLabSelfManagedDetails": "Par exemple, le GitLab propre à votre école. Son administrateur doit y enregistrer Strype en tant qu'application et vous fournir son identifiant (application ID).",
+    "gitLabInstanceUrl": "Adresse du serveur GitLab",
+    "gitLabClientId": "Identifiant de l'application Strype sur ce serveur",
+    "gitRepository": "Dépôt :",
+    "gitBranch": "Branche :",
+    "gitLoadingError": "Impossible d'obtenir le contenu à partir de {providername} : {error}",
+    "gitSaveTitle": "Enregistrer sur {providername}",
+    "gitNewRepository": "{name} (nouveau dépôt)",
+    "gitFolder": "Dossier :",
+    "gitFile": "Fichier :",
+    "gitRepositoryRootBreadcrumb": "Racine du dépôt",
+    "gitCreatingRepository": "Création du dépôt \"{name}\" en cours...",
+    "gitCommitTitle": "Valider (commit) vers {providername}",
+    "gitCommitDetails": "{filename} va être validé (commit) et poussé (push) vers {location}.",
+    "gitCommitMessage": "Message de validation (commit) :",
+    "gitCommitMessagePlaceholder": "Renseignez un message de validation (commit)",
+    "gitDefaultCommitMessage": "Modification du fichier ({datetime})"
   },
   "contextMenu": {
     "ctrl": "Ctrl",
@@ -240,7 +281,7 @@
     "downloadPython": "Convertir vers Python",
     "loadProject": "Ouvrir...",
     "loadDemoProject": "Exemples...",
-    "book": "Manuel...",
+    "book": "Projets du manuel...",
     "saveProject": "Enregistrer",
     "saveAsProject": "Enregistrer sous...",
     "resetProject": "Nouveau projet",
@@ -359,7 +400,8 @@
     "alpha": "Alpha"
   },
   "book": {
-    "dialogTitle": "Manuel Strype"
+    "dialogTitle": "Manuel Strype",
+    "noProjects": "Ce chapitre n'a pas de projets associés"
   },
   "demos": {
     "dialogTitle": "Exemples de programmes",
@@ -401,6 +443,8 @@
     "unzipContents": "Extraire le contenu",
     "overwriteDialogTitle": "Ce fichier existe déjà",
     "overwriteDialogMessage": "Un fichier nommé \"{name}\" existe déjà à cet emplacement. Voulez-vous le remplacer ?",
-    "overwrite": "Écraser"
+    "overwrite": "Écraser",
+    "uploadBlockedType": "\"{name}\" ne peut pas être importé : les fichiers exécutables et les scripts (comme .exe, .bat, .sh, .jar ou .js) ne sont pas autorisés.",
+    "uploadBlockedArchive": "\"{name}\" ne peut pas être importé car il contient des fichiers d'un type non autorisé (exécutables ou scripts) : {files}"
   }
 }

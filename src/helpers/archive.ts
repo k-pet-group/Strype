@@ -6,6 +6,7 @@
 // library like this one can be inlined into the build rather than needing to be fetched as a
 // separate binary asset at runtime.
 import JSZip from "jszip";
+import { blockedUploadFileNames } from "@/helpers/fileSystemTabIO";
 
 export function isZipFile(file: File): boolean {
     return file.name.toLowerCase().endsWith(".zip");
@@ -23,6 +24,21 @@ export interface ArchiveEntry {
 // comment, which flags exactly this).
 function isUnsafeZipEntryPath(path: string): boolean {
     return path.startsWith("/") || path.split("/").some((part) => part === "..");
+}
+
+// The path of every file entry (not directory entries) in a .zip File, without decompressing any of
+// them -- JSZip only needs to read the archive's central directory for this. Used to vet an
+// archive's contents (see fileSystemTabIO.ts's upload validation) before offering to store or unzip it. Throws if
+// the file isn't a readable zip at all.
+export async function listZipEntryPaths(file: File): Promise<string[]> {
+    const zip = await JSZip.loadAsync(await file.arrayBuffer());
+    const paths: string[] = [];
+    zip.forEach((relativePath, zipObject) => {
+        if (!zipObject.dir) {
+            paths.push(relativePath);
+        }
+    });
+    return paths;
 }
 
 // Extracts every file entry from a .zip File (skipping directory entries, which need no action --
@@ -49,6 +65,12 @@ export async function unzipEntries(file: File): Promise<ArchiveEntry[]> {
     await Promise.all(pending);
     if (sawUnsafeEntry) {
         throw new Error("Archive contains one or more entries with an unsafe path and was not unzipped.");
+    }
+    // Callers vet the archive with listZipEntryPaths() before getting here (so the user gets a
+    // proper message), but refuse again here too so no caller can extract a blocked file type by
+    // skipping that step -- see fileSystemTabIO.ts's upload validation:
+    if (blockedUploadFileNames(entries.map((entry) => entry.path)).length > 0) {
+        throw new Error("Archive contains one or more files of a type that isn't allowed and was not unzipped.");
     }
     return entries;
 }

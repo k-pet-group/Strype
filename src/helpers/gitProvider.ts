@@ -159,6 +159,23 @@ export function useGitProvider<Auth>(options: {
         oauthToken.value = null;
     }
 
+    async function signOut(): Promise<boolean> {
+        // The token is forgotten right away, then revoked by the provider (so it can't be used anymore, even if it was copied)
+        const auth = oauthToken.value;
+        resetOAuthToken();
+        if(auth == null){
+            return true;
+        }
+        try{
+            await api.revokeConnection(auth);
+            return true;
+        }
+        catch(error){
+            console.warn(`Could not revoke the ${driveName} token: ${(error as Error).message}`);
+            return false;
+        }
+    }
+
     // For a Git provider, the equivalent of a Drive's folder location is a folder of a repository's branch: its ID is a Git location ID.
     function getFolderNameFromId(folderId: string): Promise<{name: string, path?: string}> {
         const gitLocation = parseGitLocationId(folderId);
@@ -394,6 +411,7 @@ export function useGitProvider<Auth>(options: {
             restoreCloudDriveFileSharingStatus,
             searchCloudDriveElements,
             shareCloudDriveFile,
+            signOut,
             writeFileContentForIO,
         };
     }

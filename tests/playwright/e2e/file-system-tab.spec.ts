@@ -881,6 +881,161 @@ test.describe("File system tab -- viewing a file", () => {
     });
 });
 
+// Upload validation (see src/helpers/fileSystemTabIO.ts's reject list): executables, OS scripts and
+// JavaScript files are refused with a message, and nothing is written -- by extension, and for a
+// direct upload also by the MIME type the browser reports. HTML/XHTML files remain allowed. Most tests use Playwright's in-memory {name, mimeType, buffer} payloads rather than
+// files on disk, since several of the names below (trailing dot, "<", ">") can't exist as real
+// files on every OS the suite runs on.
+test.describe("File system tab -- refused file types", () => {
+    function payload(name: string, mimeType = "application/octet-stream") {
+        return { name, mimeType, buffer: Buffer.from("x\n") };
+    }
+
+    // The app's shared message dialog (SimpleMsgModalDlg.vue, mounted once in App.vue) -- see
+    // FileSystemPane.vue's showUploadRefused():
+    const refusalBody = (page: Page) => page.locator("#appSimpleMsgModalDlg-body");
+
+    async function dismissRefusal(page: Page): Promise<void> {
+        await page.locator("#appSimpleMsgModalDlg").getByRole("button", { name: en.buttonLabel.ok, exact: true }).click();
+        await expect(refusalBody(page)).toBeHidden();
+    }
+
+    test("refuses executables, scripts and JavaScript files, naming each one, and stores nothing", async ({ page }) => {
+        await openFilesTab(page);
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        const refusedNames = [
+            "tool.exe", "setup.msi", "helper.dll", "run.bat", "run.cmd", "script.ps1", "install.sh",
+            "app.jar", "code.js", "module.mjs",
+            // Case-insensitive, judged on the *last* extension only, and ignoring the trailing
+            // dots/spaces Windows would strip when saving the file:
+            "SHOUTY.EXE", "photo.jpg.exe", "sneaky.exe.", "sneaky.bat ",
+        ];
+        for (const name of refusedNames) {
+            await localUploadInput(page).setInputFiles(payload(name));
+            await expect(refusalBody(page)).toContainText(`"${name.trimEnd()}`);
+            await dismissRefusal(page);
+        }
+        // None of them were written, and the overwrite/archive dialogs never came into it:
+        await expect(localSection).toContainText(en.fileSystemTab.emptyFolder);
+        await expect(page.locator(".file-system-tree-file")).toHaveCount(0);
+    });
+
+    test("still accepts look-alike names whose real (last) extension is allowed", async ({ page }) => {
+        await openFilesTab(page);
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        const acceptedNames = ["my_program.py", "notes.exe.txt", "data.json", "raw-data.bin", "readme.md", "Makefile", "javascript-notes.txt"];
+        for (const name of acceptedNames) {
+            await localUploadInput(page).setInputFiles(payload(name));
+            await expect(localSection.locator(".file-system-tree-file", { hasText: name })).toBeVisible();
+        }
+        await expect(refusalBody(page)).toBeHidden();
+    });
+
+    test("accepts web pages (HTML/XHTML), which Python programs can legitimately read and write", async ({ page }) => {
+        await openFilesTab(page);
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        // Deliberately distinct stems -- the row locator below matches on a substring, so e.g.
+        // "page.htm" would also match a "page.html" row:
+        const webPages: [string, string][] = [["index.html", "text/html"], ["old-page.htm", "text/html"], ["doc.xhtml", "application/xhtml+xml"]];
+        for (const [name, mimeType] of webPages) {
+            await localUploadInput(page).setInputFiles(payload(name, mimeType));
+            await expect(localSection.locator(".file-system-tree-file", { hasText: name })).toBeVisible();
+        }
+        await expect(refusalBody(page)).toBeHidden();
+    });
+
+    test("refuses a file the browser reports as an executable/script MIME type, even under an innocent-looking name", async ({ page }) => {
+        await openFilesTab(page);
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        // MIME parameters (e.g. charset) and case don't matter:
+        const disguised: [string, string][] = [
+            ["innocent.dat", "application/x-msdownload"],
+            ["innocent2.dat", "application/x-sh"],
+            ["innocent3.dat", "Text/JavaScript; charset=utf-8"],
+            ["innocent4.dat", "application/java-archive"],
+        ];
+        for (const [name, mimeType] of disguised) {
+            await localUploadInput(page).setInputFiles(payload(name, mimeType));
+            await expect(refusalBody(page)).toContainText(`"${name}"`);
+            await dismissRefusal(page);
+        }
+        await expect(localSection).toContainText(en.fileSystemTab.emptyFolder);
+    });
+
+    test("refuses a zip containing a disallowed file -- before offering keep/unzip -- naming the offending entries", async ({ page }) => {
+        await openFilesTab(page);
+        const zipPath = await testZipFixturePath(test.info().outputDir, "mixed.zip", {
+            "readme.txt": "fine\n",
+            "sub/payload.js": "alert(1);\n",
+            "bin/tool.exe": "MZ",
+        });
+        await localUploadInput(page).setInputFiles(zipPath);
+
+        await expect(refusalBody(page)).toContainText("mixed.zip");
+        await expect(refusalBody(page)).toContainText("sub/payload.js");
+        await expect(refusalBody(page)).toContainText("bin/tool.exe");
+        await expect(refusalBody(page)).not.toContainText("readme.txt");
+        // The keep-as-zip/unzip choice is never offered -- keeping the zip would only defer the
+        // problem to whoever downloads and extracts it:
+        await expect(page.getByRole("heading", { name: en.fileSystemTab.archiveDialogTitle })).toBeHidden();
+        await dismissRefusal(page);
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await expect(localSection).toContainText(en.fileSystemTab.emptyFolder);
+    });
+
+    test("judges zip entries on their file name, not on a folder name that looks like a refused type", async ({ page }) => {
+        await openFilesTab(page);
+        const zipPath = await testZipFixturePath(test.info().outputDir, "folder-names.zip", {
+            "lib.js/readme.txt": "just text\n",
+        });
+        await localUploadInput(page).setInputFiles(zipPath);
+        await page.getByRole("button", { name: en.fileSystemTab.unzipContents }).click();
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        await expect(localSection).toContainText("lib.js");
+        await expect(refusalBody(page)).toBeHidden();
+    });
+
+    test("shows a refused file's name as plain text, never as HTML", async ({ page }) => {
+        await openFilesTab(page);
+        // The message dialog renders HTML (v-html), and a file -- or a zip entry, chosen by whoever
+        // built the archive -- can be named like markup, so its name must be escaped:
+        const name = "<img src=x id=injected-by-filename>.exe";
+        await localUploadInput(page).setInputFiles(payload(name));
+
+        await expect(refusalBody(page)).toContainText(name);
+        await expect(page.locator("#injected-by-filename")).toHaveCount(0);
+        await dismissRefusal(page);
+    });
+
+    test("a project file can't smuggle in a refused type as a pinned file", async ({ page }) => {
+        await openFilesTab(page);
+        // Pin two ordinary files and save, then edit the saved project so one of them claims a
+        // refused name -- standing in for a hand-crafted .spy file shared by someone else:
+        for (const name of ["kept-pin.txt", "renamed-pin.txt"]) {
+            await localUploadInput(page).setInputFiles(testFixturePath(test.info().outputDir, name, name + "\n"));
+            const row = page.locator(".file-system-tree-file", { hasText: name });
+            await row.hover();
+            await row.locator(".file-system-tree-pin-btn").click();
+            await expect(row.locator(".file-system-tree-pin-btn")).toHaveClass(/file-system-tree-pin-btn-pinned/);
+        }
+        const savedPath = await save(page, true, "pinned-refused-type");
+        const saved = readFileSync(savedPath, "utf8");
+        expect(saved).toContain("renamed-pin.txt:");
+        writeFileSync(savedPath + ".spy", saved.replace("renamed-pin.txt:", "renamed-pin.js:"));
+
+        await newProject(page);
+        await load(page, savedPath + ".spy");
+        await openFilesTab(page);
+
+        const localSection = page.locator(".file-system-pane-root", { hasText: en.fileSystemTab.local });
+        // The rest of the project (including the other pinned file) still loads normally:
+        await expect(localSection).toContainText("kept-pin.txt");
+        await expect(localSection).not.toContainText("renamed-pin");
+    });
+});
+
 test.describe("File system tab -- uploading an archive to /local", () => {
     test("shows the keep-as-zip/unzip dialog, naming the uploaded file", async ({ page }) => {
         await openFilesTab(page);

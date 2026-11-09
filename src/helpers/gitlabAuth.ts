@@ -375,6 +375,7 @@ async function isGitLabConnectionValid(auth: GitLabAuth): Promise<boolean> {
 // GitLab for the parts of Strype shared by all Git providers. A project is identified by its full path ("group/subgroup/project").
 export const gitLabAPI: GitProviderAPI<GitLabAuth> = {
     isConnectionValid: isGitLabConnectionValid,
+    revokeConnection: disconnectFromGitLab,
     listRepositories: listGitLabProjectsDetails,
     listBranches: listGitLabBranches,
     listFolderContent: listGitLabFolderContent,

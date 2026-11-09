@@ -34,7 +34,9 @@
                             </div>
                         </div>
                         <div class="secondary-targets-container">
-                            <div v-for="cloudTarget in secondaryCloudTargets" :key="cloudTarget.target" :id="getTargetButtonId(cloudTarget.target)" :class="scssVars.projectTargetButtonClassName + ' load-dlg secondary-target'" tabindex="0"  @click="changeTempSyncTarget(cloudTarget.target)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
+                            <div v-for="cloudTarget in secondaryCloudTargets" :key="cloudTarget.target" :id="getTargetButtonId(cloudTarget.target)" :class="{[scssVars.projectTargetButtonClassName + ' load-dlg secondary-target']: true, 'disabled-target': cloudTarget.disabled}"
+                                :tabindex="(cloudTarget.disabled) ? -1 : 0" :title="(cloudTarget.disabled) ? $t('appMessage.targetNotAvailableYet') : undefined" :aria-disabled="cloudTarget.disabled"
+                                @click="!cloudTarget.disabled && changeTempSyncTarget(cloudTarget.target)" @keydown.self="onTargetButtonKeyDown($event, loadProjectModalDlgId)"
                                 @mouseenter="changeTargetFocusOnMouseOver">
                                 <img :src="cloudTarget.logo" :alt="cloudTarget.label"/>
                                 <span>{{ cloudTarget.label }}</span>
@@ -85,8 +87,10 @@
                                     </div>
                                 </div>
                                 <div class="secondary-targets-container">
-                                    <div v-for="cloudTarget in secondaryCloudTargets" :key="cloudTarget.target" :id="getTargetButtonId(cloudTarget.target, true)" tabindex="0" @click="changeTempSyncTarget(cloudTarget.target, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
-                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg secondary-target']: true, saveTargetSelected: tempSyncTarget == cloudTarget.target}">
+                                    <div v-for="cloudTarget in secondaryCloudTargets" :key="cloudTarget.target" :id="getTargetButtonId(cloudTarget.target, true)"
+                                        :tabindex="(cloudTarget.disabled) ? -1 : 0" :title="(cloudTarget.disabled) ? $t('appMessage.targetNotAvailableYet') : undefined" :aria-disabled="cloudTarget.disabled"
+                                        @click="!cloudTarget.disabled && changeTempSyncTarget(cloudTarget.target, true)" @keydown.self="onTargetButtonKeyDown($event, saveProjectModalDlgId)"
+                                        :class="{[scssVars.projectTargetButtonClassName + ' save-dlg secondary-target']: true, saveTargetSelected: tempSyncTarget == cloudTarget.target, 'disabled-target': cloudTarget.disabled}">
                                         <img :src="cloudTarget.logo" :alt="cloudTarget.label"/>
                                         <span>{{ cloudTarget.label }}</span>
                                     </div>
@@ -313,12 +317,15 @@ interface ProjectCloudTargetButtonInfos {
     target: StrypeSyncTarget,
     logo: string,
     label: string,
+    // A disabled target is still shown, but can't be selected (the feature isn't available yet).
+    // It can't be the primary target either (see primaryCloudTarget).
+    disabled?: boolean,
 }
 const projectCloudTargetButtonsInfos: ProjectCloudTargetButtonInfos[] = [
     {target: StrypeSyncTarget.gd, logo: gdLogoImgPath, label: "Google Drive"},
     {target: StrypeSyncTarget.od, logo: odLogoImgPath, label: "OneDrive"},
-    {target: StrypeSyncTarget.gh, logo: ghLogoImgPath, label: "GitHub"},
-    {target: StrypeSyncTarget.gl, logo: glLogoImgPath, label: "GitLab"},
+    {target: StrypeSyncTarget.gh, logo: ghLogoImgPath, label: "GitHub", disabled: true},
+    {target: StrypeSyncTarget.gl, logo: glLogoImgPath, label: "GitLab", disabled: true},
 ];
 export default defineComponent({
     name: "Menu",
@@ -573,7 +580,7 @@ export default defineComponent({
 
         primaryCloudTarget(): ProjectCloudTargetButtonInfos {
             // The cloud target shown as a primary target, next to the local file system (Google Drive by default, see settingsStore.promotedCloudTarget)
-            return projectCloudTargetButtonsInfos.find((cloudTarget) => cloudTarget.target == this.settingsStore.promotedCloudTarget) ?? projectCloudTargetButtonsInfos[0];
+            return projectCloudTargetButtonsInfos.find((cloudTarget) => !cloudTarget.disabled && cloudTarget.target == this.settingsStore.promotedCloudTarget) ?? projectCloudTargetButtonsInfos[0];
         },
 
         secondaryCloudTargets(): ProjectCloudTargetButtonInfos[] {
@@ -973,7 +980,10 @@ export default defineComponent({
             // On the "save project dialog", entering a button just give an indication that the button can be "clicked".
             // For both, we handle those visual aspects by setting the focus on the button -- CSS does the rest.
             // The embedded project links of the "load project dialog" (examples and book) behave the same way.
-            (event.target as HTMLElement | null)?.focus();
+            // A disabled target doesn't get the focus.
+            if(!(event.target as HTMLElement | null)?.classList.contains("disabled-target")){
+                (event.target as HTMLElement | null)?.focus();
+            }
         },
 
         changeTempSyncTarget(target: StrypeSyncTarget, isSaveAction?: boolean) {
@@ -1721,7 +1731,8 @@ export default defineComponent({
                 // The targets are laid out in rows: the primary targets on the first row, the secondary targets (if any)
                 // on the second row, and, for the load dialog, the embedded project links (examples, book) on the last row.
                 // Left/right (and space) loop through all of them in DOM order (row by row), up/down switch between the rows.
-                const allTargetButtons = [...document.querySelectorAll(`#${dlgId} .${scssVars.projectTargetButtonClassName}`)] as HTMLElement[];
+                // Disabled targets are skipped.
+                const allTargetButtons = [...document.querySelectorAll(`#${dlgId} .${scssVars.projectTargetButtonClassName}:not(.disabled-target)`)] as HTMLElement[];
                 const rows = [
                     allTargetButtons.filter((target) => !target.classList.contains("secondary-target")),
                     allTargetButtons.filter((target) => target.classList.contains("secondary-target")),
@@ -2032,6 +2043,12 @@ export default defineComponent({
 .secondary-target img {
     width: 24px;
     height: 24px;
+}
+
+.secondary-target.disabled-target {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none !important;
 }
 
 .clear-all-label {

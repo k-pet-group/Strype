@@ -91,6 +91,7 @@ export type CloudDriveHandlerComponentAPI = {
   setSaveFileName: (v: string) => void,
   saveFile: (cloudTarget: StrypeSyncTarget, saveReason: SaveRequestReason) => void,
   loadFile: (cloudTarget: StrypeSyncTarget, loadReason?: LoadRequestReason) => void,
+  requestSignOut: (cloudTarget: StrypeSyncTarget) => void,
   modifiedDataSearchOptionName(cloudTarget: StrypeSyncTarget): string | undefined,
   fileMoreFieldsForIO(cloudTarget: StrypeSyncTarget): string | undefined,
 }

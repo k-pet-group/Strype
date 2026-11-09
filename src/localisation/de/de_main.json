@@ -85,6 +85,7 @@
     "loadToTarget": "Öffnen von:",
     "saveToTarget": "Speichen auf:",
     "targetFS": "Diesem Computer",
+    "targetNotAvailableYet": "Diese Funktion ist noch nicht verfügbar.",
     "fileName": "Dateiname:",
     "cloudFileAlreadyExists": "Es existiert schon ein Projekt mit diesem Namen.\nMöchtest Du es ersetzen?",
     "cloudLockedFileAlreadyExists": "Dieses Projekt existiert und ist schreibgeschützt.\nEs kann nicht unter diesem Namen gespeichert werden.",

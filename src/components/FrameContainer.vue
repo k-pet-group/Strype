@@ -4,7 +4,7 @@
         <div v-if="!isTestsFrameContainer" class="frame-container-header" @click.self="onOuterContainerClick">
             <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
             <!-- For the "My code" container, this is the "My code" label, always on the left of the arrow. It has the heading's (green, bold) style while My code is showing,
-                 and is dark grey and not bold while Testing is (when the "Testing code" label, on the right of the arrow, has the heading's style instead) -->
+                 and is dark grey and not bold while Testing is (when the "Test code" label, on the right of the arrow, has the heading's style instead) -->
             <span :class="{[scssVars.frameContainerLabelSpanClassName]: !isMainCodeFrameContainer || !isShowingTests, 'frame-container-heading-inactive': isMainCodeFrameContainer && isShowingTests, 'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer, 'frame-container-heading-clickable': isMainCodeFrameContainer && !isPythonExecuting}" :title="isMainCodeFrameContainer && testingSectionAvailable ? $t('appMessage.toggleTestingMode') : undefined" :data-label="containerLabel" @click.self="onLabelClicked">{{containerLabel}}</span>
             <!-- Clicking this (or the heading) switches between My code and Testing code -->
             <span v-if="isMainCodeFrameContainer && testingSectionAvailable" :class="{'frame-container-heading-arrows': true, 'frame-container-heading-clickable': !isPythonExecuting}" :title="$t('appMessage.toggleTestingMode')" aria-hidden="true" @click.stop="onHeadingClicked">
@@ -377,7 +377,7 @@ export default defineComponent({
     color: #274D19;
 }
 
-// The label of the section that isn't showing (the "My code" and "Testing code" labels stay where they are, on either side of the arrow)
+// The label of the section that isn't showing (the "My code" and "Test code" labels stay where they are, on either side of the arrow)
 .frame-container-heading-inactive {
     color: #555;
     font-weight: normal;

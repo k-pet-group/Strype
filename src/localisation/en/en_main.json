@@ -156,7 +156,7 @@
     "importsContainer": "Imports:",
     "defsContainer": "Definitions:",
     "mainContainer": "My code:",
-    "testsContainer": "Testing code:",
+    "testsContainer": "Test code:",
     "toggleTestingMode": "Toggle testing mode",
     "runTestsButton": "Run tests",
     "testPassed": "This test passed",

@@ -3,19 +3,13 @@
         <!-- The Testing container has no heading of its own: it shares the "My code" heading, which switches between the two -->
         <div v-if="!isTestsFrameContainer" class="frame-container-header" @click.self="onOuterContainerClick">
             <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
-            <!-- For the "My code" container, this is the "My code" label, always on the left of the arrow. It has the heading's (green, bold) style while My code is showing,
-                 and is dark grey and not bold while Testing is (when the "Test code" label, on the right of the arrow, has the heading's style instead) -->
-            <span :class="{[scssVars.frameContainerLabelSpanClassName]: !isMainCodeFrameContainer || !isShowingTests, 'frame-container-heading-inactive': isMainCodeFrameContainer && isShowingTests, 'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer, 'frame-container-heading-clickable': isMainCodeFrameContainer && !isPythonExecuting}" :title="isMainCodeFrameContainer && testingSectionAvailable ? $t('appMessage.toggleTestingMode') : undefined" :data-label="containerLabel" @click.self="onLabelClicked">{{containerLabel}}</span>
-            <!-- Clicking this (or the heading) switches between My code and Testing code -->
-            <span v-if="isMainCodeFrameContainer && testingSectionAvailable" :class="{'frame-container-heading-arrows': true, 'frame-container-heading-clickable': !isPythonExecuting}" :title="$t('appMessage.toggleTestingMode')" aria-hidden="true" @click.stop="onHeadingClicked">
-                <svg width="32" height="14" viewBox="0 0 32 14">
-                    <path d="M7.3 7.6 Q16 2.5 24.7 7.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
-                    <path d="M1.5 11.5 L9.2 10.5 L5.4 4.7 Z" fill="currentColor"/>
-                    <path d="M30.5 11.5 L22.8 10.5 L26.6 4.7 Z" fill="currentColor"/>
-                </svg>
-            </span>
-            <!-- The "Testing code" label, always on the right of the arrow: it has the heading's style while Testing is showing, and is dark grey and not bold otherwise -->
-            <span v-if="isMainCodeFrameContainer && testingSectionAvailable" :class="{[scssVars.frameContainerLabelSpanClassName]: isShowingTests, 'frame-container-heading-inactive': !isShowingTests, 'frame-container-heading-second': true, 'no-toggle-frame-container-span': true, 'frame-container-heading-clickable': !isPythonExecuting}" :title="$t('appMessage.toggleTestingMode')" :data-label="testingHeadingLabel" @click.self="onHeadingClicked">{{testingHeadingLabel}}</span>
+            <!-- In the Python version, the heading of the third section is a pair of tabs: "My code" and "Test code", of which only the selected one is showing below -->
+            <div v-if="isMainCodeFrameContainer && testingSectionAvailable" class="frame-container-tabs" role="tablist">
+                <span v-for="tab in headingTabs" :key="tab.id" role="tab" :aria-selected="tab.selected" :data-tab="tab.id"
+                      :class="{'frame-container-tab': true, 'frame-container-tab-selected': tab.selected, 'frame-container-tab-clickable': !tab.selected && !isPythonExecuting}"
+                      @click.stop="selectHeadingTab(tab.showsTests)">{{tab.label}}</span>
+            </div>
+            <span v-else :class="{[scssVars.frameContainerLabelSpanClassName]: true, 'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
             <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="frames" :parentIsFrozen="false"/>
         </div>
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
@@ -131,9 +125,14 @@ export default defineComponent({
             return this.appStore.mainSectionShowsTests;
         },
 
-        // The label for the testing code, shown after the "My code" one, with the heading's style while the testing code is what's showing
-        testingHeadingLabel(): string {
-            return this.$t("appMessage.testsContainer");
+        // The tabs of the heading of the third section: one for the main code and one for the testing code, labelled with the
+        // containers' headings (those end in a colon, which a tab doesn't need)
+        headingTabs(): {id: string, label: string, selected: boolean, showsTests: boolean}[] {
+            const tabLabel = (label: string) => label.replace(/\s*[:\uFF1A]\s*$/, "");
+            return [
+                {id: "main", label: tabLabel(this.containerLabel ?? ""), selected: !this.isShowingTests, showsTests: false},
+                {id: "tests", label: tabLabel(this.$t("appMessage.testsContainer")), selected: this.isShowingTests, showsTests: true},
+            ];
         },
 
         // Of the main code and the testing code, only one is shown at a time
@@ -215,21 +214,11 @@ export default defineComponent({
             return getFrameUID(frameId);
         },
         
-        // Clicking the "My code"/"Testing" heading (or its arrow) switches between the two. The frame cursor goes to the
-        // start of the section shown. (Not while a program is running: the store ignores it then, and the heading isn't
-        // styled as clickable.)
-        onHeadingClicked(): void {
+        // Clicking the tab of the section that isn't showing switches to it. The frame cursor goes to the start of the section
+        // shown. (Not while a program is running: the store ignores it then, and the tab isn't styled as clickable.)
+        selectHeadingTab(showTests: boolean): void {
             if (this.isMainCodeFrameContainer && !this.isPythonExecuting) {
-                this.appStore.toggleMainSectionShowsTests();
-            }
-        },
-
-        onLabelClicked(): void {
-            if (this.isMainCodeFrameContainer) {
-                this.onHeadingClicked();
-            }
-            else {
-                this.toggleCollapse();
+                this.appStore.setMainSectionShowsTests(showTests);
             }
         },
 
@@ -367,40 +356,41 @@ export default defineComponent({
 .frame-container-minheight {
     min-height: $frame-container-min-height;
 }
-// A double-headed (slightly curved) arrow to the right of the heading, pointing left and right to show that it switches section
-.frame-container-heading-arrows {
+// The tabs of the heading of the third section, like those of the Python execution area (rounded at the top, the selected one
+// raised and the others flat) but tinted green to go with the editor. The selected one takes the colour of the code box under it.
+.frame-container-tabs {
     display: flex;
-    align-items: center;
-    margin-left: 10px;
-    position: relative;
-    top: calc(-0.3em + 0.1rem);
+    align-items: flex-end;
+    margin-left: 10px; // To line up with the box of code below
+    gap: 2px;
+}
+
+.frame-container-tab {
+    padding: 0.15rem 0.75rem;
+    border-radius: 0.4rem 0.4rem 0 0;
+    border: 1px solid transparent;
+    border-bottom: none;
     color: #274D19;
+    background-color: rgba(60, 110, 40, 0.16);
+    cursor: default;
 }
 
-// The label of the section that isn't showing (the "My code" and "Test code" labels stay where they are, on either side of the arrow)
-.frame-container-heading-inactive {
-    color: #555;
-    font-weight: normal;
-
-    // Takes the width the label would have in bold (with an invisible copy of it, with no height), so that the labels and the arrow
-    // don't move when the two labels swap styles
-    &::after {
-        content: attr(data-label);
-        display: block;
-        height: 0;
-        overflow: hidden;
-        visibility: hidden;
-        font-weight: 600;
-    }
+.frame-container-tab-selected {
+    font-weight: 600;
+    background-color: $strype-main-code-container-background;
+    border-color: #B4B4B4;
+    // Sits over the top border of the box of code so that the two look joined:
+    position: relative;
+    margin-bottom: -1px;
+    padding-bottom: calc(0.15rem + 1px);
 }
 
-// The "Testing code" label, to the right of the arrow
-.no-toggle-frame-container-span.frame-container-heading-second {
-    margin-left: 10px;
-}
-
-.frame-container-heading-clickable {
+.frame-container-tab-clickable {
     cursor: pointer;
+
+    &:hover {
+        background-color: rgba(60, 110, 40, 0.3);
+    }
 }
 
 .frame-container-header {

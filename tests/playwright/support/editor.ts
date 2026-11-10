@@ -364,13 +364,13 @@ async function deleteFramesUpTo(page: Page, containerSelector: string, maxPresse
     await deleteFramesUpTo(page, containerSelector, maxPresses - 1);
 }
 
-// Clicking the arrow on the "My code" heading switches the third section between the main code ("My code")
-// and the testing code ("Testing"), and puts the frame cursor at the top of the section now showing.
+// Clicking the "Test code" tab of the heading switches the third section from the main code ("My code")
+// to the testing code, and puts the frame cursor at the top of the section now showing.
 // These helpers assume the third section is currently showing the main code (as it is after load).
 
 // Switches to the testing code; the frame cursor is at the top of it, ready for frame shortcuts to add things there.
 export async function switchToTestingFromMain(page: Page) : Promise<void> {
-    await page.locator(".frame-container-heading-arrows").click();
+    await page.locator("[data-tab='tests']").click();
     await waitForEditorSettled(page);
 }
 
@@ -419,7 +419,7 @@ export async function clearDefaultProject(page: Page) : Promise<void> {
         await enterTestingSection(page);
         await deleteFramesUpTo(page, "#frameContainer_-4");
         // Switch back to the main code, which puts the cursor at the top of it:
-        await page.locator(".frame-container-heading-arrows").click();
+        await page.locator("[data-tab='main']").click();
         await waitForEditorSettled(page);
     }
     // Belt-and-braces check that we truly ended up at 0, on top of the settling above:

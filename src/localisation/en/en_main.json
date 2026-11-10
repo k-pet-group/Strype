@@ -157,7 +157,6 @@
     "defsContainer": "Definitions:",
     "mainContainer": "My code:",
     "testsContainer": "Test code:",
-    "toggleTestingMode": "Toggle testing mode",
     "runTestsButton": "Run tests",
     "testPassed": "This test passed",
     "testFailed": "This test failed",

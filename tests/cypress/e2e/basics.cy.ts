@@ -523,16 +523,16 @@ describe("Wrapping frames", () => {
 });
  
 describe("The My code heading", () => {
-    it("Switches to the Testing section in the Python version only (the micro:bit version has nowhere to run tests)", () => {
+    it("Has a Test code tab to switch to in the Python version only (the micro:bit version has nowhere to run tests)", () => {
         cy.get("#frameContainer_-3").should("be.visible");
         if (Cypress.env("mode") === "microbit") {
-            // No toggle arrow, and clicking the heading doesn't do anything:
-            cy.get(".frame-container-heading-arrows").should("not.exist");
+            // Only the plain heading, which does nothing when clicked:
+            cy.get("[data-tab]").should("not.exist");
             cy.get("#frameContainer_-3 .frame-container-header .frame-container-label-span").click();
             cy.get("#frameContainer_-3").should("be.visible");
         }
         else {
-            cy.get(".frame-container-heading-arrows").click();
+            cy.get("[data-tab='tests']").click();
             cy.get("#frameContainer_-3").should("not.be.visible");
             cy.get("#frameContainer_-4").should("be.visible");
         }

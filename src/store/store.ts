@@ -153,7 +153,7 @@ export const useStore = defineStore("app", {
             lastTestRunOutcome: undefined as "passed" | "failed" | undefined,
 
             // The third section of the editor shows either the main code ("My code") or the testing code
-            // ("Testing"); the "My code" heading toggles between the two (see toggleMainSectionShowsTests()).
+            // ("Testing"); the "My code" and "Test code" tabs of the heading select between the two (see setMainSectionShowsTests()).
             mainSectionShowsTests: false,
 
             // This flag can be used anywhere a key event should be ignored within the application
@@ -1740,8 +1740,8 @@ export const useStore = defineStore("app", {
         // Whatever was selected (text in a slot, or frames) is cancelled -- it's in code that may no longer be
         // showing -- and the frame cursor goes to the start of the section now showing. Nothing happens while a program (or the tests) is
         // running: the section being shown has to stay put until it finishes.
-        toggleMainSectionShowsTests() {
-            if (!TestingSectionAvailable || this.pythonExecRunningState != PythonExecRunningState.NotRunning) {
+        setMainSectionShowsTests(showTests: boolean) {
+            if (!TestingSectionAvailable || this.mainSectionShowsTests == showTests || this.pythonExecRunningState != PythonExecRunningState.NotRunning) {
                 return;
             }
             // Moving away supersedes any earlier, still-pending request to put the cursor in a slot (see leftRightKey()):
@@ -1755,7 +1755,7 @@ export const useStore = defineStore("app", {
             // This also clears any text selection on the page:
             this.setSlotTextCursors(undefined, undefined);
             this.unselectAllFrames();
-            this.mainSectionShowsTests = !this.mainSectionShowsTests;
+            this.mainSectionShowsTests = showTests;
             this.setCurrentFrame({id: this.mainSectionShowsTests ? this.getTestsFrameContainerId : this.getMainCodeFrameContainerId, caretPosition: CaretPosition.body});
         },
 

@@ -68,9 +68,9 @@ test.describe("Testing section", () => {
         }
         expect(arrowBox.x).toBeGreaterThanOrEqual(textBox.x + textBox.width);
         // The label of the other section is on the other side of the arrow, in dark grey and not bold. The labels stay where they
-        // are ("My code:" on the left, "Testing code:" on the right): it is which is green and which is grey that swaps over.
+        // are ("My code:" on the left, "Test code:" on the right): it is which is green and which is grey that swaps over.
         const otherLabel = heading(page).locator(".frame-container-heading-inactive");
-        await expect(otherLabel).toHaveText("Testing code:");
+        await expect(otherLabel).toHaveText("Test code:");
         await expect(otherLabel).toHaveCSS("color", "rgb(85, 85, 85)");
         await expect(otherLabel).toHaveCSS("font-weight", "400");
         await expect(headingText).toHaveCSS("font-weight", "600");
@@ -81,7 +81,7 @@ test.describe("Testing section", () => {
         expect(otherLabelBox.x).toBeGreaterThanOrEqual(arrowBox.x + arrowBox.width);
         await heading(page).locator(".frame-container-heading-arrows").click();
         await waitForEditorSettled(page);
-        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Test code");
         // The frame cursor goes to the top of the section now showing:
         await expect(visibleFrameCursors).toHaveCount(1);
         await expect(otherLabel).toHaveText("My code:");
@@ -171,17 +171,20 @@ def test_errors ( ) :
         await runButton(page).click();
         await expect.poll(async () => await page.locator("#peaConsole").inputValue(), {timeout: 120000}).toContain("1 passed, 2 failed");
 
-        // A "Pass \u2714" or "Fail \u2716" badge in the header of each test function, with a green or red background and white text:
+        // A "Pass" or "Fail" badge with a tick or cross (drawn as an SVG, as in the overall outcome) in the header of each test function,
+        // with a green or red background and white text:
         const outcomeIcon = (index: number) => testFunctions.nth(index).locator(".test-outcome-badge").first();
-        await expect(outcomeIcon(0)).toHaveText("Pass \u2714");
+        await expect(outcomeIcon(0)).toHaveText("Pass");
+        await expect(outcomeIcon(0).locator("svg.test-outcome-icon")).toHaveCount(1);
         await expect(outcomeIcon(0)).toHaveClass(/test-outcome-passed/);
         await expect(outcomeIcon(0)).toHaveCSS("background-color", "rgb(42, 138, 58)");
         await expect(outcomeIcon(0)).toHaveCSS("color", "rgb(255, 255, 255)");
-        await expect(outcomeIcon(1)).toHaveText("Fail \u2716");
+        await expect(outcomeIcon(1)).toHaveText("Fail");
+        await expect(outcomeIcon(1).locator("svg.test-outcome-icon")).toHaveCount(1);
         await expect(outcomeIcon(1)).toHaveClass(/test-outcome-failed/);
         await expect(outcomeIcon(1)).toHaveCSS("background-color", "rgb(201, 76, 76)");
         await expect(outcomeIcon(1)).toHaveCSS("color", "rgb(255, 255, 255)");
-        await expect(outcomeIcon(2)).toHaveText("Fail \u2716");
+        await expect(outcomeIcon(2)).toHaveText("Fail");
         await expect(outcomeIcon(2)).toHaveClass(/test-outcome-failed/);
         // The badge is a rounded box:
         expect(parseFloat(await outcomeIcon(0).evaluate((el) => getComputedStyle(el).borderTopLeftRadius))).toBeGreaterThan(3);
@@ -227,7 +230,7 @@ def test_errors ( ) :
         await loadContent(page, readFileSync("public/demos/console/testing_example.spy", "utf8"));
         const consoleLoc = page.locator("#peaConsole");
         // It was saved with the Testing code showing, so that's how it opens (with the cursor in it):
-        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Test code");
         await expect(page.locator("#frameContainer_-4")).toBeVisible();
         await expect(page.locator("#frameContainer_-3 > .container-frames")).toBeHidden();
         await expect(runButton(page)).toBeEnabled({timeout: 120000});
@@ -251,7 +254,7 @@ def test_errors ( ) :
 
     test("A project saved with the Testing code showing has a header saying so", async ({page}) => {
         await switchToTestingFromMain(page);
-        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Test code");
         const saved = readFileSync(await save(page, true), "utf8").replace(/\r\n/g, "\n");
         expect(saved).toContain("\n#(=> testingShowing:true\n");
     });
@@ -270,7 +273,7 @@ def test_a ( ) :
 `;
         // A project with the header opens showing the Testing code, with the cursor at the top of it...
         await loadContent(page, spyWithTestingShowing);
-        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Test code");
         await expect(page.locator("#frameContainer_-4")).toBeVisible();
         await expect(page.locator("#caret_caretBody_-4")).not.toHaveClass(/invisible/);
         await expect(runButton(page)).toHaveText(/Run tests$/, {timeout: 120000});
@@ -298,7 +301,7 @@ def test_a ( ) :
         // The cursor goes to the top of the Testing section:
         await headingText.click();
         await waitForEditorSettled(page);
-        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Test code");
         await expect(page.locator("#frameContainer_-4")).toBeVisible();
         await expect(page.locator("#frameContainer_-4 .caret:not(.invisible)")).toHaveCount(1);
         await expect(runButton(page)).toHaveText(/^\s*Run tests$/);
@@ -321,7 +324,7 @@ def test_a ( ) :
 
         await heading(page).locator(".frame-container-label-span").click();
         await waitForEditorSettled(page);
-        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Test code");
         await expect(page.locator(".selected")).toHaveCount(0);
         await expect(page.locator("#frameContainer_-4 .caret:not(.invisible)")).toHaveCount(1);
         // Back in My code, the frames are still not selected, and the cursor is at the top of it:
@@ -345,7 +348,7 @@ def test_a ( ) :
 
         await heading(page).locator(".frame-container-label-span").click();
         await waitForEditorSettled(page);
-        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Test code");
         // No text is selected any more, and no slot is being edited:
         expect(await page.evaluate(() => (document.getSelection()?.toString() ?? ""))).toEqual("");
         expect(await page.evaluate(() => document.activeElement?.classList.contains("label-slot-input") ?? false)).toBe(false);
@@ -378,7 +381,7 @@ while True  :
         await expect(headingText).toHaveClass(/frame-container-heading-clickable/);
         await headingText.click();
         await waitForEditorSettled(page);
-        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Test code");
     });
 
     test("pytest is imported for the tests automatically, so pytest.raises works without an import", async ({page}) => {
@@ -431,7 +434,7 @@ def test_raises ( ) :
         // Typing "while " in Definitions turns the frame into a while loop, which is moved to My code:
         await goToTopOfMainCode(page);
         await switchToTestingFromMain(page);
-        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Test code");
         await page.keyboard.press("ArrowUp"); // up from the top of Testing to Definitions
         await waitForEditorSettled(page);
         await page.keyboard.type("x");
@@ -445,7 +448,7 @@ def test_raises ( ) :
         await expect(mainWhile).toHaveCount(1);
         // My code is now showing, with the heading's style on its label, and the moved frame can be seen:
         await expect(heading(page).locator(".frame-container-label-span")).toContainText("My code");
-        await expect(heading(page).locator(".frame-container-heading-inactive")).toContainText("Testing");
+        await expect(heading(page).locator(".frame-container-heading-inactive")).toContainText("Test code");
         await expect(page.locator("#frameContainer_-3 .container-frames")).toBeVisible();
         await expect(page.locator("#frameContainer_-4")).toBeHidden();
         await expect(mainWhile).toBeVisible();
@@ -453,7 +456,7 @@ def test_raises ( ) :
         // Likewise, pasting statements for My code while the cursor is in Definitions, with Testing showing:
         await goToTopOfMainCode(page);
         await switchToTestingFromMain(page);
-        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Test code");
         await page.keyboard.press("ArrowUp");
         await waitForEditorSettled(page);
         await doPagePaste(page, "for i in range(3):\n    print(i)\n");
@@ -476,7 +479,7 @@ def test_raises ( ) :
         await waitForEditorSettled(page);
 
         // Testing is now showing, with a new test function at the top (above the starter one), holding the assert:
-        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Test code");
         await expect(page.locator("#frameContainer_-3 .frame-div[data-frameType='assert']")).toHaveCount(0);
         await expect(testFunctions).toHaveCount(2);
         await expect(functionName(0)).toHaveText("test_1");
@@ -498,7 +501,7 @@ def test_raises ( ) :
         await waitForEditorSettled(page);
         await typeIndividually(page, "2 == 2");
         await waitForEditorSettled(page);
-        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Test code");
         await expect(testFunctions).toHaveCount(3);
         await expect(functionName(0)).toHaveText("test_2");
         await expect(functionName(1)).toHaveText("test_1");
@@ -550,7 +553,7 @@ def test_forever ( ) :
         await expect(runButton(page)).toHaveText(/Stop$/, {timeout: 120000});
         // The heading can't be used while the tests are running:
         await heading(page).locator(".frame-container-label-span").click();
-        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Test code");
         await expect(runButton(page)).toHaveText(/Stop$/);
         await runButton(page).click();
         await expect(runButton(page)).toHaveText(/Run tests$/, {timeout: 120000});
@@ -586,10 +589,10 @@ def test_a ( ) :
 
     test("Which of My code and Testing is showing survives a page refresh", async ({page}) => {
         await switchToTestingFromMain(page);
-        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Test code");
         await page.reload();
         await page.waitForSelector(".frame-container");
-        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Test code");
         await expect(page.locator("#frameContainer_-4")).toBeVisible();
     });
 

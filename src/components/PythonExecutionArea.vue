@@ -25,11 +25,7 @@
                 <template v-if="isRunButtonForTests && lastTestRunOutcome">
                     <!-- The icon comes first in the DOM (but is displayed last, see the CSS) so that it is the text that wraps out of view first -->
                     <span class="pea-test-outcome-icon" :title="$t(lastTestRunOutcome == 'passed' ? 'appMessage.testsPassed' : 'appMessage.testsFailed')">
-                        <!-- Drawn rather than a text symbol (✔/✖), so that it is exactly centred whatever font the browser would use for one -->
-                        <svg viewBox="0 0 10 10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                            <path v-if="lastTestRunOutcome == 'passed'" d="M1.2 5.4 L3.9 8 L8.8 2"/>
-                            <path v-else d="M2 2 L8 8 M8 2 L2 8"/>
-                        </svg>
+                        <TestOutcomeIcon :passed="lastTestRunOutcome == 'passed'"/>
                     </span>
                     <span class="pea-test-outcome-text" :title="$t(lastTestRunOutcome == 'passed' ? 'appMessage.testsPassed' : 'appMessage.testsFailed')">{{ $t(lastTestRunOutcome == 'passed' ? 'appMessage.testPassBadge' : 'appMessage.testFailBadge') }}</span>
                 </template>
@@ -106,6 +102,7 @@ import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounc
 import { AllFrameTypesIdentifier, BaseSlot, CoordPosition, defaultEmptyStrypeLayoutDividerSettings, PythonExecRunningState, StrypeContextMenuItem, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import SVGIcon from "@/components/SVGIcon.vue";
+import TestOutcomeIcon from "@/components/TestOutcomeIcon.vue";
 import { Splitpanes, Pane } from "splitpanes";
 import { debounce, escape } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -227,6 +224,7 @@ export default defineComponent({
         Splitpanes,
         Pane,
         SVGIcon,
+        TestOutcomeIcon,
         BTabs, BTab,
         FileSystemPane,
     },
@@ -1797,10 +1795,6 @@ export default defineComponent({
         justify-content: center;
         border-radius: 0.6em;
 
-        svg {
-            width: 1em;
-            height: 1em;
-        }
     }
     // The text part overlaps the icon by 0.6em (negative margin), in front of it, so that the rounded left end of the icon isn't
     // seen as a gap between the two parts; they are the same colour so look like one pill. The overlap is only over the empty

@@ -3,8 +3,7 @@ import {loadContent, save} from "../support/loading-saving";
 import fs from "fs";
 import en from "@/localisation/en/en_main.json";
 import { CollapsedState } from "../../cypress/support/frame-types";
-import { checkFrameXorTextCursor, pressN, waitForEditorSettled } from "../support/editor";
-import { ARROWS_MAIN_TO_DEFS } from "../../shared/main-heading-focus";
+import { checkFrameXorTextCursor, waitForEditorSettled } from "../support/editor";
 import { setupStrypeTest } from "../support/general";
 import { startRunning } from "../support/execution";
 
@@ -224,7 +223,7 @@ test.describe("Saves collapsed state after icon clicks", () => {
     test("Freeze Alpha and Beta and top_2 in one go", async ({page}) => {
         await loadContent(page, testState());
         // Go to bottom of the definitions:
-        await pressN("ArrowUp", ARROWS_MAIN_TO_DEFS, true)(page);
+        await page.keyboard.press("ArrowUp");
         // Shift-control-up three times:
         for (let i = 0; i < 3; i++) {
             await page.keyboard.press((process.platform == "darwin" ? "Alt" : "Control") + "+Shift+ArrowUp");
@@ -269,7 +268,7 @@ test.describe("Saves collapsed state after icon clicks", () => {
     test("Load frozen Alpha then try to cycle child visibility with key", async ({page}) => {
         await loadContent(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader"}));
         // We should start at top of the body, so we need to go up once into functions, then thrice more to be above Alpha:
-        await pressN("ArrowUp", ARROWS_MAIN_TO_DEFS, true)(page);
+        await page.keyboard.press("ArrowUp");
         for (let i = 0; i < 3; i++) {
             await page.keyboard.press((process.platform == "darwin" ? "Alt" : "Control") + "+ArrowUp");
         }
@@ -325,7 +324,7 @@ test.describe("Saves collapsed state after icon clicks", () => {
     test("Freezing prevents deletion of the whole frame and its member frames", async ({page}) => {
         await loadContent(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader", "top1": "FoldToDocumentation;Frozen"}));
         // We start at the top of the body, so one up to get to bottom of defs:
-        await pressN("ArrowUp", ARROWS_MAIN_TO_DEFS, true)(page);
+        await page.keyboard.press("ArrowUp");
         // Then two more at same level to get *below* Alpha:
         for (let i = 0; i < 2; i++) {
             await page.keyboard.press((process.platform == "darwin" ? "Alt" : "Control") + "+ArrowUp");
@@ -358,7 +357,7 @@ test.describe("Saves collapsed state after icon clicks", () => {
     test("Freezing prevents focusing the text slots with right arrow", async ({page}) => {
         await loadContent(page, testState({"Alpha": "Frozen", "__init__": "FoldToHeader", "top1": "FoldToDocumentation;Frozen"}));
         // We start at the top of the body, so one up to get to bottom of defs:
-        await pressN("ArrowUp", ARROWS_MAIN_TO_DEFS, true)(page);
+        await page.keyboard.press("ArrowUp");
         // Then three more at same level to get above Alpha:
         for (let i = 0; i < 3; i++) {
             await page.keyboard.press((process.platform == "darwin" ? "Alt" : "Control") + "+ArrowUp");

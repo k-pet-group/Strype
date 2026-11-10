@@ -3,7 +3,6 @@ import {readFileSync} from "node:fs";
 import {save} from "../support/loading-saving";
 import {setupStrypeTest} from "../support/general";
 import {doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, getDefaultStrypeProjectTestingFullLines, pressFrameShortcut, pressN, waitForEditorSettled} from "../support/editor";
-import {ARROWS_MAIN_TO_DEFS} from "../../shared/main-heading-focus";
 
 const defaultStandardStrypeProjectDocLiteral = getDefaultStrypeProjectDocumentationFullLine();
 const defaultStrypeProjectImportsLiteral = getDefaultStrypeProjectImportsFullLine();
@@ -424,7 +423,7 @@ test.describe("Variable changes in functions", () => {
         // Rename local variable
         await page.keyboard.press("Home");
         await waitForEditorSettled(page);
-        await pressN("ArrowUp", ARROWS_MAIN_TO_DEFS, true)(page);
+        await page.keyboard.press("ArrowUp");
         await waitForEditorSettled(page);
         await page.keyboard.press("Home");
         await waitForEditorSettled(page);
@@ -459,7 +458,7 @@ test.describe("Variable changes in functions", () => {
         // Rename variable
         await page.keyboard.press("Home");
         await waitForEditorSettled(page);
-        await pressN("ArrowUp", ARROWS_MAIN_TO_DEFS, true)(page);
+        await page.keyboard.press("ArrowUp");
         await waitForEditorSettled(page);
         await page.keyboard.press("Home");
         await waitForEditorSettled(page);
@@ -486,7 +485,7 @@ test.describe("Variable changes in functions", () => {
         // Rename local variable
         await page.keyboard.press("Home");
         await waitForEditorSettled(page);
-        await pressN("ArrowUp", ARROWS_MAIN_TO_DEFS, true)(page);
+        await page.keyboard.press("ArrowUp");
         await waitForEditorSettled(page);
         await page.keyboard.press("Home");
         await waitForEditorSettled(page);
@@ -520,7 +519,7 @@ test.describe("Variable changes in functions", () => {
         // Rename global variable
         await page.keyboard.press("Home");
         await waitForEditorSettled(page);
-        await pressN("ArrowUp", ARROWS_MAIN_TO_DEFS, true)(page);
+        await page.keyboard.press("ArrowUp");
         await waitForEditorSettled(page);
         await page.keyboard.press("Home");
         await waitForEditorSettled(page);
@@ -650,7 +649,7 @@ test.describe("Function change", () => {
         // Rename import name binding
         await page.keyboard.press("Home");
         await waitForEditorSettled(page);
-        await pressN("ArrowUp", 4 + ARROWS_MAIN_TO_DEFS, true)(page);
+        await pressN("ArrowUp", 5, true)(page);
         await page.keyboard.press("ArrowRight");
         await waitForEditorSettled(page);
         await page.keyboard.type("_new_");

@@ -14,7 +14,7 @@ import en from "@/localisation/en/en_main.json";
 import "../support/expression-test-support";
 import { scssVars, standardBeforeEach, strypeElIds } from "../support/standard-setup";
 import {checkDownloadedFileEquals, loadFile} from "../support/load-save-support";
-import { getDefaultStrypeProjectDocumentationFullLine, focusEditorAndClear, upFromMain, DOWN_EXTRA_PAST_HEADING } from "../support/test-support";
+import { getDefaultStrypeProjectDocumentationFullLine, focusEditorAndClear } from "../support/test-support";
 
 beforeEach(standardBeforeEach);
 
@@ -183,13 +183,13 @@ describe("Tests blanks", () => {
         // ___strype_blank.___strype_blank() 
 
         //(function and if are followed by a pause, because it can take a bit longer to add their body/joint section)
-        testEntryDisableAndSave([upFromMain(2) +
+        testEntryDisableAndSave(["{uparrow}{uparrow}" +
             " ix {rightarrow}" +
             " f{downarrow}{downarrow}" +
             " f","{downarrow}{downarrow}" +
             " i","{rightarrow}" +
             " c{downarrow}{downarrow}" +
-            " r{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING +
+            " r{rightarrow}{downarrow}{downarrow}" +
             " a{rightarrow} ={rightarrow}1+*/()-{downarrow}" +
             "test.({downarrow}" +
             "test.a+({downarrow}" +
@@ -207,7 +207,7 @@ describe("Tests blanks", () => {
 
 describe("Tests invalid characters", () => {
     it("Outputs a file with invalid chars", () => {
-        testEntryDisableAndSave(upFromMain(2) +
+        testEntryDisableAndSave("{uparrow}{uparrow}" +
             " i100{rightarrow} ffoo{rightarrow}£1000{downarrow} i50{downarrow} ifoo（）{downarrow}{downarrow}" +
             " f#include{rightarrow}100,abc,#35{downarrow}{downarrow} r$50{downarrow}{downarrow}{downarrow}" +
             "100($50, 24.24a)", [], "tests/cypress/fixtures/project-invalid-chars.spy");
@@ -251,11 +251,11 @@ describe("Tests saving layout metadata", () => {
 describe("Tests loading/saving library frames", () => {
     it("Saves libraries", () => {
         // Doesn't really disable, but easy comparison to next item:
-        testEntryDisableAndSave(upFromMain(2) + " lfoo{rightarrow} ibar{rightarrow} lhttps://www.google.com/{rightarrow}", [], "tests/cypress/fixtures/project-libraries.spy");
+        testEntryDisableAndSave("{uparrow}{uparrow} lfoo{rightarrow} ibar{rightarrow} lhttps://www.google.com/{rightarrow}", [], "tests/cypress/fixtures/project-libraries.spy");
     });
     it("Saves disabled libraries", () => {
         // Disable the foo library:
-        testEntryDisableAndSave(upFromMain(2) + " lfoo{rightarrow} ibar{rightarrow} lhttps://www.google.com/{rightarrow}", ["foo"], "tests/cypress/fixtures/project-libraries-disable.spy");
+        testEntryDisableAndSave("{uparrow}{uparrow} lfoo{rightarrow} ibar{rightarrow} lhttps://www.google.com/{rightarrow}", ["foo"], "tests/cypress/fixtures/project-libraries-disable.spy");
     });
     it ("Saves and loads libraries", () => {
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-libraries.spy");
@@ -271,7 +271,7 @@ describe("Tests loading project descriptions", () => {
     });
     it("Loads a project with docs when there is already a project description", () => {
         focusEditorAndClear();
-        cy.get("body").type(upFromMain(2) + "{leftarrow}Temporary description.");
+        cy.get("body").type("{uparrow}{uparrow}{leftarrow}Temporary description.");
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-documented.spy");
     });
     it("Loads a project description over the top of another", () => {
@@ -284,7 +284,7 @@ describe("Tests loading project descriptions", () => {
     });
     it("Loads a project without docs when there is already a project description", () => {
         focusEditorAndClear();
-        cy.get("body").type(upFromMain(2) + "{leftarrow}Temporary description.");
+        cy.get("body").type("{uparrow}{uparrow}{leftarrow}Temporary description.");
         testRoundTripImportAndDownload("tests/cypress/fixtures/project-basic.spy");
     });
 });

@@ -5,7 +5,7 @@ import os from "os";
 failOnConsoleError();
 import "../support/paste-test-support";
 import {testRoundTripImportAndDownload,testRoundTripPasteAndDownload} from "../support/paste-test-support";
-import { getDefaultStrypeProjectDocumentationFullLine, pressFrameShortcutThenType, UP_MAIN_TO_DEFS } from "../support/test-support";
+import { getDefaultStrypeProjectDocumentationFullLine, pressFrameShortcutThenType } from "../support/test-support";
 
 // If the user pastes "mixed" code (i.e. imports, functions and body code)
 // then we split it into those three categories and obey the following rules:
@@ -126,7 +126,7 @@ ${STARTING_MAIN}
 
     it("Pastes imports-only at top of imports", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload(IMPORT0 + "\n" + IMPORT1 + "\n" + IMPORT2, "{home}" + UP_MAIN_TO_DEFS + "{home}{uparrow}{home}", `
+        testRoundTripPasteAndDownload(IMPORT0 + "\n" + IMPORT1 + "\n" + IMPORT2, "{home}{uparrow}{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${IMPORT0}
@@ -143,7 +143,7 @@ ${STARTING_MAIN}
 
     it("Pastes defs-only at top of defs", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload(DEF0 + "\n" + DEF1, "{home}" + UP_MAIN_TO_DEFS + "{home}", `
+        testRoundTripPasteAndDownload(DEF0 + "\n" + DEF1, "{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
@@ -159,7 +159,7 @@ ${STARTING_MAIN}
 
     it("Pastes full set in imports", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN2, MAIN1, MAIN0].join("\n"), "{home}" + UP_MAIN_TO_DEFS + "{home}{uparrow}{home}", `
+        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN2, MAIN1, MAIN0].join("\n"), "{home}{uparrow}{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${IMPORT0}
@@ -181,7 +181,7 @@ ${STARTING_MAIN}
 
     it("Pastes full set in defs", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN2, MAIN1, MAIN0].join("\n"), "{home}" + UP_MAIN_TO_DEFS + "{home}", `
+        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN2, MAIN1, MAIN0].join("\n"), "{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
@@ -248,7 +248,7 @@ ${MAIN0}
 
     it("Pastes full set in funcdef body", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}" + UP_MAIN_TO_DEFS + "{uparrow}", `
+        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{uparrow}", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
@@ -270,7 +270,7 @@ ${STARTING_MAIN}
 
     it("Pastes full set in funcdef body then adds frame", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}" + UP_MAIN_TO_DEFS + "{uparrow}", `
+        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN0, MAIN1, MAIN2].join("\n"), "{home}{uparrow}{uparrow}", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${STARTING_IMPORT}
@@ -315,7 +315,7 @@ afterwards()
 
     it("Pastes full set in imports then adds frame", () => {
         testRoundTripPasteAndDownload(STARTING_POINT);
-        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN2, MAIN1, MAIN0].join("\n"), "{home}" + UP_MAIN_TO_DEFS + "{home}{uparrow}{home}", `
+        testRoundTripPasteAndDownload([IMPORT0, IMPORT1, IMPORT2, DEF0, DEF1, MAIN2, MAIN1, MAIN0].join("\n"), "{home}{uparrow}{home}{uparrow}{home}", `
 #(=> Strype:1:${MODE}
 ${getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode"))}#(=> Section:Imports
 ${IMPORT0}

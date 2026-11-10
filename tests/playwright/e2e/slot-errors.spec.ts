@@ -1,7 +1,6 @@
 import {expect, Page, test} from "@playwright/test";
 import fs from "fs";
-import {doPagePaste, pressFrameShortcut, pressN, waitForEditorSettled} from "../support/editor";
-import {ARROWS_MAIN_TO_DEFS} from "../../shared/main-heading-focus";
+import {doPagePaste, pressFrameShortcut, waitForEditorSettled} from "../support/editor";
 import {setupStrypeTest} from "../support/general";
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {
@@ -87,7 +86,7 @@ test.describe("Check slots have errors", () => {
         // As per bug #713 on Github, there was an issue where errors in the function header
         // could show errors on function description slots, so we check that doesn't happen:
         // Class with method, where the method has header content "a, *"
-        await pressN("ArrowUp", ARROWS_MAIN_TO_DEFS, true)(page);
+        await page.keyboard.press("ArrowUp");
         await waitForEditorSettled(page);
         await pressFrameShortcut(page, "c");
         await page.keyboard.type("Foo");

@@ -199,7 +199,7 @@ test.describe("Ctrl-A behaviour", () => {
    pass
 print('A')
 print('B')
-`, ["End", "Control+a"], "cut", ["Home", "ArrowUp", "ArrowUp", "ArrowUp"],makeStrypeFile(["", `def foo ( ) :
+`, ["End", "Control+a"], "cut", ["Home", "ArrowUp", "ArrowUp"],makeStrypeFile(["", `def foo ( ) :
     print('A') 
     print('B') 
 `, ""]));
@@ -379,7 +379,7 @@ class OneVar:
 
     test("Test Ctrl-A twice below solitary function in class selects whole class", async ({page}) => {
         // Should move whole class: 
-        await testBeforeAfterPaste(page, classTestInput2, /* We get into the class: */ ["End", ...rep(6, "ArrowUp"), ...rep(2, "Control+a")], "cut", ["End"],makeStrypeFile(["", `class OneVar  :
+        await testBeforeAfterPaste(page, classTestInput2, /* We get into the class: */ ["End", ...rep(5, "ArrowUp"), ...rep(2, "Control+a")], "cut", ["End"],makeStrypeFile(["", `class OneVar  :
     theOneVar  = 43 
 class OneFunc  :
     def theOneFunc (self, ) :
@@ -388,7 +388,7 @@ class OneFunc  :
     });
     test("Test Ctrl-A twice below solitary var in class selects whole class", async ({page}) => {
         // Should move whole class: 
-        await testBeforeAfterPaste(page, classTestInput2, /* We get into the class: */ ["End", ...rep(3, "ArrowUp"), ...rep(2, "Control+a")], "cut", ["Home"],makeStrypeFile(["", `class OneVar  :
+        await testBeforeAfterPaste(page, classTestInput2, /* We get into the class: */ ["End", ...rep(2, "ArrowUp"), ...rep(2, "Control+a")], "cut", ["Home"],makeStrypeFile(["", `class OneVar  :
     theOneVar  = 43 
 class OneFunc  :
     def theOneFunc (self, ) :
@@ -401,13 +401,13 @@ class OneFunc  :
         await testBeforeAfterPaste(page, makeStrypeFile(["", `def foo():
     return 42
 x = 43
-`, ""]), /* We get into defs: */ ["End", ...rep(2, "ArrowUp"), ...rep(1, "Control+a")], "delete", [],makeStrypeFile(["", "", ""]));
+`, ""]), /* We get into defs: */ ["End", ...rep(1, "ArrowUp"), ...rep(1, "Control+a")], "delete", [],makeStrypeFile(["", "", ""]));
     });
 
     test("Test Ctrl-A below solitary var in definitions selects whole section", async ({page}) => {
         // Should move whole class: 
         await testBeforeAfterPaste(page, makeStrypeFile(["", `x = 43
-`, ""]), /* We get into defs: */ ["End", ...rep(2, "ArrowUp"), ...rep(1, "Control+a")], "cut", ["ArrowDown"],makeStrypeFile(["", "", `x  = 43 
+`, ""]), /* We get into defs: */ ["End", ...rep(1, "ArrowUp"), ...rep(1, "Control+a")], "cut", ["ArrowDown"],makeStrypeFile(["", "", `x  = 43 
 `]));
     });
 });
@@ -533,19 +533,19 @@ else :
 test.describe("Pasting assignments at section boundaries", () => {
     const destinations: { name: string, keys: string[] }[] = [
         { name: "main", keys: [] },
-        { name: "definitions", keys: ["ArrowUp", "ArrowUp"] },
-        { name: "imports", keys: ["ArrowUp", "ArrowUp", "ArrowUp"] },
+        { name: "definitions", keys: ["ArrowUp"] },
+        { name: "imports", keys: ["ArrowUp", "ArrowUp"] },
     ];
 
     const assignmentTexts = ["x  = 0 \n", "x  = 0 \ny  = 0 \n" ];
 
     for (const assignmentText of assignmentTexts) {
         test(`Pasting "${assignmentText}" in imports puts it in definitions`, async ({page}) => {
-            await testPaste(page, "", ["ArrowUp", "ArrowUp", "ArrowUp"], assignmentText, makeStrypeFile(["", assignmentText, ""]));
+            await testPaste(page, "", ["ArrowUp", "ArrowUp"], assignmentText, makeStrypeFile(["", assignmentText, ""]));
         });
 
         test(`Pasting "${assignmentText}" in definitions remains there`, async ({page}) => {
-            await testPaste(page, "", ["ArrowUp", "ArrowUp"], assignmentText, makeStrypeFile(["", assignmentText, ""]));
+            await testPaste(page, "", ["ArrowUp"], assignmentText, makeStrypeFile(["", assignmentText, ""]));
         });
 
         test(`Pasting "${assignmentText}" in main puts it there`, async ({page}) => {
@@ -582,7 +582,7 @@ test.describe("Pasting a function with a leading self param removes it", () => {
 `;
 
     test("Pasting a function with only a self param into a class removes self", async ({page}) => {
-        await testPaste(page, classDest, ["End", "ArrowUp", "ArrowUp", "ArrowUp"], "def foo(self):\n    return 6\n", makeStrypeFile(["", `class Dest  :
+        await testPaste(page, classDest, ["End", "ArrowUp", "ArrowUp"], "def foo(self):\n    return 6\n", makeStrypeFile(["", `class Dest  :
     def existing (self, ) :
         pass
     def foo (self, ) :
@@ -591,7 +591,7 @@ test.describe("Pasting a function with a leading self param removes it", () => {
     });
 
     test("Pasting a function with a self param plus more params into a class removes self", async ({page}) => {
-        await testPaste(page, classDest, ["End", "ArrowUp", "ArrowUp", "ArrowUp"], "def foo(self, x, y):\n    return x+y\n", makeStrypeFile(["", `class Dest  :
+        await testPaste(page, classDest, ["End", "ArrowUp", "ArrowUp"], "def foo(self, x, y):\n    return x+y\n", makeStrypeFile(["", `class Dest  :
     def existing (self, ) :
         pass
     def foo (self,x,y ) :
@@ -600,13 +600,13 @@ test.describe("Pasting a function with a leading self param removes it", () => {
     });
 
     test("Pasting a function with only a self param into top-level functions removes self", async ({page}) => {
-        await testPaste(page, "", ["ArrowUp", "ArrowUp"], "def foo(self):\n    return 6\n", makeStrypeFile(["", `def foo ( ) :
+        await testPaste(page, "", ["ArrowUp"], "def foo(self):\n    return 6\n", makeStrypeFile(["", `def foo ( ) :
     return 6 
 `, ""]));
     });
 
     test("Pasting a function with a self param plus more params into top-level functions removes self", async ({page}) => {
-        await testPaste(page, "", ["ArrowUp", "ArrowUp"], "def foo(self, x, y):\n    return x+y\n", makeStrypeFile(["", `def foo (x,y ) :
+        await testPaste(page, "", ["ArrowUp"], "def foo(self, x, y):\n    return x+y\n", makeStrypeFile(["", `def foo (x,y ) :
     return x + y 
 `, ""]));
     });
@@ -622,7 +622,7 @@ class Dest:
         pass
 `;
     // Selects the whole "def bar(self, x): return x*2" method (header and body) inside Src:
-    const selectBarMethod = ["End", ...Array(7).fill("ArrowUp"), "Control+a"];
+    const selectBarMethod = ["End", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "ArrowUp", "Control+a"];
 
     test("Copying a method and pasting it into another class removes self", async ({page}) => {
         await testBeforeAfterPaste(page, twoClasses, selectBarMethod, "copy", ["ArrowDown", "ArrowDown"], makeStrypeFile(["", `class Src  :

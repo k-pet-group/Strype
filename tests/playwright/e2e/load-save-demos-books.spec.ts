@@ -1,5 +1,4 @@
 import {test, expect} from "@playwright/test";
-import {ARROWS_IMPORTS_TO_MAIN, arrowsUpFromMain} from "../../shared/main-heading-focus";
 import {save} from "../support/loading-saving";
 import {readFileSync} from "node:fs";
 import {setupStrypeTest} from "../support/general";
@@ -29,7 +28,9 @@ test.describe("Load/save book projects", () => {
             // in the main code section.  It was caused by having the frame cursor in the
             // imports or defs
             const original = readFileSync("public/book_vol01/chapter03/fireworks.spy", "utf8").replace(/\r\n/g, "\n");
-            await pressN("ArrowUp", arrowsUpFromMain(i))(page);
+            for (let j = 0; j < i; j++) {
+                await page.keyboard.press("ArrowUp");
+            }
             await page.click("#" + await strypeElIds.getEditorMenuUID());
             await page.locator("." + scssVars.strypeMenuItemClassName, {hasText: "Book projects..."}).click();
             await page.locator(".open-book-dlg-book-group-item", {hasText: "Chapter 3"}).first().click();
@@ -52,8 +53,10 @@ test.describe("Load/save book projects", () => {
             // Main so the "move up i times" logic below still exercises pasting with the caret in
             // Main/Defs/Imports respectively, now that Imports itself has also been cleared of its
             // default content:
-            await pressN("ArrowDown", ARROWS_IMPORTS_TO_MAIN)(page);
-            await pressN("ArrowUp", arrowsUpFromMain(i))(page);
+            await pressN("ArrowDown", 2)(page);
+            for (let j = 0; j < i; j++) {
+                await page.keyboard.press("ArrowUp");
+            }
             // doPagePaste already waits for the editor to settle after the paste, including
             // through the frame count changing while a large multi-frame paste is rendered:
             await doPagePaste(page, original);

@@ -4,7 +4,7 @@ import {expect} from "chai";
 import en from "@/localisation/en/en_main.json";
 
 import failOnConsoleError from "cypress-fail-on-console-error";
-import {cleanFromHTML, clearDefaultImports, getDefaultStrypeProjectDocumentationFullLine, pressFrameShortcut, pressFrameShortcutThenType, UP_MAIN_TO_DEFS} from "../support/test-support";
+import {cleanFromHTML, clearDefaultImports, getDefaultStrypeProjectDocumentationFullLine, pressFrameShortcut, pressFrameShortcutThenType} from "../support/test-support";
 import { scssVars, standardBeforeEach, strypeElIds } from "../support/standard-setup";
 failOnConsoleError();
 require("cypress-terminal-report/src/installLogsCollector")();
@@ -128,15 +128,13 @@ function noFrameDivBetween(parent: Element, descendent: Element) : boolean {
  * Sanity check the state of the editor (e.g. only one caret visible)
  */
 function sanityCheck(): Cypress.Chainable<JQuery<HTMLElement>> {
-    // Check exactly one caret visible or focused input field.
-    // (The frame cursor on the My code/Testing heading isn't drawn as a caret: the heading's text is outlined instead.)
-    const frameCursorSelector = "." + scssVars.caretClassName + ":not(." + scssVars.invisibleClassName + "), .frame-container-heading-focused";
+    // Check exactly one caret visible or focused input field:
     return cy.document().then((doc) => {
         if (doc?.getSelection()?.focusNode == null) {
-            return cy.get(frameCursorSelector).should("have.length", 1);
+            return cy.get("."+ scssVars.caretClassName + ":not(." + scssVars.invisibleClassName +")").should("have.length", 1);
         }
         else {
-            return cy.get(frameCursorSelector).should("not.exist");
+            return cy.get("." + scssVars.caretClassName + ":not(." + scssVars.invisibleClassName + ")").should("not.exist");
         }
     });
 }
@@ -309,7 +307,7 @@ describe("Adding frames", () => {
 describe("Classes", () => {
     it("Lets you add a class frame", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}");
         pressFrameShortcutThenType("c", "Foo");
         cy.get("body").type("{rightarrow}{rightarrow}{downarrow}foo()");
         checkCodeEquals(defaultImports.concat([
@@ -322,7 +320,7 @@ describe("Classes", () => {
     });
     it("Lets you add a class frame with a parent class", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}");
         pressFrameShortcutThenType("c", "Foo(Bar");
         cy.get("body").type("{rightarrow}{rightarrow}{rightarrow}{downarrow}foo()");
         checkCodeEquals(defaultImports.concat([
@@ -337,7 +335,7 @@ describe("Classes", () => {
     it("Lets you add a class frame with class attributes and methods", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         // Class header:
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}");
         pressFrameShortcutThenType("c", "Foo");
         // Constructor body:
         cy.get("body").type("{rightarrow}{rightarrow}{downarrow}foo()");
@@ -420,7 +418,7 @@ describe("Deleting frames", () => {
     it("Lets you delete a class member frame with delete", () => {
         // Makes a class with a constructor then we try to delete it:
         //(class followed by a pause, because it can take a bit longer to add its body/joint section)
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{upArrow}");
         pressFrameShortcut("c");
         cy.wait(100);
         cy.get("body").type("A{rightArrow}{rightArrow}");
@@ -526,17 +524,17 @@ describe("Wrapping frames", () => {
  
 describe("The My code heading", () => {
     it("Switches to the Testing section in the Python version only (the micro:bit version has nowhere to run tests)", () => {
-        const heading = "#frameContainer_-3 .frame-container-header .frame-container-label-span";
-        cy.get(heading).should("contain.text", "My code");
-        // One up from the top of My code is the heading (in the Python version, where it takes the cursor), then right arrow:
-        cy.get("body").type("{uparrow}{rightarrow}");
+        cy.get("#frameContainer_-3").should("be.visible");
         if (Cypress.env("mode") === "microbit") {
-            cy.get(heading).should("contain.text", "My code");
-            cy.get(".frame-container-heading-focused").should("not.exist");
+            // No toggle arrow, and clicking the heading doesn't do anything:
+            cy.get(".frame-container-heading-arrows").should("not.exist");
+            cy.get("#frameContainer_-3 .frame-container-header .frame-container-label-span").click();
+            cy.get("#frameContainer_-3").should("be.visible");
         }
         else {
-            cy.get(heading).should("contain.text", "Testing");
-            cy.get(".frame-container-heading-focused").should("exist");
+            cy.get(".frame-container-heading-arrows").click();
+            cy.get("#frameContainer_-3").should("not.be.visible");
+            cy.get("#frameContainer_-4").should("be.visible");
         }
     });
 });
@@ -544,7 +542,7 @@ describe("The My code heading", () => {
 describe("Copying key combination", () => {
     it("Check C inserts a class", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{upArrow}");
         cy.get("body").trigger("keydown", {keycode: 32, key: " ", code: "Space"});
         cy.get("body").trigger("keyup", {keycode: 32, key: " ", code: "Space"});
         cy.get("body").trigger("keydown", {keycode: 67, key: "c", code: "c"});
@@ -559,7 +557,7 @@ describe("Copying key combination", () => {
     it("Does not insert a class frame on Ctrl+C, when C is released first", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         // Make a function frame and select it:
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{upArrow}");
         pressFrameShortcutThenType("f", "foo{downArrow}{downArrow}");
         pressFrameShortcutThenType("r", "42{downArrow}{downArrow}{downArrow}{shift}{upArrow}");
         cy.get("body").trigger("keydown", {keycode: 17, key: "Control", code: "ControlLeft"});
@@ -571,7 +569,7 @@ describe("Copying key combination", () => {
     it("Does not insert a class frame on Ctrl+C, when C is released second", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));
         // Make a function frame and select it:
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{upArrow}");
         pressFrameShortcutThenType("f", "foo{downArrow}{downArrow}");
         pressFrameShortcutThenType("r", "42{downArrow}{downArrow}{downArrow}{shift}{upArrow}");
         cy.get("body").trigger("keydown", {keycode: 17, key: "Control", code: "ControlLeft"});

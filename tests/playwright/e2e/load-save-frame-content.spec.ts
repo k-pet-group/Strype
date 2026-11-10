@@ -8,8 +8,7 @@ import en from "../../../src/localisation/en/en_main.json";
 import {WINDOW_STRYPE_HTMLIDS_PROPNAME} from "../../../src/helpers/sharedIdCssWithTests";
 import {Page, test, expect, ElementHandle, JSHandle} from "@playwright/test";
 import { rename } from "fs/promises";
-import {checkFrameXorTextCursor, clearDefaultProject, pressFrameShortcut, pressN, typeIndividually, waitForEditorSettled} from "../support/editor";
-import {ARROWS_DEFS_TO_MAIN} from "../../shared/main-heading-focus";
+import {checkFrameXorTextCursor, clearDefaultProject, pressFrameShortcut, typeIndividually, waitForEditorSettled} from "../support/editor";
 import {readFileSync} from "node:fs";
 import {createBrowserProxy} from "../support/proxy";
 import {load, save} from "../support/loading-saving";
@@ -327,9 +326,7 @@ async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: s
         for (let j = 0; j < sections[section].length; j++) {
             await enterFrame(page, sections[section][j], false);
         }
-        // Crossing from Definitions to My code stops on the My code heading, where Space switches to Testing
-        // rather than opening the frame commands pane, so go on down into My code itself:
-        await pressN("ArrowDown", section == 1 ? ARROWS_DEFS_TO_MAIN : 1, true)(page);
+        await page.keyboard.press("ArrowDown");
         await waitForEditorSettled(page);
     }
     const dom = await getFramesFromDOM(page);

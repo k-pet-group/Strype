@@ -1,7 +1,6 @@
 import {ElementHandle, expect, JSHandle, Page, test} from "@playwright/test";
 import { checkConsoleContent, runButtonShowsRun, runToFinish, startRunning } from "../support/execution";
 import {checkFrameXorTextCursor, clearDefaultProject, doPagePaste, pressFrameShortcut, pressN, waitForEditorSettled} from "../support/editor";
-import {ARROWS_IMPORTS_TO_MAIN} from "../../shared/main-heading-focus";
 import {save} from "../support/loading-saving";
 import {readFileSync} from "node:fs";
 import {setupStrypeTest} from "../support/general";
@@ -152,7 +151,7 @@ test.describe("Undo scrolls location into view", () => {
             await clearDefaultProject(page);
             // clearDefaultProject leaves the caret at the top of Imports; return to Main, which
             // is where this test's content belongs:
-            await pressN("ArrowDown", ARROWS_IMPORTS_TO_MAIN)(page);
+            await pressN("ArrowDown", 2)(page);
             await doPagePaste(page, Array.from({ length: 100 }, (_, i) => `print("Hello #${i + 1}")`).join("\n"));
             const [actions, scrollTo] = undoTests[testIndex];
             const statesToUndoTo = [];
@@ -219,7 +218,7 @@ test.describe("Printing scrolls into view", () => {
         await clearDefaultProject(page);
         // clearDefaultProject leaves the caret at the top of Imports; return to Main, which is
         // where this test's content belongs:
-        await pressN("ArrowDown", ARROWS_IMPORTS_TO_MAIN)(page);
+        await pressN("ArrowDown", 2)(page);
         await doPagePaste(page, `
 from strype.graphics import get_key
 while (True):

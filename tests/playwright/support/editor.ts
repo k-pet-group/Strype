@@ -1,6 +1,5 @@
 import {Page, expect, ElementHandle} from "@playwright/test";
 import {WINDOW_STRYPE_NEXTTICK_PROPNAME} from "@/helpers/sharedIdCssWithTests";
-import {ARROWS_DEFS_TO_MAIN, arrowsUpFromMain} from "../../shared/main-heading-focus";
 
 // Keys that insert their frame type directly, without a Tab/Space prefix first (see
 // alwaysDirectFrameShortcutKeys in src/helpers/editor.ts) -- every other key (any letter) needs
@@ -108,8 +107,6 @@ export async function checkFrameXorTextCursor(page: Page, specificFrameCursor?: 
         for (let i = 0; i < nodes.length; i++) {
             r.push("#" + (nodes[i].id ?? "<unknown>"));
         }
-        // The frame cursor on the My code/Testing heading isn't drawn as a caret: the heading's text is outlined instead
-        document.querySelectorAll(".frame-container-heading-focused").forEach(() => r.push("<heading>"));
         return r;
     });
     const numFrameCursors = frameCursorIds.length;
@@ -367,24 +364,19 @@ async function deleteFramesUpTo(page: Page, containerSelector: string, maxPresse
     await deleteFramesUpTo(page, containerSelector, maxPresses - 1);
 }
 
-// The "My code" heading is a stop for the frame cursor, and left/right arrow or Space there switch the
-// third section between the main code ("My code") and the testing code ("Testing"). These helpers
-// assume the frame cursor is in My code (as it is after load, and after clearing the editor).
+// Clicking the arrow on the "My code" heading switches the third section between the main code ("My code")
+// and the testing code ("Testing"), and puts the frame cursor at the top of the section now showing.
+// These helpers assume the third section is currently showing the main code (as it is after load).
 
-// Moves from the main code to the heading and switches to the testing code; the cursor stays on the heading.
+// Switches to the testing code; the frame cursor is at the top of it, ready for frame shortcuts to add things there.
 export async function switchToTestingFromMain(page: Page) : Promise<void> {
-    await page.keyboard.press("ArrowUp");
-    await waitForEditorSettled(page);
-    await page.keyboard.press("ArrowRight");
+    await page.locator(".frame-container-heading-arrows").click();
     await waitForEditorSettled(page);
 }
 
-// As switchToTestingFromMain(), and then moves down into the (top of the) testing code, ready for
-// frame shortcuts to add things there.
+// As above, for use where the intent is to start working in the testing code.
 export async function enterTestingSection(page: Page) : Promise<void> {
     await switchToTestingFromMain(page);
-    await page.keyboard.press("ArrowDown");
-    await waitForEditorSettled(page);
 }
 
 // Deletes every frame currently in Main, Definitions, Imports and Testing -- not just the default
@@ -418,35 +410,32 @@ export async function clearDefaultProject(page: Page) : Promise<void> {
     await page.keyboard.press("ArrowDown");
     await waitForEditorSettled(page);
     await deleteFramesUpTo(page, "#frameContainer_-2");
-    await pressN("ArrowDown", ARROWS_DEFS_TO_MAIN, true)(page);
+    await page.keyboard.press("ArrowDown");
+    await waitForEditorSettled(page);
     await deleteFramesUpTo(page, "#frameContainer_-3");
     // The testing code is not showing (and so can't be navigated to) unless the heading is switched to it,
     // so only do that if there is anything there to delete. The count includes the hidden frames:
-    const hasTestingFrames = await page.locator("#frameContainer_-4 .frame-div").count() > 0;
-    if (hasTestingFrames) {
+    if (await page.locator("#frameContainer_-4 .frame-div").count() > 0) {
         await enterTestingSection(page);
         await deleteFramesUpTo(page, "#frameContainer_-4");
-        // Back up to the heading, and switch back to the main code:
-        await page.keyboard.press("ArrowUp");
+        // Switch back to the main code, which puts the cursor at the top of it:
+        await page.locator(".frame-container-heading-arrows").click();
         await waitForEditorSettled(page);
-        await page.keyboard.press("ArrowLeft");
-        await waitForEditorSettled(page);
-        // Now on the heading, which is one step closer to the top than the top of the main code is:
-        await pressN("ArrowUp", arrowsUpFromMain(2) - 1, true)(page);
-    }
-    else {
-        await pressN("ArrowUp", arrowsUpFromMain(2), true)(page);
     }
     // Belt-and-braces check that we truly ended up at 0, on top of the settling above:
     await expect(page.locator(".frame-div")).toHaveCount(0, {timeout: 4000});
+    // Return to the top of Imports, where callers of this function expect to end up:
+    await page.keyboard.press("ArrowUp");
+    await waitForEditorSettled(page);
+    await page.keyboard.press("ArrowUp");
+    await waitForEditorSettled(page);
 }
 
 export async function enterCode(page: Page, codeSections : string[]) : Promise<void> {
     await clearDefaultProject(page);
-    for (const [index, codeSection] of codeSections.entries()) {
+    for (const codeSection of codeSections) {
         // doPagePaste already waits for the editor (including frame count) to settle:
         await doPagePaste(page, codeSection);
-        // Sections are Imports, Definitions, Main; crossing from Definitions to Main may take more than one press:
-        await pressN("ArrowDown", index == 1 ? ARROWS_DEFS_TO_MAIN : 1)(page);
+        await page.keyboard.press("ArrowDown");
     }
 }

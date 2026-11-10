@@ -2,7 +2,7 @@ require("cypress-terminal-report/src/installLogsCollector")();
 import { standardBeforeEach } from "../support/standard-setup";
 import pixelmatch from "pixelmatch";
 import failOnConsoleError from "cypress-fail-on-console-error";
-import { DOWN_DEFS_TO_MAIN, focusEditorAndClear, upFromMain } from "../support/test-support";
+import { focusEditorAndClear } from "../support/test-support";
 import { decodePngBase64, encodePngBase64, DecodedImage } from "../support/png-codec";
 failOnConsoleError();
 
@@ -125,13 +125,13 @@ function checkImageViaDownload(functions: string, main: string, downloadStem: st
 }
 
 function enterAndExecuteCode(functions: string, main: string, timeToWaitMillis = 500, terminationExpected = true) {
-    cy.get("body").type(upFromMain(2));
+    cy.get("body").type("{uparrow}{uparrow}");
     (cy.get("body") as any).paste("from strype.graphics import *\nfrom time import sleep\nimport math\n");
     cy.wait(500);
     cy.get("body").type("{downarrow}");
     (cy.get("body") as any).paste(functions);
     cy.wait(500);
-    cy.get("body").type(DOWN_DEFS_TO_MAIN);
+    cy.get("body").type("{downarrow}");
     (cy.get("body") as any).paste(main);
     cy.wait(500);
     cy.contains("button.pea-display-tab", "Graphics").click();

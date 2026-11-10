@@ -1,5 +1,5 @@
 import { scssVars } from "../support/standard-setup";
-import {clearDefaultImports, pressFrameShortcut, pressFrameShortcutThenType, waitForEditorSettled, UP_MAIN_TO_DEFS, DOWN_EXTRA_PAST_HEADING} from "../support/test-support";
+import {clearDefaultImports, pressFrameShortcut, pressFrameShortcutThenType, waitForEditorSettled} from "../support/test-support";
 
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
@@ -17,7 +17,7 @@ describe("Control flow", () => {
     it("Offers auto-complete for return of input() function", () => {
         focusEditorAC();
         // Go up to functions section, add a function named "foo", a description "bar", then go into body:
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}");
         pressFrameShortcutThenType("f", "foo{rightarrow}{rightarrow}bar{downarrow}");
         cy.get("body").type("=level=input('Choose a level between 1 and 6:'){downarrow}");
         pressFrameShortcutThenType("i", "level.");
@@ -55,7 +55,7 @@ describe("Function params", () => {
     it("Shows function param in if", () => {
         focusEditorAC();
         // Go up to functions section, add a function named "foo", a description "bar", then go into body:
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}");
         pressFrameShortcut("f");
         cy.get("body").type("getGuess{rightarrow}alreadyGuessed{rightarrow}{downarrow}");
         cy.get("body").type("=guess=input('Guess a letter:'){downarrow}");
@@ -73,7 +73,7 @@ describe("Function params", () => {
     it("Shows function param in elif", () => {
         focusEditorAC();
         // Go up to functions section, add a function named "foo", a description "bar", then go into body:
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}");
         pressFrameShortcutThenType("f", "getGuess{rightarrow}alreadyGuessed{rightarrow}{downarrow}");
         cy.get("body").type("=guess=input('Guess a letter:'){downarrow}");
         pressFrameShortcut("i");
@@ -100,7 +100,7 @@ describe("Function params: types inferred from callers", () => {
         // A caller elsewhere in "My code" gives evidence that s is a string:
         cy.get("body").type("foo(\"hi\"){enter}");
         // Go up to functions section and define foo(s):
-        cy.get("body").type("{uparrow}" + UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}{uparrow}");
         pressFrameShortcutThenType("f", "foo{rightarrow}s{rightarrow}{downarrow}");
         cy.get("body").type("s.");
         cy.wait(500);
@@ -115,7 +115,7 @@ describe("Function params: types inferred from callers", () => {
     it("Shows int members (not string members) for a top-level function param, inferred from a caller", () => {
         focusEditorAC();
         cy.get("body").type("foo(5){enter}");
-        cy.get("body").type("{uparrow}" + UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}{uparrow}");
         pressFrameShortcutThenType("f", "foo{rightarrow}n{rightarrow}{downarrow}");
         cy.get("body").type("n.");
         cy.wait(500);
@@ -133,7 +133,7 @@ describe("Function params: types inferred from callers", () => {
         // Two callers give conflicting evidence (str and int), which share no members:
         cy.get("body").type("foo(\"hi\"){enter}");
         cy.get("body").type("foo(5){enter}");
-        cy.get("body").type("{uparrow}{uparrow}" + UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}{uparrow}{uparrow}");
         pressFrameShortcutThenType("f", "foo{rightarrow}s{rightarrow}{downarrow}");
         cy.get("body").type("s.");
         cy.wait(500);
@@ -161,7 +161,7 @@ describe("Function params: types inferred from callers", () => {
         focusEditorAC();
         // Make a class frame "foo" (default __init__(self, bar)), myF(self, s) itself, then a
         // "helper" method (defined after myF) calling myF with a string:
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}");
         pressFrameShortcut("c");
         cy.get("body").type("foo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}");
         pressFrameShortcut("f");
@@ -181,7 +181,7 @@ describe("Function params: types inferred from callers", () => {
 
     it("Shows int members (not string members) for a class method param, inferred from a sibling method caller", () => {
         focusEditorAC();
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}");
         pressFrameShortcut("c");
         cy.get("body").type("foo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}");
         pressFrameShortcut("f");
@@ -201,7 +201,7 @@ describe("Function params: types inferred from callers", () => {
 
     it("Shows no completions for a class method param called with mixed types", () => {
         focusEditorAC();
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}");
         pressFrameShortcut("c");
         cy.get("body").type("foo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}");
         pressFrameShortcut("f");
@@ -229,11 +229,11 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
     it("Shows Actor members for a top-level function param, inferred from a caller", () => {
         focusEditorAC();
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         pressFrameShortcutThenType("=", "myActor=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
         cy.get("body").type("foo(myActor){enter}");
         waitForEditorSettled();
-        cy.get("body").type("{uparrow}{uparrow}" + UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}{uparrow}{uparrow}");
         pressFrameShortcutThenType("f", "foo{rightarrow}a{rightarrow}{downarrow}");
         cy.get("body").type("a.");
         cy.wait(500);
@@ -248,11 +248,11 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
     it("Infers 3+ top-level function params independently from a single caller", () => {
         focusEditorAC();
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         pressFrameShortcutThenType("=", "myActor=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
         // One caller gives evidence for all 3 params at once (string, int, Actor):
         cy.get("body").type("foo(\"hi\",5,myActor){enter}");
-        cy.get("body").type("{uparrow}{uparrow}" + UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}{uparrow}{uparrow}");
         pressFrameShortcutThenType("f", "foo{rightarrow}s,n,a{rightarrow}{downarrow}");
         cy.get("body").type("s.");
         cy.wait(500);
@@ -303,10 +303,10 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
     it("Shows Actor members for a top-level function param, inferred from a get_actors() for-loop variable (blocked by Strype's loop-exclusion in getCodeWithoutErrors(), not TigerPython)", () => {
         focusEditorAC();
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         pressFrameShortcutThenType("=", "a=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
         pressFrameShortcutThenType("f", "p{rightarrow}get_actors(){rightarrow}foo(p){enter}");
-        cy.get("body").type("{uparrow}{uparrow}{uparrow}" + UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}{uparrow}{uparrow}{uparrow}");
         pressFrameShortcutThenType("f", "foo{rightarrow}x{rightarrow}{downarrow}");
         cy.get("body").type("x.");
         cy.wait(500);
@@ -323,7 +323,7 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
     it("Shows Actor members for a get_actors() for-loop variable directly (blocked by Strype's loop-exclusion in getCodeWithoutErrors(), not TigerPython)", () => {
         focusEditorAC();
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         pressFrameShortcutThenType("f", "p{rightarrow}get_actors(){rightarrow}p.");
         cy.wait(500);
         cy.get("body").type("{ctrl} ");
@@ -345,9 +345,9 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
         // than also tripping the separate call-must-be-after-definition ordering requirement.)
         focusEditorAC();
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         cy.get("body").type("=myActor=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
-        cy.get("body").type("{uparrow}" + UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}{uparrow}");
         pressFrameShortcut("c");
         cy.get("body").type("foo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}");
         pressFrameShortcut("f");
@@ -367,9 +367,9 @@ describe("Function params: types inferred from callers (Actor, multiple params)"
     it("Infers 3+ class method params independently from a single sibling method caller", () => {
         focusEditorAC();
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         cy.get("body").type("=myActor=Actor(\"cat-test.jpg\",0,0,\"t\"){enter}");
-        cy.get("body").type("{uparrow}" + UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}{uparrow}");
         pressFrameShortcut("c");
         cy.get("body").type("foo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}");
         pressFrameShortcut("f");
@@ -426,7 +426,7 @@ describe("Global variable type inference inside functions", () => {
         // Assign a = "hi" in "My code":
         cy.get("body").type("=a=\"hi\"{enter}");
         // Go up to Definitions and make a function foo() with body: global a / a.<dot>
-        cy.get("body").type("{uparrow}" + UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}{uparrow}");
         pressFrameShortcutThenType("f", "foo{rightarrow}{rightarrow}{downarrow}");
         pressFrameShortcutThenType("g", "a{enter}");
         cy.get("body").type("a.");
@@ -444,7 +444,7 @@ describe("Global variable type inference inside functions", () => {
         // Assign b = "bye" in "My code":
         cy.get("body").type("=b=\"bye\"{enter}");
         // Go up to Definitions and make a function bar() with body: b.<dot> (no "global" needed to read b):
-        cy.get("body").type("{uparrow}" + UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}{uparrow}");
         pressFrameShortcutThenType("f", "bar{rightarrow}{rightarrow}{downarrow}");
         cy.get("body").type("b.");
         cy.wait(500);

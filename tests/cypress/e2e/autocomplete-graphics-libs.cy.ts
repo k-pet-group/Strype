@@ -1,5 +1,5 @@
 import { scssVars } from "../support/standard-setup";
-import {clearDefaultImports, pressFrameShortcut, pressFrameShortcutThenType, waitForEditorSettled, DOWN_EXTRA_PAST_HEADING} from "../support/test-support";
+import {clearDefaultImports, pressFrameShortcut, pressFrameShortcutThenType, waitForEditorSettled} from "../support/test-support";
 
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
@@ -21,7 +21,7 @@ describe("Graphics library", () => {
         focusEditorAC();
         // Add graphics import:
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function frame and trigger auto-complete:
         // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
         // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
@@ -42,7 +42,7 @@ describe("Graphics library", () => {
         focusEditorAC();
         // Add graphics import:
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function frame and trigger auto-complete:
         // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
         // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
@@ -57,7 +57,7 @@ describe("Graphics library", () => {
         focusEditorAC();
         // Add graphics import:
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function call frame and trigger auto-complete:
         cy.get("body").type(" c");
         cy.wait(500);
@@ -72,7 +72,7 @@ describe("Graphics library", () => {
         focusEditorAC();
         // Add graphics import:
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function call frame and trigger auto-complete:
         cy.get("body").type(" c");
         cy.wait(500);
@@ -87,7 +87,7 @@ describe("Graphics library", () => {
         focusEditorAC();
         // Add graphics import:
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.sound{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.sound{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function call frame and trigger auto-complete:
         cy.get("body").type(" c");
         cy.wait(500);
@@ -103,7 +103,7 @@ describe("Graphics library", () => {
             focusEditorAC();
             // Add graphics import:
             clearDefaultImports();
-            pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+            pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
             // Add a function call frame and trigger auto-complete:
             cy.get("body").type(" c");
             cy.wait(500);
@@ -128,7 +128,7 @@ describe("Graphics library", () => {
             focusEditorAC();
             // Add graphics import:
             clearDefaultImports();
-            pressFrameShortcutThenType("f", "strype.sound{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+            pressFrameShortcutThenType("f", "strype.sound{rightarrow}*{rightarrow}{downarrow}{downarrow}");
             // Add a function call frame and trigger auto-complete:
             cy.get("body").type(" c");
             cy.wait(500);
@@ -149,7 +149,7 @@ describe("Graphics library", () => {
         focusEditorAC();
         // Add graphics import:
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Make an actor:
         cy.get("body").type("=a=Actor('cat-test.jpg'){rightarrow}");
         // Add a function frame and trigger auto-complete:
@@ -182,7 +182,7 @@ describe("Graphics library", () => {
         focusEditorAC();
         // Add graphics import:
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Make an actor, then fetch the list of all actors:
         cy.get("body").type("=a=Actor('cat-test.jpg'){rightarrow}");
         cy.get("body").type("=all_actors=get_actors(){rightarrow}");
@@ -201,7 +201,7 @@ describe("Graphics library", () => {
         focusEditorAC();
         // Add graphics import:
         clearDefaultImports();
-        cy.get("body").type("from strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        cy.get("body").type("from strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Make an actor, then fetch the list of all actors:
         cy.get("body").type(" =a=Actor('cat-test.jpg')");
         cy.get("body").type("{rightarrow}");
@@ -229,7 +229,7 @@ describe("Graphics library", () => {
         focusEditorAC();
         // Add graphics import:
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Make an actor so that there is something for get_actor_at to find:
         cy.get("body").type("=a=Actor('cat-test.jpg'){rightarrow}");
         // Add a function frame and trigger auto-complete on the (Actor | None) result:
@@ -247,7 +247,7 @@ describe("Graphics library", () => {
         focusEditorAC();
         // Add graphics import:
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Make an image:
         cy.get("body").type("=e=Image(100, 100){rightarrow}");
         // Add a function frame and trigger auto-complete:
@@ -268,7 +268,7 @@ describe("Graphics library", () => {
         focusEditorAC();
         // Add graphics import:
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Make an image:
         cy.get("body").type("=e=Image(100, 100){rightarrow}");
         // Add a function frame and trigger auto-complete:
@@ -289,7 +289,7 @@ describe("Graphics library", () => {
         focusEditorAC();
         // Add graphics import:
         clearDefaultImports();
-        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "strype.graphics{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Make an image:
         cy.get("body").type("=a=Actor('blah'){rightarrow}");
         // Add a function frame and trigger auto-complete:
@@ -470,7 +470,7 @@ describe("Modules from libraries", () => {
         // Add graphics import:
         clearDefaultImports();
         pressFrameShortcutThenType("l", "http://localhost:8089/test-library{rightarrow}");
-        pressFrameShortcutThenType("f", "mediacomp{rightarrow}*{rightarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "mediacomp{rightarrow}*{rightarrow}{downarrow}{downarrow}");
         // Add a function call frame and trigger auto-complete:
         cy.get("body").type(" c");
         cy.wait(500);

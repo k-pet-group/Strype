@@ -2,7 +2,7 @@
 // into the URL
 
 require("cypress-terminal-report/src/installLogsCollector")();
-import { focusEditorAndClear, getDefaultStrypeProjectDocumentationFullLine, upFromMain } from "../support/test-support";
+import { focusEditorAndClear, getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
 import { initialiseSupportStrypeGlobals, standardBeforeEach, strypeElIds } from "../support/standard-setup";
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
@@ -176,7 +176,7 @@ describe("Tests loading project descriptions", () => {
     });
     it("Loads a project with docs when there is already a project description", () => {
         focusEditorAndClear();
-        cy.get("body").type(upFromMain(2) + "{leftarrow}Temporary description.");
+        cy.get("body").type("{uparrow}{uparrow}{leftarrow}Temporary description.");
         testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-documented.spy");
     });
     it("Loads a project description over the top of another", () => {
@@ -189,7 +189,7 @@ describe("Tests loading project descriptions", () => {
     });
     it("Loads a project without docs when there is already a project description", () => {
         focusEditorAndClear();
-        cy.get("body").type(upFromMain(2) + "{leftarrow}Temporary description.");
+        cy.get("body").type("{uparrow}{uparrow}{leftarrow}Temporary description.");
         testLoadingFromCalculatedShareLink("tests/cypress/fixtures/project-basic.spy");
     });
 });

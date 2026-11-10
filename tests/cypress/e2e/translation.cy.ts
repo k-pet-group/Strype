@@ -10,7 +10,7 @@ import {expect} from "chai";
 import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 import { scssVars, standardBeforeEach, strypeElIds } from "../support/standard-setup";
-import { pressFrameShortcutThenType, UP_MAIN_TO_DEFS } from "../support/test-support";
+import { pressFrameShortcutThenType } from "../support/test-support";
 
 /**
  * Given a JQuery with multiple results and an array of expected string content,
@@ -67,7 +67,7 @@ function checkTranslationsForLocale(locale: string): void {
 
     // Check that sections in the autocomplete are translated:
     // Add a function:
-    cy.get("body").type(UP_MAIN_TO_DEFS);
+    cy.get("body").type("{uparrow}");
     pressFrameShortcutThenType("f", "foo{downarrow}{downarrow}");
     // And a variable:
     cy.get("body").type("{downarrow}=bar=3{rightarrow}");

@@ -1,5 +1,5 @@
 import { scssVars } from "../support/standard-setup";
-import { clearDefaultImports, pressFrameShortcut, pressFrameShortcutThenType, UP_MAIN_TO_DEFS, DOWN_EXTRA_PAST_HEADING } from "../support/test-support";
+import { clearDefaultImports, pressFrameShortcut, pressFrameShortcutThenType } from "../support/test-support";
 
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
@@ -409,8 +409,8 @@ describe("Nested modules", () => {
                 checkExactlyOneItem(acIDSel, BUILTIN, "abs(x)");
             }, true);
             // Now let's delete the import and check they both vanish: (we do it in 2 steps as the latest key hits are not always working)
-            cy.get("body").type("{leftarrow}" + UP_MAIN_TO_DEFS + "{uparrow}{backspace}");
-            cy.get("body").type("{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+            cy.get("body").type("{leftarrow}{uparrow}{uparrow}{backspace}");
+            cy.get("body").type("{downarrow}{downarrow}");
             // Enter frame again:
             // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
             // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
@@ -586,10 +586,10 @@ describe("Underscore handling", () => {
     it("Offers user's own definitions, even if they start with underscores", () => {
         focusEditorAC();
         // Go up to functions section, add a function named "__myFunction" then come down the function definition:
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}");
         pressFrameShortcutThenType("f", "__myFunction{rightarrow}myParam{downarrow}{downarrow}{downarrow}");
         // Make a class called _myClass then come back down the "my code" section
-        pressFrameShortcutThenType("c", "__myClass{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("c", "__myClass{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}");
         // Make a variable called __myVar:
         cy.get("body").type("=__myVar=42{enter}");
         // Add a function frame and trigger auto-complete:

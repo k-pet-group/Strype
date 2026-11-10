@@ -1,5 +1,5 @@
 import { scssVars } from "../support/standard-setup";
-import { clearDefaultImports, pressFrameShortcutThenType, UP_MAIN_TO_DEFS, DOWN_EXTRA_PAST_HEADING } from "../support/test-support";
+import { clearDefaultImports, pressFrameShortcutThenType } from "../support/test-support";
 
 require("cypress-terminal-report/src/installLogsCollector")();
 import "@testing-library/cypress/add-commands";
@@ -20,8 +20,8 @@ describe("User-defined items", () => {
     it("Offers auto-complete for user-defined functions", () => {
         focusEditorAC();
         // Go up to functions section, add a function named "foo", a description "bar", then come back down and make a function call frame:
-        cy.get("body").type(UP_MAIN_TO_DEFS);
-        pressFrameShortcutThenType("f", "foo{rightarrow}{rightarrow}bar{downarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING + "  ");
+        cy.get("body").type("{uparrow}");
+        pressFrameShortcutThenType("f", "foo{rightarrow}{rightarrow}bar{downarrow}{downarrow}{downarrow}  ");
         cy.wait(500);
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
@@ -40,8 +40,8 @@ describe("User-defined items", () => {
     it("Offers auto-complete for user-defined functions with *", () => {
         focusEditorAC();
         // Go up to functions section, add a function named "foo" then come back down and make a function call frame:
-        cy.get("body").type(UP_MAIN_TO_DEFS);
-        pressFrameShortcutThenType("f", "foo(a,*,b){downarrow}{downarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING + "  ");
+        cy.get("body").type("{uparrow}");
+        pressFrameShortcutThenType("f", "foo(a,*,b){downarrow}{downarrow}{downarrow}{downarrow}  ");
         cy.wait(500);
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
@@ -76,7 +76,7 @@ describe("User-defined items", () => {
         // The 2 arrow-ups navigate from Main up into (empty) Definitions -- unaffected by Imports'
         // content, since that path never passes through Imports, so this doesn't need clearing the
         // default imports the way the import-focused tests below do:
-        cy.get("body").type("=myVar=\"hello\"{enter}{uparrow}" + UP_MAIN_TO_DEFS);
+        cy.get("body").type("=myVar=\"hello\"{enter}{uparrow}{uparrow}");
         pressFrameShortcutThenType("f", "foo{rightarrow}{rightarrow}{rightarrow}  ");
         cy.wait(500);
         // Trigger auto-completion:
@@ -118,7 +118,7 @@ describe("User-defined items", () => {
         focusEditorAC();
         // Make a function frame with "foo(myParam)" 
         // then make a function call frame inside:
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}");
         pressFrameShortcutThenType("f", "foo(myParam{rightarrow}{rightarrow}  ");
         // Trigger auto-completion:
         cy.get("body").type("{ctrl} ");
@@ -128,7 +128,7 @@ describe("User-defined items", () => {
             // Go out of this call and into the main body:
             cy.get("body").type("{backspace}");
             cy.wait(500);
-            cy.get("body").type("{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+            cy.get("body").type("{downarrow}{downarrow}");
         }, false);
         // Make a function call and check myParam doesn't show there:
         // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
@@ -210,8 +210,8 @@ describe("User-defined items", () => {
     it("Offers auto-complete for user-defined classes", () => {
         focusEditorAC();
         // Go up to definitions section, add a class named "foo", a documentation "bar", then come back down and make a class call frame:
-        cy.get("body").type(UP_MAIN_TO_DEFS);
-        pressFrameShortcutThenType("c", "foo{rightarrow}bar{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING + "  ");
+        cy.get("body").type("{uparrow}");
+        pressFrameShortcutThenType("c", "foo{rightarrow}bar{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}  ");
         cy.wait(500);
         // Trigger auto-complete:
         cy.get("body").type("{ctrl} ");
@@ -231,7 +231,7 @@ describe("User-defined items", () => {
         focusEditorAC();
         // Make a class frame with "foo" and the params for the init function "bar, vaz",
         // then make a function call frame inside:
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}");
         pressFrameShortcutThenType("c", "foo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar,vaz{rightarrow}{rightarrow}");
         cy.wait(500);
         // Trigger auto-completion:
@@ -245,7 +245,7 @@ describe("User-defined items", () => {
             // Go out of this call and into the main body:
             cy.get("body").type("{backspace}");
             cy.wait(500);
-            cy.get("body").type("{downarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+            cy.get("body").type("{downarrow}{downarrow}{downarrow}");
         }, false);
         // Make a function call and check "self, bar, vaz" don't show there:
         // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
@@ -264,7 +264,7 @@ describe("User-defined items", () => {
         focusEditorAC();
         // Make a class frame with "foo" and the params for the init function "bar",
         // then add function definition "myF" frame with parameters "vaz, param2" and go inside:
-        cy.get("body").type(UP_MAIN_TO_DEFS);
+        cy.get("body").type("{uparrow}");
         pressFrameShortcutThenType("c", "foo{downarrow}{downarrow}{downarrow}{leftarrow}{leftarrow}bar{rightarrow}{rightarrow}{downarrow}");
         pressFrameShortcutThenType("f", "myF{rightarrow}vaz,param2{rightarrow}{rightarrow}");
         cy.wait(500);
@@ -279,7 +279,7 @@ describe("User-defined items", () => {
             // Go out of this call and into the main body:
             cy.get("body").type("{backspace}");
             cy.wait(500);
-            cy.get("body").type("{downarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+            cy.get("body").type("{downarrow}{downarrow}{downarrow}");
         }, false);
         // Make a function call and check "self, bar, vaz, param2", and the classes function, don't show there:
         // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
@@ -319,7 +319,7 @@ describe("User-defined items", () => {
         pressFrameShortcutThenType("f", `${parentImport[0]}{rightarrow}${parentImport[1]}{downarrow}{downarrow}`);
         // Make a class frame with "foo(<parent class>)" and delete the init function, add a function "myF", then go to my code
         pressFrameShortcutThenType("c", `foo(${parentClassName}{downarrow}{downarrow}{del}`);
-        pressFrameShortcutThenType("f", "myF{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+        pressFrameShortcutThenType("f", "myF{downarrow}{downarrow}{downarrow}{downarrow}{downarrow}");
         // Trigger auto-completion on a function call frame:
         // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers
         // autocomplete in it in one go (see Commands.vue's Ctrl+Space handler):
@@ -331,7 +331,7 @@ describe("User-defined items", () => {
             // Go out of this call and into the main body:
             cy.get("body").type("{backspace}");
             cy.wait(500);
-            cy.get("body").type("{downarrow}{downarrow}{downarrow}" + DOWN_EXTRA_PAST_HEADING);
+            cy.get("body").type("{downarrow}{downarrow}{downarrow}");
         }, true);
         // Make a function call and check "self" doesn't show there:
         // Ctrl+Space at the bare frame caret creates an empty func-call frame and triggers

@@ -9,7 +9,7 @@ import path from "path";
 // imports the locale files we need for the locales used by this test
 import en from "@/localisation/en/en_main.json";
 
-import { DOWN_IMPORTS_TO_MAIN, focusEditorAndClear, getDefaultStrypeProjectDocumentationFullLine, upFromMain } from "../support/test-support";
+import { focusEditorAndClear, getDefaultStrypeProjectDocumentationFullLine } from "../support/test-support";
 
 
 failOnConsoleError();
@@ -85,10 +85,10 @@ function checkConsoleContent(expectedContent : string) {
 }
 
 function enterImports() {
-    cy.get("body").type(upFromMain(2));
+    cy.get("body").type("{uparrow}{uparrow}");
     (cy.get("body") as any).paste("from strype.graphics import *\nfrom strype.sound import *\nfrom time import sleep\nimport math\n", "text");
     cy.wait(2000);
-    cy.get("body").type(DOWN_IMPORTS_TO_MAIN);
+    cy.get("body").type("{downarrow}{downarrow}");
 }
 function executeCode(switchToGraphics = true) {
     if (switchToGraphics) {

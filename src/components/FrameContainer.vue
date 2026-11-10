@@ -5,7 +5,7 @@
             <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
             <!-- In the Python version, the heading of the third section is a pair of tabs: "My code" and "Test code", of which only the selected one is showing below -->
             <div v-if="isMainCodeFrameContainer && testingSectionAvailable" class="frame-container-tabs" role="tablist">
-                <span v-for="tab in headingTabs" :key="tab.id" role="tab" :aria-selected="tab.selected" :data-tab="tab.id"
+                <span v-for="tab in headingTabs" :key="tab.id" role="tab" :aria-selected="tab.selected" :data-tab="tab.id" :title="tab.tip"
                       :class="{'frame-container-tab': true, 'frame-container-tab-selected': tab.selected, 'frame-container-tab-clickable': !tab.selected && !isPythonExecuting}"
                       @click.stop="selectHeadingTab(tab.showsTests)">{{tab.label}}</span>
             </div>
@@ -52,6 +52,7 @@ import { CustomEventTypes, getCaretContainerRef, getFrameUID} from "@/helpers/ed
 import scssVars from "@/assets/style/_export.module.scss";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
 import { TestingSectionAvailable } from "@/helpers/appContext";
+import { isMacOSPlatform } from "@/helpers/common";
 import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
 
 //////////////////////
@@ -127,12 +128,15 @@ export default defineComponent({
 
         // The tabs of the heading of the third section: one for the main code and one for the testing code, labelled with the
         // containers' headings (those end in a colon, which a tab doesn't need)
-        headingTabs(): {id: string, label: string, selected: boolean, showsTests: boolean}[] {
+        // The tab that isn't selected has a tooltip with the keyboard shortcut to switch to it (see Commands.vue)
+        headingTabs(): {id: string, label: string, selected: boolean, showsTests: boolean, tip?: string}[] {
             const tabLabel = (label: string) => label.replace(/\s*[:\uFF1A]\s*$/, "");
-            return [
+            const shortcut = isMacOSPlatform() ? "Option+T" : "Alt+T";
+            const tabs = [
                 {id: "main", label: tabLabel(this.containerLabel ?? ""), selected: !this.isShowingTests, showsTests: false},
                 {id: "tests", label: tabLabel(this.$t("appMessage.testsContainer")), selected: this.isShowingTests, showsTests: true},
             ];
+            return tabs.map((tab) => ({...tab, tip: tab.selected ? undefined : this.$t("appMessage.switchToSectionTip", {section: tab.label, shortcut})}));
         },
 
         // Of the main code and the testing code, only one is shown at a time

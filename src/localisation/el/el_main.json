@@ -32,6 +32,7 @@
     "mainContainer": "Ο Κώδικας μου:",
     "testsContainer": "Δοκιμές:",
     "runTestsButton": "Εκτέλεση δοκιμών",
+    "switchToSectionTip": "Εναλλαγή σε {section} ({shortcut})",
     "testPassed": "Αυτή η δοκιμή πέρασε",
     "testFailed": "Αυτή η δοκιμή απέτυχε",
     "testPassBadge": "Επιτυχία",

@@ -83,6 +83,7 @@
     "mainContainer": "Mi código:",
     "testsContainer": "Pruebas:",
     "runTestsButton": "Ejecutar pruebas",
+    "switchToSectionTip": "Cambiar a {section} ({shortcut})",
     "testPassed": "Esta prueba ha pasado",
     "testFailed": "Esta prueba ha fallado",
     "testPassBadge": "Pasa",

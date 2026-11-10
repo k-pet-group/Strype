@@ -83,6 +83,11 @@ test.describe("Testing section", () => {
         await expect(testsTab(page)).toHaveClass(/frame-container-tab-clickable/);
         await expect(mainTab(page)).not.toHaveClass(/frame-container-tab-clickable/);
 
+        // The tab that isn't selected has a tooltip with the keyboard shortcut to switch to it (Option+T on a Mac, Alt+T otherwise):
+        const shortcutHint = (await page.evaluate(() => navigator.platform)).includes("Mac") ? "Option+T" : "Alt+T";
+        await expect(testsTab(page)).toHaveAttribute("title", "Switch to Test code (" + shortcutHint + ")");
+        await expect(mainTab(page)).not.toHaveAttribute("title", /.+/);
+
         // Clicking the other tab switches, and puts the frame cursor at the top of the section now showing:
         await testsTab(page).click();
         await waitForEditorSettled(page);
@@ -97,6 +102,9 @@ test.describe("Testing section", () => {
         // The test code sits under its tabs with the same spacing as the main code does:
         expect(await gapBelowHeading(page, "#frameContainer_-4")).toBeCloseTo(gapInMainCode, 0);
         await expect(runButton(page)).toHaveText(/^\s*Run tests$/);
+        // Now it is the other way round:
+        await expect(mainTab(page)).toHaveAttribute("title", "Switch to My code (" + shortcutHint + ")");
+        await expect(testsTab(page)).not.toHaveAttribute("title", /.+/);
 
         // Clicking the selected tab does nothing:
         await testsTab(page).click();

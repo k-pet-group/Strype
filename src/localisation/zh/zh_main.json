@@ -86,6 +86,7 @@
     "mainContainer": "我的代码：",
     "testsContainer": "测试：",
     "runTestsButton": "运行测试",
+    "switchToSectionTip": "切换到{section}（{shortcut}）",
     "testPassed": "此测试已通过",
     "testFailed": "此测试未通过",
     "testPassBadge": "通过",

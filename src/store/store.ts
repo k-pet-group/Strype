@@ -405,7 +405,7 @@ export const useStore = defineStore("app", {
             // Two possible cases:
             // 1) If we are in an (a)EMPTY (b)BODY, of (C)SOMETHING that is a (C)JOINT frame
             // (b) and (a) 
-            if (((caretPosition === CaretPosition.body || caretPosition === CaretPosition.header) && currentFrame.childrenIds.length === 0)){
+            if (((caretPosition === CaretPosition.body) && currentFrame.childrenIds.length === 0)){
                 focusedFrame = currentFrame;
             }
             // 2) If we are (a)BELOW the (b)FINAL frame of (C)SOMETHING that is a (C)JOINT frame, OR if we are in a moving condition as explained above (M)
@@ -459,8 +459,7 @@ export const useStore = defineStore("app", {
             }
 
             //forbidden frames are those of the current frame's type if caret is body, those of the parent/joint root otherwise
-            // (The cursor on the My code/Testing heading counts as the top of that section's body.)
-            const forbiddenTypes = (caretPosition === CaretPosition.body || caretPosition === CaretPosition.header) ? 
+            const forbiddenTypes = (caretPosition === CaretPosition.body) ? 
                 [...currentFrame.frameType.forbiddenChildrenTypes] :
                 ((currentFrame.jointParentId > 0) ? [...state.frameObjects[currentFrame.jointParentId].frameType.forbiddenChildrenTypes] : [...state.frameObjects[currentFrame.parentId].frameType.forbiddenChildrenTypes]);
 
@@ -1737,9 +1736,9 @@ export const useStore = defineStore("app", {
         },
 
         // Switches the third section of the editor between the main code and the testing code, from the
-        // "My code"/"Testing" heading (by keyboard when the frame cursor is on it, or by clicking it).
+        // "My code"/"Testing" heading (by clicking it).
         // Whatever was selected (text in a slot, or frames) is cancelled -- it's in code that may no longer be
-        // showing -- and the frame cursor goes to the heading. Nothing happens while a program (or the tests) is
+        // showing -- and the frame cursor goes to the start of the section now showing. Nothing happens while a program (or the tests) is
         // running: the section being shown has to stay put until it finishes.
         toggleMainSectionShowsTests() {
             if (!TestingSectionAvailable || this.pythonExecRunningState != PythonExecRunningState.NotRunning) {
@@ -1757,8 +1756,7 @@ export const useStore = defineStore("app", {
             this.setSlotTextCursors(undefined, undefined);
             this.unselectAllFrames();
             this.mainSectionShowsTests = !this.mainSectionShowsTests;
-            // The heading's cursor belongs to whichever of the two sections is showing (see FrameContainer.vue):
-            this.setCurrentFrame({id: this.mainSectionShowsTests ? this.getTestsFrameContainerId : this.getMainCodeFrameContainerId, caretPosition: CaretPosition.header});
+            this.setCurrentFrame({id: this.mainSectionShowsTests ? this.getTestsFrameContainerId : this.getMainCodeFrameContainerId, caretPosition: CaretPosition.body});
         },
 
         // Adds a new test function (a function definition in the Testing section named test_1, test_2... -- the lowest number

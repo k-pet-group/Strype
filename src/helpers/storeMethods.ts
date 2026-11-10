@@ -530,7 +530,7 @@ export const childrenListWithJointFrames = (currentFrameId: number, caretPositio
         }
     }
     else {
-        if(caretPosition === CaretPosition.body || caretPosition === CaretPosition.header){
+        if(caretPosition === CaretPosition.body){
             // add its children to the list
             childrenAndJointFramesIds.splice(
                 childrenAndJointFramesIds.indexOf(currentFrame.id)+1,
@@ -730,11 +730,11 @@ export const frameForSelection = (currentFrame: CurrentFrame, direction: "up"|"d
     
     // we first check the cases that are 100% sure there is nothing to do about them
     // i.e.  we are in the body and we are either moving up or there are no children.
-    if( (currentFrame.caretPosition === CaretPosition.body || currentFrame.caretPosition === CaretPosition.header) && (direction === "up" || useStore().frameObjects[currentFrame.id].childrenIds.length === 0) ){
+    if( (currentFrame.caretPosition === CaretPosition.body) && (direction === "up" || useStore().frameObjects[currentFrame.id].childrenIds.length === 0) ){
         return null;
     }
 
-    const parentId = (currentFrame.caretPosition === CaretPosition.body || currentFrame.caretPosition === CaretPosition.header)? 
+    const parentId = (currentFrame.caretPosition === CaretPosition.body)? 
         currentFrame.id : 
         getParentOrJointParent(currentFrame.id);
 
@@ -767,7 +767,7 @@ export const frameForSelection = (currentFrame: CurrentFrame, direction: "up"|"d
     // Being below and going up it's just the index of the actualCurrentFrameId
     // Being below and going down we need to get the next
     // ((indexDelta+1)&&1) returns +1 only if we are going down (indexDelta==1)
-    const indexOfCurrentInParent = (currentFrame.caretPosition === CaretPosition.body || currentFrame.caretPosition === CaretPosition.header)? 0: sameLevelFrameIds.indexOf(actualCurrentFrameId)+Math.max(indexDelta, 0);
+    const indexOfCurrentInParent = (currentFrame.caretPosition === CaretPosition.body)? 0: sameLevelFrameIds.indexOf(actualCurrentFrameId)+Math.max(indexDelta, 0);
 
     // frameToBeSelected is the frame that will be selected AND can be different than the current frame (e.g. caret==below and direction down). 
     // We select a frame other than the current frame if we are moving down and we are not on position 0;
@@ -877,7 +877,7 @@ export const getAboveFrameCaretPosition = function (frameId: number): Navigation
 // This method is the opposite of getAboveFrameCaretPosition: it looks for what frame is immediately below a given caret position.
 // Returns: the frameId of the frame below the given position or NULL if there is no frame (case of empty body or end of container)
 export const getFrameBelowCaretPosition = function (caretPosition: NavigationPosition): number | null {
-    if(caretPosition.caretPosition == CaretPosition.body || caretPosition.caretPosition == CaretPosition.header){
+    if(caretPosition.caretPosition == CaretPosition.body){
         // In a body, we look at the first child frame of the body (if any)
         const firstChildId = useStore().frameObjects[caretPosition.frameId].childrenIds.at(0);
         return firstChildId ?? null;
@@ -894,7 +894,7 @@ export const getFrameBelowCaretPosition = function (caretPosition: NavigationPos
 // within one of the frame types specified in "containerTypes"
 export const isContainedInFrame = function (currFrameId: number, caretPosition: CaretPosition, containerTypes: string[]): boolean {
     let isAncestorTypeFound = false;
-    let frameToCheckId = (caretPosition === CaretPosition.body || caretPosition === CaretPosition.header) ? 
+    let frameToCheckId = (caretPosition === CaretPosition.body) ? 
         currFrameId:
         getParentId(useStore().frameObjects[currFrameId]);
     
@@ -920,7 +920,7 @@ export const isTestFunctionFrame = function (frame: FrameObject): boolean {
 
 // Whether the caret position is inside a test function (see isTestFunctionFrame())
 export const isInsideTestFunction = function (frameId: number, caretPosition: CaretPosition): boolean {
-    let frameToCheckId = (caretPosition === CaretPosition.body || caretPosition === CaretPosition.header)
+    let frameToCheckId = (caretPosition === CaretPosition.body)
         ? frameId
         : getParentId(useStore().frameObjects[frameId]);
     while (frameToCheckId > 0) {
@@ -1052,7 +1052,7 @@ export const getAvailableNavigationPositions = function(showIsInCollapsedFrameCo
         const labelSlotCoreInfos = parseLabelSlotUID(e.id);
         const positionObjIdentifier = (isSlotNavigationPosition) 
             ? {labelSlotsIndex: labelSlotCoreInfos.labelSlotsIndex, slotId: labelSlotCoreInfos.slotId, slotType: labelSlotCoreInfos.slotType}
-            : {caretPosition: e.id.includes(CaretPosition.below) ? CaretPosition.below : (e.id.includes(CaretPosition.header) ? CaretPosition.header : CaretPosition.body)}; 
+            : {caretPosition: e.id.includes(CaretPosition.below) ? CaretPosition.below : CaretPosition.body}; 
         // We retrieve also the frameId from the identifier of the element (format is mentioned above)
         const frameIdMatch = e.id.match(/-?\d+/);
         return {
@@ -1062,7 +1062,7 @@ export const getAvailableNavigationPositions = function(showIsInCollapsedFrameCo
             isInCollapsedFrameContainer: (showIsInCollapsedFrameContainer) ? ((useStore().frameObjects[getFrameSectionIdFromFrameId(parseInt(frameIdMatch?.[0]??"-100"))].collapsedState ?? CollapsedState.FULLY_VISIBLE) != CollapsedState.FULLY_VISIBLE) : undefined,            
         } as NavigationPosition;
     }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.frameId] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.frameId].isDisabled)
-        && (navigationPosition.caretPosition === CaretPosition.header || getFrameSectionIdFromFrameId(navigationPosition.frameId) !== hiddenSectionId)) as NavigationPosition[]; 
+        && getFrameSectionIdFromFrameId(navigationPosition.frameId) !== hiddenSectionId) as NavigationPosition[]; 
 };
 
 const getPrecompiledErrorFrameId = (frameId: number): string => {

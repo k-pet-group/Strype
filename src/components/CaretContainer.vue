@@ -131,11 +131,6 @@ export default defineComponent({
             // The caret is only visible when editing is off, 
             // and either one frame is currently selected 
             // OR when a frame or a frame selection is dragged over.
-            // The cursor on the "My code"/"Testing" heading is never drawn as a caret (so it doesn't count as a visible
-            // frame cursor); FrameContainer.vue outlines the heading text instead when the cursor is there.
-            if (this.caretAssignedPosition === CaretPosition.header) {
-                return !this.areFramesDraggedOver;
-            }
             return !(!this.isEditing && this.caretVisibility === this.caretAssignedPosition || this.areFramesDraggedOver); 
         },
 
@@ -273,8 +268,7 @@ export default defineComponent({
             if (this.isFocusedForPaste) {
                 // Disable the browser's default paste handler. We handle the paste event below.
                 event.preventDefault();
-                // The "My code" heading's cursor pastes exactly like the cursor at the top of My code (its body):
-                let pasteDestination: {id: number, caretPosition: CaretPosition} = {id: this.frameId, caretPosition: (this.caretAssignedPosition == CaretPosition.header) ? CaretPosition.body : this.caretAssignedPosition};
+                let pasteDestination = {id: this.frameId, caretPosition: this.caretAssignedPosition};
                 const stateBeforeChanges = cloneDeep(this.appStore.$state);
                 let hasRemovedFrameSelection = false;
                 // If we currently have a selection of frames, the pasted frame should replace the selection, so we delete that selection.
@@ -293,7 +287,7 @@ export default defineComponent({
                 }
 
                 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
-                const inFrameType = this.appStore.frameObjects[(this.appStore.currentFrame.caretPosition != CaretPosition.below) ? this.appStore.currentFrame.id : getParentOrJointParent(this.appStore.currentFrame.id)].frameType;
+                const inFrameType = this.appStore.frameObjects[(this.appStore.currentFrame.caretPosition == CaretPosition.body) ? this.appStore.currentFrame.id : getParentOrJointParent(this.appStore.currentFrame.id)].frameType;
                 if(!inFrameType.forbiddenChildrenTypes.includes(AllFrameTypesIdentifier.funccall) && Object.values(event.clipboardData?.items??[]).some((dataTransferItem: DataTransferItem) => dataTransferItem.kind == "file" && /^(image)|(audio)\//.test(dataTransferItem.type))){
                     // For the special case of image media, we want to simulate the addition of a method call with that media.
                     // Therefore, we will need to "wrap" around the media literal value with our usual wrappers.
@@ -401,7 +395,7 @@ export default defineComponent({
             // by any other mean which caret is the one the user clicked on.
             const currentShownContextMenuUID: string = this.appStore.contextMenuShownId;
             if(currentShownContextMenuUID === this.UID){
-                navigator.clipboard.readText().then((text) => pasteMixedPython(text, {id: this.frameId, caretPosition: (this.caretAssignedPosition == CaretPosition.header) ? CaretPosition.body : this.caretAssignedPosition}));
+                navigator.clipboard.readText().then((text) => pasteMixedPython(text, {id: this.frameId, caretPosition: this.caretAssignedPosition}));
             }
         },
     

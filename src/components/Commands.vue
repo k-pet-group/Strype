@@ -681,19 +681,6 @@ export default defineComponent({
                     return;
                 }
 
-                // On the "My code" heading, left/right arrow or Space switch the section below it between the main
-                // code ("My code") and the testing code ("Testing"), rather than doing their usual jobs there.
-                if(!isEditing && !isDraggingFrames && !isPythonExecuting && !this.appStore.isAppMenuOpened
-                    && !event.ctrlKey && !event.metaKey && !event.altKey && !event.shiftKey
-                    && ["ArrowLeft", "ArrowRight", " "].includes(event.key)
-                    && this.appStore.currentFrame.caretPosition == CaretPosition.header){
-                    event.preventDefault();
-                    event.stopImmediatePropagation();
-                    event.stopPropagation();
-                    this.appStore.toggleMainSectionShowsTests();
-                    return;
-                }
-
                 // Tab or Space at the frame caret opens the frame commands pane (letting the user then
                 // either press a shortcut letter, or arrow to a command and press Enter) instead of their
                 // usual jobs (Tab normally moves to the next navigable position, Space normally inserts a

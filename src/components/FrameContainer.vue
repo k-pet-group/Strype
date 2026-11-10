@@ -5,9 +5,9 @@
             <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
             <!-- For the "My code" container, this is the "My code" label, always on the left of the arrow. It has the heading's (green, bold) style while My code is showing,
                  and is dark grey and not bold while Testing is (when the "Testing code" label, on the right of the arrow, has the heading's style instead) -->
-            <span :class="{[scssVars.frameContainerLabelSpanClassName]: !isMainCodeFrameContainer || !isShowingTests, 'frame-container-heading-inactive': isMainCodeFrameContainer && isShowingTests, 'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer, 'frame-container-heading-focused': isHeadingFocused && !isShowingTests, 'frame-container-heading-focused-pane': isHeadingFocused && !isShowingTests && isFrameCommandsPaneActive, 'frame-container-heading-clickable': isMainCodeFrameContainer && !isPythonExecuting}" :title="isMainCodeFrameContainer && mainHeadingTakesFocus ? $t('appMessage.toggleTestingMode') : undefined" :data-label="containerLabel" @click.self="onLabelClicked">{{containerLabel}}</span>
-            <!-- Clicking this (or the heading) switches between My code and Testing code, as does left/right arrow while the heading has the frame cursor. It is green, or blue while the heading is focused -->
-            <span v-if="isMainCodeFrameContainer && mainHeadingTakesFocus" :class="{'frame-container-heading-arrows': true, 'frame-container-heading-arrows-focused': isHeadingFocused, 'frame-container-heading-arrows-pane': isHeadingFocused && isFrameCommandsPaneActive, 'frame-container-heading-clickable': !isPythonExecuting}" :title="$t('appMessage.toggleTestingMode')" aria-hidden="true" @click.stop="onHeadingClicked">
+            <span :class="{[scssVars.frameContainerLabelSpanClassName]: !isMainCodeFrameContainer || !isShowingTests, 'frame-container-heading-inactive': isMainCodeFrameContainer && isShowingTests, 'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer, 'frame-container-heading-clickable': isMainCodeFrameContainer && !isPythonExecuting}" :title="isMainCodeFrameContainer && testingSectionAvailable ? $t('appMessage.toggleTestingMode') : undefined" :data-label="containerLabel" @click.self="onLabelClicked">{{containerLabel}}</span>
+            <!-- Clicking this (or the heading) switches between My code and Testing code -->
+            <span v-if="isMainCodeFrameContainer && testingSectionAvailable" :class="{'frame-container-heading-arrows': true, 'frame-container-heading-clickable': !isPythonExecuting}" :title="$t('appMessage.toggleTestingMode')" aria-hidden="true" @click.stop="onHeadingClicked">
                 <svg width="32" height="14" viewBox="0 0 32 14">
                     <path d="M7.3 7.6 Q16 2.5 24.7 7.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     <path d="M1.5 11.5 L9.2 10.5 L5.4 4.7 Z" fill="currentColor"/>
@@ -15,18 +15,9 @@
                 </svg>
             </span>
             <!-- The "Testing code" label, always on the right of the arrow: it has the heading's style while Testing is showing, and is dark grey and not bold otherwise -->
-            <span v-if="isMainCodeFrameContainer && mainHeadingTakesFocus" :class="{[scssVars.frameContainerLabelSpanClassName]: isShowingTests, 'frame-container-heading-inactive': !isShowingTests, 'frame-container-heading-second': true, 'no-toggle-frame-container-span': true, 'frame-container-heading-focused': isHeadingFocused && isShowingTests, 'frame-container-heading-focused-pane': isHeadingFocused && isShowingTests && isFrameCommandsPaneActive, 'frame-container-heading-clickable': !isPythonExecuting}" :title="$t('appMessage.toggleTestingMode')" :data-label="testingHeadingLabel" @click.self="onHeadingClicked">{{testingHeadingLabel}}</span>
+            <span v-if="isMainCodeFrameContainer && testingSectionAvailable" :class="{[scssVars.frameContainerLabelSpanClassName]: isShowingTests, 'frame-container-heading-inactive': !isShowingTests, 'frame-container-heading-second': true, 'no-toggle-frame-container-span': true, 'frame-container-heading-clickable': !isPythonExecuting}" :title="$t('appMessage.toggleTestingMode')" :data-label="testingHeadingLabel" @click.self="onHeadingClicked">{{testingHeadingLabel}}</span>
             <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="frames" :parentIsFrozen="false"/>
         </div>
-        <!-- The "My code" header can take the frame cursor, so that up/down arrows stop on it between the definitions and the main code -->
-        <!-- While Testing is showing, the heading's cursor belongs to the Testing container, so that anything done there (adding or pasting frames) goes into the testing code -->
-        <CaretContainer
-            v-if="isMainCodeFrameContainer && mainHeadingTakesFocus"
-            :frameId="headingCaretFrameId"
-            :caretVisibility="appStore.frameObjects[headingCaretFrameId].caretVisibility"
-            :caretAssignedPosition="caretPosition.header"
-        />
-
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
         <hr v-if="isCollapsed && frames.length > 0" class="non-empty-collapsed-frame-container-hr">
         <div :id="frameUID" :style="containerStyle" class="container-frames" @click="onFrameContainerClick" tabindex="-1" ref="containerFrames">
@@ -66,7 +57,7 @@ import { mapStores } from "pinia";
 import { CustomEventTypes, getCaretContainerRef, getFrameUID} from "@/helpers/editor";
 import scssVars from "@/assets/style/_export.module.scss";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
-import { MainHeadingTakesFocus } from "@/helpers/appContext";
+import { TestingSectionAvailable } from "@/helpers/appContext";
 import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
 
 //////////////////////
@@ -100,8 +91,8 @@ export default defineComponent({
     },
 
     computed: {
-        mainHeadingTakesFocus(): boolean {
-            return MainHeadingTakesFocus;
+        testingSectionAvailable(): boolean {
+            return TestingSectionAvailable;
         },
 
         ...mapStores(useStore),
@@ -129,22 +120,6 @@ export default defineComponent({
 
         isTestsFrameContainer(): boolean {
             return this.frameId == this.appStore.getTestsFrameContainerId;
-        },
-
-        // Whether the frame cursor is on the "My code"/"Testing" heading, which shows as an outline round its text
-        // rather than as a frame cursor (see isInvisible in CaretContainer.vue)
-        // The container the "My code"/"Testing" heading's frame cursor belongs to: whichever of the two is showing
-        headingCaretFrameId(): number {
-            return this.appStore.mainSectionShowsTests ? this.appStore.getTestsFrameContainerId : this.appStore.getMainCodeFrameContainerId;
-        },
-
-        isHeadingFocused(): boolean {
-            return this.isMainCodeFrameContainer && !this.appStore.isEditing
-                && this.appStore.currentFrame.id == this.headingCaretFrameId && this.appStore.currentFrame.caretPosition == CaretPosition.header;
-        },
-
-        isFrameCommandsPaneActive(): boolean {
-            return this.appStore.isFrameCommandsPaneActive;
         },
 
         isPythonExecuting(): boolean {
@@ -241,19 +216,11 @@ export default defineComponent({
         },
         
         // Clicking the "My code"/"Testing" heading (or its arrow) switches between the two. The frame cursor goes to the
-        // start of the section shown, unless it was already on the heading, in which case it stays there.
-        // (Not while a program is running: the store ignores it then, and the heading isn't styled as clickable.)
+        // start of the section shown. (Not while a program is running: the store ignores it then, and the heading isn't
+        // styled as clickable.)
         onHeadingClicked(): void {
             if (this.isMainCodeFrameContainer && !this.isPythonExecuting) {
-                const wasFocused = this.isHeadingFocused;
                 this.appStore.toggleMainSectionShowsTests();
-                // If the heading didn't have the cursor already, the cursor goes to the start of the section being shown
-                // (once it has re-rendered); otherwise it stays on the heading, which the toggle has already done.
-                if (!wasFocused) {
-                    this.$nextTick(() => {
-                        this.appStore.setCurrentFrame({id: this.headingCaretFrameId, caretPosition: CaretPosition.body});
-                    });
-                }
             }
         },
 
@@ -383,10 +350,7 @@ export default defineComponent({
 }
 
 .no-toggle-frame-container-span {
-  // 4px in total: 2px in place of the button border + 2px in place of the button inline padding. Some of it is
-  // padding, so that the outline shown when the heading has the frame cursor can sit close to the text.
-  margin-left: 1px;
-  padding: 0 3px;
+  margin-left: 4px; // 2px in place of the button border + 2px in place of the button inline padding 
 }
 
 .container-frames, .non-empty-collapsed-frame-container-hr {
@@ -403,17 +367,6 @@ export default defineComponent({
 .frame-container-minheight {
     min-height: $frame-container-min-height;
 }
-// The frame cursor on the heading (same colours as the frame cursor: blue, or grey once the frame commands pane is active)
-.frame-container-heading-focused {
-    outline: 2px solid #3467FE;
-    outline-offset: 0;
-    border-radius: 4px;
-}
-
-.frame-container-heading-focused-pane {
-    outline-color: #b8bac0;
-}
-
 // A double-headed (slightly curved) arrow to the right of the heading, pointing left and right (the keys that switch section)
 .frame-container-heading-arrows {
     display: flex;
@@ -422,14 +375,6 @@ export default defineComponent({
     position: relative;
     top: calc(-0.3em + 0.1rem);
     color: #274D19;
-}
-
-.frame-container-heading-arrows-focused {
-    color: #3467FE;
-}
-
-.frame-container-heading-arrows-pane {
-    color: #b8bac0;
 }
 
 // The label of the section that isn't showing (the "My code" and "Testing code" labels stay where they are, on either side of the arrow)

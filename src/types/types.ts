@@ -212,8 +212,6 @@ export interface FrameLabel {
 export enum CaretPosition {
     body = "caretBody",
     below = "caretBelow",
-    // The header of the "My code" container (only exists for that container)
-    header = "caretHeader",
     none = "none",
 }
 

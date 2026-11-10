@@ -526,13 +526,15 @@ export const TestsContainerDefinition: FramesDefinitions = {
         { label: i18n.global.t("appMessage.testsContainer"), showSlots: false, defaultText: "" },
     ],
     allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
-    // The Testing section takes whatever "My code" does, plus function definitions (but not classes). Assert is
-    // never allowed directly here: it is only allowed inside a test function (see isAncestorGatedFrameTypeAllowed()).
+    // The Testing section is for function definitions (tests, named test_..., and the helper functions they use), like
+    // Definitions without the classes: along with them, only comments, blanks and variable assignments are allowed at the top
+    // level. Statements (if, while, assert...) belong inside a function; assert is further limited to test functions (see
+    // isAncestorGatedFrameTypeAllowed()). Typing one of those statements here moves it into a new test function (see
+    // LabelSlotsStructure.vue's performKeywordFrameConversion()), and pasting them is refused.
     // Imports are not allowed either: the generated test file gets the project's own Imports section copied in
     // (see parser.ts's parseJustTests()/parseJustImports() and executeTests() in workers/python-execution.ts).
-    forbiddenChildrenTypes: MainFramesContainerDefinition.forbiddenChildrenTypes
-        .filter((frameTypeDef: string) => frameTypeDef !== DefIdentifiers.funcdef)
-        .concat([AllFrameTypesIdentifier.assert]),
+    forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
+        .filter((frameTypeDef: string) => frameTypeDef !== DefIdentifiers.funcdef && frameTypeDef !== CommentFrameTypesIdentifier.comment && frameTypeDef != AllFrameTypesIdentifier.varassign),
     colour: "#BBC6B6",
 };
 

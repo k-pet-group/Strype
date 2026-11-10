@@ -683,14 +683,54 @@ def test_a ( ) :
         await page.keyboard.press("Escape");
         await waitForEditorSettled(page);
 
-        // But the other frames of My code are, such as a while loop, though not a class:
+        // Nor are the other statements of My code, such as a while loop (nor a class):
         await pressFrameShortcut(page, "w");
         await waitForEditorSettled(page);
-        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='while']")).toHaveCount(1);
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='while']")).toHaveCount(0);
         await page.keyboard.press("Escape");
         await pressFrameShortcut(page, "c");
         await waitForEditorSettled(page);
         await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='classdef']")).toHaveCount(0);
+        await page.keyboard.press("Escape");
+
+        // Only functions (and comments, blanks and variable assignments) are:
+        await pressFrameShortcut(page, "=");
+        await waitForEditorSettled(page);
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='varassign']")).toHaveCount(1);
+    });
+
+    test("A statement typed at the top level of the Testing section moves into a new test function", async ({page}) => {
+        const testFunctions = page.locator("#frameContainer_-4 .frame-div[data-frameType='funcdef']");
+        await enterTestingSection(page);
+        await page.keyboard.type("x");
+        await waitForEditorSettled(page);
+        await page.keyboard.press("Backspace");
+        await page.keyboard.type("while ");
+        // Typing the keyword moves the frame into the new test function, so let that finish before typing the condition:
+        await waitForEditorSettled(page);
+        await typeIndividually(page, "True");
+
+        await expect(heading(page).locator(".frame-container-label-span")).toContainText("Test code");
+        // A new test function at the top (above the starter one), holding the while loop, and nothing else at the top level:
+        await expect(testFunctions).toHaveCount(2);
+        await expect(testFunctions.nth(0).locator(".label-slot-input").first()).toHaveText("test_1");
+        await expect(testFunctions.nth(0).locator(".frame-div[data-frameType='while']")).toHaveCount(1);
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='while']")).toHaveCount(1);
+        await expect(page.locator("#frameContainer_-3 .frame-div[data-frameType='while']")).toHaveCount(0);
+    });
+
+    test("Pasting statements at the top level of the Testing section is refused, but functions are fine", async ({page}) => {
+        await enterTestingSection(page);
+        await doPagePaste(page, "print(1)\n");
+        await waitForEditorSettled(page);
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='funccall']")).toHaveCount(0);
+        await doPagePaste(page, "if True:\n    pass\n");
+        await waitForEditorSettled(page);
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='if']")).toHaveCount(0);
+        // Functions, with any statements inside, go in:
+        await doPagePaste(page, "def helper():\n    if True:\n        print(1)\n");
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='funcdef']")).toHaveCount(2);
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='if']")).toHaveCount(1);
     });
 
     test("Assert frame can be used inside a test function", async ({page}) => {

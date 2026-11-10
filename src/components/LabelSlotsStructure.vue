@@ -139,6 +139,10 @@ const keywordFrameConversions: KeywordFrameConversionDef[] = [
     {keyword: "except", targetType: AllFrameTypesIdentifier.except, slots: 1, isJoint: true, endsWithColon: true, enterCaretTarget: CaretPosition.body},
     {keyword: "finally", targetType: AllFrameTypesIdentifier.finally, slots: 0, isJoint: true, endsWithColon: true},
 ];
+// The statement types that belong in My code (or inside a function): where they aren't allowed at the top level of a
+// section, they are moved to My code, or, from the top level of the Testing section, into a new test function.
+const mainStatementTypes: string[] = [AllFrameTypesIdentifier.if, AllFrameTypesIdentifier.while, AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.with,
+    AllFrameTypesIdentifier.try, AllFrameTypesIdentifier.match, AllFrameTypesIdentifier.raise];
 const wordSpaceRegex = new RegExp("^([a-zA-Z0-9]+)\\s");
 // Same, but anchored at the end instead of requiring a trailing whitespace character -- used when
 // the conversion is triggered by Enter rather than by an actual typed space (see
@@ -839,6 +843,9 @@ export default defineComponent({
                 // frame is then moved into a new test function (see performKeywordFrameConversion()):
                 return TestingSectionAvailable;
             }
+            if(this.needsNewTestFunction(targetType)){
+                return true;
+            }
             if(this.appStore.frameObjects[parentId].frameType.forbiddenChildrenTypes.includes(targetType)){
                 // Not allowed right here, but if the type belongs in another section we still convert
                 // and then move the frame to where it belongs, as if it had been pasted here --
@@ -875,14 +882,25 @@ export default defineComponent({
                     ? getLastCaretPosInsideParent(this.appStore.getDefsFrameContainerId)
                     : {id: this.appStore.getDefsFrameContainerId, caretPosition: CaretPosition.body};
             }
-            const mainTypes: string[] = [AllFrameTypesIdentifier.if, AllFrameTypesIdentifier.while, AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.with,
-                AllFrameTypesIdentifier.try, AllFrameTypesIdentifier.match, AllFrameTypesIdentifier.raise];
-            if(mainTypes.includes(targetType)){
+            if(mainStatementTypes.includes(targetType)){
                 // We only get here when we're outside of main (imports/definitions), and the closest
                 // point of main is its top:
                 return {id: this.appStore.getMainCodeFrameContainerId, caretPosition: CaretPosition.body};
             }
             return undefined;
+        },
+
+        // Whether the frame at this.frameId, once converted to targetType, has to go into a new test function: an assert that
+        // isn't inside a test function already, or a statement (see mainStatementTypes) at the top level of the Testing section,
+        // which only has room for functions (see TestsContainerDefinition in types.ts).
+        needsNewTestFunction(targetType: string): boolean {
+            if(!TestingSectionAvailable){
+                return false;
+            }
+            if(targetType === AllFrameTypesIdentifier.assert){
+                return !isInsideTestFunction(this.frameId, CaretPosition.below);
+            }
+            return mainStatementTypes.includes(targetType) && getParentOrJointParent(this.frameId) === this.appStore.getTestsFrameContainerId;
         },
 
         // Moves the (already converted) frame at this.frameId to the given caret position, which is
@@ -1096,8 +1114,9 @@ export default defineComponent({
             // If this type isn't allowed where the frame currently is (e.g. "import" typed in the main
             // section), move it to the section it belongs in, as if it had been pasted here:
             const currentParentId = this.appStore.frameObjects[this.frameId].parentId;
-            if(def.targetType === AllFrameTypesIdentifier.assert && !isInsideTestFunction(this.frameId, CaretPosition.below)){
-                // An assert outside a test function goes into a new one (test_1, test_2...), at the top of the Testing section,
+            if(this.needsNewTestFunction(def.targetType)){
+                // An assert outside a test function, or a statement at the top level of the Testing section (where only
+                // functions go), goes into a new test function (test_1, test_2...), at the top of the Testing section,
                 // which is then the section that is showing:
                 this.relocateFrameToCaretPosition({id: this.appStore.addNewTestFunction(), caretPosition: CaretPosition.body});
                 const movedFrameId = this.frameId;

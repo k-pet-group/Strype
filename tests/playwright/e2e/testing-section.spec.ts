@@ -247,7 +247,24 @@ while True  :
         await expect(consoleLoc).toHaveValue("Hello from Strype\n", {timeout: 120000});
     });
 
-    test("A project with no tests reports that, and each run clears the console first", async ({page}) => {
+    test("A project with no tests says so", async ({page}) => {
+        await loadContent(page, `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+print("hello") 
+#(=> Section:End
+`);
+        await switchToTestingFromMain(page);
+        await expect(page.locator("#frameContainer_-4 .frame-div")).toHaveCount(0);
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
+        await runButton(page).click();
+        await expect.poll(async () => await page.locator("#peaConsole").inputValue(), {timeout: 120000}).toBe("Running tests...\nNo tests found in the Test code section.\n");
+        // No overall outcome is shown, as there were no tests:
+        await expect(page.locator(".pea-test-outcome-icon")).toHaveCount(0);
+    });
+
+    test("Running the tests clears the console first, and each run reports its results afresh", async ({page}) => {
         await switchToTestingFromMain(page);
         await expect(runButton(page)).toBeEnabled({timeout: 120000});
         await runButton(page).click();

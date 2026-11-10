@@ -966,7 +966,7 @@ export default defineComponent({
 
         async execTestsCode() {
             // Triggered by the Run button while the Testing section is showing -- see runClicked() and appStore.requestTestRun()/testRunRequestId.
-            // Both of these are also reflected in the button's :disabled state (FrameContainer.vue), but are
+            // Both of these are also reflected in the button's :disabled state, but are
             // checked again here as a defensive guard, since the underlying Pyodide client only allows one
             // call() in flight at a time and throws "State is running, not idle" otherwise:
             if (this.isPythonExecuting || !isPythonWorkerReady.value) {
@@ -1052,7 +1052,7 @@ export default defineComponent({
                     this.appStore.lastTestRunAt = Date.now();
                 }
                 else if (results.results.length == 0) {
-                    output = "No tests found in the Testing section.\n";
+                    output = "No tests found in the Test code section.\n";
                 }
                 else {
                     const failures = results.results.filter((r) => r.outcome != "passed");
@@ -1794,7 +1794,6 @@ export default defineComponent({
         align-items: center;
         justify-content: center;
         border-radius: 0.6em;
-
     }
     // The text part overlaps the icon by 0.6em (negative margin), in front of it, so that the rounded left end of the icon isn't
     // seen as a gap between the two parts; they are the same colour so look like one pill. The overlap is only over the empty

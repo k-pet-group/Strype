@@ -730,7 +730,7 @@ export const frameForSelection = (currentFrame: CurrentFrame, direction: "up"|"d
     
     // we first check the cases that are 100% sure there is nothing to do about them
     // i.e.  we are in the body and we are either moving up or there are no children.
-    if( (currentFrame.caretPosition === CaretPosition.body) && (direction === "up" || useStore().frameObjects[currentFrame.id].childrenIds.length === 0) ){
+    if( currentFrame.caretPosition === CaretPosition.body && (direction === "up" || useStore().frameObjects[currentFrame.id].childrenIds.length === 0) ){
         return null;
     }
 
@@ -920,7 +920,7 @@ export const isTestFunctionFrame = function (frame: FrameObject): boolean {
 
 // Whether the caret position is inside a test function (see isTestFunctionFrame())
 export const isInsideTestFunction = function (frameId: number, caretPosition: CaretPosition): boolean {
-    let frameToCheckId = (caretPosition === CaretPosition.body)
+    let frameToCheckId = caretPosition === CaretPosition.body
         ? frameId
         : getParentId(useStore().frameObjects[frameId]);
     while (frameToCheckId > 0) {
@@ -1023,7 +1023,6 @@ export const getAncestorFrameOfTypeId = (frameId: number, ancestorType: string):
 
 // The third section of the editor shows either the main code or the testing code, never both (see
 // the store's mainSectionShowsTests). Positions inside the one that isn't showing can't be navigated to.
-// (The heading's own cursor is always reachable: only one is ever in the page, belonging to the section showing.)
 // Returns the id of the section whose positions can't be navigated to at the moment.
 const getHiddenSectionId = function (): number {
     const store = useStore();

@@ -405,7 +405,7 @@ export const useStore = defineStore("app", {
             // Two possible cases:
             // 1) If we are in an (a)EMPTY (b)BODY, of (C)SOMETHING that is a (C)JOINT frame
             // (b) and (a) 
-            if (((caretPosition === CaretPosition.body) && currentFrame.childrenIds.length === 0)){
+            if ((caretPosition === CaretPosition.body && currentFrame.childrenIds.length === 0)){
                 focusedFrame = currentFrame;
             }
             // 2) If we are (a)BELOW the (b)FINAL frame of (C)SOMETHING that is a (C)JOINT frame, OR if we are in a moving condition as explained above (M)

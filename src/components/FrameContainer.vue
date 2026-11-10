@@ -367,7 +367,7 @@ export default defineComponent({
 .frame-container-minheight {
     min-height: $frame-container-min-height;
 }
-// A double-headed (slightly curved) arrow to the right of the heading, pointing left and right (the keys that switch section)
+// A double-headed (slightly curved) arrow to the right of the heading, pointing left and right to show that it switches section
 .frame-container-heading-arrows {
     display: flex;
     align-items: center;

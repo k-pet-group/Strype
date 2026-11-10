@@ -1,7 +1,7 @@
 import { test, expect, Page } from "@playwright/test";
 import { readFileSync } from "node:fs";
 import { loadContent, save } from "../support/loading-saving";
-import { clearDefaultProject, doPagePaste, enterTestingSection, pressFrameShortcut, switchToTestingFromMain, waitForEditorSettled } from "../support/editor";
+import { clearDefaultProject, doPagePaste, enterTestingSection, pressFrameShortcut, switchToTestingFromMain, typeIndividually, waitForEditorSettled } from "../support/editor";
 import { checkFrameErrorCount } from "../support/execution";
 import { setupStrypeTest } from "../support/general";
 
@@ -470,7 +470,9 @@ def test_raises ( ) :
         await waitForEditorSettled(page);
         await page.keyboard.press("Backspace");
         await page.keyboard.type("assert ");
-        await page.keyboard.type("1 == 1");
+        // Typing the keyword moves the frame into the new test function, so let that finish before typing the condition:
+        await waitForEditorSettled(page);
+        await typeIndividually(page, "1 == 1");
         await waitForEditorSettled(page);
 
         // Testing is now showing, with a new test function at the top (above the starter one), holding the assert:
@@ -492,7 +494,9 @@ def test_raises ( ) :
         await waitForEditorSettled(page);
         await page.keyboard.press("Backspace");
         await page.keyboard.type("assert ");
-        await page.keyboard.type("2 == 2");
+        // Typing the keyword moves the frame into the new test function, so let that finish before typing the condition:
+        await waitForEditorSettled(page);
+        await typeIndividually(page, "2 == 2");
         await waitForEditorSettled(page);
         await expect(heading(page).locator(".frame-container-label-span")).toContainText("Testing");
         await expect(testFunctions).toHaveCount(3);
@@ -616,7 +620,7 @@ def test_a ( ) :
         const consoleLoc = page.locator("#peaConsole");
         await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("1 passed, 1 failed");
         const consoleContent = await consoleLoc.inputValue();
-        expect(consoleContent).toContain("FAILED test_strype_user_tests.py::test_fail");
+        expect(consoleContent).toContain("FAILED test_fail:");
         expect(consoleContent).toContain("ValueError: invalid literal for int()");
 
         // The failing test's int("x") call should be highlighted in the editor, the same way a
@@ -709,7 +713,7 @@ def test_a ( ) :
         const consoleLoc = page.locator("#peaConsole");
         await expect.poll(async () => await consoleLoc.inputValue(), {timeout: 120000}).toContain("1 passed, 1 failed");
         const consoleContent = await consoleLoc.inputValue();
-        expect(consoleContent).toContain("FAILED test_strype_user_tests.py::test_fails");
+        expect(consoleContent).toContain("FAILED test_fails:");
         // Just pytest's explanation of what failed (its lines prefixed with E) is shown after the FAILED line: not the
         // excerpt of the test's code, nor the closing line giving the file and line number:
         expect(consoleContent).toMatch(/\nE {7}assert 1 > 2/);

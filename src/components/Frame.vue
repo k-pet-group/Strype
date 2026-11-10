@@ -104,7 +104,7 @@ import { useStore } from "@/store/store";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
 import { AllFrameTypesIdentifier, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CoordPosition, CurrentFrame, DefaultFramesDefinition, FrameContextMenuActionName, FrozenState, NavigationPosition, Position, PythonExecRunningState, StrypeContextMenuItem } from "@/types/types";
-import { calculateNextCollapseState, frameOrChildHasErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent, isTestFunctionFrame } from "@/helpers/storeMethods";
+import { calculateNextCollapseState, frameOrChildHasErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent, isTestFunctionFrame, isTestSetupFrame } from "@/helpers/storeMethods";
 import { copyFramesToClipboard, copyFrameTextReadyForClipboard, CustomEventTypes, getCaretContainerRef, getFrameBodyRef, getFrameBodyUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getHTML2CanvasFramesSelectionCropOptions, getJointFramesRef, isIdAFrameId, notifyDragStarted, parseFrameUID, setContextMenuEventClientXY, testFunctionBgColour } from "@/helpers/editor";
 import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import { mapStores } from "pinia";
@@ -217,9 +217,11 @@ export default defineComponent({
             return (this.appStore.frameObjects[this.frameId].collapsedState ?? CollapsedState.FULLY_VISIBLE) == CollapsedState.FULLY_VISIBLE;
         },
 
-        // A function definition in the Testing section whose name starts with "test_" (i.e. one pytest will run)
+        // A function definition in the Testing section whose name starts with "test_" (i.e. one pytest will run),
+        // or is "setup" (which is run before each test)
         isTestFunctionDef(): boolean {
-            return isTestFunctionFrame(this.appStore.frameObjects[this.frameId]);
+            const frame = this.appStore.frameObjects[this.frameId];
+            return isTestFunctionFrame(frame) || isTestSetupFrame(frame);
         },
 
         frameStyle(): Record<string, string> {

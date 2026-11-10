@@ -1062,6 +1062,15 @@ def _strype_run_pytest():
             if report.failed:
                 collection_errors.append(str(report.longrepr))
 
+        # A function called setup() in the Testing section is run before each test, as if it had been decorated with
+        # @pytest.fixture(autouse=True), without that needing to be in the generated code. It has to be defined in the
+        # tests' own module: the Definitions' code is star-imported into it, and a setup() there isn't one of the tests'.
+        @pytest.fixture(autouse=True)
+        def _strype_setup(self, request):
+            setup = getattr(request.module, "setup", None)
+            if callable(setup) and getattr(setup, "__module__", None) == request.module.__name__:
+                setup()
+
     pytest.main(["-q", "-p", "no:cacheprovider", "/strype_tests/test_strype_user_tests.py"], plugins=[_StrypeResultCollector()])
 
     return {"collectionError": (collection_errors[0] if collection_errors else None), "results": results}

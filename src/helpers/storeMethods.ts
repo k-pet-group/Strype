@@ -909,13 +909,28 @@ export const isContainedInFrame = function (currFrameId: number, caretPosition: 
 // Name prefix that marks a function definition in the Testing section as a test (pytest's convention).
 export const testFunctionNamePrefix = "test_";
 
-// Whether the frame is a function definition in the Testing section whose name starts with the test prefix (i.e. one pytest will run)
-export const isTestFunctionFrame = function (frame: FrameObject): boolean {
+// Name of the function in the Testing section that is run before each test (see isTestSetupFrame()).
+export const testSetupFunctionName = "setup";
+
+// The name of a function definition in the Testing section, or undefined if the frame is anything else
+const getTestsFunctionName = function (frame: FrameObject): string | undefined {
     if (frame.frameType.type !== AllFrameTypesIdentifier.funcdef || getFrameSectionIdFromFrameId(frame.id) != useStore().getTestsFrameContainerId) {
-        return false;
+        return undefined;
     }
     const nameSlot = frame.labelSlotsDict[0]?.slotStructures.fields[0];
-    return !!nameSlot && isFieldBaseSlot(nameSlot) && (nameSlot as BaseSlot).code.startsWith(testFunctionNamePrefix);
+    return (nameSlot && isFieldBaseSlot(nameSlot)) ? (nameSlot as BaseSlot).code : undefined;
+};
+
+// Whether the frame is a function definition in the Testing section whose name starts with the test prefix (i.e. one pytest will run)
+export const isTestFunctionFrame = function (frame: FrameObject): boolean {
+    return getTestsFunctionName(frame)?.startsWith(testFunctionNamePrefix) ?? false;
+};
+
+// Whether the frame is the function in the Testing section called setup, which is run before each test (the test runner
+// does this, as for a pytest fixture with autouse=True, see executeTests() in workers/python-execution.ts). Only that
+// exact name: setUp or setup2 are ordinary functions.
+export const isTestSetupFrame = function (frame: FrameObject): boolean {
+    return getTestsFunctionName(frame) === testSetupFunctionName;
 };
 
 // Whether the caret position is inside a test function (see isTestFunctionFrame())

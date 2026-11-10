@@ -663,6 +663,49 @@ def test_a ( ) :
         await expect(funcDefFrame).not.toHaveCSS("background-color", "rgb(230, 210, 181)");
     });
 
+    test("A function called setup in the Testing section runs before each test, and is shaded like a test; setUp and setup2 are ordinary functions", async ({page}) => {
+        await loadContent(page, `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+#(=> Section:Testing
+x = 7 
+y = 0 
+def setup ( ) :
+    global x
+    x = 0 
+def setUp ( ) :
+    global y
+    y = 1 
+def setup2 ( ) :
+    global y
+    y = 2 
+def test_first ( ) :
+    global x
+    x = x + 1 
+    assert x == 1 
+def test_second ( ) :
+    global x
+    x = x + 1 
+    assert x == 1 
+def test_others_did_not_run ( ) :
+    assert y == 0 
+#(=> Section:End
+`);
+        await switchToTestingFromMain(page);
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
+        await runButton(page).click();
+        // Both of the first two tests add one to x and expect to find 1, which they only do if setup() reset it to 0 before each of
+        // them (the second would find 2 otherwise); and the last passes only if neither setUp nor setup2 ran:
+        await expect.poll(async () => await page.locator("#peaConsole").inputValue(), {timeout: 120000}).toContain("3 passed, 0 failed");
+
+        const funcDef = (name: string) => page.locator("#frameContainer_-4 .frame-div[data-frameType='funcdef']", {has: page.locator(".label-slot-input", {hasText: new RegExp("^" + name + "$")})}).first();
+        await expect(funcDef("setup")).toHaveCSS("background-color", "rgb(230, 210, 181)");
+        await expect(funcDef("test_first")).toHaveCSS("background-color", "rgb(230, 210, 181)");
+        await expect(funcDef("setUp")).not.toHaveCSS("background-color", "rgb(230, 210, 181)");
+        await expect(funcDef("setup2")).not.toHaveCSS("background-color", "rgb(230, 210, 181)");
+    });
+
     test("Assert frame is only available inside a test function, not at the top level of Testing or in other sections", async ({page}) => {
         const assertFrames = page.locator(".frame-div[data-frameType='assert']");
         await expect(assertFrames).toHaveCount(0);

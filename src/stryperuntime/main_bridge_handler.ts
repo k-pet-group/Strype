@@ -95,7 +95,7 @@ export const handleFileSyncRequests : SyncPromiseStrypePyodideHandlerFunction = 
         case StrypeSyncTarget.od:
             cloudName = "Microsoft OneDrive";
             break;
-    
+        default:
             break;
         }
         return {request: req.request, response: Promise.resolve(cloudName)};

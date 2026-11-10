@@ -114,6 +114,115 @@ test.describe("Testing section", () => {
         await expect(page.locator("#frameContainer_-3 .caret:not(.invisible)")).toHaveCount(1);
     });
 
+    test("Alt+T switches between My code and Test code when the frame cursor is focused", async ({page}) => {
+        const visibleFrameCursors = page.locator(".caret:not(.invisible)");
+        await expect(selectedTab(page)).toHaveText("My code");
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
+
+        await page.keyboard.press("Alt+t");
+        await waitForEditorSettled(page);
+        await expect(selectedTab(page)).toHaveText("Test code");
+        await expect(page.locator("#frameContainer_-4")).toBeVisible();
+        // The frame cursor goes to the top of the section now showing:
+        await expect(page.locator("#frameContainer_-4 .caret:not(.invisible)")).toHaveCount(1);
+        await expect(visibleFrameCursors).toHaveCount(1);
+
+        await page.keyboard.press("Alt+t");
+        await waitForEditorSettled(page);
+        await expect(selectedTab(page)).toHaveText("My code");
+        await expect(page.locator("#frameContainer_-3 .caret:not(.invisible)")).toHaveCount(1);
+        await expect(visibleFrameCursors).toHaveCount(1);
+
+        // Other combinations with T don't do it:
+        await page.keyboard.press("Alt+Shift+t");
+        await page.keyboard.press("Control+Alt+t");
+        await page.keyboard.press("t");
+        await waitForEditorSettled(page);
+        await expect(selectedTab(page)).toHaveText("My code");
+    });
+
+    test("Alt+T does nothing while a slot is being edited", async ({page}) => {
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
+        // Start editing the argument of print in My code:
+        await page.locator("#frameContainer_-3 .label-slot-input", {hasText: /^myString$/}).last().click();
+        await waitForEditorSettled(page);
+        // (The click puts the cursor part-way through the text, so go to the start first, then select it all:)
+        await page.keyboard.press("Home");
+        await page.keyboard.press("Shift+End");
+        await waitForEditorSettled(page);
+        const selectedText = () => page.evaluate(() => (document.getSelection()?.toString() ?? ""));
+        expect(await selectedText()).toContain("myString");
+
+        await page.keyboard.press("Alt+t");
+        await waitForEditorSettled(page);
+        await expect(selectedTab(page)).toHaveText("My code");
+        // Still editing the slot, with its text selected:
+        expect(await selectedText()).toContain("myString");
+    });
+
+    test("Alt+T does nothing while a program is running", async ({page}) => {
+        await loadContent(page, `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+while True  :
+#(=> Section:End
+`);
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
+        await runButton(page).click();
+        await expect(runButton(page)).toHaveText(/Stop$/, {timeout: 120000});
+        await page.keyboard.press("Alt+t");
+        await waitForEditorSettled(page);
+        await expect(selectedTab(page)).toHaveText("My code");
+        await expect(runButton(page)).toHaveText(/Stop$/);
+
+        // Once stopped, it works again:
+        await runButton(page).click();
+        await expect(runButton(page)).toHaveText(/^\s*Run$/, {timeout: 120000});
+        await page.keyboard.press("Alt+t");
+        await waitForEditorSettled(page);
+        await expect(selectedTab(page)).toHaveText("Test code");
+    });
+
+    test("Left arrow at the top of My code or Test code switches to the other", async ({page}) => {
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
+        // (The frame cursor starts at the top of My code)
+        await page.keyboard.press("ArrowLeft");
+        await waitForEditorSettled(page);
+        await expect(selectedTab(page)).toHaveText("Test code");
+        await expect(page.locator("#frameContainer_-4 .caret:not(.invisible)")).toHaveCount(1);
+
+        // And likewise at the top of Test code:
+        await page.keyboard.press("ArrowLeft");
+        await waitForEditorSettled(page);
+        await expect(selectedTab(page)).toHaveText("My code");
+        await expect(page.locator("#frameContainer_-3 .caret:not(.invisible)")).toHaveCount(1);
+
+        // With Shift it is not the plain left arrow, so it doesn't switch:
+        await page.keyboard.press("Shift+ArrowLeft");
+        await waitForEditorSettled(page);
+        await expect(selectedTab(page)).toHaveText("My code");
+    });
+
+    test("Left arrow elsewhere than the top of the section doesn't switch", async ({page}) => {
+        await expect(runButton(page)).toBeEnabled({timeout: 120000});
+        // Down below the first frame of My code, the left arrow goes to the frame above, as always:
+        await page.keyboard.press("ArrowDown");
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ArrowLeft");
+        await waitForEditorSettled(page);
+        await expect(selectedTab(page)).toHaveText("My code");
+
+        // Likewise in Test code, in the starter test function's body, below the top of the section:
+        await testsTab(page).click();
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ArrowDown");
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ArrowLeft");
+        await waitForEditorSettled(page);
+        await expect(selectedTab(page)).toHaveText("Test code");
+    });
+
     test("The Run button runs the tests while Testing is showing, and the program while My code is", async ({page}) => {
         const consoleLoc = page.locator("#peaConsole");
         await switchToTestingFromMain(page);

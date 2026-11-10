@@ -681,6 +681,24 @@ export default defineComponent({
                     return;
                 }
 
+                // With the frame cursor (so not while editing a slot), Alt+T (Option+T on a Mac) switches between My code and Test code,
+                // as does the plain left arrow key at the top of the section that is showing (where there is nothing to the left to
+                // move to). The key code is checked for the shortcut because Option+T types another character on a Mac. Nothing
+                // happens while a program is running, as for clicking the tabs, nor with a menu open or frames being dragged.
+                if(TestingSectionAvailable && !isEditing && !isDraggingFrames && !isPythonExecuting && !this.appStore.isAppMenuOpened && !event.repeat){
+                    const isAltT = (event.code === "KeyT" && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey);
+                    const shownSectionId = this.appStore.mainSectionShowsTests ? this.appStore.getTestsFrameContainerId : this.appStore.getMainCodeFrameContainerId;
+                    const isLeftAtTopOfSection = (event.key === "ArrowLeft" && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
+                        && this.appStore.currentFrame.id === shownSectionId && this.appStore.currentFrame.caretPosition === CaretPosition.body);
+                    if(isAltT || isLeftAtTopOfSection){
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+                        event.stopPropagation();
+                        this.appStore.setMainSectionShowsTests(!this.appStore.mainSectionShowsTests);
+                        return;
+                    }
+                }
+
                 // Tab or Space at the frame caret opens the frame commands pane (letting the user then
                 // either press a shortcut letter, or arrow to a command and press Enter) instead of their
                 // usual jobs (Tab normally moves to the next navigable position, Space normally inserts a

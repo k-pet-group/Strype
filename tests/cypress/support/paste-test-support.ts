@@ -62,6 +62,10 @@ export function checkDownloadedCodeEquals(fullCode: string, format: "py" | "spy"
             return s;
         };
         p = normalise(p);
+        // The Python version's default project has a starter test function in the Testing section, which is saved/exported at the end.
+        // These tests are about the other sections, and those that keep the existing project (rather than clearing it) have it still,
+        // which they don't expect, so leave it out of what we compare:
+        p = p.replace(/(#\(=> Section:Testing\n)?def test_my_code ?\( ?\) ?:\n\s*\x27\x27\x27Add assert statements to test your code\x27\x27\x27\n\s*pass\n?/, "");
         // Print out full version in message (without escaped \n), to make it easier to diff:
         expect(p, "Actual unescaped:\n" + p).to.equal(normalise(fullCode.replaceAll("\r\n", "\n")));
     });

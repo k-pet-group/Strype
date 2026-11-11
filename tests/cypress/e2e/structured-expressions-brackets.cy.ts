@@ -29,8 +29,9 @@ describe("Test brackets", () => {
         pressFrameShortcut("f");
         cy.get("body").type("a,(b,c)");
         // Frame IDs 1-4 are already taken by the starting project's 2 default imports + 2 Main
-        // frames (see nextAvailableId in initial-states.ts), so the for frame created here gets 5:
-        assertState((Cypress.env("mode") == "microbit") ? 4 : 5, "a,(b,c)$");
+        // frames, and in the Python version ID 5 by the starter test function in the Testing section
+        // (see nextAvailableId in initial-states.ts), so the for frame created here gets 6 (or 5 for micro:bit):
+        assertState((Cypress.env("mode") == "microbit") ? 4 : 6, "a,(b,c)$");
     });
 });
 

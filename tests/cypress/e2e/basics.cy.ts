@@ -533,7 +533,8 @@ describe("The My code heading", () => {
         }
         else {
             cy.get("[data-tab='tests']").click();
-            cy.get("#frameContainer_-3").should("not.be.visible");
+            // The My code container stays (it has the tabs), but its frames are hidden and the Test code ones are showing:
+            cy.get("#frameContainer_-3 .container-frames").should("not.be.visible");
             cy.get("#frameContainer_-4").should("be.visible");
         }
     });

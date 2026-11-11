@@ -1,7 +1,8 @@
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CurrentFrame, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesAction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
-import { testFunctionNamePrefix, checkCodeErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameSectionIdFromFrameId } from "./storeMethods";
+import { checkCodeErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameSectionIdFromFrameId } from "./storeMethods";
+import { testFunctionNamePrefix } from "./testFunctionNames";
 import { splitByRegexMatches, strypeFileExtension } from "./common";
 import Parser from "@/parser/parser";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
@@ -1031,8 +1032,6 @@ export function findAddCommandFrameType(shortcut: string, index?: number): Frame
 // and assignment. Every other shortcut requires opening the frame commands pane first.
 export const alwaysDirectFrameShortcutKeys = ["enter", "#", "="];
 
-// (The name prefix that marks a function definition in the Testing section as a test is in storeMethods.ts)
-export { testFunctionNamePrefix };
 export const testFunctionBgColour = "#E6D2B5"; // light brown
 
 // This shorthand frames are enhanced frames because they contain some default code value.

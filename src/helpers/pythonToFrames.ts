@@ -1,6 +1,7 @@
 import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState, TestsContainerDefinition } from "@/types/types";
 import {useStore} from "@/store/store";
-import {checkCodeErrors, getFrameSectionIdFromFrameId, testFunctionNamePrefix} from "@/helpers/storeMethods";
+import {checkCodeErrors, getFrameSectionIdFromFrameId} from "@/helpers/storeMethods";
+import {testFunctionNamePrefix} from "@/helpers/testFunctionNames";
 import {CustomEventTypes, getLastCaretPosInsideParent} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";

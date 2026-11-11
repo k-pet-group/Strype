@@ -3,6 +3,7 @@ import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
 import { TestingSectionAvailable } from "@/helpers/appContext";
+import { testFunctionNamePrefix, testSetupFunctionName } from "@/helpers/testFunctionNames";
 import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, DefsContainerDefinition, EditorFrameObjects, FieldSlot, FlatSlotBase, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, MessageDefinitions, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import { nextTick} from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID, slotStructureParserToString } from "./editor";
@@ -905,12 +906,6 @@ export const isContainedInFrame = function (currFrameId: number, caretPosition: 
 
     return isAncestorTypeFound;
 };
-
-// Name prefix that marks a function definition in the Testing section as a test (pytest's convention).
-export const testFunctionNamePrefix = "test_";
-
-// Name of the function in the Testing section that is run before each test (see isTestSetupFrame()).
-export const testSetupFunctionName = "setup";
 
 // The name of a function definition in the Testing section, or undefined if the frame is anything else
 const getTestsFunctionName = function (frame: FrameObject): string | undefined {

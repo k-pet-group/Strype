@@ -885,6 +885,37 @@ def test_others_did_not_run ( ) :
         await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='if']")).toHaveCount(1);
     });
 
+    test("The functions in Test code are only offered by auto-completion in Test code", async ({page}) => {
+        const autoCompletion = page.locator("[id$='_AutoCompletion']");
+        // In My code (where the cursor is), the starter test function isn't offered: the program can't call tests.
+        // (Ctrl+Space at the frame cursor adds a function call frame and opens its auto-completion.)
+        await page.keyboard.press("Control+Space");
+        await waitForEditorSettled(page);
+        await expect(autoCompletion.getByText("Python", {exact: true})).toBeVisible();
+        await expect(autoCompletion).not.toContainText("test_my_code");
+        await expect(autoCompletion).not.toContainText("My functions");
+        await page.keyboard.press("Escape");
+        await waitForEditorSettled(page);
+
+        // In a test function in Test code, both it and the other test function are offered:
+        await enterTestingSection(page);
+        await pressFrameShortcut(page, "s");
+        await waitForEditorSettled(page);
+        await page.keyboard.type("mine");
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ArrowDown"); // name -> function description
+        await waitForEditorSettled(page);
+        await page.keyboard.press("ArrowDown"); // function description -> body
+        await waitForEditorSettled(page);
+        await pressFrameShortcut(page, "c"); // a function call
+        await waitForEditorSettled(page);
+        await typeIndividually(page, "te");
+        // (The auto-completion of the empty function call frame added in My code above is still in the page, so take the latest one:)
+        await expect(autoCompletion.last()).toContainText("My functions");
+        await expect(autoCompletion.last()).toContainText("test_my_code");
+        await expect(autoCompletion.last()).toContainText("test_mine");
+    });
+
     test("Assert frame can be used inside a test function", async ({page}) => {
         const assertFrames = page.locator(".frame-div[data-frameType='assert']");
         await enterTestingSection(page);

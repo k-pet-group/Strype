@@ -875,7 +875,7 @@ async function calculateParamPromptUncached(frameId: number, {context, token, pa
         // - A built-in function
         // - An explicitly imported function with from...import...
         // We check the items in that order.  We can do this without using Skulpt, which will speed things up
-        const userFunc = getAllEnabledUserDefinedFunctions().find((f) => (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot)?.code === token);
+        const userFunc = getAllEnabledUserDefinedFunctions(frameId).find((f) => (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot)?.code === token);
         if (userFunc !== undefined) {
             const sig = await getUserDefinedSignature(userFunc);
             return getParamPrompt(sig, paramIndex, prevKeywordNames, lastParam, isFocused);

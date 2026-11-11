@@ -1278,9 +1278,14 @@ export function clearAllTestOutcomes(): void {
     });
 }
 
-export function getAllEnabledUserDefinedFunctions() : FrameObject[] {
+// If forFrameId is given, it is the frame that the functions are wanted for (that is, being edited): the functions in the Testing
+// section are only available to code in that section, as only the tests can see them, so are left out for any other frame.
+export function getAllEnabledUserDefinedFunctions(forFrameId?: number) : FrameObject[] {
+    const testsContainerId = useStore().getTestsFrameContainerId;
+    const includeTestingSection = (forFrameId === undefined || getFrameSectionIdFromFrameId(forFrameId) == testsContainerId);
     // All enabled user-defined functions except those of used-defined classes (even if the user is inside the class):
-    return Object.values(useStore().frameObjects).filter((f) => f.frameType.type === AllFrameTypesIdentifier.funcdef && !f.isDisabled  && (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.length > 0 && useStore().frameObjects[f.parentId].frameType.type != AllFrameTypesIdentifier.classdef);
+    return Object.values(useStore().frameObjects).filter((f) => f.frameType.type === AllFrameTypesIdentifier.funcdef && !f.isDisabled  && (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.length > 0 && useStore().frameObjects[f.parentId].frameType.type != AllFrameTypesIdentifier.classdef
+        && (includeTestingSection || getFrameSectionIdFromFrameId(f.id) != testsContainerId));
 }
 
 export function getAllEnabledUserDefinedClasses(): FrameObject[] {

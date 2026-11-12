@@ -724,6 +724,13 @@ export default defineComponent({
                 switchedToGraphicsTabAlreadyThisExecute = false;
                 switchedToConsoleTabAlreadyThisExecute = false;
                 renderer.resetDirty();
+                // Clearing the off-screen canvas above does not change what the user sees, and the new run's
+                // "clear" (which arrives from the worker shortly after the run starts) doesn't trigger a redraw.
+                // So unless something in this run changes a sprite, the previous run's picture would stay on
+                // screen (e.g. an Actor which has since been deleted from the code).  So we drop the previous
+                // run's sprites ourselves and repaint now:
+                renderer.clear();
+                this.redrawCanvas();
                 
                 // Clear input:
                 mostRecentClickedItems = [];

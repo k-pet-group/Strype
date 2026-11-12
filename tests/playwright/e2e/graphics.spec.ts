@@ -8,7 +8,7 @@ import fs from "fs";
 import {enterCode} from "../support/editor";
 import {dragDividerTo} from "../support/dividers";
 import {load, loadContent} from "../support/loading-saving";
-import {checkConsoleContent, runToFinish, setupGraphicsRedrawObserver, startRunning, waitForGraphicsSettled} from "../support/execution";
+import {checkConsoleContent, runButtonShowsRun, runToFinish, setupGraphicsRedrawObserver, startRunning, waitForGraphicsSettled} from "../support/execution";
 import {setupStrypeTest} from "../support/general";
 
 let browser = "";
@@ -389,6 +389,48 @@ test.describe("Check graphics works when shared with turtle", () => {
         // to once per requestAnimationFrame, so it can lag slightly behind execution finishing):
         await waitForGraphicsSettled(page);
         await checkGraphicsAreaContent(page, "shared-graphics-background-1");
+    });
+
+    test("Check a deleted actor does not linger in the graphics area on the next run", async ({page}) => {
+        // Regression test for #914: the loop keeps the program running, so it is stopped (not finished),
+        // and after the Actor frame is deleted the second run never changes any sprite, so nothing
+        // used to trigger a repaint of the canvas, which kept showing the first run's picture.
+        await enterCode(page, ["from strype.graphics import *\n", "", `
+            Actor("mouse-test.jpg")
+            while True:
+                pace(20)
+        `]);
+        await page.click("#graphicsPEATab");
+        await setupGraphicsRedrawObserver(page);
+        const button = await startRunning(page);
+        await waitForGraphicsSettled(page);
+        // The default background is black, and the mouse image is mid-grey/brown, so the centre
+        // pixel tells us whether the actor is being shown:
+        const centreIsBlack = () => page.evaluate(() => {
+            const canvas = document.querySelector("#pythonGraphicsCanvas") as HTMLCanvasElement;
+            const copy = document.createElement("canvas");
+            copy.width = canvas.width;
+            copy.height = canvas.height;
+            const ctx = copy.getContext("2d") as CanvasRenderingContext2D;
+            ctx.drawImage(canvas, 0, 0);
+            const [r, g, b] = ctx.getImageData(Math.floor(canvas.width / 2), Math.floor(canvas.height / 2), 1, 1).data;
+            return r + g + b < 30;
+        });
+        await expect.poll(centreIsBlack).toBe(false);
+        // Stop it:
+        await page.click("#runButton");
+        await runButtonShowsRun(button);
+        // The cursor is after the while loop; go up to between the Actor and the while, and delete the Actor:
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("ArrowUp");
+        await page.keyboard.press("Backspace");
+        await expect(page.locator("#frameContainer_-3")).not.toContainText("Actor");
+        await setupGraphicsRedrawObserver(page);
+        await startRunning(page);
+        await expect.poll(centreIsBlack).toBe(true);
+        await page.click("#runButton");
+        await runButtonShowsRun(button);
     });
 
     test("Check graphics example responds to keyboard", async ({page}) => {

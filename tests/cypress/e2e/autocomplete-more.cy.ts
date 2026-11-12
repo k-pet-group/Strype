@@ -617,6 +617,19 @@ describe("Local files", () => {
         }, false);
     });
 
+    it("Lists your own files before the built-in files in string literal auto-complete", () => {
+        focusEditorAC();
+        cy.get("body").type("p\"");
+        cy.wait(500);
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel, frameId) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            cy.get(acIDSel + " div.ac-module-header:not(." + scssVars.acEmptyResultsContainerClassName + ")")
+                .then((headers) => [...headers].map((h) => (h as HTMLElement).innerText.trim()))
+                .should("deep.equal", ["Your files", "Built-in files"]);
+        }, false);
+    });
+
     it("Offers file path auto-complete for a token matching a local file", () => {
         focusEditorAC();
         cy.get("body").type("p\"my-dat");

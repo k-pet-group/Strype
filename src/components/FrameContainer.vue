@@ -127,7 +127,8 @@ export default defineComponent({
         },
 
         // The tabs of the heading of the third section: one for the main code and one for the testing code, labelled with the
-        // containers' headings (those end in a colon, which a tab doesn't need)
+        // containers' headings. Those headings are shared with the other sections, where they end in a colon (a full-width one
+        // in some languages), which a tab doesn't need, so tabLabel() strips that colon and any spaces around it from the end.
         // The tab that isn't selected has a tooltip with the keyboard shortcut to switch to it (see Commands.vue)
         headingTabs(): {id: string, label: string, selected: boolean, showsTests: boolean, tip?: string}[] {
             const tabLabel = (label: string) => label.replace(/\s*[:\uFF1A]\s*$/, "");

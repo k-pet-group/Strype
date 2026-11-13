@@ -1,5 +1,5 @@
 import { nextTick} from "vue";
-import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, TestsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, getFrameDefType, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, SuggestedCloudSaveLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
+import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, TestsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, getFrameDefType, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, SuggestedCloudSaveLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode, TestOutcome } from "@/types/types";
 import { getObjectPropertiesDifferences } from "@/helpers/common";
 import { loadPinnedLocalFiles, pinnedLocalFilesStateKey, savePinnedLocalFiles } from "@/helpers/load-save";
 import i18n from "@/i18n";
@@ -150,8 +150,8 @@ export const useStore = defineStore("app", {
 
             // How the last test run went overall (shown next to the "Run tests" button): "passed" if there was at least
             // one test and all of them passed, "failed" otherwise (including when the tests couldn't be collected).
-            // Undefined before any run, while one is in progress, and when no tests were found.
-            lastTestRunOutcome: undefined as "passed" | "failed" | undefined,
+            // "not_run" before any run, while one is in progress, and when no tests were found.
+            lastTestRunOutcome: "not_run" as TestOutcome,
 
             // The third section of the editor shows either the main code ("My code") or the testing code
             // ("Testing"); the "My code" and "Test code" tabs of the heading select between the two (see setMainSectionShowsTests()).

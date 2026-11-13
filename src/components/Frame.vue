@@ -103,7 +103,7 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
-import { AllFrameTypesIdentifier, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CoordPosition, CurrentFrame, DefaultFramesDefinition, FrameContextMenuActionName, FrozenState, NavigationPosition, Position, PythonExecRunningState, StrypeContextMenuItem } from "@/types/types";
+import { AllFrameTypesIdentifier, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CoordPosition, CurrentFrame, DefaultFramesDefinition, FrameContextMenuActionName, FrozenState, NavigationPosition, Position, PythonExecRunningState, StrypeContextMenuItem, TestOutcome } from "@/types/types";
 import { calculateNextCollapseState, frameOrChildHasErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent, isTestFunctionFrame, isTestSetupFrame } from "@/helpers/storeMethods";
 import { copyFramesToClipboard, copyFrameTextReadyForClipboard, CustomEventTypes, getCaretContainerRef, getFrameBodyRef, getFrameBodyUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getHTML2CanvasFramesSelectionCropOptions, getJointFramesRef, isIdAFrameId, notifyDragStarted, parseFrameUID, setContextMenuEventClientXY, testFunctionBgColour } from "@/helpers/editor";
 import { pasteMixedPython } from "@/helpers/pythonToFrames";
@@ -303,8 +303,8 @@ export default defineComponent({
         },
 
         // For a test_ function: how it went in the last test run, if there has been one
-        testOutcome(): "passed" | "failed" | undefined {
-            return this.appStore.frameObjects[this.frameId].testOutcome;
+        testOutcome(): TestOutcome {
+            return this.appStore.frameObjects[this.frameId].testOutcome ?? "not_run";
         },
 
         // The outcome of the last test run is out of date once the editor has been changed since

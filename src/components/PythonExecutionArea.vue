@@ -21,8 +21,8 @@
             <!-- Takes all the free space between the tabs and the Run button. In the tests mode, it holds the overall outcome of the last test run:
                  a green "Pass" or red "Fail" pill, grey once the code has been edited since. When the slot is too narrow for the word, only the
                  tick or cross is shown, and the slot always has room for at least that (see the CSS for .pea-test-outcome-slot). -->
-            <div :class="{'pea-test-outcome-slot': true, 'pea-test-outcome-slot-reserved': isRunButtonForTests, 'pea-test-outcome-passed': isRunButtonForTests && lastTestRunOutcome == 'passed' && !isLastTestRunStale, 'pea-test-outcome-failed': isRunButtonForTests && lastTestRunOutcome == 'failed' && !isLastTestRunStale, 'pea-test-outcome-stale': isRunButtonForTests && !!lastTestRunOutcome && isLastTestRunStale}">
-                <template v-if="isRunButtonForTests && lastTestRunOutcome">
+            <div :class="{'pea-test-outcome-slot': true, 'pea-test-outcome-slot-reserved': isRunButtonForTests, 'pea-test-outcome-passed': isRunButtonForTests && lastTestRunOutcome == 'passed' && !isLastTestRunStale, 'pea-test-outcome-failed': isRunButtonForTests && lastTestRunOutcome == 'failed' && !isLastTestRunStale, 'pea-test-outcome-stale': isRunButtonForTests && lastTestRunOutcome != 'not_run' && isLastTestRunStale}">
+                <template v-if="isRunButtonForTests && lastTestRunOutcome != 'not_run'">
                     <!-- The icon comes first in the DOM (but is displayed last, see the CSS) so that it is the text that wraps out of view first -->
                     <span class="pea-test-outcome-icon" :title="$t(lastTestRunOutcome == 'passed' ? 'appMessage.testsPassed' : 'appMessage.testsFailed')">
                         <TestOutcomeIcon :passed="lastTestRunOutcome == 'passed'"/>
@@ -99,7 +99,7 @@ import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { mapStores } from "pinia";
 import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEATabContentContainerDivId, hasNonRuntimeCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
-import { AllFrameTypesIdentifier, BaseSlot, CoordPosition, defaultEmptyStrypeLayoutDividerSettings, PythonExecRunningState, StrypeContextMenuItem, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CoordPosition, defaultEmptyStrypeLayoutDividerSettings, PythonExecRunningState, StrypeContextMenuItem, StrypePEALayoutData, StrypePEALayoutMode, TestOutcome } from "@/types/types";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import SVGIcon from "@/components/SVGIcon.vue";
 import TestOutcomeIcon from "@/components/TestOutcomeIcon.vue";
@@ -510,7 +510,7 @@ export default defineComponent({
             return this.appStore.mainSectionShowsTests;
         },
 
-        lastTestRunOutcome(): "passed" | "failed" | undefined {
+        lastTestRunOutcome(): TestOutcome {
             return this.appStore.lastTestRunOutcome;
         },
 
@@ -983,7 +983,7 @@ export default defineComponent({
             this.appStore.wasLastRuntimeErrorFrameId = undefined;
             clearAllRuntimeErrors();
             clearAllTestOutcomes();
-            this.appStore.lastTestRunOutcome = undefined;
+            this.appStore.lastTestRunOutcome = "not_run";
 
             // Separate Parser instances: Parser.parse() leaves internal state (e.g. exitFlag) set after
             // reaching a stop boundary, which would corrupt a second parse() call reusing the same instance.

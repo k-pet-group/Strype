@@ -682,8 +682,9 @@ export default defineComponent({
                 }
 
                 // With the frame cursor (so not while editing a slot), Alt+T (Option+T on a Mac) switches between My code and Test code,
-                // as does the plain left arrow key at the top of the section that is showing (where there is nothing to the left to
-                // move to). The key code is checked for the shortcut because Option+T types another character on a Mac. Nothing
+                // as does the plain left arrow key when the cursor is at the top of the section that is showing. (This takes over from
+                // the usual left-arrow move to the end of the section above, which for My code is Definitions; the up arrow key
+                // still goes there.) The key code is checked for the shortcut because Option+T types another character on a Mac. Nothing
                 // happens while a program is running, as for clicking the tabs, nor with a menu open or frames being dragged.
                 if(TestingSectionAvailable && !isEditing && !isDraggingFrames && !isPythonExecuting && !this.appStore.isAppMenuOpened && !event.repeat){
                     const isAltT = (event.code === "KeyT" && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey);

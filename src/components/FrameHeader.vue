@@ -29,7 +29,7 @@
             </div>
             <div class="frame-controls-container">
                 <!-- How a test_ function went in the last test run: a green "Pass" or red "Fail" badge, grey once the code has been edited since -->
-                <span v-if="testOutcome && groupIndex == 0"
+                <span v-if="testOutcome != 'not_run' && groupIndex == 0"
                       :class="{'test-outcome-badge': true, 'test-outcome-passed': testOutcome == 'passed' && !isTestOutcomeStale, 'test-outcome-failed': testOutcome == 'failed' && !isTestOutcomeStale, 'test-outcome-stale': isTestOutcomeStale}"
                       :title="$t(testOutcome == 'passed' ? 'appMessage.testPassed' : 'appMessage.testFailed')">{{ $t(testOutcome == 'passed' ? 'appMessage.testPassBadge' : 'appMessage.testFailBadge') }} <TestOutcomeIcon :passed="testOutcome == 'passed'"/></span>
                 <div ref="frozenControl" :class="{'frozen-control': true, 'frozen': isFrozen}" v-if="groupIndex == 0">
@@ -64,7 +64,7 @@
 import { defineComponent, PropType } from "vue";
 import LabelSlotsStructure from "@/components/LabelSlotsStructure.vue";
 import {useStore} from "@/store/store";
-import {AllFrameTypesIdentifier, CollapsedState, FrameLabel, FrameObject, FrozenState} from "@/types/types";
+import {AllFrameTypesIdentifier, CollapsedState, FrameLabel, FrameObject, FrozenState, TestOutcome} from "@/types/types";
 import {mapStores} from "pinia";
 import scssVars from "@/assets/style/_export.module.scss";
 import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
@@ -163,7 +163,7 @@ export default defineComponent({
         erroneous: Boolean,
         wasLastRuntimeError: Boolean,
         isAssertionFailure: Boolean,
-        testOutcome: String as PropType<"passed" | "failed">,
+        testOutcome: String as PropType<TestOutcome>,
         isTestOutcomeStale: Boolean,
         onFocus: {type: Function, required: true}, // Handler for focus/blur the header (see Frame.vue)
     },

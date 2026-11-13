@@ -156,6 +156,9 @@ export enum FrozenState {
 // Frame related interace, the highest level to describe a frame
 // Note the labelSlotsDict property is an array inline with each label of the frame
 // and slots are always related to 1 label (for example "for" (label 0) and "in" (label 1) in a for frame)
+// How a test run went (for one test function, or for the run as a whole); "not_run" if there has not been a run yet
+export type TestOutcome = "passed" | "failed" | "not_run";
+
 export interface FrameObject {
     frameType: FramesDefinitions;
     id: number;
@@ -174,7 +177,7 @@ export interface FrameObject {
     atParsingError?: string //this contains the error message for a parsing error (from TigerPython) that can't be associated to a slot (e.g. wrong try structure)
     runTimeError?: string; //this contains the error message for a runtime error, as the granularity of the Skulpt doesn't go beyond the line number
     assertionFailed?: boolean; //set on an assert frame whose runtime error was a failed assertion (shown with a cross rather than a warning triangle)
-    testOutcome?: "passed" | "failed"; //for a test_ function in the Testing section: how it went in the last test run (see lastTestRunAt in the store)
+    testOutcome?: Exclude<TestOutcome, "not_run">; //for a test_ function in the Test code section: how it went in the last test run (see lastTestRunAt in the store); absent if there has been no run
 }
 
 export enum AllowedSlotContent {

@@ -155,9 +155,9 @@ import RecordSoundDlg from "@/components/RecordSoundDlg.vue";
 import ColourPickerDlg from "@/components/ColourPickerDlg.vue";
 import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
-import {loadDivider, loadPinnedLocalFiles} from "@/helpers/load-save";
+import {loadDivider, loadPinnedLocalFiles, testingShowingHeader} from "@/helpers/load-save";
 import FrameHeader from "@/components/FrameHeader.vue";
-import { eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
+import { eventBus, projectDocumentationFrameId, TestingSectionAvailable } from "@/helpers/appContext";
 import {inflateRaw} from "pako";
 import { Base64 } from "js-base64";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
@@ -1808,6 +1808,13 @@ export default defineComponent({
                 if (s != null) {
                     // Now we can clear other non-frame related elements
                     this.appStore.clearNoneFrameRelatedState();
+                    // ... and a newly loaded project starts with the third section showing the main code, unless it was saved
+                    // with the Testing code showing (see testingShowingHeader), when the cursor goes to the top of that instead:
+                    const showTesting = TestingSectionAvailable && s.headers[testingShowingHeader]?.trim() == "true";
+                    this.appStore.mainSectionShowsTests = showTesting;
+                    if (showTesting) {
+                        this.appStore.setCurrentFrame({id: this.appStore.getTestsFrameContainerId, caretPosition: CaretPosition.body});
+                    }
                 
                     // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                     // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.

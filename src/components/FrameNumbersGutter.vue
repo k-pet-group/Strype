@@ -149,7 +149,8 @@ export default defineComponent({
             const newOffsets: Record<number, number> = {};
             this.numberedFrameIds.forEach((frameId) => {
                 const headerEl = document.getElementById(getFrameHeaderUID(frameId));
-                if (headerEl) {
+                // A frame in the section that is not currently showing (main code vs testing) has no layout:
+                if (headerEl && headerEl.getClientRects().length > 0) {
                     const rect = headerEl.getBoundingClientRect();
                     const halfCaretHeight = (activeCaret?.height ?? 0) / 2;
                     const correctedTop = !activeCaret ? rect.top :

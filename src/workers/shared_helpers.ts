@@ -6,6 +6,28 @@ export interface PyodideErrorDetails {
     traceback: {filename: string, lineno: number}[]
 }
 
+// Result of running the Testing section's code via pytest.
+export interface TestRunResult {
+    nodeId: string,
+    outcome: "passed" | "failed" | "error",
+    message: string,
+    // Best-effort crash location (see pytest_runtest_logreport in python-execution.ts), used to
+    // highlight the offending frame in the editor the same way a normal Run's error does. Any of
+    // these can be null/undefined if pytest didn't report a reprcrash for this result (e.g. a
+    // plain pytest.fail() reason) or the crash wasn't in either generated file we can map back to
+    // frames (e.g. inside a library pytest itself loaded).
+    crashMessage?: string | null,
+    lineno?: number | null,
+    crashFile?: "main" | "tests" | null,
+}
+
+export interface TestRunResults {
+    // Set when pytest itself could not be run at all (e.g. a syntax error in the test/main code
+    // that stopped collection) -- in that case `results` will be empty.
+    collectionError: string | null,
+    results: TestRunResult[],
+}
+
 export async function serviceWorkerReadyAndInControl() : Promise<void> {
     await navigator.serviceWorker.ready;
 

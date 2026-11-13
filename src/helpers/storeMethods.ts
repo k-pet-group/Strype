@@ -2,6 +2,8 @@ import { getSHA1HashForObject } from "@/helpers/common";
 import i18n from "@/i18n";
 import Parser from "@/parser/parser";
 import { useStore } from "@/store/store";
+import { TestingSectionAvailable } from "@/helpers/appContext";
+import { testFunctionNamePrefix, testSetupFunctionName } from "@/helpers/testFunctionNames";
 import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, DefsContainerDefinition, EditorFrameObjects, FieldSlot, FlatSlotBase, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameLabel, FrameObject, FrozenState, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotCodeType, MessageDefinitions, NavigationPosition, OptionalSlotType, SlotCoreInfos, SlotCursorInfos, SlotInfos, SlotsStructure, SlotType, StrypePlatform } from "@/types/types";
 import { nextTick} from "vue";
 import { checkEditorCodeErrors, countEditorCodeErrors, getCaretContainerUID, getLabelSlotUID, getMatchingBracket, parseLabelSlotUID, slotStructureParserToString } from "./editor";
@@ -905,7 +907,43 @@ export const isContainedInFrame = function (currFrameId: number, caretPosition: 
     return isAncestorTypeFound;
 };
 
-// return/global/break/continue are the only frame types whose availability at a given position isn't
+// The name of a function definition in the Testing section, or undefined if the frame is anything else
+const getTestsFunctionName = function (frame: FrameObject): string | undefined {
+    if (frame.frameType.type !== AllFrameTypesIdentifier.funcdef || getFrameSectionIdFromFrameId(frame.id) != useStore().getTestsFrameContainerId) {
+        return undefined;
+    }
+    const nameSlot = frame.labelSlotsDict[0]?.slotStructures.fields[0];
+    return (nameSlot && isFieldBaseSlot(nameSlot)) ? (nameSlot as BaseSlot).code : undefined;
+};
+
+// Whether the frame is a function definition in the Testing section whose name starts with the test prefix (i.e. one pytest will run)
+export const isTestFunctionFrame = function (frame: FrameObject): boolean {
+    return getTestsFunctionName(frame)?.startsWith(testFunctionNamePrefix) ?? false;
+};
+
+// Whether the frame is the function in the Testing section called setup, which is run before each test (the test runner
+// does this, as for a pytest fixture with autouse=True, see executeTests() in workers/python-execution.ts). Only that
+// exact name: setUp or setup2 are ordinary functions.
+export const isTestSetupFrame = function (frame: FrameObject): boolean {
+    return getTestsFunctionName(frame) === testSetupFunctionName;
+};
+
+// Whether the caret position is inside a test function (see isTestFunctionFrame())
+export const isInsideTestFunction = function (frameId: number, caretPosition: CaretPosition): boolean {
+    let frameToCheckId = caretPosition === CaretPosition.body
+        ? frameId
+        : getParentId(useStore().frameObjects[frameId]);
+    while (frameToCheckId > 0) {
+        const frame = useStore().frameObjects[frameToCheckId];
+        if (isTestFunctionFrame(frame)) {
+            return true;
+        }
+        frameToCheckId = getParentId(frame);
+    }
+    return false;
+};
+
+// return/global/break/continue/assert are the only frame types whose availability at a given position isn't
 // fully captured by a plain forbiddenChildrenTypes check -- they're additionally gated by an ancestor
 // container (the Defs section, a case block, or a for/while loop). Used both to build the frame
 // commands pane's forbidden-types list (generateAvailableFrameCommands, store.ts) and to validate a
@@ -914,13 +952,17 @@ export const isContainedInFrame = function (currFrameId: number, caretPosition: 
 export const isAncestorGatedFrameTypeAllowed = function (frameId: number, caretPosition: CaretPosition, targetType: string): boolean {
     switch(targetType){
     case AllFrameTypesIdentifier.global:
-        return isContainedInFrame(frameId, caretPosition, [DefsContainerDefinition.type]);
+        // In the Defs section, or inside any function (functions in the Testing section, too):
+        return isContainedInFrame(frameId, caretPosition, [DefsContainerDefinition.type, AllFrameTypesIdentifier.funcdef]);
     case AllFrameTypesIdentifier.return:
-        return isContainedInFrame(frameId, caretPosition, [DefsContainerDefinition.type])
+        return isContainedInFrame(frameId, caretPosition, [DefsContainerDefinition.type, AllFrameTypesIdentifier.funcdef])
             || isContainedInFrame(frameId, caretPosition, [AllFrameTypesIdentifier.case]);
     case AllFrameTypesIdentifier.break:
     case AllFrameTypesIdentifier.continue:
         return isContainedInFrame(frameId, caretPosition, [AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.while]);
+    case AllFrameTypesIdentifier.assert:
+        // Only inside a test function (a function named test_...) in the Testing section, and nowhere else:
+        return TestingSectionAvailable && isInsideTestFunction(frameId, caretPosition);
     default:
         return true;
     }
@@ -989,6 +1031,14 @@ export const getAncestorFrameOfTypeId = (frameId: number, ancestorType: string):
 };
 
 
+// The third section of the editor shows either the main code or the testing code, never both (see
+// the store's mainSectionShowsTests). Positions inside the one that isn't showing can't be navigated to.
+// Returns the id of the section whose positions can't be navigated to at the moment.
+const getHiddenSectionId = function (): number {
+    const store = useStore();
+    return store.mainSectionShowsTests ? store.getMainCodeFrameContainerId : store.getTestsFrameContainerId;
+};
+
 // Instead of calculating the available caret positions through the store (where the frameObjects object is hard to use for this)
 // We get the available caret positions through the DOM, where they are all present.
 // If showIsInCollapsedFrameContainer is set to true, we check that the frame container (section) containing the cursor is not collapsed 
@@ -999,6 +1049,8 @@ export const getAvailableNavigationPositions = function(showIsInCollapsedFrameCo
     const allCaretDOMpositions = document.getElementsByClassName(scssVars.navigationPositionClassName);
     // We create a list that hold objects of {frameId,isSlotNavigationPosition,caretPosition?,labelSlotsIndex?, slotId?) for each available navigation positions
     // and discard the locations that correspond to the editable slots of disable frames
+    // Worked out once, as this is called often (on every key press that moves the cursor) for many positions:
+    const hiddenSectionId = getHiddenSectionId();
     return Object.values(allCaretDOMpositions).map((e)=> {
         const isSlotNavigationPosition = e.id.startsWith("input");
         // Retrieves the identifier for the navigation position: the type of caret position for a caret (e.g. "caretBody"), the indexes/ids for a slot
@@ -1018,7 +1070,8 @@ export const getAvailableNavigationPositions = function(showIsInCollapsedFrameCo
             ...positionObjIdentifier,
             isInCollapsedFrameContainer: (showIsInCollapsedFrameContainer) ? ((useStore().frameObjects[getFrameSectionIdFromFrameId(parseInt(frameIdMatch?.[0]??"-100"))].collapsedState ?? CollapsedState.FULLY_VISIBLE) != CollapsedState.FULLY_VISIBLE) : undefined,            
         } as NavigationPosition;
-    }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.frameId] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.frameId].isDisabled)) as NavigationPosition[]; 
+    }).filter((navigationPosition) => useStore().frameObjects[navigationPosition.frameId] && !(navigationPosition.isSlotNavigationPosition && useStore().frameObjects[navigationPosition.frameId].isDisabled)
+        && getFrameSectionIdFromFrameId(navigationPosition.frameId) !== hiddenSectionId) as NavigationPosition[]; 
 };
 
 const getPrecompiledErrorFrameId = (frameId: number): string => {
@@ -1188,8 +1241,18 @@ export function checkCodeErrors(frameIdsForPrecompiled?: number | number[]): voi
     // We don't want to crash the application if something isn't handled correctly in TP.
     // So in case of an error, we catch it to allow the rest of the code to execute...
     try{
+        const testsContainerId = useStore().getTestsFrameContainerId;
+        // Whether there is anything to check in the Testing section: a function with nothing in it (as in the default
+        // project) has nothing for TigerPython to look at, and doing a second pass over the whole program costs
+        const hasTests = getAllChildrenAndJointFramesIds(testsContainerId).some((frameId) => useStore().frameObjects[frameId].frameType.type !== AllFrameTypesIdentifier.funcdef);
         const parser = new Parser(true, "py", true);
-        parser.getErrorsFormatted(parser.parse({}));
+        // When there are tests, the main program (imports, definitions, main code) is checked without them, and the tests
+        // are checked separately, as they run: seeing the imports and definitions but not the main code.
+        parser.getErrorsFormatted(parser.parse(hasTests ? {stopAt: {frameId: testsContainerId, includeThisFrame: false}} : {}));
+        if (hasTests) {
+            const testsParser = new Parser(true, "py", true);
+            testsParser.getErrorsFormatted(testsParser.parse({excludeMainCode: true}));
+        }
     }
     catch(error){
         console.warn(error);
@@ -1205,12 +1268,24 @@ export function checkCodeErrors(frameIdsForPrecompiled?: number | number[]): voi
 export function clearAllRuntimeErrors(): void {
     Object.values(useStore().frameObjects).forEach((frame: FrameObject) => {
         delete useStore().frameObjects[frame.id].runTimeError;
+        delete useStore().frameObjects[frame.id].assertionFailed;
     });
 }
 
-export function getAllEnabledUserDefinedFunctions() : FrameObject[] {
+export function clearAllTestOutcomes(): void {
+    Object.values(useStore().frameObjects).forEach((frame: FrameObject) => {
+        delete useStore().frameObjects[frame.id].testOutcome;
+    });
+}
+
+// If forFrameId is given, it is the frame that the functions are wanted for (that is, being edited): the functions in the Testing
+// section are only available to code in that section, as only the tests can see them, so are left out for any other frame.
+export function getAllEnabledUserDefinedFunctions(forFrameId?: number) : FrameObject[] {
+    const testsContainerId = useStore().getTestsFrameContainerId;
+    const includeTestingSection = (forFrameId === undefined || getFrameSectionIdFromFrameId(forFrameId) == testsContainerId);
     // All enabled user-defined functions except those of used-defined classes (even if the user is inside the class):
-    return Object.values(useStore().frameObjects).filter((f) => f.frameType.type === AllFrameTypesIdentifier.funcdef && !f.isDisabled  && (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.length > 0 && useStore().frameObjects[f.parentId].frameType.type != AllFrameTypesIdentifier.classdef);
+    return Object.values(useStore().frameObjects).filter((f) => f.frameType.type === AllFrameTypesIdentifier.funcdef && !f.isDisabled  && (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code.length > 0 && useStore().frameObjects[f.parentId].frameType.type != AllFrameTypesIdentifier.classdef
+        && (includeTestingSection || getFrameSectionIdFromFrameId(f.id) != testsContainerId));
 }
 
 export function getAllEnabledUserDefinedClasses(): FrameObject[] {

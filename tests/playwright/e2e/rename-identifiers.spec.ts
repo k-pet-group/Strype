@@ -2,7 +2,7 @@ import {test, expect, Locator, Page} from "@playwright/test";
 import {readFileSync} from "node:fs";
 import {save} from "../support/loading-saving";
 import {setupStrypeTest} from "../support/general";
-import {doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, pressFrameShortcut, pressN, waitForEditorSettled} from "../support/editor";
+import {doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, getDefaultStrypeProjectTestingFullLines, pressFrameShortcut, pressN, waitForEditorSettled} from "../support/editor";
 
 const defaultStandardStrypeProjectDocLiteral = getDefaultStrypeProjectDocumentationFullLine();
 const defaultStrypeProjectImportsLiteral = getDefaultStrypeProjectImportsFullLine();
@@ -18,7 +18,7 @@ ${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `;
 
 const mainCodeMultiVarsCodeLiteral = `
@@ -168,8 +168,10 @@ test.beforeEach(async ({ page, browserName }, testInfo) => {
 // importCodeLiteral, whose paste *does* add its own import (datetime): that gets inserted at the
 // bottom of Imports (after the existing defaults), so the defaults still belong directly after the
 // header, ahead of it.
+// (The default project's Testing section is also still there afterwards, after the Main section.)
 function withDefaultImports(code: string): string {
-    return code.replace("#(=> Section:Imports\n", "#(=> Section:Imports\n" + defaultStrypeProjectImportsLiteral);
+    return code.replace("#(=> Section:Imports\n", "#(=> Section:Imports\n" + defaultStrypeProjectImportsLiteral)
+        .replace("#(=> Section:End", getDefaultStrypeProjectTestingFullLines() + "#(=> Section:End");
 }
 
 // PageUp, pressed while already showing a frame cursor (rather than while editing text), jumps the

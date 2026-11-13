@@ -16,7 +16,7 @@ const initialStates: StateAppObjects = {
         debugging: false,
         initialState: initialPythonState,
         showKeystroke: false,
-        nextAvailableId: 5,
+        nextAvailableId: 6, // frames 1 to 5 are used by the starter project (including the test function in Testing)
     },
 
     "initialMicrobitState": {

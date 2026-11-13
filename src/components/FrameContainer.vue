@@ -1,11 +1,17 @@
 <template>
-    <div class="frame-container" :style="frameStyle" @click.self="onOuterContainerClick" @mouseenter="onFrameContainerHover(true)" @mouseleave="onFrameContainerHover(false)">
-        <div class="frame-container-header" @click.self="onOuterContainerClick">
+    <div v-show="!isTestsFrameContainer || isShowingTests" class="frame-container" :style="frameStyle" @click.self="onOuterContainerClick" @mouseenter="onFrameContainerHover(true)" @mouseleave="onFrameContainerHover(false)">
+        <!-- The Testing container has no heading of its own: it shares the "My code" heading, which switches between the two -->
+        <div v-if="!isTestsFrameContainer" class="frame-container-header" @click.self="onOuterContainerClick">
             <button v-if="!isMainCodeFrameContainer && !isDefsFrameContainer" class="frame-container-btn-collapse" @click="toggleCollapse">{{collapseButtonLabel}}</button>
-            <span :class="{[scssVars.frameContainerLabelSpanClassName]: true,'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
+            <!-- In the Python version, the heading of the third section is a pair of tabs: "My code" and "Test code", of which only the selected one is showing below -->
+            <div v-if="isMainCodeFrameContainer && testingSectionAvailable" class="frame-container-tabs" role="tablist">
+                <span v-for="tab in headingTabs" :key="tab.id" role="tab" :aria-selected="tab.selected" :data-tab="tab.id" :title="tab.tip"
+                      :class="{'frame-container-tab': true, 'frame-container-tab-selected': tab.selected, 'frame-container-tab-clickable': !tab.selected && !isPythonExecuting}"
+                      @click.stop="selectHeadingTab(tab.showsTests)">{{tab.label}}</span>
+            </div>
+            <span v-else :class="{[scssVars.frameContainerLabelSpanClassName]: true, 'no-toggle-frame-container-span': isMainCodeFrameContainer || isDefsFrameContainer}" @click.self="toggleCollapse">{{containerLabel}}</span>
             <ChildrenFrameStateToggle v-if="isDefsFrameContainer" :frames="frames" :parentIsFrozen="false"/>
         </div>
-
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
         <hr v-if="isCollapsed && frames.length > 0" class="non-empty-collapsed-frame-container-hr">
         <div :id="frameUID" :style="containerStyle" class="container-frames" @click="onFrameContainerClick" tabindex="-1" ref="containerFrames">
@@ -45,6 +51,8 @@ import { mapStores } from "pinia";
 import { CustomEventTypes, getCaretContainerRef, getFrameUID} from "@/helpers/editor";
 import scssVars from "@/assets/style/_export.module.scss";
 import { getFrameSectionIdFromFrameId } from "@/helpers/storeMethods";
+import { TestingSectionAvailable } from "@/helpers/appContext";
+import { isMacOSPlatform } from "@/helpers/common";
 import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
 
 //////////////////////
@@ -78,6 +86,10 @@ export default defineComponent({
     },
 
     computed: {
+        testingSectionAvailable(): boolean {
+            return TestingSectionAvailable;
+        },
+
         ...mapStores(useStore),
 
         scssVars() {
@@ -99,6 +111,38 @@ export default defineComponent({
 
         isDefsFrameContainer(): boolean {
             return this.frameId == this.appStore.getDefsFrameContainerId;
+        },
+
+        isTestsFrameContainer(): boolean {
+            return this.frameId == this.appStore.getTestsFrameContainerId;
+        },
+
+        isPythonExecuting(): boolean {
+            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
+        },
+
+        // Whether the third section of the editor is currently showing the testing code rather than the main code
+        isShowingTests(): boolean {
+            return this.appStore.mainSectionShowsTests;
+        },
+
+        // The tabs of the heading of the third section: one for the main code and one for the testing code, labelled with the
+        // containers' headings. Those headings are shared with the other sections, where they end in a colon (a full-width one
+        // in some languages), which a tab doesn't need, so tabLabel() strips that colon and any spaces around it from the end.
+        // The tab that isn't selected has a tooltip with the keyboard shortcut to switch to it (see Commands.vue)
+        headingTabs(): {id: string, label: string, selected: boolean, showsTests: boolean, tip?: string}[] {
+            const tabLabel = (label: string) => label.replace(/\s*[:\uFF1A]\s*$/, "");
+            const shortcut = isMacOSPlatform() ? "Option+T" : "Alt+T";
+            const tabs = [
+                {id: "main", label: tabLabel(this.containerLabel ?? ""), selected: !this.isShowingTests, showsTests: false},
+                {id: "tests", label: tabLabel(this.$t("appMessage.testsContainer")), selected: this.isShowingTests, showsTests: true},
+            ];
+            return tabs.map((tab) => ({...tab, tip: tab.selected ? undefined : this.$t("appMessage.switchToSectionTip", {section: tab.label, shortcut})}));
+        },
+
+        // Of the main code and the testing code, only one is shown at a time
+        isHiddenByMode(): boolean {
+            return (this.isMainCodeFrameContainer && this.isShowingTests) || (this.isTestsFrameContainer && !this.isShowingTests);
         },
         
         frames: {
@@ -128,8 +172,14 @@ export default defineComponent({
             };
             // For the main code, add 200px at the bottom so you can scroll down to put the last bit of code
             // above the bottom of the window.
-            if (this.isMainCodeFrameContainer) {
+            // The same goes for the testing code, which takes the place of the main code when it is showing.
+            if ((this.isMainCodeFrameContainer && !this.isShowingTests) || (this.isTestsFrameContainer && this.isShowingTests)) {
                 defaultStyle["padding-bottom"] = "200px";
+            }
+            // While the testing code is showing, "My code" is just the heading above it: no space below, so the
+            // testing code sits right under the heading exactly as the main code does.
+            else if (this.isMainCodeFrameContainer && this.isShowingTests) {
+                defaultStyle["padding-bottom"] = "0px";
             }
             return defaultStyle;
         },
@@ -141,7 +191,8 @@ export default defineComponent({
         isCollapsed: {
             get(): boolean {
                 // Ignore the value for "My code" or Defs container for compatibility with saved project having collapsable "My code" container.
-                return (this.isMainCodeFrameContainer || this.isDefsFrameContainer) ? false : this.appStore.isContainerCollapsed(this.frameId);
+                // The Testing container is never collapsed either (it is shown in place of "My code").
+                return (this.isMainCodeFrameContainer || this.isDefsFrameContainer || this.isTestsFrameContainer) ? false : this.appStore.isContainerCollapsed(this.frameId);
             },
             set(value: boolean){
                 this.appStore.setCollapseStatuses({[this.frameId]: value ? CollapsedState.ONLY_HEADER_VISIBLE : CollapsedState.FULLY_VISIBLE});
@@ -154,16 +205,13 @@ export default defineComponent({
 
         containerStyle(): Record<string, string> {
             return {
-                "display": (this.isCollapsed) ? "none" : "block",
-                "backgroundColor": `${(this.frameType.type === FrameContainersDefinitions.ImportsContainerDefinition.type || this.frameType.type == FrameContainersDefinitions.DefsContainerDefinition.type) 
+                "display": (this.isCollapsed || this.isHiddenByMode) ? "none" : "block",
+                "backgroundColor": `${(this.frameType.type === FrameContainersDefinitions.ImportsContainerDefinition.type || this.frameType.type == FrameContainersDefinitions.DefsContainerDefinition.type)
                     ? getFrameDefType(AllFrameTypesIdentifier.import).colour
                     : getFrameDefType(AllFrameTypesIdentifier.return).colour}`,
             };
         },
 
-        isPythonExecuting(): boolean {
-            return (this.appStore.pythonExecRunningState ?? PythonExecRunningState.NotRunning) != PythonExecRunningState.NotRunning;
-        },        
     },
 
     methods: {
@@ -171,6 +219,14 @@ export default defineComponent({
             return getFrameUID(frameId);
         },
         
+        // Clicking the tab of the section that isn't showing switches to it. The frame cursor goes to the start of the section
+        // shown. (Not while a program is running: the store ignores it then, and the tab isn't styled as clickable.)
+        selectHeadingTab(showTests: boolean): void {
+            if (this.isMainCodeFrameContainer && !this.isPythonExecuting) {
+                this.appStore.setMainSectionShowsTests(showTests);
+            }
+        },
+
         toggleCollapse(): void {
             // Only collapse Imports and Definitions frame containers.
             if(!this.isMainCodeFrameContainer){
@@ -305,6 +361,43 @@ export default defineComponent({
 .frame-container-minheight {
     min-height: $frame-container-min-height;
 }
+// The tabs of the heading of the third section, like those of the Python execution area (rounded at the top, the selected one
+// raised and the others flat) but tinted green to go with the editor. The selected one takes the colour of the code box under it.
+.frame-container-tabs {
+    display: flex;
+    align-items: flex-end;
+    margin-left: 10px; // To line up with the box of code below
+    gap: 2px;
+}
+
+.frame-container-tab {
+    padding: 0.15rem 0.75rem;
+    border-radius: 0.4rem 0.4rem 0 0;
+    border: 1px solid transparent;
+    border-bottom: none;
+    color: #274D19;
+    background-color: rgba(60, 110, 40, 0.16);
+    cursor: default;
+}
+
+.frame-container-tab-selected {
+    font-weight: 600;
+    background-color: $strype-main-code-container-background;
+    border-color: #B4B4B4;
+    // Sits over the top border of the box of code so that the two look joined:
+    position: relative;
+    margin-bottom: -1px;
+    padding-bottom: calc(0.15rem + 1px);
+}
+
+.frame-container-tab-clickable {
+    cursor: pointer;
+
+    &:hover {
+        background-color: rgba(60, 110, 40, 0.3);
+    }
+}
+
 .frame-container-header {
     display: flex;
     padding-right: 5px;

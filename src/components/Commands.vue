@@ -47,8 +47,8 @@
                                                 <p class="frame-cmd-row add-frame-commands-list">
                                                     <AddFrameCommand
                                                         v-for="addFrameCommand in addFrameCommands"
-                                                        :id="addFrameCommandUID(addFrameCommand[0].type.type)"
-                                                        :key="addFrameCommand[0].type.type"
+                                                        :id="addFrameCommandUID(addFrameCommand[0].testsSectionOnly ? 'testfunc' : addFrameCommand[0].type.type)"
+                                                        :key="addFrameCommand[0].testsSectionOnly ? 'testfunc' : addFrameCommand[0].type.type"
                                                         :type="addFrameCommand[0].type.type"
                                                         :shortcut="addFrameCommand[0].shortcuts[0]"
                                                         :symbol="
@@ -185,7 +185,7 @@ import glIcon from "@/assets/images/logoGitLab.svg";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 import { clamp } from "lodash";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
-import { eventBus } from "@/helpers/appContext";
+import { eventBus, TestingSectionAvailable } from "@/helpers/appContext";
 import { BTab, BTabs } from "bootstrap-vue-next";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import {Splitpanes, Pane} from "splitpanes";
@@ -681,6 +681,25 @@ export default defineComponent({
                     return;
                 }
 
+                // With the frame cursor (so not while editing a slot), Alt+T (Option+T on a Mac) switches between My code and Test code,
+                // as does the plain left arrow key when the cursor is at the top of the section that is showing. (This takes over from
+                // the usual left-arrow move to the end of the section above, which for My code is Definitions; the up arrow key
+                // still goes there.) The key code is checked for the shortcut because Option+T types another character on a Mac. Nothing
+                // happens while a program is running, as for clicking the tabs, nor with a menu open or frames being dragged.
+                if(TestingSectionAvailable && !isEditing && !isDraggingFrames && !isPythonExecuting && !this.appStore.isAppMenuOpened && !event.repeat){
+                    const isAltT = (event.code === "KeyT" && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey);
+                    const shownSectionId = this.appStore.mainSectionShowsTests ? this.appStore.getTestsFrameContainerId : this.appStore.getMainCodeFrameContainerId;
+                    const isLeftAtTopOfSection = (event.key === "ArrowLeft" && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
+                        && this.appStore.currentFrame.id === shownSectionId && this.appStore.currentFrame.caretPosition === CaretPosition.body);
+                    if(isAltT || isLeftAtTopOfSection){
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+                        event.stopPropagation();
+                        this.appStore.setMainSectionShowsTests(!this.appStore.mainSectionShowsTests);
+                        return;
+                    }
+                }
+
                 // Tab or Space at the frame caret opens the frame commands pane (letting the user then
                 // either press a shortcut letter, or arrow to a command and press Enter) instead of their
                 // usual jobs (Tab normally moves to the next navigable position, Space normally inserts a
@@ -977,6 +996,8 @@ export default defineComponent({
         // game once the pane is focused.
         insertFrameForShortcutKey(eventKeyLowCase: string): boolean {
             const isHiddenShorthandFrameCommand = (hiddenShorthandFrames[eventKeyLowCase] !== undefined
+                && (!hiddenShorthandFrames[eventKeyLowCase].testsSectionOnly
+                    || (TestingSectionAvailable && getFrameSectionIdFromFrameId(this.appStore.currentFrame.id) == this.appStore.getTestsFrameContainerId))
                 && Object.values(this.addFrameCommands).flat().flatMap((addFrameDef) => addFrameDef.type.type).includes(hiddenShorthandFrames[eventKeyLowCase].type.type));
 
             if(this.addFrameCommands[eventKeyLowCase] === undefined

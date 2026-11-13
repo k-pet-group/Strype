@@ -84,7 +84,7 @@ import {SpriteManager} from "@/stryperuntime/image_and_collisions";
 import {asyncBridge, PyodideWorkerGlobalScope, syncBridge} from "@/workers/python_execution_type";
 import {getFSForEmscripten} from "@/stryperuntime/pyodide-emscripten-cloud-fs";
 import { assetsFilePrefixes, createLazyFetchAssetsFS } from "@/stryperuntime/pyodide-emscripten-assets-fs";
-import {isServiceWorkerChannelResponsive, PyodideErrorDetails} from "@/workers/shared_helpers";
+import {isServiceWorkerChannelResponsive, PyodideErrorDetails, TestRunResults} from "@/workers/shared_helpers";
 import {makeServiceWorkerChannel} from "sync-message";
 import {createLazyFetchFS} from "@/stryperuntime/pyodide-emscript-fetch-fs";
 
@@ -287,6 +287,31 @@ function ensureAssetRootMounted(pyodide: PyodideInterface, root: string): void {
     }
 }
 
+// Makes synchronous and asynchronous requests from Python-side code (e.g. the lazily-fetching asset
+// file systems) reach the main thread through makeRawRequest. Outside of a normal Run this is
+// otherwise unset, so anything that needs it (reading an asset file, running tests) installs it first.
+function installWorkerBridges(
+    pyodide: PyodideInterface,
+    extras: PyodideExtras,
+    makeRawRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
+): void {
+    const bridgeSync: SyncStrypePyodideHandlerFunction = <R extends SyncStrypePyodideWorkerRequest> (req : R) : ResponseFor<R> => {
+        makeRawRequest({kind: "sync", request: req});
+        const reply = extras.readMessage() as (SyncStrypePyodideWorkerResponse | {request: string, error: string});
+        if (reply.request != req.request) {
+            throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for ${req.request}`);
+        }
+        else if ("error" in reply) {
+            throw (req.request.startsWith("file_") ? new pyodide.FS.ErrnoError(63, "Cloud file error:" + reply.error) : new Error("Internal error:" + reply.error));
+        }
+        else {
+            return reply as ResponseFor<R>;
+        }
+    };
+    self.syncStrypePyodideWorkerBridge = bridgeSync;
+    self.asyncStrypePyodideWorkerBridge = (r) => makeRawRequest({kind: "async", request: r});
+}
+
 // Exposed to the main thread for downloading a single file shown in the File system tab (the tree
 // listing itself is built without the worker at all -- see fileSystemTabIO.ts's listFsRootTree()
 // and assets_file_index.ts's buildAssetTree() for why). This has to be pyodideExpose'd (and so
@@ -304,21 +329,7 @@ const readFsFile = pyodideExpose(async (
     makeRawRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
 ): Promise<Uint8Array> => {
     return await reloader.withPyodide(async (pyodide: PyodideInterface) => {
-        const bridgeSync: SyncStrypePyodideHandlerFunction = <R extends SyncStrypePyodideWorkerRequest> (req : R) : ResponseFor<R> => {
-            makeRawRequest({kind: "sync", request: req});
-            const reply = extras.readMessage() as (SyncStrypePyodideWorkerResponse | {request: string, error: string});
-            if (reply.request != req.request) {
-                throw new Error(`Internal error: Pyodide worker received ${reply.request} but had asked for ${req.request}`);
-            }
-            else if ("error" in reply) {
-                throw (req.request.startsWith("file_") ? new pyodide.FS.ErrnoError(63, "Cloud file error:" + reply.error) : new Error("Internal error:" + reply.error));
-            }
-            else {
-                return reply as ResponseFor<R>;
-            }
-        };
-        self.syncStrypePyodideWorkerBridge = bridgeSync;
-        self.asyncStrypePyodideWorkerBridge = (r) => makeRawRequest({kind: "async", request: r});
+        installWorkerBridges(pyodide, extras, makeRawRequest);
         ensureAssetRootMounted(pyodide, "/" + path.split("/")[1]);
         return pyodide.FS.readFile(path, {encoding: "binary"});
     });
@@ -433,6 +444,75 @@ function logFirstSyncReadDiagnosticsOnce() {
     loggedFirstSyncReadDiagnostics = true;
     const sw = ("serviceWorker" in navigator) ? navigator.serviceWorker : undefined;
     console.info(`[Worker first sync read ${new Date().toISOString()}] navigator.serviceWorker present=${sw != null} controller=${sw?.controller != null} controllerScriptURL=${sw?.controller?.scriptURL ?? "n/a"}`);
+}
+
+// Mounts the file systems user code can see: "/cloud" (if the project is saved in the cloud) or "/local",
+// whichever we start in, and the read-only assets roots ("/images", "/data", etc.). Shared between a
+// normal Run (executePython) and running tests (executeTests), which should see the same files.
+function mountUserFileSystems(pyodide: PyodideInterface, startInSlashCloud: boolean): void {
+    // If we are offering the cloud file system, we start there by default:
+    if (startInSlashCloud) {
+        // Try unmounting in case we're running a second time:
+        try {
+            pyodide.FS.unmount("/cloud");
+        }
+        catch {
+            // Ignore any errors
+        }
+        // Do mkdir in a separate catch because it will expectedly fail if the directory exists:
+        try {
+            pyodide.FS.mkdir("/cloud");
+        }
+        catch {
+            // Ignore errors because they will come from the dir already existing
+        }
+        try {
+            // We have done the mkdir("/cloud") in the one time Pyodide initialisation, earlier.
+            pyodide.FS.mount(pyodide.FS.filesystems.CLOUDFS, {}, "/cloud");
+            pyodide.FS.chdir("/cloud");
+        }
+        catch (e) {
+            console.error("Problem mounting cloud file system: ", e);
+        }
+    }
+    else {
+        // Do mkdir in a separate catch because it will expectedly fail if the directory exists:
+        try {
+            pyodide.FS.mkdir("/local");
+        }
+        catch {
+            // Ignore errors because they will come from the dir already existing
+        }
+        try {
+            pyodide.FS.chdir("/local");
+        }
+        catch (e) {
+            // This one shouldn't fail, but don't let it stop execution:
+            console.error(e);
+        }
+            
+    }
+    
+    // We mount the "books" assets at /books, "images" at /images, etc. Guarded the same way as
+    // /cloud and /local above (rather than the unguarded mkdir+mount this used to be): downloading
+    // a file from the File system tab (see readFsFile/ensureAssetRootMounted above) can mount an
+    // asset root on this same worker instance before any run ever starts, so by the time a run
+    // gets here that root may already exist and be mounted.
+    for (const dir of assetsFilePrefixes) {
+        try {
+            pyodide.FS.mkdir("/" + dir);
+        }
+        catch {
+            // Ignore errors because they will come from the dir already existing
+        }
+        try {
+            pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {root: dir}, "/" + dir);
+        }
+        catch {
+            // Ignore errors because they will come from it already being mounted
+        }
+    }
+    
 }
 
 const executePython = pyodideExpose(async (
@@ -787,68 +867,7 @@ runner`);
         self.pyodide = pyodide;
         
 
-        // If we are offering the cloud file system, we start there by default:
-        if (startInSlashCloud) {
-            // Try unmounting in case we're running a second time:
-            try {
-                pyodide.FS.unmount("/cloud");
-            }
-            catch {
-                // Ignore any errors
-            }
-            // Do mkdir in a separate catch because it will expectedly fail if the directory exists:
-            try {
-                pyodide.FS.mkdir("/cloud");
-            }
-            catch {
-                // Ignore errors because they will come from the dir already existing
-            }
-            try {
-                // We have done the mkdir("/cloud") in the one time Pyodide initialisation, earlier.
-                pyodide.FS.mount(pyodide.FS.filesystems.CLOUDFS, {}, "/cloud");
-                pyodide.FS.chdir("/cloud");
-            }
-            catch (e) {
-                console.error("Problem mounting cloud file system: ", e);
-            }
-        }
-        else {
-            // Do mkdir in a separate catch because it will expectedly fail if the directory exists:
-            try {
-                pyodide.FS.mkdir("/local");
-            }
-            catch {
-                // Ignore errors because they will come from the dir already existing
-            }
-            try {
-                pyodide.FS.chdir("/local");
-            }
-            catch (e) {
-                // This one shouldn't fail, but don't let it stop execution:
-                console.error(e);
-            }
-                
-        }
-        
-        // We mount the "books" assets at /books, "images" at /images, etc. Guarded the same way as
-        // /cloud and /local above (rather than the unguarded mkdir+mount this used to be): downloading
-        // a file from the File system tab (see readFsFile/ensureAssetRootMounted above) can mount an
-        // asset root on this same worker instance before any run ever starts, so by the time a run
-        // gets here that root may already exist and be mounted.
-        for (const dir of assetsFilePrefixes) {
-            try {
-                pyodide.FS.mkdir("/" + dir);
-            }
-            catch {
-                // Ignore errors because they will come from the dir already existing
-            }
-            try {
-                pyodide.FS.mount(pyodide.FS.filesystems.ASSETSFS, {root: dir}, "/" + dir);
-            }
-            catch {
-                // Ignore errors because they will come from it already being mounted
-            }
-        }
+        mountUserFileSystems(pyodide, startInSlashCloud);
         
         let error : PyodideErrorDetails | null = null;
         let matPlotLibSpriteId : number | null = null;
@@ -922,6 +941,148 @@ runner`);
     });
 });
 
+// Runs the Testing section's code (testsCode) against the user's imports and definitions (mainCode --
+// note this deliberately excludes the main code section's own top-level statements, see
+// Parser.parseJustImportsAndDefs()) via
+// pytest, which is already vendored as part of the Pyodide distribution (see pyodide-lock.json), so
+// this never fetches anything over the network. mainCode is written to a module on Pyodide's virtual
+// FS; testsCode is written to a second module alongside it, prefixed with importsCode (the project's
+// own Imports section, copied in verbatim so tests see the same imports as the rest of the program,
+// without needing test-only imports of their own) and an import of the mainCode module. pytest is
+// then run against that second file and its per-test results collected via a small plugin.
+// The user's file systems (/local, /cloud, assets) are mounted as for a normal Run.
+const executeTests = pyodideExpose(async (
+    extras: PyodideExtras,
+    mainCode: string,
+    importsCode: string,
+    testsCode: string,
+    micropipLibraries: string[],
+    userLibrariesFileIndexes: { [url: string]: Record<string, string>},
+    startInSlashCloud: boolean,
+    makeRawRequest: Comlink.Remote<(req: SyncOrAsyncStrypePyodideWorkerRequest) => void>
+) : Promise<TestRunResults> => {
+    if (reloader == null) {
+        return {collectionError: "Pyodide is not available.", results: []};
+    }
+    return await reloader.withPyodide(async (pyodide: PyodideInterface) => {
+        // Load any in-built packages used by either the main code or the tests (e.g. numpy, pandas):
+        await pyodide.loadPackagesFromImports(mainCode + "\n" + testsCode, {messageCallback: console.log, errorCallback: console.error});
+
+        for (let url in userLibrariesFileIndexes) {
+            const libDir = "/strype_libraries/" + await urlToDirName(url);
+            pyodide.FS.mkdirTree(libDir);
+
+            let cache = libraryCaches.get(url);
+            if (!cache) {
+                cache = new Map();
+                libraryCaches.set(url, cache);
+            }
+
+            const fs = createLazyFetchFS(pyodide, userLibrariesFileIndexes[url], url, cache);
+            try {
+                pyodide.FS.mount(fs, {}, libDir);
+            }
+            catch {
+                // Ignore errors from mounting the same library dir again on a second test run:
+            }
+
+            pyodide.runPython(`
+import sys
+sys.path.append("${libDir}")
+`);
+        }
+
+        if (micropipLibraries.length > 0) {
+            await pyodide.loadPackage("micropip");
+            const micropip = pyodide.pyimport("micropip");
+            for (let micropipLibrary of micropipLibraries) {
+                await micropip.install(micropipLibrary);
+            }
+        }
+
+        // pytest is already vendored in the Pyodide distribution (see pyodide-lock.json), so this
+        // resolves locally and never fetches anything over the network:
+        await pyodide.loadPackage("pytest");
+
+        // The tests see the same files as a normal Run does (/local or /cloud as the working directory,
+        // plus the assets roots such as /images and /data), so file requests need a route to the main thread:
+        installWorkerBridges(pyodide, extras, makeRawRequest);
+        mountUserFileSystems(pyodide, startInSlashCloud);
+
+        try {
+            pyodide.FS.mkdirTree("/strype_tests");
+        }
+        catch {
+            // Ignore errors from the directory already existing on a second test run:
+        }
+        pyodide.FS.writeFile("/strype_tests/strype_user_code.py", mainCode);
+        pyodide.FS.writeFile("/strype_tests/test_strype_user_tests.py", importsCode + "from strype_user_code import *\n" + testsCode);
+
+        const resultProxy = await pyodide.runPythonAsync(`
+def _strype_run_pytest():
+    import sys
+    # Modules may be cached from a previous test run in this same worker; drop them so edits are picked up:
+    sys.modules.pop("strype_user_code", None)
+    sys.modules.pop("test_strype_user_tests", None)
+    if "/strype_tests" not in sys.path:
+        sys.path.insert(0, "/strype_tests")
+
+    import pytest
+
+    results = []
+    collection_errors = []
+
+    class _StrypeResultCollector:
+        def pytest_runtest_logreport(self, report):
+            if report.when == "call" or (report.when in ("setup", "teardown") and report.outcome != "passed"):
+                # reprcrash gives the single line (file/line/message) pytest considers the actual
+                # crash site, as opposed to the full (possibly multi-frame) longrepr text -- that's
+                # what we need to highlight the right frame in the editor. Not every longrepr has one
+                # (e.g. a plain string reason from pytest.fail(), or a collection-time error), so this
+                # is all best-effort and falls back to no location rather than guessing:
+                reprcrash = getattr(report.longrepr, "reprcrash", None)
+                crash_path = getattr(reprcrash, "path", None)
+                crash_file = None
+                if crash_path is not None:
+                    crash_path_str = str(crash_path)
+                    if crash_path_str.endswith("test_strype_user_tests.py"):
+                        crash_file = "tests"
+                    elif crash_path_str.endswith("strype_user_code.py"):
+                        crash_file = "main"
+                results.append({
+                    "nodeId": report.nodeid,
+                    "outcome": report.outcome,
+                    "message": str(report.longrepr) if report.longrepr else "",
+                    "crashMessage": getattr(reprcrash, "message", None),
+                    "lineno": getattr(reprcrash, "lineno", None),
+                    "crashFile": crash_file,
+                })
+
+        def pytest_collectreport(self, report):
+            if report.failed:
+                collection_errors.append(str(report.longrepr))
+
+        # A function called setup() in the Testing section is run before each test, as if it had been decorated with
+        # @pytest.fixture(autouse=True), without that needing to be in the generated code. It has to be defined in the
+        # tests' own module: the Definitions' code is star-imported into it, and a setup() there isn't one of the tests'.
+        @pytest.fixture(autouse=True)
+        def _strype_setup(self, request):
+            setup = getattr(request.module, "setup", None)
+            if callable(setup) and getattr(setup, "__module__", None) == request.module.__name__:
+                setup()
+
+    pytest.main(["-q", "-p", "no:cacheprovider", "/strype_tests/test_strype_user_tests.py"], plugins=[_StrypeResultCollector()])
+
+    return {"collectionError": (collection_errors[0] if collection_errors else None), "results": results}
+
+_strype_run_pytest()
+`);
+        const result = resultProxy.toJs({dict_converter: Object.fromEntries}) as TestRunResults;
+        resultProxy.destroy();
+        return result;
+    });
+});
+
 const onReady = pyodideExpose(async (extras: PyodideExtras, callOnceReady:  Comlink.Remote<() => void>)=> {
     if (reloader != null) {
         await reloader.withPyodide(async () => callOnceReady());
@@ -930,6 +1091,7 @@ const onReady = pyodideExpose(async (extras: PyodideExtras, callOnceReady:  Coml
 
 Comlink.expose({
     executePython,
+    executeTests,
     onReady,
     readFsFile,
     snapshotLocalFs,

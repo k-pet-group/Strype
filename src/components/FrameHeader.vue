@@ -28,6 +28,10 @@
                 <!-- ^^ Note: append to frame label is same as prepend to slot -->
             </div>
             <div class="frame-controls-container">
+                <!-- How a test_ function went in the last test run: a green "Pass" or red "Fail" badge, grey once the code has been edited since -->
+                <span v-if="testOutcome != 'not_run' && groupIndex == 0"
+                      :class="{'test-outcome-badge': true, 'test-outcome-passed': testOutcome == 'passed' && !isTestOutcomeStale, 'test-outcome-failed': testOutcome == 'failed' && !isTestOutcomeStale, 'test-outcome-stale': isTestOutcomeStale}"
+                      :title="$t(testOutcome == 'passed' ? 'appMessage.testPassed' : 'appMessage.testFailed')">{{ $t(testOutcome == 'passed' ? 'appMessage.testPassBadge' : 'appMessage.testFailBadge') }} <TestOutcomeIcon :passed="testOutcome == 'passed'"/></span>
                 <div ref="frozenControl" :class="{'frozen-control': true, 'frozen': isFrozen}" v-if="groupIndex == 0">
                     <img class="frozen-frozen" src="@/assets/images/snowflake.svg" v-if="isFrozen">
                 </div>
@@ -47,7 +51,8 @@
                 </div>
             </div>
             <ChildrenFrameStateToggle v-if="isClassDef && isFoldFull && groupIndex === splitLabels.length - 1" :frames="children" :parentIsFrozen="isFrozen"/>
-            <i v-if="(wasLastRuntimeError || hasErroneousSlot) && groupIndex == splitLabels.length - 1" :class="{'fas fa-exclamation-triangle fa-xs err-icon': true, 'runtime-past-err-icon': (!erroneous && !hasErroneousSlot)}"></i>            
+            <!-- A failed assert statement gets a cross; any other error (or a slot in error) the warning triangle -->
+            <i v-if="(wasLastRuntimeError || erroneous || hasErroneousSlot) && groupIndex == splitLabels.length - 1" :class="{'fas fa-xs err-icon': true, 'fa-exclamation-triangle': !(isAssertionFailure && !hasErroneousSlot), 'fa-times': (isAssertionFailure && !hasErroneousSlot), 'runtime-past-err-icon': (!erroneous && !hasErroneousSlot)}"></i>            
         </div>
     </div>
 </template>
@@ -59,10 +64,11 @@
 import { defineComponent, PropType } from "vue";
 import LabelSlotsStructure from "@/components/LabelSlotsStructure.vue";
 import {useStore} from "@/store/store";
-import {AllFrameTypesIdentifier, CollapsedState, FrameLabel, FrameObject, FrozenState} from "@/types/types";
+import {AllFrameTypesIdentifier, CollapsedState, FrameLabel, FrameObject, FrozenState, TestOutcome} from "@/types/types";
 import {mapStores} from "pinia";
 import scssVars from "@/assets/style/_export.module.scss";
 import ChildrenFrameStateToggle from "@/components/ChildrenFrameStateToggle.vue";
+import TestOutcomeIcon from "@/components/TestOutcomeIcon.vue";
 import { isMacOSPlatform } from "@/helpers/common";
 import { calculateNextCollapseState } from "@/helpers/storeMethods";
 import { CustomEventTypes } from "@/helpers/editor";
@@ -136,6 +142,7 @@ export default defineComponent({
     components: {
         ChildrenFrameStateToggle,
         LabelSlotsStructure,
+        TestOutcomeIcon,
     },
 
     props: {
@@ -155,6 +162,9 @@ export default defineComponent({
         frameAllowedFrozenStates: {type: Array as PropType<FrozenState[]>},
         erroneous: Boolean,
         wasLastRuntimeError: Boolean,
+        isAssertionFailure: Boolean,
+        testOutcome: String as PropType<TestOutcome>,
+        isTestOutcomeStale: Boolean,
         onFocus: {type: Function, required: true}, // Handler for focus/blur the header (see Frame.vue)
     },
 
@@ -308,6 +318,28 @@ export default defineComponent({
 }
 .runtime-past-err-icon {
     color:#706e6e;
+}
+// The "Pass"/"Fail" badge in the header of a test function: a rounded box with white text (and a tick or cross, in its
+// text presentation so that it takes the text colour rather than being drawn as a coloured emoji)
+.test-outcome-badge {
+    color: #fff;
+    background-color: #706e6e; // grey: out of date, as the code has been edited since the tests were run
+    font-size: 0.75em;
+    font-weight: 600;
+    line-height: 1.5;
+    padding: 0 7px;
+    border-radius: 7px;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+    user-select: none;
+}
+.test-outcome-passed {
+    background-color: #2a8a3a;
+}
+.test-outcome-failed {
+    background-color: #c94c4c;
 }
 .frame-header-label-projectDocumentation > img, .frame-header-label-funcdef > img, .frame-header-label-classdef > img {
     height: 0.9em;

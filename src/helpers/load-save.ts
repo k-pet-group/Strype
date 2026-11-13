@@ -94,6 +94,10 @@ export function loadPinnedLocalFiles(headers: Record<string, string>): void {
     }
 }
 
+// The header ("#(=> testingShowing:true") recording that the third section was showing the Testing code, rather than
+// My code, when the project was saved, so that it opens the same way. It is left out when My code was showing.
+export const testingShowingHeader = "testingShowing";
+
 export function generateSPYFileContent(): string {
     let saveContent = parseCodeAndGetParseElements(false, "spy").parsedOutput;
     // We add the initial headers:
@@ -107,6 +111,7 @@ export function generateSPYFileContent(): string {
     headers.set("peaSplitViewSplitterPane1Size", saveDivider(useStore().peaSplitViewSplitterPane1Size));
     headers.set("peaExpandedSplitterPane2Size", saveDivider(useStore().peaExpandedSplitterPane2Size));
     Object.entries(savePinnedLocalFiles()).forEach(([key, value]) => headers.set(key, value));
+    headers.set(testingShowingHeader, useStore().mainSectionShowsTests ? "true" : undefined);
     // #v-endif
     saveContent = Array.from(headers.entries()).filter(([k, v]) => v !== undefined).map((e) => AppSPYFullPrefix + " " + e[0] + ":" + e[1] + "\n").join("") + saveContent;
     return saveContent;

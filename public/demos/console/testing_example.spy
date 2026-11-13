@@ -1,0 +1,61 @@
+#(=> Strype:1:std
+#(=> testingShowing:true
+'''This project shows how to test your functions. The functions are in the Definitions section, and the program in My code uses them. The tests are in the Test code tab: click the Test code tab, or press Alt+T, to switch between My code and Test code. Each test is a function whose name starts with test_, and each assert checks that something is true. Press Run tests to run them all. Try changing one of the functions so it gives the wrong answer, and see which test fails.'''
+#(=> Section:Imports
+#(=> Section:Definitions
+def is_prime (n ) :
+    '''Returns True if n is a prime number, and False if it is not'''
+    if n < 2  :
+        return False 
+    for divisor  in range(2,n)  :
+        if n % divisor == 0  :
+            return False 
+    return True 
+def count_vowels (text ) :
+    '''Returns how many vowels (a, e, i, o and u) there are in the text'''
+    count  = 0 
+    for letter  in text.lower()  :
+        if letter in "aeiou"  :
+            count  = count + 1 
+    return count 
+def celsius_to_fahrenheit (celsius ) :
+    '''Converts a temperature from degrees Celsius to degrees Fahrenheit'''
+    return celsius * 9 / 5 + 32 
+def reverse_words (sentence ) :
+    '''Returns the sentence with its words in the opposite order'''
+    words  = sentence.split(" ") 
+    words.reverse() 
+    return " ".join(words) 
+#(=> Section:Main
+for number  in [2,7,9,15,17]  :
+    if is_prime(number)  :
+        print(str(number) + " is prime") 
+    else :
+        print(str(number) + " is not prime") 
+print("The number of vowels in testing is " + str(count_vowels("testing"))) 
+print("100 degrees Celsius is " + str(celsius_to_fahrenheit(100)) + " degrees Fahrenheit") 
+print(reverse_words("testing is fun")) 
+#(=> Section:Testing
+def test_is_prime ( ) :
+    '''Checks small primes, non-primes, and the numbers below 2'''
+    assert is_prime(2) 
+    assert is_prime(17) 
+    assert not is_prime(9) 
+    assert not is_prime(1) 
+    assert not is_prime(0) 
+def test_count_vowels ( ) :
+    '''Checks words with and without vowels, and capital letters'''
+    assert count_vowels("hello") == 2 
+    assert count_vowels("rhythm") == 0 
+    assert count_vowels("AEIOU") == 5 
+def test_celsius_to_fahrenheit ( ) :
+    '''Checks freezing, boiling and the temperature where both scales agree'''
+    assert celsius_to_fahrenheit(0) == 32 
+    assert celsius_to_fahrenheit(100) == 212 
+    assert celsius_to_fahrenheit(-40) == -40 
+def test_reverse_words ( ) :
+    '''Checks one word, several words, and an empty sentence'''
+    assert reverse_words("hello") == "hello" 
+    assert reverse_words("one two three") == "three two one" 
+    assert reverse_words("") == "" 
+#(=> Section:End

@@ -14,7 +14,7 @@
 import { defineComponent } from "vue";
 import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
-import { findAddCommandFrameType } from "@/helpers/editor";
+import { findAddCommandFrameType, hiddenShorthandFrames } from "@/helpers/editor";
 import { PythonExecRunningState } from "@/types/types";
 import SVGIcon from "@/components/SVGIcon.vue";
 
@@ -56,7 +56,14 @@ export default defineComponent({
             if(!this.isPythonExecuting) {
                 const addFrameCommandType = findAddCommandFrameType(this.shortcut, this.index);
                 if(addFrameCommandType != null){
-                    this.appStore.addFrameWithCommand(addFrameCommandType);
+                    // A command with a hidden shorthand version (a new test function, which is a function named "test_") adds that:
+                    const shorthand = hiddenShorthandFrames[this.shortcut];
+                    if (shorthand && shorthand.type.type == addFrameCommandType.type && shorthand.testsSectionOnly) {
+                        this.appStore.addFrameWithCommand(shorthand.type, shorthand);
+                    }
+                    else {
+                        this.appStore.addFrameWithCommand(addFrameCommandType);
+                    }
                     // This same button is reached three different ways: a genuine mouse click, Enter
                     // confirming whichever button the frame commands pane currently has focused
                     // (Commands.vue's keyup handler deliberately blocks the native keydown auto-click --

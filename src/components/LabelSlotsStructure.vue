@@ -62,7 +62,7 @@ import { useStore } from "@/store/store";
 import { mapStores } from "pinia";
 import LabelSlot from "@/components/LabelSlot.vue";
 import { bumpCaretRequestSeq, CustomEventTypes, getEditableSelectionText, getFrameLabelSlotLiteralCodeAndFocus, getFrameLabelSlotsStructureUID, getFunctionCallDefaultText, getLabelSlotUID, getMatchingBracket, getSelectionCursorsComparisonValue, getUIQuote, isElementEditableLabelSlotInput, isLabelSlotEditable, isSlotShortcutsPaneSpaceDueToDelay, openBracketCharacters, parseCodeLiteral, parseLabelSlotUID, setDocumentSelection, STRING_DOUBLEQUOTE_PLACERHOLDER, STRING_SINGLEQUOTE_PLACERHOLDER, stringQuoteCharacters, UIDoubleQuotesCharacters, UISingleQuotesCharacters, getGraphemeLength, getFrameHeaderUID, getLastCaretPosInsideParent, getFlatCodeSlotsInLabelStruct, focusCaretContainerInput, closeRenameIdentifierPopups, getImportFrameNameBindings, waitForElementId } from "@/helpers/editor";
-import { checkCodeErrors, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, getFrameSectionIdFromFrameId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName, isAncestorGatedFrameTypeAllowed } from "@/helpers/storeMethods";
+import { checkCodeErrors, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getFlatNeighbourFieldSlotInfos, getFrameParentSlotsLength, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveSlotByPredicate, retrieveSlotFromSlotInfos, getParentId, getFrameSectionIdFromFrameId, areSlotStructuresIsomorphic, getAncestorFrameOfTypeId, findSlotsWithIndentifierName, isAncestorGatedFrameTypeAllowed, isInsideTestFunction } from "@/helpers/storeMethods";
 import { cloneDeep } from "lodash";
 import Parser from "@/parser/parser";
 import { calculateParamPrompt, invalidateParamPromptCache, prefetchImportedLibraryData } from "@/autocompletion/acManager";
@@ -73,7 +73,7 @@ import { handleVerticalCaretMove } from "@/helpers/spans";
 import { preparePasteMediaData } from "@/helpers/media";
 import { useAsyncComputed } from "@/helpers/vue3composables";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
-import { eventBus } from "@/helpers/appContext";
+import { eventBus, TestingSectionAvailable } from "@/helpers/appContext";
 import { BPopover } from "bootstrap-vue-next";
 
 interface KeywordFrameConversionDef {
@@ -121,6 +121,7 @@ const keywordFrameConversions: KeywordFrameConversionDef[] = [
     {keyword: "return", targetType: AllFrameTypesIdentifier.return, slots: 1, enterCaretTarget: CaretPosition.below},
     {keyword: "global", targetType: AllFrameTypesIdentifier.global, slots: 1},
     {keyword: "raise", targetType: AllFrameTypesIdentifier.raise, slots: 1},
+    {keyword: "assert", targetType: AllFrameTypesIdentifier.assert, slots: 1},
     {keyword: "match", targetType: AllFrameTypesIdentifier.match, slots: 1},
     {keyword: "case", targetType: AllFrameTypesIdentifier.case, slots: 1},
     {keyword: "library", targetType: AllFrameTypesIdentifier.library, slots: 1},
@@ -138,6 +139,10 @@ const keywordFrameConversions: KeywordFrameConversionDef[] = [
     {keyword: "except", targetType: AllFrameTypesIdentifier.except, slots: 1, isJoint: true, endsWithColon: true, enterCaretTarget: CaretPosition.body},
     {keyword: "finally", targetType: AllFrameTypesIdentifier.finally, slots: 0, isJoint: true, endsWithColon: true},
 ];
+// The statement types that belong in My code (or inside a function): where they aren't allowed at the top level of a
+// section, they are moved to My code, or, from the top level of the Testing section, into a new test function.
+const mainStatementTypes: string[] = [AllFrameTypesIdentifier.if, AllFrameTypesIdentifier.while, AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.with,
+    AllFrameTypesIdentifier.try, AllFrameTypesIdentifier.match, AllFrameTypesIdentifier.raise];
 const wordSpaceRegex = new RegExp("^([a-zA-Z0-9]+)\\s");
 // Same, but anchored at the end instead of requiring a trailing whitespace character -- used when
 // the conversion is triggered by Enter rather than by an actual typed space (see
@@ -833,6 +838,14 @@ export default defineComponent({
             if(parentId === 0){
                 return false;
             }
+            if(targetType === AllFrameTypesIdentifier.assert){
+                // An assert is only allowed inside a test function, but typed anywhere else it still converts, and the
+                // frame is then moved into a new test function (see performKeywordFrameConversion()):
+                return TestingSectionAvailable;
+            }
+            if(this.needsNewTestFunction(targetType)){
+                return true;
+            }
             if(this.appStore.frameObjects[parentId].frameType.forbiddenChildrenTypes.includes(targetType)){
                 // Not allowed right here, but if the type belongs in another section we still convert
                 // and then move the frame to where it belongs, as if it had been pasted here --
@@ -869,14 +882,25 @@ export default defineComponent({
                     ? getLastCaretPosInsideParent(this.appStore.getDefsFrameContainerId)
                     : {id: this.appStore.getDefsFrameContainerId, caretPosition: CaretPosition.body};
             }
-            const mainTypes: string[] = [AllFrameTypesIdentifier.if, AllFrameTypesIdentifier.while, AllFrameTypesIdentifier.for, AllFrameTypesIdentifier.with,
-                AllFrameTypesIdentifier.try, AllFrameTypesIdentifier.match, AllFrameTypesIdentifier.raise];
-            if(mainTypes.includes(targetType)){
+            if(mainStatementTypes.includes(targetType)){
                 // We only get here when we're outside of main (imports/definitions), and the closest
                 // point of main is its top:
                 return {id: this.appStore.getMainCodeFrameContainerId, caretPosition: CaretPosition.body};
             }
             return undefined;
+        },
+
+        // Whether the frame at this.frameId, once converted to targetType, has to go into a new test function: an assert that
+        // isn't inside a test function already, or a statement (see mainStatementTypes) at the top level of the Testing section,
+        // which only has room for functions (see TestsContainerDefinition in types.ts).
+        needsNewTestFunction(targetType: string): boolean {
+            if(!TestingSectionAvailable){
+                return false;
+            }
+            if(targetType === AllFrameTypesIdentifier.assert){
+                return !isInsideTestFunction(this.frameId, CaretPosition.below);
+            }
+            return mainStatementTypes.includes(targetType) && getParentOrJointParent(this.frameId) === this.appStore.getTestsFrameContainerId;
         },
 
         // Moves the (already converted) frame at this.frameId to the given caret position, which is
@@ -899,6 +923,15 @@ export default defineComponent({
             frame.parentId = newParentId;
             // The destination section may be collapsed, and the user needs to see the moved frame:
             this.appStore.frameObjects[getFrameSectionIdFromFrameId(this.frameId)].collapsedState = CollapsedState.FULLY_VISIBLE;
+            // Likewise if it has gone to My code, which isn't showing while the Testing code is:
+            // (or to the Testing code, which isn't showing while My code is):
+            const newSectionId = getFrameSectionIdFromFrameId(this.frameId);
+            if(newSectionId === this.appStore.getMainCodeFrameContainerId){
+                this.appStore.mainSectionShowsTests = false;
+            }
+            else if(newSectionId === this.appStore.getTestsFrameContainerId){
+                this.appStore.mainSectionShowsTests = true;
+            }
         },
 
         // Computes what a new joint frame could be, and where in its root's jointFrameIds it would
@@ -1081,7 +1114,15 @@ export default defineComponent({
             // If this type isn't allowed where the frame currently is (e.g. "import" typed in the main
             // section), move it to the section it belongs in, as if it had been pasted here:
             const currentParentId = this.appStore.frameObjects[this.frameId].parentId;
-            if(!def.isJoint && this.appStore.frameObjects[currentParentId].frameType.forbiddenChildrenTypes.includes(def.targetType)){
+            if(this.needsNewTestFunction(def.targetType)){
+                // An assert outside a test function, or a statement at the top level of the Testing section (where only
+                // functions go), goes into a new test function (test_1, test_2...), at the top of the Testing section,
+                // which is then the section that is showing:
+                this.relocateFrameToCaretPosition({id: this.appStore.addNewTestFunction(), caretPosition: CaretPosition.body});
+                const movedFrameId = this.frameId;
+                waitForElementId(getFrameHeaderUID(movedFrameId)).then(() => document.getElementById(getFrameHeaderUID(movedFrameId))?.scrollIntoView({block: "nearest"}));
+            }
+            else if(!def.isJoint && this.appStore.frameObjects[currentParentId].frameType.forbiddenChildrenTypes.includes(def.targetType)){
                 const relocationTarget = this.getSectionRelocationTarget(def.targetType);
                 if(relocationTarget){
                     this.relocateFrameToCaretPosition(relocationTarget);

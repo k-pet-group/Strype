@@ -1,6 +1,6 @@
 #(=> Strype:1:std
 #(=> testingShowing:true
-'''This project shows how to test your functions. The functions are in the Definitions section, and the program in My code uses them. The tests are in the Testing section: press the left or right arrow key when the cursor is on the My code heading to switch between My code and Testing. Each test is a function whose name starts with test_, and each assert checks that something is true. Press Run tests to run them all. Try changing one of the functions so it gives the wrong answer, and see which test fails.'''
+'''This project shows how to test your functions. The functions are in the Definitions section, and the program in My code uses them. The tests are in the Test code tab: click the Test code tab, or press Alt+T, to switch between My code and Test code. Each test is a function whose name starts with test_, and each assert checks that something is true. Press Run tests to run them all. Try changing one of the functions so it gives the wrong answer, and see which test fails.'''
 #(=> Section:Imports
 #(=> Section:Definitions
 def is_prime (n ) :

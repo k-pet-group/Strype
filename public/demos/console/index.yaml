@@ -14,6 +14,6 @@
   file: busiest_stations.spy
 
 - name: Testing Your Functions
-  description: Write functions and test them with test functions in the Testing section
+  description: Write functions and test them with test functions in the Test code tab
   image: testing_example.png
   file: testing_example.spy

@@ -1,22 +1,35 @@
 <template>
     <div :id="peaComponentId" :class="{'pea-component': true, [scssVars.expandedPEAClassName]: isExpandedPEA, 'no-43-ratio-collapsed-PEA': !hasDefault43Ratio && !isExpandedPEA}" ref="peaComponent" @mousedown="handlePEAMouseDown">
-        <div :id="controlsDivId" :class="{'pea-controls-div': true, 'expanded-PEA-controls': isExpandedPEA}">           
+        <div :id="controlsDivId" :class="{'pea-controls-div': true, 'expanded-PEA-controls': isExpandedPEA, 'pea-compact-tabs': compactTabHeaders}">           
+            <div ref="controlsWidthProbe" class="pea-controls-width-probe"></div>
             <BTabs v-model:index="peaDisplayTabIndex" no-key-nav>
                 <!-- v-show on a BTab doesn't hide its header, and removing it (v-if) would shift the other tabs' indexes, so
                      in the split layouts the graphics header is hidden by class instead (see .pea-hidden-tab) -->
-                <BTab :button-id="graphicsTabId" :title="'\uD83D\uDC22 '+$t('PEA.Graphics')" :title-link-class="{'pea-display-tab': true, 'pea-hidden-tab': !isTabsLayout}"></BTab>
+                <BTab :button-id="graphicsTabId" :title-link-class="{'pea-display-tab': true, 'pea-hidden-tab': !isTabsLayout}" :title-link-attrs="{title: $t('PEA.Graphics')}">
+                    <template #title>
+                        <img :src="turtleImgURL" :alt="$t('PEA.Graphics')" class="pea-turtle-img" />
+                        <span class="pea-tab-label">{{ $t('PEA.Graphics') }}</span>
+                    </template>
+                </BTab>
                 <!-- In the split layouts, graphics and console are both always visible, so there's no separate
                      graphics tab: this (console) tab's header becomes a merged "Output" one showing both icons.
-                     peaDisplayTabIndex is then never left on "graphics" (see setDisplayTab()). -->
-                <BTab :button-id="consoleTabId" title-link-class="pea-display-tab">
+                     peaDisplayTabIndex is then never left on "graphics" (see setDisplayTab()).
+                     When space is tight (see updateCompactTabHeaders()) only the icons are shown, so the labels
+                     are in their own spans and the tooltip carries the name instead. -->
+                <BTab :button-id="consoleTabId" title-link-class="pea-display-tab" :title-link-attrs="{title: $t(isTabsLayout ? 'PEA.console' : 'PEA.output')}">
                     <template #title>
                         <img v-if="!isTabsLayout" :src="turtleImgURL" :alt="$t('PEA.Graphics')" class="pea-turtle-img" />
-                        {{ '\u2771\u23BD ' + $t(isTabsLayout ? 'PEA.console' : 'PEA.output') }}
+                        {{ '\u2771\u23BD' }}
+                        <span class="pea-tab-label">{{ $t(isTabsLayout ? 'PEA.console' : 'PEA.output') }}</span>
                     </template>
                 </BTab>
                 <!-- Files doesn't participate in the graphics/console split-vs-tabs layout at all (see
                      isFilesAreaShowing) -- it's always reachable as its own tab regardless of layout mode. -->
-                <BTab :button-id="filesTabId" :title="'📁 '+$t('PEA.fileSystem')" title-link-class="pea-display-tab"></BTab>
+                <BTab :button-id="filesTabId" title-link-class="pea-display-tab" :title-link-attrs="{title: $t('PEA.fileSystem')}">
+                    <template #title>
+                        📁<span class="pea-tab-label">{{ $t('PEA.fileSystem') }}</span>
+                    </template>
+                </BTab>
             </BTabs>
             <!-- Takes all the free space between the tabs and the Run button. In the tests mode, it holds the overall outcome of the last test run:
                  a green "Pass" or red "Fail" pill, grey once the code has been edited since. When the slot is too narrow for the word, only the
@@ -268,6 +281,8 @@ export default defineComponent({
             scssVars, // just to be able to use in template
             turtleImgURL, // same
             isExpandedPEA: false,
+            compactTabHeaders: false, // flag to indicate the tab headers show only their icons, because there isn't room for the labels
+            compactTabHeadersWidth: 0, // the width of the controls area at which the full headers last wrapped (to know when they will fit again)
             isTabsLayout: true, // flag to indicate the PEA's layout - tabs by default
             graphicsTemporaryHidden: false, //flag to use when we need to temporary hide the graphics for UI reasons (like before a layout of the PEA is performed, so we can compute things right)
             graphicsImported: "none" as "turtle" | "strype" | "matplotlib" | "none", // by default, graphics isn't imported - this flag is updated when we detect the import (see event registration in mounted())
@@ -371,15 +386,16 @@ export default defineComponent({
             tabContentContainerDiv.addEventListener(CustomEventTypes.pythonExecAreaSizeChanged, ((event) => debouncePEASizeChangedCallback((event as CustomEvent<boolean|undefined>).detail)));
         }
 
-        // One last thing we want to do is update the Turtle emoji to something consistent across machines/browsers
-        this.$nextTick(() => {
-            const graphicTaBElement = document.getElementById(this.graphicsTabId);
-            if(graphicTaBElement){
-                graphicTaBElement.innerHTML = graphicTaBElement.innerHTML.replace("\uD83D\uDC22", `<img src="${turtleImgURL}" alt="${this.$t("PEA.Graphics")}" class="pea-turtle-img" />`);
-            }
-        });
-       
-        
+        // Hide the tab labels (keeping the icons) whenever the full headers would wrap:
+        // We observe a zero-height probe as wide as the controls area, rather than the area itself, because
+        // changing the headers changes the area's height, which would give a "ResizeObserver loop" error.
+        // This all runs before the browser paints (observer callback, then Vue's microtask updates), so the
+        // user never sees the wrapped intermediate state.
+        const widthProbe = this.$refs.controlsWidthProbe as HTMLElement | undefined;
+        if (widthProbe) {
+            new ResizeObserver(() => this.updateCompactTabHeaders()).observe(widthProbe);
+        }
+
         // Setup Canvas:
         const domCanvas = this.$refs.pythonGraphicsCanvas as HTMLCanvasElement;
         domContext = domCanvas.getContext("2d", {alpha: true}) as CanvasRenderingContext2D | null;
@@ -1729,6 +1745,29 @@ export default defineComponent({
             soundManager?.downloadWAV(src, filenameStem);
         },
         
+        updateCompactTabHeaders() {
+            const controlsDiv = document.getElementById(getPEAControlsDivId());
+            if (!controlsDiv) {
+                return;
+            }
+            const width = controlsDiv.clientWidth;
+            if (this.compactTabHeaders) {
+                // Only try the full labels again once there's more room than when they last didn't fit:
+                if (width <= this.compactTabHeadersWidth) {
+                    return;
+                }
+                this.compactTabHeaders = false;
+            }
+            // Check the full labels now; the headers wrap if some visible one sits lower than the first:
+            this.$nextTick(() => {
+                const tabs = Array.from(controlsDiv.querySelectorAll<HTMLElement>(".nav-item")).filter((el) => el.offsetParent != null);
+                if (tabs.length > 1 && tabs.some((el) => el.offsetTop != tabs[0].offsetTop)) {
+                    this.compactTabHeadersWidth = controlsDiv.clientWidth;
+                    this.compactTabHeaders = true;
+                }
+            });
+        },
+
         doHighlightPythonRunningState(){
             // This method is called when we want to draw attention on the "running state" of the Strype project.
             // This is achieved using CSS only, so we just use a flag to trigger a CSS change, and reset it after a decent amount of time.
@@ -1909,6 +1948,27 @@ export default defineComponent({
         border: 2px solid #d66;
     }
 
+    .pea-controls-div {
+        position: relative;
+    }
+
+    .pea-controls-width-probe {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        height: 0;
+        pointer-events: none;
+    }
+
+    // The extra class is for specificity over Bootstrap's own display: block on the nav-link
+    .pea-controls-div .pea-display-tab.nav-link {
+        // Icon and label side by side, with a gap between them (which goes along with a hidden label):
+        display: flex;
+        align-items: center;
+        column-gap: 0.3em;
+    }
+
     .pea-display-tab {
         --bs-nav-link-color: black;
         --bs-nav-link-hover-color: black;
@@ -1916,6 +1976,11 @@ export default defineComponent({
         // Slightly tighter than Bootstrap's 1rem default, so the tab bar (now with a third,
         // Files, tab) doesn't feel as spread out:
         --bs-nav-link-padding-x: 0.65rem;
+    }
+
+    // When there isn't room for the labels, show only the icons (the tooltip names the tab):
+    .pea-compact-tabs .pea-tab-label {
+        display: none;
     }
 
     .pea-hidden-tab {

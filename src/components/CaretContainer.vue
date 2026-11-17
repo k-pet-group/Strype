@@ -57,7 +57,7 @@ import {AllFrameTypesIdentifier, CaretPosition, Position, PythonExecRunningState
 import { getCaretUID, setContextMenuEventClientXY, getAddFrameCmdElementUID, CustomEventTypes, getCaretContainerUID, getCaretContainerFocusInputUID, getEditorMiddleUID } from "@/helpers/editor";
 import { mapStores } from "pinia";
 import { cloneDeep } from "lodash";
-import { pasteMixedPython } from "@/helpers/pythonToFrames";
+import { ensureMediaLiteralImports, pasteMixedPython } from "@/helpers/pythonToFrames";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { getAboveFrameCaretPosition } from "@/helpers/storeMethods";
@@ -297,6 +297,9 @@ export default defineComponent({
                     preparePasteMediaData(event, (code: string, dataAndDim: MediaDataAndDim) => {
                         // We create a new function call frame with the media-adapated code content
                         this.appStore.ignoreStateSavingActionsForUndoRedo = true;
+                        // The literal needs load_image()/load_sound() to be imported, so add that import if it's missing
+                        // (the undo/redo state is saved by the slot refactoring below, covering this too):
+                        ensureMediaLiteralImports([dataAndDim.itemType.startsWith("image") ? "image" : "sound"], true);
                         this.appStore.addFrameWithCommand(getFrameDefType(AllFrameTypesIdentifier.funccall), undefined, true, true).then((frameId) => {
                             this.appStore.setFrameEditableSlotContent(
                                 {

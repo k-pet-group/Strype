@@ -83,6 +83,7 @@ import { bumpCaretRequestSeq, bumpLastSlotCharacterTypedTimestamp, closeBracketC
 import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { isKnownFileNameOrPath } from "@/helpers/knownFiles";
+import { ensureMediaLiteralImports } from "@/helpers/pythonToFrames";
 import { mapStores } from "pinia";
 import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
@@ -1535,6 +1536,9 @@ export default defineComponent({
             const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
             if (type.startsWith("image") || type.startsWith("audio")) {
+                // The literal needs load_image()/load_sound() to be imported, so add that import if it's missing
+                // (without a separate undo/redo step, so one undo removes both the literal and the import):
+                ensureMediaLiteralImports([type.startsWith("image") ? "image" : "sound"], true);
                 this.appStore.addNewSlot(parseLabelSlotUID(this.UID), type, (inputSpanField.textContent?.substring(0, selectionStart) ?? "").replace(/\u200B/g, ""), (inputSpanField.textContent?.substring(selectionEnd) ?? "").replace(/\u200B/g, ""), SlotType.media, false, content);
                 this.$nextTick(() => {
                     this.appStore.leftRightKey({key: "ArrowRight"});

@@ -1,11 +1,11 @@
-import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState, TestsContainerDefinition } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CurrentFrame, EditorFrameObjects, FrameObject, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, LabelSlotsContent, SlotsStructure, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrozenState, TestsContainerDefinition, StrypePlatform } from "@/types/types";
 import {useStore} from "@/store/store";
 import {checkCodeErrors, getFrameSectionIdFromFrameId} from "@/helpers/storeMethods";
 import {testFunctionNamePrefix} from "@/helpers/testFunctionNames";
 import {CustomEventTypes, getLastCaretPosInsideParent} from "@/helpers/editor";
 import i18n from "@/i18n";
 import {cloneDeep, escapeRegExp} from "lodash";
-import {AppName, AppSPYFullPrefix, eventBus, projectDocumentationFrameId, TestingSectionAvailable} from "@/helpers/appContext";
+import {AppName, AppPlatform, AppSPYFullPrefix, eventBus, projectDocumentationFrameId, TestingSectionAvailable} from "@/helpers/appContext";
 import {stringToCollapsed, stringToFrozen} from "@/parser/parser";
 import {nextTick} from "vue";
 import type Parser from "web-tree-sitter";
@@ -1390,6 +1390,74 @@ function splitLinesToSections(allLines : string[], leadingAssignmentsGoInDefs: b
     };
 }
 
+// Image and sound literals are code like load_image("data:image/png;base64,...") and load_sound("data:audio/...;base64,..."),
+// which only work if the program imports load_image/load_sound from strype.graphics/strype.sound respectively.
+// (The micro:bit version has neither module, nor media literals.)
+export type MediaLiteralKind = "image" | "sound";
+const MEDIA_LITERAL_IMPORTS: Record<MediaLiteralKind, {module: string, func: string}> = {
+    image: {module: "strype.graphics", func: "load_image"},
+    sound: {module: "strype.sound", func: "load_sound"},
+};
+
+// Returns the kinds of media literal that appear in the given (Python) code
+export function getMediaLiteralKindsInCode(code: string) : MediaLiteralKind[] {
+    const kinds: MediaLiteralKind[] = [];
+    if (/load_image\(\s*["']data:image\//.test(code)) {
+        kinds.push("image");
+    }
+    if (/load_sound\(\s*["']data:audio\//.test(code)) {
+        kinds.push("sound");
+    }
+    return kinds;
+}
+
+// True if there is an enabled "from <module> import ..." frame which makes <func> available under its own name
+// (i.e. imports * or <func> itself, but not "<func> as something else").
+function isFuncImportedFromModule(module: string, func: string) : boolean {
+    return Object.values(useStore().frameObjects).some((frame: FrameObject) => {
+        if (frame.isDisabled || frame.frameType.type !== AllFrameTypesIdentifier.fromimport) {
+            return false;
+        }
+        const moduleSlots = frame.labelSlotsDict[0]?.slotStructures;
+        const importedSlots = frame.labelSlotsDict[1]?.slotStructures;
+        if (!moduleSlots || !importedSlots) {
+            return false;
+        }
+        const moduleName = moduleSlots.fields.map((f, i) => (f as BaseSlot).code + (moduleSlots.operators[i]?.code ?? "")).join("");
+        if (moduleName !== module) {
+            return false;
+        }
+        for (let i = 0; i < importedSlots.fields.length; i++) {
+            const name = (importedSlots.fields[i] as BaseSlot).code;
+            if (importedSlots.operators[i]?.code === "as") {
+                // An aliased import doesn't make the original name available; skip over the alias too:
+                i++;
+            }
+            else if (name === "*" || name === func) {
+                return true;
+            }
+        }
+        return false;
+    });
+}
+
+// Makes sure that the code can use the given kinds of media literal, by adding a "from strype.graphics import *"
+// and/or "from strype.sound import *" frame at the end of the imports section for any that are missing.
+// ignoreStateBackup is passed on to the frame insertion: pass true if the caller saves the undo/redo state itself.
+export function ensureMediaLiteralImports(kinds: MediaLiteralKind[], ignoreStateBackup = false) : void {
+    if ((AppPlatform as StrypePlatform) !== StrypePlatform.standard) {
+        return;
+    }
+    const importLines = kinds
+        .map((kind) => MEDIA_LITERAL_IMPORTS[kind])
+        .filter(({module, func}) => !isFuncImportedFromModule(module, func))
+        .map(({module}) => `from ${module} import *`);
+    if (importLines.length > 0) {
+        // Imports always go to the end of the imports section, wherever the cursor is, if we ask to paste from the main section:
+        pasteMixedPython(importLines.join("\n"), {id: useStore().getMainCodeFrameContainerId, caretPosition: CaretPosition.body}, false, true, ignoreStateBackup);
+    }
+}
+
 // Returns headers if successful, or null if there was an error (which will already have been shown in the UI)
 export function pasteMixedPython(completeSource: string, at: CurrentFrame, clearExisting: boolean = false, dontSetCaretAfter: boolean = false, ignoreStateBackup: boolean = false) : { headers: Record<string, string> } | null {
     const allLines = completeSource.split(/\r?\n/);
@@ -1553,6 +1621,10 @@ export function pasteMixedPython(completeSource: string, at: CurrentFrame, clear
     }
     if (pasteRejected) {
         useStore().showMessage(MessageDefinitions.ForbiddenFramePaste, 10000);
+    }
+    // If we've pasted media literals, make sure they will work (but not when we've replaced everything, i.e. loading a project, which has its own imports):
+    if (!clearExisting && !pasteRejected) {
+        ensureMediaLiteralImports(getMediaLiteralKindsInCode(completeSource), ignoreStateBackup);
     }
     if (!dontSetCaretAfter) {
         useStore().setCurrentFrame(posAfter, true);

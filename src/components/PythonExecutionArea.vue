@@ -18,9 +18,19 @@
                      isFilesAreaShowing) -- it's always reachable as its own tab regardless of layout mode. -->
                 <BTab :button-id="filesTabId" :title="'📁 '+$t('PEA.fileSystem')" title-link-class="pea-display-tab"></BTab>
             </BTabs>
-            <div class="flex-padding"/>            
-            <div class="flex-padding"/>
-            <button id="runButton" ref="runButton" class="pea-controls-button" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : 'PEA.run') + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!isPythonWorkerReady">
+            <!-- Takes all the free space between the tabs and the Run button. In the tests mode, it holds the overall outcome of the last test run:
+                 a green "Pass" or red "Fail" pill, grey once the code has been edited since. When the slot is too narrow for the word, only the
+                 tick or cross is shown, and the slot always has room for at least that (see the CSS for .pea-test-outcome-slot). -->
+            <div :class="{'pea-test-outcome-slot': true, 'pea-test-outcome-slot-reserved': isRunButtonForTests, 'pea-test-outcome-passed': isRunButtonForTests && lastTestRunOutcome == 'passed' && !isLastTestRunStale, 'pea-test-outcome-failed': isRunButtonForTests && lastTestRunOutcome == 'failed' && !isLastTestRunStale, 'pea-test-outcome-stale': isRunButtonForTests && lastTestRunOutcome != 'not_run' && isLastTestRunStale}">
+                <template v-if="isRunButtonForTests && lastTestRunOutcome != 'not_run'">
+                    <!-- The icon comes first in the DOM (but is displayed last, see the CSS) so that it is the text that wraps out of view first -->
+                    <span class="pea-test-outcome-icon" :title="$t(lastTestRunOutcome == 'passed' ? 'appMessage.testsPassed' : 'appMessage.testsFailed')">
+                        <TestOutcomeIcon :passed="lastTestRunOutcome == 'passed'"/>
+                    </span>
+                    <span class="pea-test-outcome-text" :title="$t(lastTestRunOutcome == 'passed' ? 'appMessage.testsPassed' : 'appMessage.testsFailed')">{{ $t(lastTestRunOutcome == 'passed' ? 'appMessage.testPassBadge' : 'appMessage.testFailBadge') }}</span>
+                </template>
+            </div>
+            <button id="runButton" ref="runButton" class="pea-controls-button" @click="runClicked" :title="$t((isPythonExecuting) ? 'PEA.stop' : (isRunButtonForTests ? 'appMessage.runTestsButton' : 'PEA.run')) + ' (Ctrl+Enter)'" :class="{highlighted: highlightPythonRunningState}" :disabled="!isPythonWorkerReady">
                 <img v-if="!isPythonExecuting" :src="faviconURL" class="pea-play-img">
                 <span v-else class="python-running">{{runCodeButtonIconText}}</span>
                 <span>{{runCodeButtonLabel}}</span>
@@ -89,9 +99,10 @@ import { useStore } from "@/store/store";
 import Parser from "@/parser/parser";
 import { mapStores } from "pinia";
 import { checkEditorCodeErrors, countEditorCodeErrors, CustomEventTypes, debounceComputeAddFrameCommandContainerSize, getEditorCodeErrorsHTMLElements, getFrameUID, getPEAComponentRefId, getPEAConsoleId, getPEAControlsDivId, getPEAGraphicsContainerDivId, getPEATabContentContainerDivId, hasNonRuntimeCodeError, setContextMenuEventClientXY, setPythonExecAreaLayoutButtonPos, setPythonExecutionAreaTabsContentMaxHeight } from "@/helpers/editor";
-import { CoordPosition, defaultEmptyStrypeLayoutDividerSettings, PythonExecRunningState, StrypeContextMenuItem, StrypePEALayoutData, StrypePEALayoutMode } from "@/types/types";
+import { AllFrameTypesIdentifier, BaseSlot, CoordPosition, defaultEmptyStrypeLayoutDividerSettings, PythonExecRunningState, StrypeContextMenuItem, StrypePEALayoutData, StrypePEALayoutMode, TestOutcome } from "@/types/types";
 import { WORLD_HEIGHT, WORLD_WIDTH } from "@/stryperuntime/image_and_collisions";
 import SVGIcon from "@/components/SVGIcon.vue";
+import TestOutcomeIcon from "@/components/TestOutcomeIcon.vue";
 import { Splitpanes, Pane } from "splitpanes";
 import { debounce, escape } from "lodash";
 import scssVars from "@/assets/style/_export.module.scss";
@@ -103,14 +114,14 @@ import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { BTab, BTabs } from "bootstrap-vue-next";
 import * as Comlink from "comlink";
 import {handleErrorTrace, setSInputConsole} from "@/helpers/execPythonCode";
-import {isServiceWorkerChannelResponsive, PyodideErrorDetails, serviceWorkerReadyAndInControl} from "@/workers/shared_helpers";
+import {isServiceWorkerChannelResponsive, PyodideErrorDetails, serviceWorkerReadyAndInControl, TestRunResult, TestRunResults} from "@/workers/shared_helpers";
 import {SpriteHandle, SyncOrAsyncStrypePyodideWorkerRequest} from "@/stryperuntime/worker_bridge_type";
 import {SoundManager} from "@/stryperuntime/sound_manager";
-import {handleAsyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
+import {handleAsyncRequests, handleFileSyncRequests, handleSyncRequests} from "@/stryperuntime/main_bridge_handler";
 import {callTrackingProxyPorts, getPythonClient, isPythonWorkerReady, renderer, serviceWorkerChannel, terminateAndRestartPyodide} from "@/stryperuntime/main_thread_python_handler";
 import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {closeAudioContext, createOrGetAudioContext} from "@/helpers/audioContext";
-import {clearAllRuntimeErrors, computeFrameSnapshot} from "@/helpers/storeMethods";
+import {clearAllRuntimeErrors, clearAllTestOutcomes, computeFrameSnapshot} from "@/helpers/storeMethods";
 import {listEntriesForWorker} from "@/helpers/localFsCache";
 import html2canvas from "html2canvas";
 import FileSystemPane from "@/components/FileSystemTab/FileSystemPane.vue";
@@ -149,6 +160,17 @@ let waitingForSoundsAfterNormalCompletion = false;
 // maybeCreateSpareSlot() in main_thread_python_handler.ts) rather than a general "worker just
 // got swapped in" issue that would equally affect run #3, #4, etc:
 let runCount = 0;
+
+// What to show in the console for a failed test (after its "FAILED ..." line): only the lines pytest prefixes
+// with "E", i.e. what went wrong ("E       AssertionError: assert 5 == 8", "E        +  where 5 = ..."), without
+// the excerpt of the test's code that comes before them, or the closing line giving the file and line number
+// (e.g. "../strype_tests/test_strype_user_tests.py:13: AssertionError"): those are about a Python file the user
+// never sees, and the frame at fault is highlighted instead. If there are no such lines (e.g. for some failures
+// that aren't an exception), we fall back to the whole text bar that closing line.
+function failureDetailsToShow(message: string): string {
+    const errorLines = message.split("\n").filter((line) => /^E(\s|$)/.test(line));
+    return (errorLines.length > 0) ? errorLines.join("\n") : message.replace(/\n*[^\n]*\.py:\d+: [^\n]*\s*$/, "");
+}
 
 let soundManager : SoundManager | null = null; // Can't initialise this here as we need permissions for audio context
 const turtleCanvas = new OffscreenCanvas(800, 600);
@@ -202,6 +224,7 @@ export default defineComponent({
         Splitpanes,
         Pane,
         SVGIcon,
+        TestOutcomeIcon,
         BTabs, BTab,
         FileSystemPane,
     },
@@ -459,6 +482,10 @@ export default defineComponent({
             return useStore().pythonExecRunningState != PythonExecRunningState.NotRunning;
         },
 
+        testRunRequestId(): number {
+            return this.appStore.testRunRequestId;
+        },
+
         currentSplitterPane1Size(): number {
             // The current size (in %) of the splitter's pane 1, we keep this as a variable not directly affected to the splitter's 
             // pane size to maintain visual aspects when layout switches (the actual size may be explicitly changed to 0 or 100
@@ -478,13 +505,27 @@ export default defineComponent({
             }
         },
         
+        // While the editor is showing the testing code (rather than the main code), the Run button runs the tests
+        isRunButtonForTests(): boolean {
+            return this.appStore.mainSectionShowsTests;
+        },
+
+        lastTestRunOutcome(): TestOutcome {
+            return this.appStore.lastTestRunOutcome;
+        },
+
+        // The outcome of the last test run is out of date once the editor has been changed since
+        isLastTestRunStale(): boolean {
+            return this.appStore.editorLastModificationAt > this.appStore.lastTestRunAt;
+        },
+
         runCodeButtonLabel(): string {
             if (!isPythonWorkerReady.value) {
                 return " " + this.$t("PEA.loading");
             }
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
-                return " " + this.$t("PEA.run");
+                return " " + this.$t(this.isRunButtonForTests ? "appMessage.runTestsButton" : "PEA.run");
             case PythonExecRunningState.Running:
                 return " " + this.$t("PEA.stop");
             case PythonExecRunningState.RunningAwaitingStop:
@@ -516,6 +557,11 @@ export default defineComponent({
             if (!nowExecuting) {
                 closeAudioContext();
             }
+        },
+
+        testRunRequestId(){
+            // Triggered by the Run button while the Testing section is showing (see runClicked()), via appStore.requestTestRun().
+            this.execTestsCode();
         },
     },
 
@@ -576,6 +622,12 @@ export default defineComponent({
             // - running awaiting stop will do nothing
             switch (useStore().pythonExecRunningState) {
             case PythonExecRunningState.NotRunning:
+                if (this.isRunButtonForTests) {
+                    // Showing the testing code: run the tests instead of the program (execTestsCode()
+                    // sets the running state itself, so Stop behaves as for a normal run):
+                    useStore().requestTestRun();
+                    return;
+                }
                 useStore().pythonExecRunningState = PythonExecRunningState.Running;
                 runCount += 1;
                 console.info(`[Run click ${new Date().toISOString()}] run #${runCount} this page session`);
@@ -910,6 +962,177 @@ export default defineComponent({
                 // Note that a run time error can still occur later.                
                 this.checkNonePrecompiledErrors();
             }, 1000);           
+        },
+
+        async execTestsCode() {
+            // Triggered by the Run button while the Testing section is showing -- see runClicked() and appStore.requestTestRun()/testRunRequestId.
+            // Both of these are also reflected in the button's :disabled state, but are
+            // checked again here as a defensive guard, since the underlying Pyodide client only allows one
+            // call() in flight at a time and throws "State is running, not idle" otherwise:
+            if (this.isPythonExecuting || !isPythonWorkerReady.value) {
+                return;
+            }
+
+            const client = getPythonClient();
+            if (client == null) {
+                return;
+            }
+
+            const pythonConsole = this.$refs.pythonConsole as HTMLTextAreaElement;
+            // Like a normal Run, start by clearing the previous run's errors (and the previous tests' outcomes):
+            this.appStore.wasLastRuntimeErrorFrameId = undefined;
+            clearAllRuntimeErrors();
+            clearAllTestOutcomes();
+            this.appStore.lastTestRunOutcome = "not_run";
+
+            // Separate Parser instances: Parser.parse() leaves internal state (e.g. exitFlag) set after
+            // reaching a stop boundary, which would corrupt a second parse() call reusing the same instance.
+            // We keep parser/testsParser afterwards: their getFramePositionMap() lets a pytest failure's
+            // file/line be mapped back to the frame that caused it, the same way a normal Run's error is
+            // highlighted.
+            const parser = new Parser();
+            // Only the imports and definitions go into the module the tests import: the main code section's
+            // top-level statements are deliberately not run when testing.
+            const mainCode = parser.parseJustImportsAndDefs();
+            const importsCode = new Parser().parseJustImports();
+            const testsParser = new Parser();
+            const testsCode = testsParser.parseJustTests();
+            // The test file is importsCode + the "from strype_user_code import *" line + testsCode (see
+            // executeTests() in workers/python-execution.ts) -- used below to map a pytest failure's
+            // file line back into testsCode's own (0-indexed) getFramePositionMap():
+            const testsFileLinesBeforeTestsCode = importsCode.split("\n").length; // includes the "import *" line
+
+            // Gather the libraries used by the project, same as a normal Run (see execPythonCode()):
+            this.libraries = parser.getLibraries();
+            const micropipLibraries: string[] = [];
+            const userLibraries = {} as {[url: string] : Record<string, string>};
+            for (const lib of this.libraries) {
+                if (lib.startsWith("micropip:")) {
+                    micropipLibraries.push(lib.slice("micropip:".length));
+                }
+                else {
+                    const files = await getAvailableFilesFromLibrary(lib);
+                    if (files != null) {
+                        userLibraries[lib] = Object.fromEntries(files.map((v) => [v, v]));
+                    }
+                }
+            }
+
+            useStore().pythonExecRunningState = PythonExecRunningState.Running;
+            // Clear the console first, as a normal Run does:
+            pythonConsole.value = "Running tests...\n";
+            this.switchToConsoleTab("always");
+
+            // As for a normal Run: refresh the worker's "/local" from the cache first (so files added via the
+            // File system tab since the last restart are visible), and answer file requests from the worker:
+            await client.workerProxy.restoreLocalFs(listEntriesForWorker());
+            const testFileRequestHandler = Comlink.proxy((asreq: SyncOrAsyncStrypePyodideWorkerRequest) => {
+                if (asreq.kind != "sync") {
+                    return;
+                }
+                const req = asreq.request;
+                const resp = handleFileSyncRequests(req);
+                resp.response.then(async (r: any) => {
+                    await serviceWorkerReadyAndInControl();
+                    await client.writeMessage({request: resp.request, response: r});
+                }).catch(async (err) => {
+                    await serviceWorkerReadyAndInControl();
+                    await client.writeMessage({request: resp.request, error: err.toString()});
+                });
+            });
+            if (!(await isServiceWorkerChannelResponsive(serviceWorkerChannel.baseUrl))) {
+                console.error("Service worker sync channel not responding; file access during tests may fail");
+            }
+
+            client.call(client.workerProxy.executeTests, mainCode, importsCode, testsCode, micropipLibraries, userLibraries, typeof(this.appStore.strypeProjectLocation) === "string", testFileRequestHandler).then((results: TestRunResults) => {
+                let output: string;
+                if (results.collectionError) {
+                    output = `Could not run tests:\n${results.collectionError}\n`;
+                    this.appStore.lastTestRunOutcome = "failed";
+                    this.appStore.lastTestRunAt = Date.now();
+                }
+                else if (results.results.length == 0) {
+                    output = "No tests found in the Test code section.\n";
+                }
+                else {
+                    const failures = results.results.filter((r) => r.outcome != "passed");
+                    output = `${results.results.length - failures.length} passed, ${failures.length} failed\n`;
+                    for (const failure of failures) {
+                        output += `\nFAILED ${failure.nodeId.split("::").pop()}:\n${failureDetailsToShow(failure.message)}\n`;
+                    }
+                    this.highlightTestFailures(failures, parser, testsParser, testsFileLinesBeforeTestsCode);
+                    this.recordTestOutcomes(results.results);
+                }
+                pythonConsole.value += output;
+                pythonConsole.scrollTop = pythonConsole.scrollHeight;
+                this.checkNonePrecompiledErrors();
+            }).catch((err) => {
+                console.error("Running tests failed: ", err);
+                pythonConsole.value += `\nAn internal error occurred while running the tests: ${(err as Error)?.message ?? err}\n`;
+                pythonConsole.scrollTop = pythonConsole.scrollHeight;
+            }).finally(() => {
+                useStore().pythonExecRunningState = PythonExecRunningState.NotRunning;
+                // Restart Pyodide for a clean state, same as after a normal Run (see execPythonCode()):
+                void terminateAndRestartPyodide();
+            });
+        },
+
+        // Maps each failing test's pytest-reported crash location back to the Strype frame that caused
+        // it, and highlights it the same way a normal Run's runtime error is highlighted (see
+        // handleErrorTrace() in helpers/execPythonCode.ts, which this mirrors for the single-error case
+        // Run always has -- here there can be several, one per failing test).
+        highlightTestFailures(failures: TestRunResult[], mainParser: Parser, testsParser: Parser, testsFileLinesBeforeTestsCode: number): void {
+            let firstFailureFrameId: number | undefined;
+            for (const failure of failures) {
+                if (!failure.crashFile || failure.lineno == null) {
+                    // No reprcrash (e.g. a plain pytest.fail() reason), or it wasn't in either
+                    // generated file we can map back to frames (e.g. inside a library pytest itself
+                    // loaded) -- nothing to highlight for this one.
+                    continue;
+                }
+                const positions = (failure.crashFile == "main") ? mainParser.getFramePositionMap() : testsParser.getFramePositionMap();
+                // getFramePositionMap() is 0-indexed, matching the 1-indexed file line used by
+                // pytest/Python conventions as lineno-1 (see handleErrorTrace()) -- except the tests
+                // file also has testsFileLinesBeforeTestsCode extra prepended lines (the project's own
+                // Imports section, plus the "from strype_user_code import *" line) that the Testing
+                // section's own parsed code doesn't contain, hence the extra subtraction there:
+                const lineIndex = failure.lineno - 1 - (failure.crashFile == "tests" ? testsFileLinesBeforeTestsCode : 0);
+                const posInfo = positions[lineIndex];
+                if (posInfo) {
+                    const failedFrame = useStore().frameObjects[posInfo.frameId];
+                    failedFrame.runTimeError = failure.crashMessage || failure.message;
+                    // A failed assert statement is shown differently from other errors (a cross, not a warning triangle).
+                    // Depending on the assert, pytest's one-line summary of it is "AssertionError: ..." or (for an assert it
+                    // has rewritten to explain) just "assert ..."; any other error, e.g. a NameError evaluating it, isn't one:
+                    if (failedFrame.frameType.type == AllFrameTypesIdentifier.assert && /^(AssertionError|assert)\b/.test(failure.crashMessage ?? "")) {
+                        failedFrame.assertionFailed = true;
+                    }
+                    useStore().forceExpand(posInfo.frameId);
+                    firstFailureFrameId ??= posInfo.frameId;
+                }
+            }
+            if (firstFailureFrameId !== undefined) {
+                useStore().wasLastRuntimeErrorFrameId = firstFailureFrameId;
+            }
+        },
+
+        // Records on each test_ function in the Testing section whether it passed or failed in this run
+        // (shown by a tick or a cross in its header). A test function that wasn't run has no outcome.
+        recordTestOutcomes(results: TestRunResult[]): void {
+            const store = useStore();
+            const testFunctionFrames = store.frameObjects[store.getTestsFrameContainerId].childrenIds
+                .map((frameId) => store.frameObjects[frameId])
+                .filter((frame) => frame.frameType.type == AllFrameTypesIdentifier.funcdef);
+            for (const frame of testFunctionFrames) {
+                const name = (frame.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code;
+                // A node id is e.g. "test_strype_user_tests.py::test_name" (with "[...]" after the name for parametrised tests):
+                const outcomes = results.filter((r) => r.nodeId.split("::").pop()?.split("[")[0] == name);
+                if (outcomes.length > 0) {
+                    frame.testOutcome = outcomes.every((r) => r.outcome == "passed") ? "passed" : "failed";
+                }
+            }
+            store.lastTestRunOutcome = results.every((r) => r.outcome == "passed") ? "passed" : "failed";
+            store.lastTestRunAt = Date.now();
         },
 
         checkNonePrecompiledErrors(){
@@ -1530,6 +1753,63 @@ export default defineComponent({
         width:100%;
         background-color: $pea-outer-background-color;
         align-items: center;
+    }
+
+    // The free space between the tabs and the Run button, which holds the overall outcome of the last test run: a pill
+    // with white text, made of two adjoining parts, the tick or cross (fixed size) and the word "Pass"/"Fail". The slot is a
+    // wrapping row, fixed to one line high with the overflow hidden, and reversed: the icon is first in the DOM so is placed
+    // at the end of the line, with the text before it when there is room for both. Otherwise the text wraps onto a second
+    // line and is clipped, leaving just the icon, which keeps its own size. The tick or cross is an
+    // SVG in the text colour, centred in the icon part.
+    // The same look as the badge in a test function's header (see FrameHeader.vue), but with its own class names as these
+    // styles are global.
+    .pea-test-outcome-slot {
+        flex: 1 1 0;
+        min-width: 0;
+        display: flex;
+        flex-direction: row-reverse;
+        flex-wrap: wrap;
+        align-content: flex-start;
+        overflow: hidden;
+        height: 1.6em;
+        font-size: 0.85em;
+        font-weight: 600;
+        line-height: 1.6;
+        color: #fff;
+        white-space: nowrap;
+        user-select: none;
+    }
+    // In the tests mode we always keep enough room for the icon part:
+    .pea-test-outcome-slot-reserved {
+        min-width: 2.2em;
+    }
+    .pea-test-outcome-icon, .pea-test-outcome-text {
+        background-color: #706e6e; // grey: out of date, as the code has been edited since the tests were run
+    }
+    .pea-test-outcome-icon {
+        box-sizing: border-box;
+        width: 2.2em;
+        height: 1.6em; // the full height of the pill, and of the slot: the wrapped text part must not show beneath it
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 0.6em;
+    }
+    // The text part overlaps the icon by 0.6em (negative margin), in front of it, so that the rounded left end of the icon isn't
+    // seen as a gap between the two parts; they are the same colour so look like one pill. The overlap is only over the empty
+    // space to the left of the icon's symbol (which is centred in its 2.2em, so starts about 0.6em in), and the padding after
+    // the text leaves about 0.3em between the text and the symbol:
+    .pea-test-outcome-text {
+        position: relative; // to be in front of the icon part, which it overlaps
+        padding: 0 0.3em 0 0.6em;
+        margin-right: -0.6em;
+        border-radius: 0.6em 0 0 0.6em;
+    }
+    .pea-test-outcome-passed .pea-test-outcome-icon, .pea-test-outcome-passed .pea-test-outcome-text {
+        background-color: #2a8a3a;
+    }
+    .pea-test-outcome-failed .pea-test-outcome-icon, .pea-test-outcome-failed .pea-test-outcome-text {
+        background-color: #c94c4c;
     }
 
     .pea-controls-button {

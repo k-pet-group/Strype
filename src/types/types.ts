@@ -156,6 +156,9 @@ export enum FrozenState {
 // Frame related interace, the highest level to describe a frame
 // Note the labelSlotsDict property is an array inline with each label of the frame
 // and slots are always related to 1 label (for example "for" (label 0) and "in" (label 1) in a for frame)
+// How a test run went (for one test function, or for the run as a whole); "not_run" if there has not been a run yet
+export type TestOutcome = "passed" | "failed" | "not_run";
+
 export interface FrameObject {
     frameType: FramesDefinitions;
     id: number;
@@ -173,6 +176,8 @@ export interface FrameObject {
     labelSlotsDict: { [index: number]: LabelSlotsContent }; //this contains the label input slots data listed as a key value pairs array (key = index of the slot)
     atParsingError?: string //this contains the error message for a parsing error (from TigerPython) that can't be associated to a slot (e.g. wrong try structure)
     runTimeError?: string; //this contains the error message for a runtime error, as the granularity of the Skulpt doesn't go beyond the line number
+    assertionFailed?: boolean; //set on an assert frame whose runtime error was a failed assertion (shown with a cross rather than a warning triangle)
+    testOutcome?: Exclude<TestOutcome, "not_run">; //for a test_ function in the Test code section: how it went in the last test run (see lastTestRunAt in the store); absent if there has been no run
 }
 
 export enum AllowedSlotContent {
@@ -345,12 +350,14 @@ export interface AddFrameCommandDef {
     symbol?: string; // The SVGIcon name for a symbol OR a string representation of the symbol to show in the key shortcut button when the key it's not easily representable
     isSVGIconSymbol?: boolean; // To differenciate between the two situations mentioned above
     index?: number; // the index of frame type when a shortcut matches more than 1 context-distinct frames
+    testsSectionOnly?: boolean; // for a command that is only offered in the Testing section (e.g. a new test function, a function definition prefilled with "test_")
 }
 
 export interface AddShorthandFrameCommandDef {
     type: FramesDefinitions;
     codeContent: string; // a default code content to add in the first slot of the frame (used by hidden frames)
     goNextSlot?: boolean; // indicates whether the text cursor should move to the next slot (i.e. added "print" in a function call, we want to go inside the brackets)
+    testsSectionOnly?: boolean; // if true, the shorthand is only available when the caret is inside the Testing section
 }
 
 // Helper for the allowJointChildren; see below
@@ -389,6 +396,7 @@ export const ContainerTypesIdentifiers = {
     importsContainer: "importsContainer",
     defsContainer: "defsContainer",
     framesMainContainer: "mainContainer",
+    testsContainer: "testsContainer",
 };
 
 const SpecialTypesIdentifiers = {
@@ -428,6 +436,7 @@ const StandardFrameTypesIdentifiers = {
     continue: "continue",
     try: "try",
     raise: "raise",
+    assert: "assert",
     with: "with",
     return: "return",
     varassign: "varassign",
@@ -513,12 +522,32 @@ export const MainFramesContainerDefinition: FramesDefinitions = {
     colour: "#BBC6B6",
 };
 
+export const TestsContainerDefinition: FramesDefinitions = {
+    ...BlockDefinition,
+    type: ContainerTypesIdentifiers.testsContainer,
+    labels: [
+        { label: i18n.global.t("appMessage.testsContainer"), showSlots: false, defaultText: "" },
+    ],
+    allowedCollapsedStates: [CollapsedState.FULLY_VISIBLE, CollapsedState.ONLY_HEADER_VISIBLE],
+    // The Testing section is for function definitions (tests, named test_..., and the helper functions they use), like
+    // Definitions without the classes: along with them, only comments, blanks and variable assignments are allowed at the top
+    // level. Statements (if, while, assert...) belong inside a function; assert is further limited to test functions (see
+    // isAncestorGatedFrameTypeAllowed()). Typing one of those statements here moves it into a new test function (see
+    // LabelSlotsStructure.vue's performKeywordFrameConversion()), and pasting them is refused.
+    // Imports are not allowed either: the generated test file gets the project's own Imports section copied in
+    // (see parser.ts's parseJustTests()/parseJustImports() and executeTests() in workers/python-execution.ts).
+    forbiddenChildrenTypes: Object.values(AllFrameTypesIdentifier)
+        .filter((frameTypeDef: string) => frameTypeDef !== DefIdentifiers.funcdef && frameTypeDef !== CommentFrameTypesIdentifier.comment && frameTypeDef != AllFrameTypesIdentifier.varassign),
+    colour: "#BBC6B6",
+};
+
 
 export const FrameContainersDefinitions = {
     RootContainerFrameDefinition,
     ImportsContainerDefinition,
     DefsContainerDefinition,
     MainFramesContainerDefinition,
+    TestsContainerDefinition,
 };
 
 export const ProjectDocumentationDefinition: FramesDefinitions = {
@@ -598,6 +627,18 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         type: StandardFrameTypesIdentifiers.raise,
         labels: [
             { label: "raise ", defaultText: i18n.global.t("frame.defaultText.exception"), optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK },
+        ],
+        colour: scssVars.mainCodeContainerBackground,
+    };
+
+    // Only offered in the Testing section (see isAncestorGatedFrameTypeAllowed()), where it's the pytest
+    // way of checking something. The condition slot also takes an optional message after
+    // a comma (assert cond, "message"), as the parser permits top-level commas for this frame type.
+    const AssertDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.assert,
+        labels: [
+            { label: "assert ", defaultText: i18n.global.t("frame.defaultText.condition") },
         ],
         colour: scssVars.mainCodeContainerBackground,
     };
@@ -813,6 +854,7 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
         BreakDefinition,
         ContinueDefinition,
         RaiseDefinition,
+        AssertDefinition,
         TryDefinition,
         ExceptDefinition,
         FinallyDefinition,
@@ -851,6 +893,10 @@ export function generateAllFrameDefinitionTypes(regenerateExistingFrames?: boole
             case MainFramesContainerDefinition.type:
                 frameObject.frameType.labels[0].label = i18n.global.t("appMessage.mainContainer");
                 MainFramesContainerDefinition.labels[0].label = i18n.global.t("appMessage.mainContainer");
+                break;
+            case TestsContainerDefinition.type:
+                frameObject.frameType.labels[0].label = i18n.global.t("appMessage.testsContainer");
+                TestsContainerDefinition.labels[0].label = i18n.global.t("appMessage.testsContainer");
                 break;
             case ProjectDocumentationDefinition.type:
                 break;

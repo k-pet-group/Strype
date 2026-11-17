@@ -37,6 +37,12 @@ export default defineConfig({
     outputDir: "./tests/playwright/test-results",
     /* Fail the build on CI if you accidentally left test.only in the source code. */
     forbidOnly: !!process.env.CI,
+    /* The editor's key-press-and-settle steps are slow (WebKit especially: a test like undo-redo's keyword-frame
+     * conversion takes ~26s even on a quiet fast Mac, and many tests run at 25-30s on the loaded CI runners, as
+     * clearing the default project alone is now ~10 key presses), so Playwright's default 30s timeout is too close:
+     * whichever test the runner's load happens to push over it fails, a different one each run. Tests that need
+     * longer still set their own (see setupStrypeTest's timeoutMs). */
+    timeout: 60_000,
     /* Retry thrice on CI, as some of the random tests are slightly flaky */
     retries: process.env.CI ? 3 : 0,
     fullyParallel: true,

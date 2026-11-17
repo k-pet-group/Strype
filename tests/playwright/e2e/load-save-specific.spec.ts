@@ -53,6 +53,41 @@ test.describe("Load/save near empty files", () => {
     });
 });
 
+test.describe("Load/save the Testing section", () => {
+    // In Strype's own canonical save formatting, so that the save at the end is identical to what was loaded:
+    const withTests = `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+def foo ( ) :
+    return 5 
+#(=> Section:Main
+print(foo()) 
+#(=> Section:Testing
+def test_foo ( ) :
+    assert foo() == 5,"foo should give five" 
+#(=> Section:End
+`;
+
+    test("A Testing section round-trips, between Main and the end marker", async ({page}) => {
+        await loadContent(page, withTests);
+        // The frames really are in the Testing section, rather than having ended up in Main or Definitions:
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='funcdef']")).toHaveCount(1);
+        await expect(page.locator("#frameContainer_-4 .frame-div[data-frameType='assert']")).toHaveCount(1);
+        await expect(page.locator("#frameContainer_-3 .frame-div[data-frameType='funcdef']")).toHaveCount(0);
+        const output = readFileSync(await save(page, false), "utf8").replace(/\r\n/g, "\n");
+        expect(output).toEqual(withTests);
+    });
+
+    test("A file with no Testing section loads with it empty, and saves without the section", async ({page}) => {
+        const noTests = withTests.replace(/#\(=> Section:Testing\n[\s\S]*?(?=#\(=> Section:End)/, "");
+        expect(noTests).not.toContain("Testing");
+        await loadContent(page, noTests);
+        await expect(page.locator("#frameContainer_-4 .frame-div")).toHaveCount(0);
+        const output = readFileSync(await save(page, false), "utf8").replace(/\r\n/g, "\n");
+        expect(output).toEqual(noTests);
+    });
+});
+
 async function testLoadSaveMainLines(page: Page, content: string) {
     await loadContent(page, content + "\n");
     const output = readFileSync(await save(page, false), "utf8").replace(/\r\n/g, "\n");

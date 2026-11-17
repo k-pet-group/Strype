@@ -1,5 +1,5 @@
 import {test, expect, Page} from "@playwright/test";
-import {checkFrameXorTextCursor, doTextHomeEndKeyPress, getDefaultStrypeProjectImportsFullLine, pressFrameShortcut} from "../support/editor";
+import {checkFrameXorTextCursor, doTextHomeEndKeyPress, getDefaultStrypeProjectImportsFullLine, getDefaultStrypeProjectTestingFullLines, pressFrameShortcut} from "../support/editor";
 import {readFileSync} from "node:fs";
 import {loadContent, save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
 import { setupStrypeTest } from "../support/general";
@@ -61,7 +61,7 @@ ${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart());
     });
     
@@ -102,7 +102,7 @@ ${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart());
             });
         }
@@ -129,7 +129,7 @@ def foo ( ) :
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart());
     });
 
@@ -169,7 +169,7 @@ def foo ( ) :
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart());
     });
 
@@ -184,7 +184,7 @@ ${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart());
     });
     
@@ -224,7 +224,7 @@ def foo ( ) :
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart();
     
     

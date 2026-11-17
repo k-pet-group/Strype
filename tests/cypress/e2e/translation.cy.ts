@@ -59,11 +59,24 @@ function getLocalisedString(keyPath: string, locale: string="en"): string{
     return localeJson as any;
 }
 
+// Checks the headings of the sections are present and translated into the given locale. In the Python version, the third
+// section's heading is a pair of tabs, "My code" and "Test code", with the colons of the headings left off, and the
+// micro:bit version has just the plain "My code:" heading.
+function checkContainerHeadings(locale: string): void {
+    const isMicrobit = (Cypress.env("mode") === "microbit");
+    const importsAndDefs = [getLocalisedString("appMessage.importsContainer", locale), getLocalisedString("appMessage.defsContainer", locale)];
+    cy.get("." + scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, isMicrobit ? [...importsAndDefs, getLocalisedString("appMessage.mainContainer", locale)] : importsAndDefs));
+    if (!isMicrobit) {
+        const withoutColon = (label: string) => label.replace(/\s*[:\uFF1A]\s*$/, "");
+        cy.get("[data-tab]").should((ts) => checkTextEquals(ts, [withoutColon(getLocalisedString("appMessage.mainContainer", locale)), withoutColon(getLocalisedString("appMessage.testsContainer", locale))]));
+    }
+}
+
 // This method expected the frame cursor to be at the start of "my code":
 // it will test the frame container labels as well as the autocompletion
 function checkTranslationsForLocale(locale: string): void {    
     // Check that the sections are present and translated:
-    cy.get("."+ scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, [getLocalisedString("appMessage.importsContainer", locale), getLocalisedString("appMessage.defsContainer", locale), getLocalisedString("appMessage.mainContainer", locale)]));
+    checkContainerHeadings(locale);
 
     // Check that sections in the autocomplete are translated:
     // Add a function:
@@ -85,7 +98,7 @@ function checkTranslationsForLocale(locale: string): void {
 // and swap Strype to a given locale, then check translations for that given locale.
 function changeLocaleAndCheckTranslations(locale: string): void {
     // Starts as English:
-    cy.get("." + scssVars.frameContainerLabelSpanClassName).should((hs) => checkTextEquals(hs, [getLocalisedString("appMessage.importsContainer"), getLocalisedString("appMessage.defsContainer"), getLocalisedString("appMessage.mainContainer")]));
+    checkContainerHeadings("en");
     cy.get("select#" + strypeElIds.getAppLangSelectId()).should("have.value", "en");
 
     // Swap to another locale and check it worked:

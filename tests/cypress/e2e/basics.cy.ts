@@ -192,7 +192,8 @@ function flatten(codeLines: CodeMatch[]) : (string | RegExp)[] {
  */
 function checkCodeEquals(codeLines : CodeMatch[]) : Cypress.Chainable<JQuery<HTMLElement>> {
     return sanityCheck().then(() => {
-        cy.root().then((r) => cy.get("." + scssVars.frameDivClassName).filter((i, e) => noFrameDivBetween(r.get()[0], e)).each((f, i) => cy.wrap(f).within((f2) => {
+        // (The Testing section's frames, which the Python version's default project has one of, are checked separately below)
+        cy.root().then((r) => cy.get("." + scssVars.frameDivClassName).filter((i, e) => noFrameDivBetween(r.get()[0], e) && Cypress.$(e).closest("#frameContainer_-4").length == 0).each((f, i) => cy.wrap(f).within((f2) => {
             expect(i).lessThan(codeLines.length, "Found line #" + (i + 1) + " but only expected " + codeLines.length + " lines");
             matchFrameText(f2, codeLines[i]);
         })));
@@ -208,8 +209,15 @@ function checkCodeEquals(codeLines : CodeMatch[]) : Cypress.Chainable<JQuery<HTM
             // We check that project description is correct, and then discard it for the further code check.
             const indexOfFirstLineReturn = p.indexOf("\n");
             expect(p.substring(0, indexOfFirstLineReturn + 1)).equals(getDefaultStrypeProjectDocumentationFullLine(Cypress.env("mode")));
+            // The exported Python also has the Testing section's code at the end: in the Python version, that's the default
+            // project's starter test function (with its description) unless a test has changed or removed it
+            const exportedTestingCode = (Cypress.env("mode") == "microbit") ? [] : [
+                /def\s+test_my_code\s*\(\s*\)\s*:/,
+                /\s*[\x27"]{3}Add assert statements to test your code[\x27"]{3}/,
+                /\s*pass/,
+            ];
             expectMatchRegex(p.substring(indexOfFirstLineReturn + 1).split("\n").map((l) => l.trimEnd()),
-                flatten(codeLines).concat([/\s*/]));
+                flatten(codeLines).concat(exportedTestingCode).concat([/\s*/]));
         });
     });
 }
@@ -514,6 +522,24 @@ describe("Wrapping frames", () => {
     });
 });
  
+describe("The My code heading", () => {
+    it("Has a Test code tab to switch to in the Python version only (the micro:bit version has nowhere to run tests)", () => {
+        cy.get("#frameContainer_-3").should("be.visible");
+        if (Cypress.env("mode") === "microbit") {
+            // Only the plain heading, which does nothing when clicked:
+            cy.get("[data-tab]").should("not.exist");
+            cy.get("#frameContainer_-3 .frame-container-header .frame-container-label-span").click();
+            cy.get("#frameContainer_-3").should("be.visible");
+        }
+        else {
+            cy.get("[data-tab='tests']").click();
+            // The My code container stays (it has the tabs), but its frames are hidden and the Test code ones are showing:
+            cy.get("#frameContainer_-3 .container-frames").should("not.be.visible");
+            cy.get("#frameContainer_-4").should("be.visible");
+        }
+    });
+});
+
 describe("Copying key combination", () => {
     it("Check C inserts a class", () => {
         checkCodeEquals(defaultImports.concat(defaultMyCode));

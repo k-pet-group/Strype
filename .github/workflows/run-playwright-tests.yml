@@ -161,7 +161,7 @@ jobs:
       run: |
         brew install coreutils
         brew install --quiet jq
-        ISOLATED_SPECS="tests/playwright/e2e/console-execution.spec.ts,tests/playwright/e2e/storage-model.spec.ts,tests/playwright/e2e/sound-wait-after-run.spec.ts,tests/playwright/e2e/file-system-tab.spec.ts,tests/playwright/e2e/package-installation.spec.ts,tests/playwright/e2e/scroll-into-view.spec.ts"
+        ISOLATED_SPECS="tests/playwright/e2e/console-execution.spec.ts,tests/playwright/e2e/storage-model.spec.ts,tests/playwright/e2e/sound-wait-after-run.spec.ts,tests/playwright/e2e/file-system-tab.spec.ts,tests/playwright/e2e/package-installation.spec.ts,tests/playwright/e2e/scroll-into-view.spec.ts,tests/playwright/e2e/testing-section.spec.ts"
         if [ "${{ matrix.browser }}" = "webkit" ] && [ "${{ matrix.webkitPart }}" = "single" ]; then
           # console-execution.spec.ts and storage-model.spec.ts have both shown CI-only
           # stop-slowness/flakiness on macOS+WebKit, suspected to be main-thread starvation
@@ -181,6 +181,10 @@ jobs:
           # 38899805838 they took ~4-5x (package-installation, Pyodide package loads: 327s vs ~70s) and
           # ~3.4x (scroll-into-view: 582s vs 173s) their macOS-chromium time in "multi", i.e. they
           # are CPU-contention sensitive, and this job had ~30 min of headroom over "multi".
+          # testing-section.spec.ts was added here too: nearly every test in it starts a real
+          # Pyodide worker (to run tests with pytest), and one runs a CPU-bound loop until it is
+          # stopped. In the multi-worker job below that was enough cold-Pyodide/CPU contention to
+          # push unrelated tests (undo-redo, load-save-frozen-collapsed, ...) over their timeouts.
           RUN_CMD="SPEC=$ISOLATED_SPECS npx playwright test --project=webkit --workers=1"
         elif [ "${{ matrix.browser }}" = "webkit" ] && [ "${{ matrix.webkitPart }}" = "multi" ]; then
           RUN_CMD="EXCLUDE_SPEC=$ISOLATED_SPECS npx playwright test --project=webkit"

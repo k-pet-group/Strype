@@ -2,7 +2,7 @@ import {test, expect} from "@playwright/test";
 import {readFileSync} from "node:fs";
 import {save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
 import {setupStrypeTest} from "../support/general";
-import {doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, pressFrameShortcut, pressN, waitForEditorSettled} from "../support/editor";
+import {doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, getDefaultStrypeProjectTestingFullLines, pressFrameShortcut, pressN, waitForEditorSettled} from "../support/editor";
 import {checkConsoleContent, runToFinish} from "../support/execution";
 
 const defaultStandardStrypeProjectDocLiteral = getDefaultStrypeProjectDocumentationFullLine();
@@ -18,7 +18,7 @@ match ___strype_blank  :
         pass
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `;
 
 const defaultProjectCodeLiteral = `
@@ -28,7 +28,7 @@ ${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `;
 
 const complexMatchCodeLiteral = `
@@ -93,7 +93,7 @@ match foo  :
         pass
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart());
     });
 
@@ -310,7 +310,7 @@ match value  :
         return f"Something else: {value}" 
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart());
     });
 
@@ -328,7 +328,7 @@ match ___strype_blank  :
     case _  :
         myString  = "Hello from Strype" 
         print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart());
     });
 });
@@ -408,7 +408,7 @@ match ___strype_blank  :
             pass
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart());
         // Delete the if, and try again to backspace: we should delete the case and bring the comment up
         await page.keyboard.press("ArrowDown");
@@ -429,7 +429,7 @@ match ___strype_blank  :
     #comment test
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart());        
     });
 });
@@ -472,7 +472,7 @@ match "1"  :
         print("Matched!") 
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `);
     });
 });

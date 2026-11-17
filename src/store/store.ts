@@ -1,10 +1,11 @@
 import { nextTick} from "vue";
-import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, SuggestedCloudSaveLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode } from "@/types/types";
+import { FrameObject, CollapsedState, CurrentFrame, CaretPosition, FrozenState, MessageDefinitions, ObjectPropertyDiff, AddFrameCommandDef, EditorFrameObjects, MainFramesContainerDefinition, DefsContainerDefinition, TestsContainerDefinition, StateAppObject, UserDefinedElement, ImportsContainerDefinition, EditableFocusPayload, SlotInfos, FramesDefinitions, EmptyFrameObject, getFrameDefType, NavigationPosition, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, generateAllFrameDefinitionTypes, AllFrameTypesIdentifier, BaseSlot, SlotType, SlotCoreInfos, SlotsStructure, LabelSlotsContent, FieldSlot, SlotCursorInfos, StringSlot, areSlotCoreInfosEqual, StrypeSyncTarget, ProjectLocation, SuggestedCloudSaveLocation, MessageDefinition, PythonExecRunningState, AddShorthandFrameCommandDef, isFieldBaseSlot, StrypePEALayoutMode, SaveRequestReason, RootContainerFrameDefinition, StrypeLayoutDividerSettings, MediaSlot, SlotInfosOptionalMedia, ModifierKeyCode, TestOutcome } from "@/types/types";
 import { getObjectPropertiesDifferences } from "@/helpers/common";
 import { loadPinnedLocalFiles, pinnedLocalFilesStateKey, savePinnedLocalFiles } from "@/helpers/load-save";
 import i18n from "@/i18n";
 import {calculateNextCollapseState, checkCodeErrors, checkStateDataIntegrity, evaluateSlotType, filterAllowedJointChildrenAfter, generateFlatSlotBases, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFlatNeighbourFieldSlotInfos, getFrameSectionIdFromFrameId, getParentOrJointParent, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isAncestorGatedFrameTypeAllowed, isFramePartOfJointStructure, removeFrameInFrameList, restoreSavedStateFrameTypes, retrieveSlotByPredicate, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
-import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
+import { testFunctionNamePrefix } from "@/helpers/testFunctionNames";
+import { AppPlatform, AppVersion, eventBus, projectDocumentationFrameId, TestingSectionAvailable } from "@/helpers/appContext";
 import initialStates from "@/store/initial-states";
 import { defineStore } from "pinia";
 import { bumpCaretRequestSeq, CustomEventTypes, generateAllFrameCommandsDefs, getAddCommandsDefs, getFocusedEditableSlotTextSelectionStartEnd, getLabelSlotUID, isLabelSlotEditable, setDocumentSelection, parseCodeLiteral, undoMaxSteps, getSelectionCursorsComparisonValue, getFrameHeaderUID, getImportDiffVersionModalDlgId, checkEditorCodeErrors, countEditorCodeErrors, getCaretUID, getCaretContainerUID, focusCaretContainerInput, AutoSaveKeyNames, isFullyInViewport, copyFrameTextReadyForClipboard, waitForElementId } from "@/helpers/editor";
@@ -77,6 +78,8 @@ export const useStore = defineStore("app", {
 
             defsContainerId: -2,
 
+            testsContainerId: -4,
+
             /** END of flags that need checking when a build is done **/           
 
             currentFrame: { id: -3, caretPosition: CaretPosition.body } as CurrentFrame,
@@ -137,6 +140,22 @@ export const useStore = defineStore("app", {
 
             // This flag indicates if the user code is being executed in the Python Execution Area (including the micro:bit simulator)
             pythonExecRunningState: PythonExecRunningState.NotRunning as PythonExecRunningState,
+
+            // Incremented each time the user asks to run the Testing section's code via pytest; watched by PythonExecutionArea.vue.
+            testRunRequestId: 0,
+
+            // When (Date.now()) the last test run finished: a test function's outcome is out of date once the editor
+            // has been modified since then (see editorLastModificationAt)
+            lastTestRunAt: 0,
+
+            // How the last test run went overall (shown next to the "Run tests" button): "passed" if there was at least
+            // one test and all of them passed, "failed" otherwise (including when the tests couldn't be collected).
+            // "not_run" before any run, while one is in progress, and when no tests were found.
+            lastTestRunOutcome: "not_run" as TestOutcome,
+
+            // The third section of the editor shows either the main code ("My code") or the testing code
+            // ("Testing"); the "My code" and "Test code" tabs of the heading select between the two (see setMainSectionShowsTests()).
+            mainSectionShowsTests: false,
 
             // This flag can be used anywhere a key event should be ignored within the application
             ignoreKeyEvent: false,
@@ -327,9 +346,13 @@ export const useStore = defineStore("app", {
             return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === DefsContainerDefinition.type)[0].id;
         },
 
+        getTestsFrameContainerId:(state): number => {
+            return Object.values(state.frameObjects).filter((frame: FrameObject) => frame.frameType.type === TestsContainerDefinition.type)[0].id;
+        },
+
         // Maps every (non-container) frame id to its 1-based position in document/visual order
-        // (depth-first, top to bottom, regardless of nesting), spanning the imports, definitions
-        // and main code sections in that order. Used to display frame numbers.
+        // (depth-first, top to bottom, regardless of nesting), spanning the imports, definitions,
+        // main code and testing sections in that order. Used to display frame numbers.
         getFrameVisualNumbers(): {[frameId: number]: number} {
             const numbers: {[frameId: number]: number} = {};
             let counter = 0;
@@ -339,7 +362,7 @@ export const useStore = defineStore("app", {
                 frame.childrenIds.forEach(visit);
                 frame.jointFrameIds.forEach(visit);
             };
-            [this.getImportsFrameContainerId, this.getDefsFrameContainerId, this.getMainCodeFrameContainerId].forEach((containerId) => {
+            [this.getImportsFrameContainerId, this.getDefsFrameContainerId, this.getMainCodeFrameContainerId, this.getTestsFrameContainerId].forEach((containerId) => {
                 this.frameObjects[containerId].childrenIds.forEach(visit);
             });
             return numbers;
@@ -462,7 +485,9 @@ export const useStore = defineStore("app", {
             // They can be added when in the function definition container though.
             const canShowGlobalStatement = isAncestorGatedFrameTypeAllowed(frameId, caretPosition, AllFrameTypesIdentifier.global);
             const canShowReturnStatement = isAncestorGatedFrameTypeAllowed(frameId, caretPosition, AllFrameTypesIdentifier.return);
-            const extraForbiddenTypes = [...(!canShowGlobalStatement ? [AllFrameTypesIdentifier.global] : []), ...(!canShowReturnStatement ? [AllFrameTypesIdentifier.return] : [])];
+            // "assert" is only available in the Testing section.
+            const canShowAssertStatement = isAncestorGatedFrameTypeAllowed(frameId, caretPosition, AllFrameTypesIdentifier.assert);
+            const extraForbiddenTypes = [...(!canShowGlobalStatement ? [AllFrameTypesIdentifier.global] : []), ...(!canShowReturnStatement ? [AllFrameTypesIdentifier.return] : []), ...(!canShowAssertStatement ? [AllFrameTypesIdentifier.assert] : [])];
             if(extraForbiddenTypes.length > 0){
                 //by default, "break" and "continue" are NOT forbidden to any frame which can host children frames,
                 //so if we cannot show "break" and "continue" : we add them from the list of forbidden
@@ -474,6 +499,7 @@ export const useStore = defineStore("app", {
 
             // If frames are selected, we only show the frames commands that can be used for wrapping.
             // (For the definitions section, we won't allow any wrapping.)
+            const isInTestingSection = TestingSectionAvailable && getFrameSectionIdFromFrameId(currentFrame.id) == useStore().getTestsFrameContainerId;
             const isSelectingInsideDefsSection = ((currentFrame.id == useStore().getDefsFrameContainerId || state.frameObjects[currentFrame.id].parentId == useStore().getDefsFrameContainerId) 
                 && state.selectedFrames.length > 0);
 
@@ -494,6 +520,7 @@ export const useStore = defineStore("app", {
                 }
                 else{
                     filteredCommands[frameShortcut] = filteredCommands[frameShortcut].filter((x) => !forbiddenTypes.includes(x.type.type) && !x.type.isJointFrame
+                        && (!x.testsSectionOnly || isInTestingSection)
                         && (lookingForTargetPos || state.selectedFrames.length == 0 || (state.selectedFrames.length > 0 && x.type.allowChildren)));
                 }
                 
@@ -1705,6 +1732,73 @@ export const useStore = defineStore("app", {
             this.editorLastModificationAt = Date.now();
         },
 
+        requestTestRun() {
+            this.testRunRequestId++;
+        },
+
+        // Switches the third section of the editor between the main code and the testing code, from the
+        // "My code"/"Testing" heading (by clicking it).
+        // Whatever was selected (text in a slot, or frames) is cancelled -- it's in code that may no longer be
+        // showing -- and the frame cursor goes to the start of the section now showing. Nothing happens while a program (or the tests) is
+        // running: the section being shown has to stay put until it finishes.
+        setMainSectionShowsTests(showTests: boolean) {
+            if (!TestingSectionAvailable || this.mainSectionShowsTests == showTests || this.pythonExecRunningState != PythonExecRunningState.NotRunning) {
+                return;
+            }
+            // Moving away supersedes any earlier, still-pending request to put the cursor in a slot (see leftRightKey()):
+            bumpCaretRequestSeq();
+            // If a slot is being edited, ask it to lose the caret (as leftRightKey() does) so its content is checked and saved:
+            if (this.isEditing && this.focusSlotCursorInfos) {
+                document.getElementById(getLabelSlotUID(this.focusSlotCursorInfos.slotInfos))?.dispatchEvent(new CustomEvent(CustomEventTypes.editableSlotLostCaret));
+            }
+            this.isEditing = false;
+            this.isFrameCommandsPaneActive = false;
+            // This also clears any text selection on the page:
+            this.setSlotTextCursors(undefined, undefined);
+            this.unselectAllFrames();
+            this.mainSectionShowsTests = showTests;
+            this.setCurrentFrame({id: this.mainSectionShowsTests ? this.getTestsFrameContainerId : this.getMainCodeFrameContainerId, caretPosition: CaretPosition.body});
+        },
+
+        // Adds a new test function (a function definition in the Testing section named test_1, test_2... -- the lowest number
+        // not already used by a function there) at the top of the Testing section, as the "new test function" command does,
+        // and returns its frame id. It has no content yet; the caller is expected to put something in its body.
+        addNewTestFunction(): number {
+            const testsContainer = this.frameObjects[this.getTestsFrameContainerId];
+            const usedNames = new Set(testsContainer.childrenIds
+                .map((frameId) => this.frameObjects[frameId])
+                .filter((frame) => frame.frameType.type == AllFrameTypesIdentifier.funcdef)
+                .map((frame) => frame.labelSlotsDict[0]?.slotStructures.fields[0])
+                .map((nameSlot) => (nameSlot && isFieldBaseSlot(nameSlot)) ? (nameSlot as BaseSlot).code : ""));
+            let testNumber = 1;
+            while (usedNames.has(testFunctionNamePrefix + testNumber)) {
+                testNumber++;
+            }
+            // For safety we make sure the new ID isn't already used (see addFrameWithCommand())
+            let newId = this.nextAvailableId++;
+            while (this.frameObjects[newId] != undefined) {
+                newId++;
+            }
+            const frameType = cloneDeep(getFrameDefType(AllFrameTypesIdentifier.funcdef));
+            const labelSlotsDict: {[index: number]: LabelSlotsContent} = {};
+            frameType.labels.forEach((label, index) => {
+                if (label.showSlots ?? true) {
+                    labelSlotsDict[index] = {shown: !label.hidableLabelSlots, slotStructures: {fields: [{code: ""}], operators: []}};
+                }
+            });
+            (labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code = testFunctionNamePrefix + testNumber;
+            this.frameObjects[newId] = {
+                ...cloneDeep(EmptyFrameObject),
+                frameType: frameType,
+                caretVisibility: CaretPosition.body,
+                id: newId,
+                parentId: testsContainer.id,
+                labelSlotsDict: labelSlotsDict,
+            };
+            testsContainer.childrenIds.splice(0, 0, newId);
+            return newId;
+        },
+
         cycleFrameCollapsedState(frameId: number) {
             const parentIsFrozen = this.frameObjects[this.frameObjects[frameId].parentId].frozenState == FrozenState.FROZEN;
             const newStates = calculateNextCollapseState([this.frameObjects[frameId]], parentIsFrozen).individual;
@@ -2658,12 +2752,21 @@ export const useStore = defineStore("app", {
                                         }
                                         else{
                                             // Check 4) and 5) as 3) is validated
+                                            // Projects saved before the heading could show the testing code don't have the flag:
+                                            newStateObj["mainSectionShowsTests"] = TestingSectionAvailable && (newStateObj["mainSectionShowsTests"] ?? false);
+
                                             // If missing project doc frame, copy it in from the empty state and add it as first root child:
                                             if (!newStateObj["frameObjects"][projectDocumentationFrameId]) {
                                                 newStateObj["frameObjects"][projectDocumentationFrameId] = cloneDeep(emptyState[projectDocumentationFrameId]);
                                                 newStateObj["frameObjects"]["0"]["childrenIds"].unshift(projectDocumentationFrameId);
                                             }
-                                            
+
+                                            // If the project predates the Testing section, add it in (folded, empty) as the last root child:
+                                            if (!newStateObj["frameObjects"]["-4"]) {
+                                                newStateObj["frameObjects"]["-4"] = cloneDeep(emptyState["-4"]);
+                                                newStateObj["frameObjects"]["0"]["childrenIds"].push(-4);
+                                            }
+
                                             if(!restoreSavedStateFrameTypes(newStateObj)){
                                                 // There was something wrong with the type name (it should not happen, but better check anyway)
                                                 isStateJSONStrValid = false;

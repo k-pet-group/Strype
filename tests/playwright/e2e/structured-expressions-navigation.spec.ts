@@ -1,6 +1,6 @@
 import {Page, test, expect} from "@playwright/test";
 import path from "path";
-import {assertStateOfIfFrame, checkFrameXorTextCursor, checkTextSlotCursorPos, doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, pressFrameShortcut, pressN, waitForEditorSettled} from "../support/editor";
+import {assertStateOfIfFrame, checkFrameXorTextCursor, checkTextSlotCursorPos, doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, getDefaultStrypeProjectTestingFullLines, pressFrameShortcut, pressN, waitForEditorSettled} from "../support/editor";
 import fs from "fs";
 import {readFileSync} from "node:fs";
 import {save} from "../support/loading-saving";
@@ -110,7 +110,7 @@ ${getDefaultStrypeProjectDocumentationFullLine()}#(=> Section:Imports
 ${getDefaultStrypeProjectImportsFullLine()}#(=> Section:Definitions
 #(=> Section:Main
 Actor(load_image("data:image/jpeg;base64,${image}").foo) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart());
     });
 });

@@ -2,6 +2,7 @@ import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CurrentFrame, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesAction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { checkCodeErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameSectionIdFromFrameId } from "./storeMethods";
+import { testFunctionNamePrefix } from "./testFunctionNames";
 import { splitByRegexMatches, strypeFileExtension } from "./common";
 import Parser from "@/parser/parser";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
@@ -885,6 +886,13 @@ export function generateAllFrameCommandsDefs():void {
             // "f" is kept working as a secret/legacy shortcut alongside the official "d".
             shortcuts: ["d", "f"],
         }],
+        // Only offered in the Testing section, where it adds a function named "test_" (see hiddenShorthandFrames)
+        "s": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
+            description: i18n.global.t("frame.testfunc_desc"),
+            shortcuts: ["s"],
+            testsSectionOnly: true,
+        }],
         "c": [
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.classdef),
@@ -957,6 +965,11 @@ export function generateAllFrameCommandsDefs():void {
             description: "raise",
             shortcuts: ["a"],
         }],
+        "k": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.assert),
+            description: "assert",
+            shortcuts: ["k"],
+        }],
         "h": [{
             type: getFrameDefType(AllFrameTypesIdentifier.with),
             description: "with",
@@ -1019,6 +1032,8 @@ export function findAddCommandFrameType(shortcut: string, index?: number): Frame
 // and assignment. Every other shortcut requires opening the frame commands pane first.
 export const alwaysDirectFrameShortcutKeys = ["enter", "#", "="];
 
+export const testFunctionBgColour = "#E6D2B5"; // light brown
+
 // This shorthand frames are enhanced frames because they contain some default code value.
 // Therefore they are treated separately in the code and in the UI. They do not show in the frame command panel.
 // IMPORTANT : make sure that the shortcut assigned to a frame IS NOT assigned to a normal frame (see generateAllFrameCommandsDefs()) 
@@ -1028,6 +1043,12 @@ export const hiddenShorthandFrames: {[id: string]: AddShorthandFrameCommandDef} 
         codeContent:"print", // No need for the brackets: they're already included in the function call frame by default
         goNextSlot: true,
         type: getFrameDefType(AllFrameTypesIdentifier.funccall),
+    },
+    // A new test function: a function definition with its name pre-filled to "test_", text cursor left at the end of the name.
+    "s": {
+        codeContent: testFunctionNamePrefix,
+        type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
+        testsSectionOnly: true,
     },
 };
 

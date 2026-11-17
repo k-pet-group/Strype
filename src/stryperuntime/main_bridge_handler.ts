@@ -27,6 +27,84 @@ interface SyncRequestCallbacks {
     consumeLastClickedItems: () => SpriteHandle[],
 }
 
+// The subset of synchronous requests concerned with files (cloud files, assets, libraries) plus the
+// trivial ones -- everything that doesn't need the renderer, sounds, turtle or other UI of a normal
+// Run. It is used on its own when running tests (which have the same file systems available as a
+// Run but no graphics/input), and handleSyncRequests() below delegates these requests to it.
+export const handleFileSyncRequests : SyncPromiseStrypePyodideHandlerFunction = (req) => {
+    switch (req.request) {
+    case "dummy": {
+        return {request: req.request, response: Promise.resolve(true)};
+    }
+    case "file_lookup": {
+        return {request: req.request, response: cloudLookupFile(req.parent, req.name)};
+    }
+    case "file_listDir": {
+        return {request: req.request, response: cloudListDir(req.parent)};
+    }
+    case "file_open" : {
+        return {request: req.request, response: cloudOpenFile(req.id, req.flags)};
+    }
+    case "file_read": {
+        return {request: req.request, response: cloudReadFile(req.id, req.from, req.length, req.filePath).then((arr) => encodeUint8ToString(arr))};
+    }
+    case "file_write": {
+        return {request: req.request, response: cloudWriteFile(req.id, decodeStringToUint8(req.encodedContent),  req.from, req.filePath).then(() => true)};
+    }
+    case "file_close": {
+        return {request: req.request, response: cloudCloseFile(req.id)};
+    }
+    case "file_truncate": {
+        return {request: req.request, response: cloudTruncateFile(req.id, req.size, req.filePath)};
+    }
+    case "file_createNode": {
+        return {request: req.request, response: cloudCreate(req.parent, req.name, req.isDir, req.filePath)};
+    }
+    case "file_getRoot": {
+        return {request: req.request, response: new Promise<CloudFileId>((resolve, reject)  => {
+            const loc = useStore().strypeProjectLocation;
+            if (!loc || typeof(loc) != "string") {
+                reject("Project not saved in cloud, so cannot access cloud files.");
+            }
+            else {
+                resolve({cloudFileId: loc});
+            }
+        })};
+    }
+    case "assetFile_fetch": {
+        return {request: req.request, response: fetch(req.url).then((resp) => resp.arrayBuffer()).then((arr) => encodeUint8ToString(new Uint8ClampedArray(arr)))};
+    }
+    case "libraryFile_fetch": {
+        return {request: req.request, response: getRawFileFromLibraries([req.libraryURL], req.filename).then((resp) => {
+            if (resp?.buffer) {
+                return resp?.buffer;
+            }
+            else {
+                throw new Error("Could not fetch file " + req.filename + " from " + req.libraryURL);
+            }
+        }).then((arr) => encodeUint8ToString(new Uint8ClampedArray(arr)))};
+    }
+    case "getCurrentCloudName":
+        let cloudName = undefined;
+        // The following values are directly returned to the user code, so we should NOT modify them in the future
+        // to prevent any incompatibility within the older user programs which may have used them...
+        switch (useStore().syncTarget) {
+        case StrypeSyncTarget.gd:
+            cloudName = "Google Drive";
+            break;
+        case StrypeSyncTarget.od:
+            cloudName = "Microsoft OneDrive";
+            break;
+        default:
+            break;
+        }
+        return {request: req.request, response: Promise.resolve(cloudName)};
+    default:
+        // The rejection is surfaced to the Python code as an error; no response type applies to it:
+        return {request: req.request, response: Promise.reject("This request is not supported while running tests: " + req.request)} as ReturnType<SyncPromiseStrypePyodideHandlerFunction>;
+    }
+};
+
 // Takes the details we need for handling then returns a function which takes a synchronous request and gives back the response in a Promise:
 export const handleSyncRequests : (
     renderer : Renderer,
@@ -35,9 +113,8 @@ export const handleSyncRequests : (
     callbacks : SyncRequestCallbacks,
 ) => SyncPromiseStrypePyodideHandlerFunction = (renderer, soundManager, turtle, callbacks) => (req) => {
     switch (req.request) {
-    case "dummy": {
-        return {request: req.request, response: Promise.resolve(true)};
-    }
+    case "dummy":
+        return handleFileSyncRequests(req);
     case "console_input": {
         return {request: req.request, response: sInput()};
     }
@@ -134,54 +211,19 @@ export const handleSyncRequests : (
         const ctx = renderer.getCanvasContext(req.img.handle);
         return {request: req.request, response: Promise.resolve(encodeUint8ToString(ctx.getImageData(0, 0, req.img.width, req.img.height).data))};
     }
-    case "file_lookup": {
-        return {request: req.request, response: cloudLookupFile(req.parent, req.name)};
-    }
-    case "file_listDir": {
-        return {request: req.request, response: cloudListDir(req.parent)};
-    }
-    case "file_open" : {
-        return {request: req.request, response: cloudOpenFile(req.id, req.flags)};
-    }
-    case "file_read": {
-        return {request: req.request, response: cloudReadFile(req.id, req.from, req.length, req.filePath).then((arr) => encodeUint8ToString(arr))};
-    }
-    case "file_write": {
-        return {request: req.request, response: cloudWriteFile(req.id, decodeStringToUint8(req.encodedContent),  req.from, req.filePath).then(() => true)};
-    }
-    case "file_close": {
-        return {request: req.request, response: cloudCloseFile(req.id)};
-    }
-    case "file_truncate": {
-        return {request: req.request, response: cloudTruncateFile(req.id, req.size, req.filePath)};
-    }
-    case "file_createNode": {
-        return {request: req.request, response: cloudCreate(req.parent, req.name, req.isDir, req.filePath)};
-    }
-    case "file_getRoot": {
-        return {request: req.request, response: new Promise<CloudFileId>((resolve, reject)  => {
-            const loc = useStore().strypeProjectLocation;
-            if (!loc || typeof(loc) != "string") {
-                reject("Project not saved in cloud, so cannot access cloud files.");
-            }
-            else {
-                resolve({cloudFileId: loc});
-            }
-        })};
-    }
-    case "assetFile_fetch": {
-        return {request: req.request, response: fetch(req.url).then((resp) => resp.arrayBuffer()).then((arr) => encodeUint8ToString(new Uint8ClampedArray(arr)))};
-    }
-    case "libraryFile_fetch": {
-        return {request: req.request, response: getRawFileFromLibraries([req.libraryURL], req.filename).then((resp) => {
-            if (resp?.buffer) {
-                return resp?.buffer;
-            }
-            else {
-                throw new Error("Could not fetch file " + req.filename + " from " + req.libraryURL);
-            }
-        }).then((arr) => encodeUint8ToString(new Uint8ClampedArray(arr)))};
-    }
+    case "file_lookup":
+    case "file_listDir":
+    case "file_open":
+    case "file_read":
+    case "file_write":
+    case "file_close":
+    case "file_truncate":
+    case "file_createNode":
+    case "file_getRoot":
+    case "assetFile_fetch":
+    case "libraryFile_fetch":
+    case "getCurrentCloudName":
+        return handleFileSyncRequests(req);
     case "turtle": {
         // Assume all turtle interactions require a redraw:
         if (turtle != null) {
@@ -193,21 +235,6 @@ export const handleSyncRequests : (
             return {request: req.request, response: Promise.reject("The turtle rendering failed to initialise.  Try refreshing the page or using a different browser.")};
         }
     }
-    case "getCurrentCloudName":
-        let cloudName = undefined;
-        // The following values are directly returned to the user code, so we should NOT modify them in the future
-        // to prevent any incompatibility within the older user programs which may have used them...
-        switch (useStore().syncTarget) {
-        case StrypeSyncTarget.gd:
-            cloudName = "Google Drive";
-            break;
-        case StrypeSyncTarget.od:
-            cloudName = "Microsoft OneDrive";
-            break;
-        default:
-            break;
-        }
-        return {request: req.request, response: Promise.resolve(cloudName)};
     default:
         // Trick to give a compile-time error if a case is missing above:
         const _exhaustive: never = req;

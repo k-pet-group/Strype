@@ -1,7 +1,7 @@
 import Compiler from "@/compiler/compiler";
 import {hasNonRuntimeCodeError, trimmedKeywordOperators} from "@/helpers/editor";
 import { UNARY_PREFIX_OPERATORS } from "@/helpers/operatorPrecedence";
-import { generateFlatSlotBases, getParentOrJointParent, retrieveSlotByPredicate } from "@/helpers/storeMethods";
+import { generateFlatSlotBases, getFrameSectionIdFromFrameId, getParentOrJointParent, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import {AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CollapsedState, ContainerTypesIdentifiers, FieldSlot, FlatSlotBase, FrameContainersDefinitions, FrameObject, FrozenState, isFieldBaseSlot, isFieldBracketedSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, LabelSlotPositionsAndCode, LabelSlotsPositions, LineAndSlotPositions, MediaSlot, OptionalSlotType, ParserElements, SlotsStructure, SlotType, StringSlot} from "@/types/types";
@@ -217,6 +217,7 @@ function transformSlotLevel(slots: SlotsStructure, topLevel?: {frameType: string
                 if (!([AllFrameTypesIdentifier.varassign,
                     AllFrameTypesIdentifier.for,
                     AllFrameTypesIdentifier.return,
+                    AllFrameTypesIdentifier.assert,
                     AllFrameTypesIdentifier.global].includes(topLevel.frameType)
                     || (topLevel.frameType === AllFrameTypesIdentifier.funcdef && topLevel.slotIndex == 1)
                     || (topLevel.frameType === AllFrameTypesIdentifier.fromimport && topLevel.slotIndex == 1)
@@ -297,11 +298,16 @@ export default class Parser {
     private saveAsSPY = false;
     private libraries : string[] = [];
     private omitMediaLiterals = false;
+    private excludeMainCode = false; // Leaves out the main code section (see parse()), as the Testing section can't see it
+    private addPytestImport = false; // Adds "import pytest" at the start of the Testing section's code (see parseFrames())
     private soloTryFrameIds : number[] = []; // Enabled try frames with no except/finally, for which we emit the dummy except (see parseBlock)
     
     constructor(ignoreCheckErrors = false, destination: "spy" | "py-export" | "py" = "py", omitMediaLiterals = false) {
         this.ignoreCheckErrors = ignoreCheckErrors;
         this.saveAsSPY = destination == "spy";
+        // The tests' own code starts with an "import pytest" when it is going to be run or analysed, but not when it is
+        // saved, nor exported (where it would need pytest installed just to be imported):
+        this.addPytestImport = destination == "py";
         this.omitMediaLiterals = omitMediaLiterals;
     }
 
@@ -522,6 +528,10 @@ export default class Parser {
                 }
             }
 
+            if (this.excludeMainCode && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
+                continue;
+            }
+
             if(frame.id == this.ignoreSpecificFrameId){
                 // We still need to put something here, in case we are in an empty block. Defaults to
                 // "pass"; getCodeWithoutErrors() instead substitutes AC_PROBE_MARKER here, so it can find
@@ -541,6 +551,16 @@ export default class Parser {
             }
             else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.importsContainer) {
                 output += AppSPYFullPrefix + " Section:Imports\n";
+                this.line += 1;
+            }
+            else if (this.addPytestImport && frame.frameType.type === ContainerTypesIdentifiers.testsContainer) {
+                // pytest is imported for the tests automatically, so that e.g. pytest.raises is available without an import frame:
+                output += "import pytest\n";
+                this.line += 1;
+            }
+            else if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.testsContainer && frame.childrenIds.length > 0) {
+                // Omitted when there is nothing in the Testing section, so projects that don't use it save as before:
+                output += AppSPYFullPrefix + " Section:Testing\n";
                 this.line += 1;
             }
             
@@ -589,7 +609,8 @@ export default class Parser {
                 output += thisIndentation + "except:\n" + thisIndentation + "    pass\n"; 
             }
 
-            if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.framesMainContainer) {
+            if (this.saveAsSPY && frame.frameType.type === ContainerTypesIdentifiers.testsContainer) {
+                // Testing is the last section, so it is the one followed by the end marker:
                 output += AppSPYFullPrefix + " Section:End\n";
             }            
         }
@@ -605,13 +626,29 @@ export default class Parser {
         return this.parse({startAtFrameId: useStore().getImportsFrameContainerId, stopAt: {frameId: useStore().getDefsFrameContainerId, includeThisFrame: false}});
     }
 
+    // The imports and definitions sections only, i.e. everything except the main code (and the testing
+    // section). This is what the tests import: the main code's own top-level statements must not run
+    // (or be visible) when testing, so e.g. an infinite loop or print in main code can't affect tests.
+    public parseJustImportsAndDefs() : string {
+        return this.parse({stopAt: {frameId: useStore().getMainCodeFrameContainerId, includeThisFrame: false}});
+    }
+
+    public parseJustTests() : string {
+        // Testing has no following sibling container to use as an exclusive stop boundary (it's the
+        // last one), so we start and stop at the Testing container itself, inclusive:
+        const testsContainerId = useStore().getTestsFrameContainerId;
+        return this.parse({startAtFrameId: testsContainerId, stopAt: {frameId: testsContainerId, includeThisFrame: true}});
+    }
+
     // You can only pass start if you also pass stop.  (But stop by itself is fine)
     // If you pass start and stop frames, they must be siblings.
     // (To explain: we sometimes want to stop at an arbitrary place, e.g. just before
     // a particular line to do code completion, so we may need just stop.  But we never
     // need the opposite, to start at an arbitrary place and run to the end -- and this
     // could cause invalid indentation if you started at an indented item.)
-    public parse({startAtFrameId, stopAt, excludeComments, ignoreSpecificFrameId, ignoreSpecificFrameIdReplacement}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeComments?: boolean; ignoreSpecificFrameId?: number; ignoreSpecificFrameIdReplacement?: string}): string {
+    // excludeMainCode leaves out the main code section ("My code"), for analysing the Testing section as it will run: the tests
+    // import the imports and definitions, but not the main code (see parseJustImportsAndDefs()).
+    public parse({startAtFrameId, stopAt, excludeComments, ignoreSpecificFrameId, ignoreSpecificFrameIdReplacement, excludeMainCode}: {startAtFrameId?: number, stopAt?: {frameId: number, includeThisFrame: boolean}, excludeComments?: boolean; ignoreSpecificFrameId?: number; ignoreSpecificFrameIdReplacement?: string; excludeMainCode?: boolean}): string {
         let output = "";
         if(startAtFrameId){
             this.startAtFrameId = startAtFrameId;
@@ -623,6 +660,10 @@ export default class Parser {
 
         if(excludeComments){
             this.excludeComments = excludeComments;
+        }
+
+        if(excludeMainCode){
+            this.excludeMainCode = excludeMainCode;
         }
 
         if(ignoreSpecificFrameId){
@@ -841,7 +882,11 @@ export default class Parser {
         // call site to a function defined twice). The caller finds the marker and splices in its own probe
         // text in its place, so the probe always ends up correctly nested exactly where the user is
         // editing, however much unrelated code precedes or follows it.
-        const code = this.parse({excludeComments: true, ignoreSpecificFrameId: endFrameId, ignoreSpecificFrameIdReplacement: AC_PROBE_MARKER});
+        // If we're editing inside the Testing section itself, we must not stop before it (or endFrameId would
+        // never be found/replaced); otherwise, exclude Testing code from the evidence used for Imports/Defs/Main.
+        const isEditingInTests = getFrameSectionIdFromFrameId(endFrameId) == useStore().getTestsFrameContainerId;
+        // The tests can't see the main code when they run, so it isn't used as evidence when editing in the Testing section.
+        const code = this.parse({excludeComments: true, ignoreSpecificFrameId: endFrameId, ignoreSpecificFrameIdReplacement: AC_PROBE_MARKER, stopAt: isEditingInTests ? undefined : {frameId: useStore().getTestsFrameContainerId, includeThisFrame: false}, excludeMainCode: isEditingInTests});
         // Fast path: finding the lines to drop needs a whole-program TigerPython pass, which is the same expensive
         // pass for every frame we're called for.  Most of the time the program has no errors at all, so there is
         // nothing to drop; we check that once for the program (not per frame) and skip the pass.  (The version of the
@@ -866,7 +911,7 @@ export default class Parser {
     }
 
     public getFullCode(): string {
-        return this.parse({excludeComments: false});
+        return this.parse({excludeComments: false, stopAt: {frameId: useStore().getTestsFrameContainerId, includeThisFrame: false}});
     }
 
     private checkIfFrameHasError(frame: FrameObject): boolean {

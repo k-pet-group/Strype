@@ -43,6 +43,9 @@
                 :frameFrozenState="frozenState"
                 :erroneous="hasRuntimeError"
                 :wasLastRuntimeError="wasLastRuntimeError"
+                :isAssertionFailure="isAssertionFailure"
+                :testOutcome="testOutcome"
+                :isTestOutcomeStale="isTestOutcomeStale"
                 :onFocus="showFrameParseErrorPopupOnHeaderFocus"
             />
             <teleport to="body">
@@ -100,9 +103,9 @@ import CaretContainer from "@/components/CaretContainer.vue";
 import { useStore } from "@/store/store";
 import FrameBody from "@/components/FrameBody.vue";
 import JointFrames from "@/components/JointFrames.vue";
-import { AllFrameTypesIdentifier, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CoordPosition, CurrentFrame, DefaultFramesDefinition, FrameContextMenuActionName, FrozenState, NavigationPosition, Position, PythonExecRunningState, StrypeContextMenuItem } from "@/types/types";
-import { calculateNextCollapseState, frameOrChildHasErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent } from "@/helpers/storeMethods";
-import { copyFramesToClipboard, copyFrameTextReadyForClipboard, CustomEventTypes, getCaretContainerRef, getFrameBodyRef, getFrameBodyUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getHTML2CanvasFramesSelectionCropOptions, getJointFramesRef, isIdAFrameId, notifyDragStarted, parseFrameUID, setContextMenuEventClientXY } from "@/helpers/editor";
+import { AllFrameTypesIdentifier, CaretPosition, CollapsedState, ContainerTypesIdentifiers, CoordPosition, CurrentFrame, DefaultFramesDefinition, FrameContextMenuActionName, FrozenState, NavigationPosition, Position, PythonExecRunningState, StrypeContextMenuItem, TestOutcome } from "@/types/types";
+import { calculateNextCollapseState, frameOrChildHasErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getLastSibling, getNextSibling, getOutmostDisabledAncestorFrameId, getParentOrJointParent, isFramePartOfJointStructure, isLastInParent, isTestFunctionFrame, isTestSetupFrame } from "@/helpers/storeMethods";
+import { copyFramesToClipboard, copyFrameTextReadyForClipboard, CustomEventTypes, getCaretContainerRef, getFrameBodyRef, getFrameBodyUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getHTML2CanvasFramesSelectionCropOptions, getJointFramesRef, isIdAFrameId, notifyDragStarted, parseFrameUID, setContextMenuEventClientXY, testFunctionBgColour } from "@/helpers/editor";
 import { pasteMixedPython } from "@/helpers/pythonToFrames";
 import { mapStores } from "pinia";
 import { BPopover, useToggle } from "bootstrap-vue-next";
@@ -214,6 +217,13 @@ export default defineComponent({
             return (this.appStore.frameObjects[this.frameId].collapsedState ?? CollapsedState.FULLY_VISIBLE) == CollapsedState.FULLY_VISIBLE;
         },
 
+        // A function definition in the Testing section whose name starts with "test_" (i.e. one pytest will run),
+        // or is "setup" (which is run before each test)
+        isTestFunctionDef(): boolean {
+            const frame = this.appStore.frameObjects[this.frameId];
+            return isTestFunctionFrame(frame) || isTestSetupFrame(frame);
+        },
+
         frameStyle(): Record<string, string> {
             const isFrameInImportsOrDefsSection = [this.appStore.getImportsFrameContainerId, this.appStore.getDefsFrameContainerId].includes(this.appStore.frameObjects[this.frameId].parentId);
             const baseStylePart = {
@@ -285,6 +295,21 @@ export default defineComponent({
 
         wasLastRuntimeError(): boolean {
             return this.appStore.wasLastRuntimeErrorFrameId == this.frameId;
+        },
+
+        // Whether the runtime error here was a failed assert statement
+        isAssertionFailure(): boolean {
+            return this.appStore.frameObjects[this.frameId].assertionFailed ?? false;
+        },
+
+        // For a test_ function: how it went in the last test run, if there has been one
+        testOutcome(): TestOutcome {
+            return this.appStore.frameObjects[this.frameId].testOutcome ?? "not_run";
+        },
+
+        // The outcome of the last test run is out of date once the editor has been changed since
+        isTestOutcomeStale(): boolean {
+            return this.appStore.editorLastModificationAt > this.appStore.lastTestRunAt;
         },
 
         errorPopupTitle(): string {
@@ -460,6 +485,9 @@ export default defineComponent({
             // In most cases, the background colour is the one defined in the frame types.
             // The exception is for comments and joint frames, which will take the same colour as their container.
             // For comments, we keep them transparent, for joints, we retrieve the parent's colour, so that it shows up when dragging them.
+            if(this.isTestFunctionDef){
+                return testFunctionBgColour;
+            }
             if(this.frameType.type !== AllFrameTypesIdentifier.comment){
                 if(this.isJointFrame){
                     return this.appStore.frameObjects[this.appStore.frameObjects[this.frameId].jointParentId].frameType.colour;

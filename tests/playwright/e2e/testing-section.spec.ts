@@ -929,7 +929,7 @@ def test_others_did_not_run ( ) :
         await waitForEditorSettled(page);
         await pressFrameShortcut(page, "k");
         await waitForEditorSettled(page);
-        await page.keyboard.type("1 > 2");
+        await typeIndividually(page, "1 > 2");
         await waitForEditorSettled(page);
         await expect(assertFrames).toHaveCount(1);
 

@@ -163,7 +163,8 @@ export default defineComponent({
         erroneous: Boolean,
         wasLastRuntimeError: Boolean,
         isAssertionFailure: Boolean,
-        testOutcome: String as PropType<TestOutcome>,
+        // Not given for a header that isn't a frame's (the project description's, in App.vue), which has no test outcome:
+        testOutcome: {type: String as PropType<TestOutcome>, default: "not_run"},
         isTestOutcomeStale: Boolean,
         onFocus: {type: Function, required: true}, // Handler for focus/blur the header (see Frame.vue)
     },

@@ -4,7 +4,7 @@ import failOnConsoleError from "cypress-fail-on-console-error";
 failOnConsoleError();
 // For the beforeEach part:
 import "../support/param-prompt-support";
-import {testRawFuncs} from "../support/param-prompt-support";
+import {assertState, focusEditorAC, testRawFuncs, withFrameId} from "../support/param-prompt-support";
 
 
 describe("Parameter prompts objects", () => {
@@ -18,4 +18,20 @@ describe("Parameter prompts objects", () => {
     // TODO remove the true param once we've investigated fully qualified imports
     // (I think TigerPython 1.1.2 doesn't support it, but need to check further.)
     testRawFuncs(rawFuncs, true);
+});
+
+describe("Parameter prompts on a variable", () => {
+    // Regression test for https://github.com/k-pet-group/Strype/issues/1116
+    // The default project has a variable myString, which TigerPython knows is a string:
+    it("Only shows the optional parameters of myString.split while the cursor is inside the brackets", () => {
+        focusEditorAC();
+        cy.get("body").type("{downarrow}{downarrow}");
+        cy.get("body").type("myString.split(");
+        withFrameId((frameId) => {
+            assertState(frameId, "myString.split($)", "myString.split(sep=...)");
+            // Once we leave the brackets, optional parameters should no longer be shown:
+            cy.get("body").type("{ctrl+alt+downarrow}");
+            assertState(frameId, "myString.split()", "myString.split()");
+        });
+    });
 });

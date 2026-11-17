@@ -354,5 +354,27 @@ describe("User-defined items", () => {
             checkExactlyOneItem(acIDSel, "foo()", "myF()");
         }, true);
     });
+
+    // Regression test for https://github.com/k-pet-group/Strype/issues/685
+    it("Offers auto-complete for the parent class's methods after super().", () => {
+        focusEditorAC();
+        // Make a class "B" with a method "myG" (deleting the default init), then a class "A(B)" with a method "myF",
+        // and go inside myF:
+        cy.get("body").type("{uparrow}");
+        pressFrameShortcutThenType("c", "B{downarrow}{downarrow}{del}");
+        pressFrameShortcutThenType("f", "myG{downarrow}{downarrow}{downarrow}{downarrow}");
+        pressFrameShortcutThenType("c", "A(B{downarrow}{downarrow}{del}");
+        pressFrameShortcutThenType("f", "myF{rightarrow}{rightarrow}{rightarrow}");
+        cy.wait(500);
+        // Make a function call frame by typing "super()." then trigger auto-complete:
+        cy.get("body").type("super().");
+        cy.get("body").type("{ctrl} ");
+        withAC((acIDSel) => {
+            cy.get(acIDSel + " ." + scssVars.acPopupContainerClassName).should("be.visible");
+            checkExactlyOneItem(acIDSel, null, "myG()");
+            // The method is from the parent, so the child's own method should not be offered:
+            checkNoItems(acIDSel, "myF()", true);
+        }, true);
+    });
 });
 

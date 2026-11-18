@@ -57,4 +57,65 @@ test.describe("Python execution area tab headers", () => {
         await chooseLayout(page, 3);
         await expect(page.locator("#consolePEATab")).toHaveClass(/active/);
     });
+
+    test("tab headers drop their labels, keeping the icons, rather than wrapping when narrow", async ({ page }) => {
+        const tabs = ["#graphicsPEATab", "#consolePEATab", "#filesPEATab"];
+        // All with their labels when there's plenty of room:
+        await page.setViewportSize({width: 1600, height: 900});
+        await expect(page.locator("#filesPEATab .pea-tab-label")).toBeVisible();
+
+        // Narrow enough that the full headers would not fit on one line:
+        await page.setViewportSize({width: 900, height: 900});
+        await expect(page.locator("#filesPEATab .pea-tab-label")).toBeHidden();
+        await expect(page.locator("#consolePEATab .pea-tab-label")).toBeHidden();
+        const tops = await Promise.all(tabs.map((t) => page.locator(t).evaluate((el) => el.getBoundingClientRect().top)));
+        expect(new Set(tops.map(Math.round)).size).toBe(1);
+        // The name is still available:
+        await expect(page.locator("#filesPEATab")).toHaveAttribute("title", en.PEA.fileSystem);
+
+        // And the labels come back when there's room again:
+        await page.setViewportSize({width: 1600, height: 900});
+        await expect(page.locator("#filesPEATab .pea-tab-label")).toBeVisible();
+    });
+
+    test("tab headers never show wrapped, even for one frame, when becoming narrow", async ({ page }) => {
+        await page.setViewportSize({width: 1600, height: 900});
+        await expect(page.locator("#filesPEATab .pea-tab-label")).toBeVisible();
+        // Record, on every frame, whether the headers are on more than one line:
+        await page.evaluate(() => {
+            const w = window as any;
+            w.wrappedFrames = 0;
+            w.sampling = true;
+            const sample = () => {
+                const tops = ["graphicsPEATab", "consolePEATab", "filesPEATab"].map((id) => Math.round(document.getElementById(id)?.getBoundingClientRect().top ?? -1));
+                if (new Set(tops).size > 1) {
+                    w.wrappedFrames++;
+                }
+                if (w.sampling) {
+                    next();
+                }
+            };
+            // requestAnimationFrame callbacks run before the frame's layout and resize observers, so sample
+            // after that frame has been painted instead (what the user has actually seen):
+            const next = () => requestAnimationFrame(() => setTimeout(sample, 0));
+            next();
+        });
+        for (let width = 1500; width >= 900; width -= 50) {
+            await page.setViewportSize({width, height: 900});
+        }
+        await expect(page.locator("#filesPEATab .pea-tab-label")).toBeHidden();
+        await page.evaluate(() => (window as any).sampling = false);
+        expect(await page.evaluate(() => (window as any).wrappedFrames)).toBe(0);
+    });
+
+    test("the icon and label of a tab header have a gap between them", async ({ page }) => {
+        await page.setViewportSize({width: 1600, height: 900});
+        await expect(page.locator("#graphicsPEATab .pea-tab-label")).toBeVisible();
+        const gap = await page.locator("#graphicsPEATab").evaluate((el) => {
+            const img = el.querySelector("img")?.getBoundingClientRect();
+            const label = el.querySelector(".pea-tab-label")?.getBoundingClientRect();
+            return (label?.left ?? 0) - (img?.right ?? 0);
+        });
+        expect(gap).toBeGreaterThan(2);
+    });
 });

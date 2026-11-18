@@ -128,3 +128,31 @@ except e:
         await expect(errSlot).toHaveText("self");
     });
 });
+
+test.describe("Check clicking after an error", () => {
+    test("Clicking elsewhere after an error moves the caret there even if mouseup beats selectionchange (#726)", async ({page}) => {
+        // The browser reports selection changes asynchronously (a "selectionchange" event is queued as a separate task),
+        // so on a busy page (seen on Firefox) the mouseup at the end of a click can be handled before the
+        // selectionchange for the same click.  The mouseup handler used to look at the (stale) cursor position in the
+        // store, which was still in the slot with the error, and put the caret back there, so the click appeared to be
+        // ignored (although the clicked slot looked focused).  We simulate that ordering by changing the selection and
+        // sending the mouseup in the same task, so the selectionchange cannot have been handled yet.
+        await enterCode(page, ["", "", "a = 1\nopen(\"/does/not/exist.txt\")\n"]);
+        const firstLineSlotId = await page.locator("span.label-slot-input", {hasText: /^a$/}).first().getAttribute("id") as string;
+        const focusId = () => page.evaluate(() => document.querySelector("#editor")?.getAttribute("data-slot-focus-id") ?? "");
+        await runToFinish(page);
+        // The caret is moved to the error automatically, in the "open" slot (on the second line):
+        await expect.poll(async () => {
+            const id = await focusId();
+            return id !== "" && id !== firstLineSlotId;
+        }, {timeout: 30000}).toBe(true);
+        await page.evaluate((slotId) => {
+            const textNode = document.getElementById(slotId)?.firstChild as Text;
+            document.getSelection()?.collapse(textNode, 1);
+            document.dispatchEvent(new MouseEvent("mouseup", {bubbles: true}));
+        }, firstLineSlotId);
+        // Give anything that is going to (wrongly) move the caret time to do so:
+        await page.waitForTimeout(1500);
+        expect(await focusId()).toEqual(firstLineSlotId);
+    });
+});

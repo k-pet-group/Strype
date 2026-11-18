@@ -122,6 +122,18 @@ test.describe("Testing section", () => {
         await expect(page.locator("#frameContainer_-3 .caret:not(.invisible)")).toHaveCount(1);
     });
 
+    test("The code box under the tabs is square at its top-left corner only", async ({page}) => {
+        // Both of the sections (the tests one is in #frameContainer_-4), whichever tab is selected:
+        for (const [tab, containerId] of [[mainTab(page), "frameContainer_-3"], [testsTab(page), "frameContainer_-4"]] as const) {
+            await tab.click();
+            const radii = await page.locator(`#${containerId} > .container-frames`).evaluate((el) => {
+                const cs = getComputedStyle(el);
+                return [cs.borderTopLeftRadius, cs.borderTopRightRadius, cs.borderBottomLeftRadius, cs.borderBottomRightRadius];
+            });
+            expect(radii).toEqual(["0px", "8px", "8px", "8px"]);
+        }
+    });
+
     test("Alt+T switches between My code and Test code when the frame cursor is focused", async ({page}) => {
         const visibleFrameCursors = page.locator(".caret:not(.invisible)");
         await expect(selectedTab(page)).toHaveText("My code");

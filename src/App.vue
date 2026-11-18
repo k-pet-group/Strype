@@ -1523,6 +1523,11 @@ export default defineComponent({
             }
             
             this.$nextTick(() => {
+                // The browser queues its "selectionchange" event as a separate task, so (notably on Firefox when the page is busy)
+                // this mouseup can be handled before the selectionchange for the very same click.  The store would then still
+                // hold the position from before the click (e.g. the slot where a runtime error was shown), and we would
+                // wrongly put the caret back there.  So we bring the store up to date with the current selection first:
+                this.handleDocumentSelectionChange();
                 const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
                 const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
                 if(anchorSlotCursorInfos && focusSlotCursorInfos){

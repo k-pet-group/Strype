@@ -14,7 +14,7 @@
         </div>
         <!-- keep the tabindex attribute, it is necessary to handle focus properly -->
         <hr v-if="isCollapsed && frames.length > 0" class="non-empty-collapsed-frame-container-hr">
-        <div :id="frameUID" :style="containerStyle" class="container-frames" @click="onFrameContainerClick" tabindex="-1" ref="containerFrames">
+        <div :id="frameUID" :style="containerStyle" :class="{'container-frames': true, 'container-frames-under-tabs': (isMainCodeFrameContainer || isTestsFrameContainer) && testingSectionAvailable}" @click="onFrameContainerClick" tabindex="-1" ref="containerFrames">
             <CaretContainer
                 :frameId="frameId"
                 :ref="getCaretContainerRef"
@@ -356,6 +356,11 @@ export default defineComponent({
     border-radius: 8px;
     border: 1px solid #B4B4B4;
     outline: none;
+}
+
+// The code box under the "My code" / "Test code" tabs: the selected tab joins its top-left corner, so that one isn't rounded
+.container-frames-under-tabs {
+    border-top-left-radius: 0;
 }
 
 .frame-container-minheight {

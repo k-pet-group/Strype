@@ -130,13 +130,19 @@ test.describe("Frame numbers with folded frames", () => {
 
         // Frozen functions can't be fully expanded, so unfreeze "prepare" first:
         const header = page.locator(".frame-header:has-text('prepare')").first();
-        await header.click({button: "right"});
+        // Right-click on the header's first line (the "def" line): once unfolded, the header also holds the function's
+        // docstring, and clicking in its middle would land in the docstring, which doesn't open the frame's menu:
+        const rightClickHeader = async () => {
+            const box = await header.boundingBox();
+            await header.click({button: "right", position: {x: (box?.width ?? 20) / 2, y: 10}});
+        };
+        await rightClickHeader();
         await page.getByRole("menuitem", {name: en.contextMenu.unfreeze, exact: true}).click({timeout: 2000});
         await waitForEditorSettled(page);
         await expectGutterMatchesVisibleHeaders(page);
 
         // Unfold it (its body frames now become visible):
-        await header.click({button: "right"});
+        await rightClickHeader();
         await page.getByRole("menuitem", {name: new RegExp("^" + en.contextMenu.collapseFull)}).click({timeout: 2000});
         await waitForEditorSettled(page);
         await expectGutterMatchesVisibleHeaders(page);
@@ -144,7 +150,7 @@ test.describe("Frame numbers with folded frames", () => {
         expect(shownAfterUnfold).toBeGreaterThan(0);
 
         // Fold it again:
-        await header.click({button: "right"});
+        await rightClickHeader();
         await page.getByRole("menuitem", {name: new RegExp("^" + en.contextMenu.collapseHeader)}).click({timeout: 2000});
         await waitForEditorSettled(page);
         await expectGutterMatchesVisibleHeaders(page);

@@ -366,9 +366,10 @@ def test_errors ( ) :
         await expect(overallIcon).toHaveCSS("background-color", "rgb(112, 110, 110)");
 
         // In a narrow window there is only room for the icon, which keeps its width and fills the height of the slot, so that
-        // no part of the word, wrapped out of view, is seen beneath it:
+        // no part of the word, wrapped out of view, is seen beneath it. (Narrow enough that the word doesn't fit even
+        // once the PEA's tab headers have dropped their labels to save room, whatever the platform's fonts.)
         const iconWidthWhenWide = (await overallIcon.boundingBox())?.width;
-        await page.setViewportSize({width: 1150, height: 900});
+        await page.setViewportSize({width: 750, height: 900});
         await expect.poll(async () => await overallText.evaluate((text) => text.getBoundingClientRect().top >= (text.parentElement?.getBoundingClientRect().bottom ?? 0) - 0.5)).toBe(true);
         expect(await overallIcon.evaluate((icon) => Math.abs(icon.getBoundingClientRect().height - (icon.parentElement?.getBoundingClientRect().height ?? -1)) < 0.5)).toBe(true);
         expect(Math.abs(((await overallIcon.boundingBox())?.width ?? 0) - (iconWidthWhenWide ?? -1))).toBeLessThan(0.5);

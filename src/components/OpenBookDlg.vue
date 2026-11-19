@@ -88,34 +88,45 @@ interface Chapter {
     // Path (relative to public/) that the projects/assets physically live under,
     // e.g. "book_vol01/chapter07" -- also used to build shared-project URLs.
     path: string;
-    content: Promise<{demos: Demo[], assets: DemoAsset[]}>;
 }
 
 // Only volumes/chapters that have actually been published are listed here; further
 // chapters get added as they're written:
 const chapters: Chapter[] = [
-    {volume: "Volume 1", name: "Chapter 1", path: "book_vol01/chapter01", content: getBuiltinDemos("book_vol01/chapter01")},
-    {volume: "Volume 1", name: "Chapter 2", path: "book_vol01/chapter02", content: getBuiltinDemos("book_vol01/chapter02")},
-    {volume: "Volume 1", name: "Chapter 3", path: "book_vol01/chapter03", content: getBuiltinDemos("book_vol01/chapter03")},
-    {volume: "Volume 1", name: "Chapter 4", path: "book_vol01/chapter04", content: getBuiltinDemos("book_vol01/chapter04")},
-    {volume: "Volume 1", name: "Chapter 5", path: "book_vol01/chapter05", content: getBuiltinDemos("book_vol01/chapter05")},
-    {volume: "Volume 1", name: "Chapter 6", path: "book_vol01/chapter06", content: getBuiltinDemos("book_vol01/chapter06")},
-    {volume: "Volume 1", name: "Chapter 7", path: "book_vol01/chapter07", content: getBuiltinDemos("book_vol01/chapter07")},
-    {volume: "Volume 1", name: "Chapter 8", path: "book_vol01/chapter08", content: getBuiltinDemos("book_vol01/chapter08")},
-    {volume: "Volume 2", name: "Chapter 1", path: "book_vol02/chapter01", content: getBuiltinDemos("book_vol02/chapter01")},
-    {volume: "Volume 2", name: "Chapter 2", path: "book_vol02/chapter02", content: getBuiltinDemos("book_vol02/chapter02")},
-    {volume: "Volume 2", name: "Chapter 3", path: "book_vol02/chapter03", content: getBuiltinDemos("book_vol02/chapter03")},
-    {volume: "Volume 2", name: "Chapter 4", path: "book_vol02/chapter04", content: getBuiltinDemos("book_vol02/chapter04")},
-    {volume: "Volume 2", name: "Chapter 5", path: "book_vol02/chapter05", content: getBuiltinDemos("book_vol02/chapter05")},
-    {volume: "Volume 2", name: "Chapter 6", path: "book_vol02/chapter06", content: getBuiltinDemos("book_vol02/chapter06")},
-    {volume: "Volume 3", name: "Chapter 1", path: "book_vol03/chapter01", content: getBuiltinDemos("book_vol03/chapter01")},
-    {volume: "Volume 3", name: "Chapter 2", path: "book_vol03/chapter02", content: getBuiltinDemos("book_vol03/chapter02")},
-    {volume: "Volume 3", name: "Chapter 3", path: "book_vol03/chapter03", content: getBuiltinDemos("book_vol03/chapter03")},
-    {volume: "Volume 3", name: "Chapter 4", path: "book_vol03/chapter04", content: getBuiltinDemos("book_vol03/chapter04")},
-    {volume: "Volume 3", name: "Chapter 5", path: "book_vol03/chapter05", content: getBuiltinDemos("book_vol03/chapter05")},
-    {volume: "Volume 3", name: "Chapter 6", path: "book_vol03/chapter06", content: getBuiltinDemos("book_vol03/chapter06")},
-    {volume: "Volume 3", name: "Chapter 7", path: "book_vol03/chapter07", content: getBuiltinDemos("book_vol03/chapter07")},
+    {volume: "Volume 1", name: "Chapter 1", path: "book_vol01/chapter01"},
+    {volume: "Volume 1", name: "Chapter 2", path: "book_vol01/chapter02"},
+    {volume: "Volume 1", name: "Chapter 3", path: "book_vol01/chapter03"},
+    {volume: "Volume 1", name: "Chapter 4", path: "book_vol01/chapter04"},
+    {volume: "Volume 1", name: "Chapter 5", path: "book_vol01/chapter05"},
+    {volume: "Volume 1", name: "Chapter 6", path: "book_vol01/chapter06"},
+    {volume: "Volume 1", name: "Chapter 7", path: "book_vol01/chapter07"},
+    {volume: "Volume 1", name: "Chapter 8", path: "book_vol01/chapter08"},
+    {volume: "Volume 2", name: "Chapter 1", path: "book_vol02/chapter01"},
+    {volume: "Volume 2", name: "Chapter 2", path: "book_vol02/chapter02"},
+    {volume: "Volume 2", name: "Chapter 3", path: "book_vol02/chapter03"},
+    {volume: "Volume 2", name: "Chapter 4", path: "book_vol02/chapter04"},
+    {volume: "Volume 2", name: "Chapter 5", path: "book_vol02/chapter05"},
+    {volume: "Volume 2", name: "Chapter 6", path: "book_vol02/chapter06"},
+    {volume: "Volume 3", name: "Chapter 1", path: "book_vol03/chapter01"},
+    {volume: "Volume 3", name: "Chapter 2", path: "book_vol03/chapter02"},
+    {volume: "Volume 3", name: "Chapter 3", path: "book_vol03/chapter03"},
+    {volume: "Volume 3", name: "Chapter 4", path: "book_vol03/chapter04"},
+    {volume: "Volume 3", name: "Chapter 5", path: "book_vol03/chapter05"},
+    {volume: "Volume 3", name: "Chapter 6", path: "book_vol03/chapter06"},
+    {volume: "Volume 3", name: "Chapter 7", path: "book_vol03/chapter07"},
 ];
+
+// Each chapter's index is only fetched the first time that chapter is shown, rather than all of
+// them on every page load (most sessions never open this dialog), then kept for later showings:
+const chapterContents = new Map<number, Promise<{demos: Demo[], assets: DemoAsset[]}>>();
+function getChapterContent(index: number) : Promise<{demos: Demo[], assets: DemoAsset[]}> {
+    let content = chapterContents.get(index);
+    if (content === undefined) {
+        content = getBuiltinDemos(chapters[index].path);
+        chapterContents.set(index, content);
+    }
+    return content;
+}
 
 const props = defineProps<{
     dlgId: string;
@@ -172,7 +183,7 @@ async function changeBookDialogCategory(index: number) {
     const foundProjects = [];
     const foundAssets = [];
     // Note async: will run each in background
-    const content = await chapters[index].content;
+    const content = await getChapterContent(index);
     if (selectedChapterIndex.value !== index) {
         // The user has since picked a different chapter; a later call to this function
         // will have already updated (or will soon update) the panes, so discard this

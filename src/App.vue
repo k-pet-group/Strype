@@ -831,6 +831,15 @@ export default defineComponent({
             
             const googleDrivePublicURLPreamble = "https://drive.google.com/file/d/";
             const isPublicShareFromGD = shareProjectId.startsWith(googleDrivePublicURLPreamble);
+            // OneDrive public links are on 1drv.ms or onedrive.live.com for personal accounts, and on <tenant>-my.sharepoint.com for work/school accounts.
+            let sharedURLHost = "";
+            try {
+                sharedURLHost = new URL(shareProjectId).hostname.toLowerCase();
+            }
+            catch {
+                // Malformed URL: it isn't a OneDrive link (and retrieving it will fail and be reported below)
+            }
+            const isPublicShareFromOD = ["1drv.ms", "onedrive.live.com"].includes(sharedURLHost) || sharedURLHost.endsWith("-my.sharepoint.com");
             let alertMsgKey = "";
             let alertParams = "";
             if(isPublicShareFromGD){
@@ -875,10 +884,15 @@ export default defineComponent({
                     })
                     .catch((error) => {
                         alertMsgKey = "errorMessage.retrievedSharedGenericProject";
-                        alertParams = `${error?.message??error.toString()}<br/><br/><b>${this.$t("appMessage.publicSharedProjectUserDownloadAttempt")}`;
-                        setTimeout(() => {
-                            window.open(shareProjectId, "_blank");
-                        }, 3000);                            
+                        alertParams = error?.message??error.toString();
+                        // OneDrive public links lead to a OneDrive page rather than the file itself, so we can't retrieve the file:
+                        // we open that page for the user to download the project from there.
+                        if(isPublicShareFromOD){
+                            alertParams += `<br/><br/><b>${this.$t("appMessage.publicSharedProjectUserDownloadAttempt")}`;
+                            setTimeout(() => {
+                                window.open(shareProjectId, "_blank");
+                            }, 3000);
+                        }
                     })
                     .finally(() => {
                         // Make sure the progress indication on the editor is removed.

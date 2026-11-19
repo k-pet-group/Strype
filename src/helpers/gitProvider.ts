@@ -166,6 +166,8 @@ export function useGitProvider<Auth>(options: {
         // The token is forgotten right away, then revoked by the provider (so it can't be used anymore, even if it was copied)
         const auth = oauthToken.value;
         resetOAuthToken();
+        // (the file picker also forgets the user's repositories and the location used last)
+        filePicker.value?.forget();
         if(auth == null){
             return true;
         }

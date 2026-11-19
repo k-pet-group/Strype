@@ -42,7 +42,7 @@
                                         v-if="showMessage"
                                     />
                                 </div>
-                                <div class="row g-0" >
+                                <div class="row g-0" @contextmenu="handleEditorBackgroundContextMenu">
                                     <Menu 
                                         :id="menuUID" 
                                         :ref="menuUID"
@@ -83,6 +83,14 @@
                                         <!-- The search and replace popup shows over the code (at the top, it can be moved), see SearchReplaceWidget.vue -->
                                         <SearchReplaceWidget />
                                     </div>
+                                    <!-- The context menu of the editor's background (the left pane and the code part outside the frames), see handleEditorBackgroundContextMenu() -->
+                                    <ContextMenu
+                                        :contextMenuItemsDef="editorBackgroundContextMenuItems"
+                                        :showContextMenu="showEditorBackgroundContextMenu"
+                                        :showAt="editorBackgroundContextMenuCoordPos"
+                                        :onOpened="() => notifyEditorBackgroundContextMenuShown(true)"
+                                        :onClosed="() => notifyEditorBackgroundContextMenuShown(false)"
+                                    />
                                 </div>
                             </div>
                         </Pane>
@@ -135,7 +143,8 @@ import ModalDlg from "@/components/ModalDlg.vue";
 import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore, settingsStore, getEditorTabId } from "@/store/store";
-import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MediaSlot, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, RecordNewImageInDialogFunction, RecordNewSoundInDialogFunction, OpenColourPickerInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders } from "@/types/types";
+import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MediaSlot, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, RecordNewImageInDialogFunction, RecordNewSoundInDialogFunction, OpenColourPickerInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, StrypeContextMenuItem, CoordPosition } from "@/types/types";
+import { isMacOSPlatform } from "@/helpers/common";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getFocusedEditableSlotTextSelectionStartEnd, getSelectionCursorsComparisonValue, bumpCaretRequestSeq, getCaretRequestSeq, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, isCaretContainerFocusInputElement, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID, closeRenameIdentifierPopups, newStrypeProject } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
@@ -156,7 +165,8 @@ import RecordImageDlg from "@/components/RecordImageDlg.vue";
 import RecordSoundDlg from "@/components/RecordSoundDlg.vue";
 import ColourPickerDlg from "@/components/ColourPickerDlg.vue";
 import SearchReplaceWidget from "@/components/SearchReplaceWidget.vue";
-import { getSearchReplaceShortcut } from "@/helpers/searchReplace";
+import ContextMenu from "@/components/ContextMenu.vue";
+import { getSearchReplaceShortcut, getSearchReplaceShortcutLabel, openSearchReplaceFromContextMenu } from "@/helpers/searchReplace";
 import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
 import {loadDivider, loadPinnedLocalFiles, testingShowingHeader} from "@/helpers/load-save";
@@ -214,6 +224,7 @@ export default defineComponent({
         RecordSoundDlg,
         ColourPickerDlg,
         SearchReplaceWidget,
+        ContextMenu,
         MediaPreviewPopup,
         Menu,
         ModalDlg,
@@ -243,6 +254,9 @@ export default defineComponent({
             // strypeModalHidden listener chain:
             isRecordingMediaFlowActive: false,
             colourPickerInitialColour: null as string | null,
+            showEditorBackgroundContextMenu: false,
+            editorBackgroundContextMenuItems: [] as StrypeContextMenuItem[],
+            editorBackgroundContextMenuCoordPos: {x: 0, y: 0} as CoordPosition,
         };
     },
 
@@ -2206,6 +2220,51 @@ export default defineComponent({
             else {
                 this.recordNewSoundInDialog(commitInsertion, restoreOriginalCursor);
             }
+        },
+
+        // Shows the context menu of the editor's background (undo, redo, find, find and replace) when the user right-clicks in the "empty" parts of the
+        // left pane (i.e. not on its buttons, images, links...) or of the code part (i.e. not on the frames, the frame carets or the slots).
+        // The right pane (commands and PEA) doesn't get this menu.
+        handleEditorBackgroundContextMenu(event: MouseEvent) {
+            // The menu opened with the keyboard is handled in handleContextMenu() (frame or caret menus)
+            if(this.appStore.isContextMenuKeyboardShortcutUsed || !(event.target instanceof Element)){
+                return;
+            }
+            const excludedTargetSelector = ["a", "button", "input", "img", "i", "select", "textarea", "label", "[role='button']", ".error-count-span", ".bm-menu",
+                ".modal", ".search-replace-widget", "." + scssVars.frameDivClassName, "." + scssVars.caretContainerClassName].join(",");
+            if(isElementLabelSlotInput(event.target) || event.target.closest(excludedTargetSelector)){
+                return;
+            }
+            // The native context menu is never shown here (see handleContextMenu())
+            event.preventDefault();
+            if(this.isPythonExecuting){
+                return;
+            }
+            const isMacOS = isMacOSPlatform();
+            const ctrlShortcut = (key: string) => (isMacOS) ? "⌘" + key : this.$t("shortcut.ctrlPlus") + key;
+            this.editorBackgroundContextMenuItems = [
+                {label: this.$t("contextMenu.undo"), onClick: () => this.undoRedoFromContextMenu(true), disabled: this.appStore.isUndoRedoEmpty("undo"), shortcut: ctrlShortcut("Z")},
+                {label: this.$t("contextMenu.redo"), onClick: () => this.undoRedoFromContextMenu(false), disabled: this.appStore.isUndoRedoEmpty("redo"), shortcut: ctrlShortcut("Y")},
+                {divided: "self"},
+                {label: this.$t("contextMenu.find"), onClick: () => openSearchReplaceFromContextMenu(false), shortcut: getSearchReplaceShortcutLabel(false)},
+                {label: this.$t("contextMenu.searchReplace"), onClick: () => openSearchReplaceFromContextMenu(true), shortcut: getSearchReplaceShortcutLabel(true)},
+            ];
+            this.editorBackgroundContextMenuCoordPos.x = event.x;
+            this.editorBackgroundContextMenuCoordPos.y = event.y;
+            this.editorBackgroundContextMenuCoordPos.pos = undefined;
+            this.showEditorBackgroundContextMenu = true;
+        },
+
+        notifyEditorBackgroundContextMenuShown(isShown: boolean) {
+            if(!isShown){
+                this.showEditorBackgroundContextMenu = false;
+            }
+            document.dispatchEvent(new CustomEvent(CustomEventTypes.requestAppNotOnTop, {detail: isShown}));
+        },
+
+        undoRedoFromContextMenu(isUndo: boolean) {
+            this.appStore.trackMenuAction(isUndo ? "undo" : "redo");
+            this.appStore.undoRedo(isUndo);
         },
 
         // Opens the search and replace widget (from its keyboard shortcuts), with the replace part folded or not. If some text is selected

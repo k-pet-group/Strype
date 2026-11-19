@@ -523,9 +523,17 @@ if price and tax  :
     expect(renderedSlots).toEqual(await getRenderedMainCodeSlots(page));
 });
 
-test("The widget can be opened from the frame context menu, and the project is marked modified after a replacement", async ({page}) => {
-    await page.locator(".frame-header:has-text('print')").first().click({button: "right"});
-    await page.getByRole("menuitem", {name: new RegExp("^" + escapeRegExp(en.contextMenu.searchReplace))}).click({timeout: 2000});
+// Right-clicks near the bottom right corner of an element (which is empty for the code part and the left pane with our small project)
+async function rightClickBottomOf(page: Page, elementId: string): Promise<void> {
+    const box = await getBox(page.locator("#" + elementId));
+    await page.mouse.click(box.x + box.width - 20, box.y + box.height - 20, {button: "right"});
+}
+
+const menuItem = (page: Page, label: string) => page.getByRole("menuitem", {name: new RegExp("^" + escapeRegExp(label))});
+
+test("The widget can be opened from the editor's background context menu, and the project is marked modified after a replacement", async ({page}) => {
+    await rightClickBottomOf(page, await strypeElIds(page).getEditorMiddleUID());
+    await menuItem(page, en.contextMenu.searchReplace).click({timeout: 2000});
     await expect(widget(page)).toBeVisible();
     await expect(searchInput(page)).toBeFocused();
     await expect(replaceInput(page)).toBeVisible();
@@ -538,4 +546,52 @@ test("The widget can be opened from the frame context menu, and the project is m
     await page.click("#" + await strypeElIds(page).getEditorMenuUID());
     await page.click("#" + await strypeElIds(page).getLoadProjectLinkId());
     await expect(page.locator("#save-on-load-project-modal-dlg")).toBeVisible();
+});
+
+test("The editor's background context menu has undo, redo and find, but not the frame context menu", async ({page}) => {
+    // The frame context menu doesn't have find any more
+    await page.locator(".frame-header:has-text('print')").first().click({button: "right"});
+    await expect(menuItem(page, en.contextMenu.delete).first()).toBeVisible();
+    await expect(menuItem(page, en.contextMenu.find)).toHaveCount(0);
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".mx-context-menu")).toHaveCount(0);
+
+    // On the left pane's background (below its buttons): undo and redo (both disabled since nothing was done yet), then find and find and replace, with their shortcuts
+    const menuBox = await getBox(page.locator("#" + await strypeElIds(page).getMenuLeftPaneUID()));
+    const editorBox = await getBox(page.locator("#" + await strypeElIds(page).getEditorMiddleUID()));
+    await page.mouse.click(menuBox.x + menuBox.width / 2, editorBox.y + editorBox.height - 20, {button: "right"});
+    const shortcutPrefix = (process.platform == "darwin") ? "⌘" : "Ctrl+";
+    for (const [label, shortcut] of [[en.contextMenu.undo, "Z"], [en.contextMenu.redo, "Y"], [en.contextMenu.find, "F"], [en.contextMenu.searchReplace, (process.platform == "darwin") ? "⇧F" : "Shift+F"]]) {
+        await expect(menuItem(page, label)).toBeVisible();
+        await expect(menuItem(page, label)).toContainText(shortcutPrefix + shortcut);
+    }
+    await expect(page.locator(".mx-context-menu .mx-context-menu-item.disabled")).toHaveCount(2);
+    await page.keyboard.press("Escape");
+    await expect(page.locator(".mx-context-menu")).toHaveCount(0);
+
+    // Do a change, then undo and redo it from the menu of the code part's background
+    await page.keyboard.press(searchReplaceShortcut);
+    await page.keyboard.type("greet");
+    await replaceInput(page).fill("welcome");
+    await page.locator("#searchReplaceReplaceAllButton").click();
+    await expect(status(page)).toHaveText("3 replaced");
+    await widget(page).locator(".search-replace-close-btn").click();
+    await expect(widget(page)).toBeHidden();
+    await waitForEditorSettled(page);
+    const replacedCode = await getSavedCode(page);
+    expect(replacedCode).toContain("welcome");
+    await rightClickBottomOf(page, await strypeElIds(page).getEditorMiddleUID());
+    await menuItem(page, en.contextMenu.undo).click({timeout: 2000});
+    await waitForEditorSettled(page);
+    expect(await getSavedCode(page)).toEqual(projectCode);
+    await rightClickBottomOf(page, await strypeElIds(page).getEditorMiddleUID());
+    await menuItem(page, en.contextMenu.redo).click({timeout: 2000});
+    await waitForEditorSettled(page);
+    expect(await getSavedCode(page)).toEqual(replacedCode);
+
+    // No menu on the left pane's buttons, nor on the right pane
+    await page.locator("#" + await strypeElIds(page).getMenuLeftPaneUID() + " .menu-icon-entry").first().click({button: "right"});
+    await expect(page.locator(".mx-context-menu")).toHaveCount(0);
+    await rightClickBottomOf(page, await strypeElIds(page).getCommandsRightPaneContainerId());
+    await expect(page.locator(".mx-context-menu")).toHaveCount(0);
 });

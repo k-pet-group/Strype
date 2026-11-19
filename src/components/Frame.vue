@@ -115,7 +115,6 @@ import scssVars from "@/assets/style/_export.module.scss";
 import {getDateTimeFormatted, isMacOSPlatform, removeIf} from "@/helpers/common";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
-import { getSearchReplaceShortcutLabel, openSearchReplaceFromContextMenu } from "@/helpers/searchReplace";
 
 //////////////////////
 //     Component    //
@@ -557,9 +556,6 @@ export default defineComponent({
                 {divided: "self"},
                 {label: this.$t("contextMenu.pasteAbove"), onClick: this.pasteAbove},
                 {label: this.$t("contextMenu.pasteBelow"), onClick: this.pasteBelow},
-                {divided: "self"},
-                {label: this.$t("contextMenu.find"), onClick: () => openSearchReplaceFromContextMenu(false), shortcut: getSearchReplaceShortcutLabel(false)},
-                {label: this.$t("contextMenu.searchReplace"), onClick: () => openSearchReplaceFromContextMenu(true), shortcut: getSearchReplaceShortcutLabel(true)},
                 {divided: "self"},
                 {label: this.$t("contextMenu.disable"), onClick: () => this.enableDisable({})},
                 {divided: "self"},

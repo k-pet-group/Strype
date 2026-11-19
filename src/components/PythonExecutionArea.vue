@@ -136,6 +136,7 @@ import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {closeAudioContext, createOrGetAudioContext} from "@/helpers/audioContext";
 import {clearAllRuntimeErrors, clearAllTestOutcomes, computeFrameSnapshot} from "@/helpers/storeMethods";
 import {listEntriesForWorker} from "@/helpers/localFsCache";
+import {isCloudMountReadOnly} from "@/helpers/fileSystemTabIO";
 import html2canvas from "html2canvas";
 import FileSystemPane from "@/components/FileSystemTab/FileSystemPane.vue";
 
@@ -888,6 +889,7 @@ export default defineComponent({
                     micropipLibraries,
                     userLibraries,
                     typeof(this.appStore.strypeProjectLocation) === "string",
+                    isCloudMountReadOnly(),
                     Comlink.proxy((asreq : SyncOrAsyncStrypePyodideWorkerRequest) => serialize(() => {
                         if (asreq.kind == "async") {
                             asyncBridge(asreq.request);
@@ -1067,7 +1069,7 @@ export default defineComponent({
                 console.error("Service worker sync channel not responding; file access during tests may fail");
             }
 
-            client.call(client.workerProxy.executeTests, mainCode, importsCode, testsCode, micropipLibraries, userLibraries, typeof(this.appStore.strypeProjectLocation) === "string", testFileRequestHandler).then((results: TestRunResults) => {
+            client.call(client.workerProxy.executeTests, mainCode, importsCode, testsCode, micropipLibraries, userLibraries, typeof(this.appStore.strypeProjectLocation) === "string", isCloudMountReadOnly(), testFileRequestHandler).then((results: TestRunResults) => {
                 let output: string;
                 if (results.collectionError) {
                     output = `Could not run tests:\n${results.collectionError}\n`;

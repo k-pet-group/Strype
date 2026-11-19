@@ -16,6 +16,7 @@ import * as localFsCache from "@/helpers/localFsCache";
 import { cloudCloseFile, cloudCreate, cloudListDir, cloudReadFile, cloudWriteFile } from "@/helpers/cloudFileIO";
 import { useStore } from "@/store/store";
 import type { ArchiveEntry } from "@/helpers/archive";
+import { isSyncTargetGitProvider } from "@/types/cloud-drive-types";
 import { assetsFilePrefixes, buildAssetTree } from "@/stryperuntime/assets_file_index";
 
 // "/local" and "/cloud" are the two writeable roots; anything else is one of the read-only asset
@@ -35,6 +36,12 @@ export function assetsRoots(): FsRoot[] {
 // (startInSlashCloud). Used by FileSystemPane.vue to decide whether to show the "/cloud" section.
 export function isCloudMounted(): boolean {
     return typeof useStore().strypeProjectLocation === "string";
+}
+
+// Whether "/cloud" is mounted read-only: the files of a Git provider can only be read by the user code
+// (see getFSForEmscripten()), so FileSystemPane.vue doesn't offer to upload files there either.
+export function isCloudMountReadOnly(): boolean {
+    return isSyncTargetGitProvider(useStore().syncTarget);
 }
 
 // None of the three kinds of root need a live Pyodide worker just to be listed: "/local" is read

@@ -328,7 +328,7 @@ export async function listGitLabFolderContent(auth: GitLabAuth, projectFullPath:
     if (withSizes && filePaths.length > 0) {
         try {
             const sizes = await getGitLabFileSizes(auth, projectFullPath, branch, filePaths);
-            contentItems.forEach((item) => item.size = (item.isFolder) ? undefined : sizes.get(item.path));        
+            contentItems.forEach((item) => item.size = (item.isFolder) ? undefined : sizes.get(item.path));
         }
         catch (error) {
             // The sizes are only a nice to have (reading a file still gets all its content): we list the files without them

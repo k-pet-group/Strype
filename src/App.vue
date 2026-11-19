@@ -854,10 +854,13 @@ export default defineComponent({
                 axios.get<string>(shareProjectId)
                     .then((resp) => {
                         if(resp.status == 200){
-                            // Find the filename from the URL:
-                            const cleaned = shareProjectId.replace(/\/+$/, "");
-                            const lastSlash = cleaned.lastIndexOf("/");
-                            const filename = lastSlash !== -1 ? cleaned.substring(lastSlash + 1) : cleaned;
+                            // Find the filename from the URL: it is the last part of its path, except for a file shared from GitLab,
+                            // whose (API) URL ends with ".../files/<the file's path, encoded>/raw".
+                            const urlPathParts = new URL(shareProjectId).pathname.split("/").filter((part) => part.length > 0);
+                            if(urlPathParts.length >= 3 && urlPathParts[urlPathParts.length - 1] == "raw" && urlPathParts[urlPathParts.length - 3] == "files"){
+                                urlPathParts.pop();
+                            }
+                            const filename = decodeURIComponent(urlPathParts[urlPathParts.length - 1] ?? "").split("/").pop() ?? "";
                         
                             return (resp.data.startsWith("{") ?
                                 this.appStore.setStateFromJSONStr({

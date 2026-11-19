@@ -33,8 +33,8 @@
         <!-- Each specific drive is created here, but typing inference is done in getSpecificCloudDriveComponent() -->
         <GoogleDriveComponent ref="googleDriveComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
         <OneDriveComponent ref="oneDriveComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
-        <GitHubComponent ref="gitHubComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
-        <GitLabComponent ref="gitLabComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" />
+        <GitHubComponent ref="gitHubComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" :openSharedProjectFileId="openSharedProjectFileId" />
+        <GitLabComponent ref="gitLabComponent" :onFileToLoadPicked="loadPickedFileId" :onFolderToSaveFilePicked="savePickedFolder" :onFolderToSavePickCancelled="onFolderToSavePickCancelled" :onUnsupportedByStrypeFilePicked="onUnsupportedByStrypeFilePicked" :openSharedProjectFileId="openSharedProjectFileId" />
     </div>
 </template>
 
@@ -100,6 +100,7 @@ export default defineComponent({
             backupPreviousCloudFileSharingStatus: this.backupPreviousCloudFileSharingStatus,
             restoreCloudDriveFileSharingStatus: this.restoreCloudDriveFileSharingStatus,
             getPublicShareLink: this.getPublicShareLink,
+            getSharedFileId: this.getSharedFileId,
             getPublicSharedProjectContent: this.getPublicSharedProjectContent,
             searchCloudDriveElements: this.searchCloudDriveElements,
             readFileContentForIO: this.readFileContentForIO,
@@ -507,6 +508,11 @@ export default defineComponent({
 
         getPublicShareLink(cloudTarget: StrypeSyncTarget) {
             return this.getSpecificCloudDriveComponent(cloudTarget)?.getPublicShareLink(this.saveFileId as string)??Promise.reject("No Cloud target!"); // We should never get to the reject clause here, keep TS happy
+        },
+
+        getSharedFileId(cloudTarget: StrypeSyncTarget): string {
+            const saveFileId = this.saveFileId as string;
+            return this.getSpecificCloudDriveComponent(cloudTarget)?.getSharedFileId?.(saveFileId) ?? saveFileId;
         },
 
         saveFile(cloudTarget: StrypeSyncTarget, saveReason: SaveRequestReason) {

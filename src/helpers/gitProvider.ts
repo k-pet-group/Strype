@@ -60,9 +60,10 @@ export function useGitProvider<Auth>(options: {
     const isFileLocked = ref(false);
     const previousCloudFileSharingStatus = ref(CloudFileSharingStatus.UNKNOWN);
 
-    const modifiedDataSearchOptionName = ""; //TODO
-    const fileMoreFieldsForIO = ""; //TODO
-    const fileBasicFieldsForIO = ""; //TODO
+    // These fields are unused for Git providers
+    const modifiedDataSearchOptionName = "";
+    const fileMoreFieldsForIO = "";
+    const fileBasicFieldsForIO = "";
 
     function getAuth(): Auth {
         if(oauthToken.value == null){

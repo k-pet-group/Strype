@@ -166,7 +166,12 @@ export async function getGitLabAccessToken(auth: GitLabAuth): Promise<string> {
 
 // Calls the GitLab REST API (path like "/projects") of the user's instance with their token.
 export async function gitLabFetch(auth: GitLabAuth, path: string, init: RequestInit = {}): Promise<Response> {
-    const response = await fetch(`${auth.instance.url}/api/v4${path}`, {
+    return fetchWithGitLabToken(auth, `${auth.instance.url}/api/v4${path}`, init);
+}
+
+// Calls a URL of the user's instance with their token.
+async function fetchWithGitLabToken(auth: GitLabAuth, url: string, init: RequestInit): Promise<Response> {
+    const response = await fetch(url, {
         ...init,
         headers: {
             ...(init.headers as Record<string, string> | undefined),
@@ -184,6 +189,24 @@ export class GitLabHttpError extends GitHttpError {
     constructor(status: number, details?: string) {
         super(status, "GitLab", details);
     }
+}
+
+// Runs a query on the GitLab GraphQL API of the user's instance with their token, and returns its data.
+// (GraphQL reports the query's errors in the body of an OK response: we throw them as GitLabHttpError too)
+async function gitLabGraphQL<T>(auth: GitLabAuth, query: string, variables: Record<string, unknown>): Promise<T> {
+    const response = await fetchWithGitLabToken(auth, `${auth.instance.url}/api/graphql`, {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({query, variables}),
+    });
+    if (!response.ok) {
+        throw new GitLabHttpError(response.status, await readGitErrorDetails(response));
+    }
+    const body: {data?: T, errors?: {message: string}[]} = await response.json();
+    if (body.errors?.length || body.data == undefined) {
+        throw new GitLabHttpError(response.status, body.errors?.map((error) => error.message).join("\n"));
+    }
+    return body.data;
 }
 
 const PER_PAGE = 100;
@@ -252,8 +275,38 @@ export async function listGitLabBranches(auth: GitLabAuth, projectFullPath: stri
     return branches.map((branch) => branch.name);
 }
 
-// Returns the files and folders directly inside a folder ("" for the root) of a project's branch.
-export async function listGitLabFolderContent(auth: GitLabAuth, projectFullPath: string, branch: string, folderPath: string): Promise<GitContentItem[]> {
+// The number of files we get the sizes of with one GraphQL query. GraphQL allows pages of up to 100 items,
+// but a query's "complexity" grows with its page size (about 2 per item), and GitLab rejects queries above 200
+// (250 when signed in, but we keep a margin): 100 items is over, 50 is well under.
+const GRAPHQL_FILES_PAGE_SIZE = 50;
+
+// Returns the sizes (in bytes) of files of a project's branch, by their paths. The REST API doesn't give them when listing
+// a folder, so we get them from the GraphQL API, for many files at once.
+async function getGitLabFileSizes(auth: GitLabAuth, projectFullPath: string, branch: string, filePaths: string[]): Promise<Map<string, number>> {
+    const query = `query($fullPath: ID!, $ref: String!, $paths: [String!]!) {
+        project(fullPath: $fullPath) { repository { blobs(ref: $ref, paths: $paths, first: ${GRAPHQL_FILES_PAGE_SIZE}) { nodes { path size } } } }
+    }`;
+    // (a page has at most GRAPHQL_FILES_PAGE_SIZE files, so we ask for that many files at a time)
+    const pathsGroups: string[][] = [];
+    for (let start = 0; start < filePaths.length; start += GRAPHQL_FILES_PAGE_SIZE) {
+        pathsGroups.push(filePaths.slice(start, start + GRAPHQL_FILES_PAGE_SIZE));
+    }
+    const sizes = new Map<string, number>();
+    await Promise.all(pathsGroups.map(async (paths) => {
+        const data = await gitLabGraphQL<{project: {repository: {blobs: {nodes: {path: string, size: string | number | null}[]}}} | null}>(auth, query, {fullPath: projectFullPath, ref: branch, paths});
+        // (the size is a "BigInt", which GraphQL gives as a string)
+        data.project?.repository.blobs.nodes.forEach((blob) => {
+            if (blob.size != null) {
+                sizes.set(blob.path, Number(blob.size));
+            }
+        });
+    }));
+    return sizes;
+}
+
+// Returns the files and folders directly inside a folder ("" for the root) of a project's branch,
+// with the files' sizes if withSizes is set (it takes another query, see getGitLabFileSizes()).
+export async function listGitLabFolderContent(auth: GitLabAuth, projectFullPath: string, branch: string, folderPath: string, withSizes?: boolean): Promise<GitContentItem[]> {
     const params = new URLSearchParams({ref: branch});
     if (folderPath.length > 0) {
         params.set("path", folderPath);
@@ -269,8 +322,23 @@ export async function listGitLabFolderContent(auth: GitLabAuth, projectFullPath:
         throw error;
     }
     // The other type is "commit" (a submodule), which we cannot browse.
-    return items.filter((item) => item.type === "blob" || item.type === "tree")
+    const contentItems: GitContentItem[] = items.filter((item) => item.type === "blob" || item.type === "tree")
         .map((item) => ({name: item.name, path: item.path, isFolder: item.type === "tree"}));
+    const filePaths = contentItems.filter((item) => !item.isFolder).map((item) => item.path);
+    if (withSizes && filePaths.length > 0) {
+        try {
+            const sizes = await getGitLabFileSizes(auth, projectFullPath, branch, filePaths);
+            contentItems.forEach((item) => item.size = (item.isFolder) ? undefined : sizes.get(item.path));        
+        }
+        catch (error) {
+            // The sizes are only a nice to have (reading a file still gets all its content): we list the files without them
+            if (error instanceof GitAuthExpiredError) {
+                throw error;
+            }
+            console.warn("Could not get the sizes of the GitLab files in " + folderPath, error);
+        }
+    }
+    return contentItems;
 }
 
 // Returns the response with the raw content of a file in a project's branch.

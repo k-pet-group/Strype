@@ -95,6 +95,12 @@ export const handleFileSyncRequests : SyncPromiseStrypePyodideHandlerFunction = 
         case StrypeSyncTarget.od:
             cloudName = "Microsoft OneDrive";
             break;
+        case StrypeSyncTarget.gh:
+            cloudName = "GitHub";
+            break;
+        case StrypeSyncTarget.gl:
+            cloudName = "GitLab";
+            break;
         default:
             break;
         }
@@ -234,7 +240,7 @@ export const handleSyncRequests : (
             // PixiJS failed to initialise, so give an error saying that:
             return {request: req.request, response: Promise.reject("The turtle rendering failed to initialise.  Try refreshing the page or using a different browser.")};
         }
-    }
+    }    
     default:
         // Trick to give a compile-time error if a case is missing above:
         const _exhaustive: never = req;

@@ -12,7 +12,7 @@
             </template>
         </ModalDlg>
         <!-- For Git providers, saving is committing: the user gives the commit message (see doSaveFile()) -->
-        <ModalDlg :dlgId="gitCommitModalDlgId" :dlgTitle="$t('appMessage.gitCommitTitle', {providername: getDriveName()})" :okCustomTitle="$t('buttonLabel.commit')"
+        <ModalDlg :dlgId="gitCommitModalDlgId" :dlgTitle="$t('appMessage.gitCommitTitle', {providername: getDriveName()})" :okCustomTitle="$t('buttonLabel.save')"
             :okDisabled="gitCommitMessage.trim().length == 0" :elementToFocusId="gitCommitMessageInputId" size="lg" showCloseBtn>
             <div class="git-commit-dlg-container">
                 <span>{{gitCommitDetails}}</span>

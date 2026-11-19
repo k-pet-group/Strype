@@ -79,7 +79,6 @@
     "choose": "Choose",
     "reload": "Reload",
     "connect": "Connect",
-    "commit": "Commit",
     "continueSave": "Continue…",
     "saveAndSignOut": "Save and sign out",
     "signOutWithoutSaving": "Sign out without saving",

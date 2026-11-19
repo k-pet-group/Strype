@@ -438,7 +438,12 @@ export async function createGitHubRepository(auth: GitHubAuth, name: string): Pr
 
 // Revokes the token. This does not uninstall the app: users do that in their GitHub settings > Applications.
 export async function disconnectFromGitHub(auth: GitHubAuth): Promise<void> {
-    await postJson("revoke", {access_token: auth.accessToken});
+    // GitHub can only revoke a valid access token (it answers 404 for an expired one, which the backend takes as already
+    // revoked), and the refresh token would then stay valid. So we renew an expired access token first, which also
+    // invalidates the old refresh token, and revoke the new one. This also waits for a renewal already in progress,
+    // whose new tokens would otherwise never be revoked.
+    const accessToken = await getGitHubAccessToken(auth);
+    await postJson("revoke", {access_token: accessToken});
 }
 
 // Whether the connection is (still) valid: asking for the authenticated user checks the token.

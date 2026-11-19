@@ -458,7 +458,14 @@ export async function createGitLabProject(auth: GitLabAuth, name: string): Promi
 
 // Revokes the token, so Strype can no longer access GitLab with it.
 export async function disconnectFromGitLab(auth: GitLabAuth): Promise<void> {
-    await postOAuthForm(auth.instance, "revoke", {token: auth.accessToken});
+    // A renewal in progress would replace the tokens once done: we wait for it, so we revoke the new ones.
+    // (if it failed, we still try to revoke the tokens we have)
+    await refreshes.get(auth)?.catch(() => {});
+    // GitLab doesn't revoke an expired access token (but still answers it did), and its refresh token would then stay valid.
+    // The access token and its refresh token are revoked together, so we revoke the refresh token, which doesn't expire.
+    await postOAuthForm(auth.instance, "revoke", (auth.refreshToken)
+        ? {token: auth.refreshToken, token_type_hint: "refresh_token"}
+        : {token: auth.accessToken});
 }
 
 // Whether the connection is (still) valid: asking for the authenticated user checks the token.

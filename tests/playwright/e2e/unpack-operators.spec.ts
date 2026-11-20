@@ -15,7 +15,9 @@ const importsLiteral = getDefaultStrypeProjectImportsFullLine();
 function expectedProject(mainLines: string) : string {
     // (The trailing spaces after the last two lines are part of the saved format, hence the explicit escapes.)
     return "#(=> Strype:1:std\n" + docLiteral + "#(=> Section:Imports\n" + importsLiteral + "#(=> Section:Definitions\n#(=> Section:Main\n"
-        + mainLines + "myString  = \"Hello from Strype\" \n" + "print(myString) \n" + "#(=> Section:End\n";
+        + mainLines + "myString  = \"Hello from Strype\" \n" + "print(myString) \n"
+        + "#(=> Section:Testing\ndef test_my_code ( ) :\n    '''Add assert statements to test your code'''\n    pass\n"
+        + "#(=> Section:End\n";
 }
 
 test.beforeEach(async ({ page, browserName }, testInfo) => {

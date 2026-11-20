@@ -17,8 +17,9 @@
 //    the same way it would be if the user had typed that text in the label (see checkSlotRefactoring()).
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
-import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, FlatSlotBase, FrameObject, FrozenState, isSlotBracketType, isSlotQuoteType, SlotCoreInfos, SlotType } from "@/types/types";
+import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, FlatSlotBase, FrameObject, FrozenState, isSlotBracketType, isSlotCodeType, isSlotQuoteType, SlotCoreInfos, SlotType } from "@/types/types";
 import { getLabelSlotUID, parseCodeLiteral, trimmedKeywordOperators } from "@/helpers/editor";
+import { pythonKeywords } from "@/helpers/pythonOperators";
 import { getAllChildrenAndJointFramesIds, getFrameSectionIdFromFrameId, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import { isMacOSPlatform } from "@/helpers/common";
 import { invalidateParamPromptCache } from "@/autocompletion/acManager";
@@ -264,14 +265,19 @@ function replaceInLabel(frameId: number, labelIndex: number, edits: LabelEdit[])
     const lastEdit = edits[edits.length - 1];
 
     // If all the edits can be done directly in the slots, we do so.
-    // Strings, comments, docs... take any text; a code slot can only directly take a simple token,
-    // anything else could need splitting the slot (operators, brackets...) so we let the label be re-parsed below.
+    // Free text labels (comments, docs...) take any text and are never re-parsed. In other labels, a code or string slot can only
+    // directly take a simple token (an identifier or a number): anything else could need splitting the slot (operators, brackets,
+    // a quote ending a string...), a keyword could need to become an operator, and an empty slot could need to be removed,
+    // so we let the label be re-parsed below. The formal parameters of a function are always re-parsed, as they need the
+    // parameter prompts to be updated.
+    const isFormalParamsLabel = frame.frameType.labels[labelIndex].allowedSlotContent == AllowedSlotContent.ONLY_FORMAL_PARAMS;
     const directEdits = edits.map((edit) => {
         const singleSlot = getMatchSingleSlot({frameId, labelIndex, start: edit.start, end: edit.end});
         if (singleSlot) {
             const slot = retrieveSlotFromSlotInfos(singleSlot.slotInfos) as BaseSlot;
             const newCode = slot.code.substring(0, singleSlot.start) + edit.replacement + slot.code.substring(singleSlot.end);
-            if (label.isFreeText || singleSlot.slotInfos.slotType == SlotType.string || /^[\p{L}\p{N}_]*$/u.test(newCode)) {
+            const isSimpleToken = /^[\p{L}\p{N}_]+$/u.test(newCode) && !trimmedKeywordOperators.includes(newCode) && !pythonKeywords.has(newCode);
+            if (label.isFreeText || (isSlotCodeType(singleSlot.slotInfos.slotType) && isSimpleToken && !isFormalParamsLabel)) {
                 return {slot, start: singleSlot.start, end: singleSlot.end, replacement: edit.replacement};
             }
         }
@@ -298,12 +304,20 @@ function replaceInLabel(frameId: number, labelIndex: number, edits: LabelEdit[])
     // The operators that aren't keywords have no spaces around them in the searchable text: a match starting [resp. ending] with
     // such an operator (or a bracket...) separates the code before [resp. after] it from the replacement. If that code and the replacement
     // are both words (e.g. "+" replaced by "and" in "a+b"), we add a space between them so they remain separate tokens.
+    // Also, a keyword operator is only parsed as such with spaces around it: if the replacement starts [resp. ends] with one
+    // that isn't in a string and is next to a symbol, a bracket or the start [resp. end] of the label (e.g. "tax" replaced by
+    // "and" in "tax*raw"), we add a space there too. (Next to a word, the match is in the middle of a word and we leave it as is.)
     const isWordChar = (char: string | undefined) => char != undefined && /[\p{L}\p{N}_]/u.test(char);
+    const isInString = (pos: number) => label.segments.some((seg) => seg.flatSlot?.type == SlotType.string && pos >= seg.start && pos <= seg.start + seg.text.length);
+    const needsKeywordSpace = (word: string | undefined, neighbourChar: string | undefined, pos: number) =>
+        word != undefined && trimmedKeywordOperators.includes(word) && !isWordChar(neighbourChar) && !/\s/.test(neighbourChar ?? "") && !isInString(pos);
     let newText = "", lastPos = 0, lastEditStartInNewText = 0, lastEditInsertedLength = 0;
     edits.forEach((edit) => {
         const replacement = edit.replacement.replaceAll(MEDIA_PLACEHOLDER, "");
-        const spaceBefore = (isWordChar(label.text[edit.start - 1]) && !isWordChar(label.text[edit.start]) && isWordChar(replacement[0])) ? " " : "";
-        const spaceAfter = (isWordChar(label.text[edit.end]) && !isWordChar(label.text[edit.end - 1]) && isWordChar(replacement[replacement.length - 1])) ? " " : "";
+        const spaceBefore = ((isWordChar(label.text[edit.start - 1]) && !isWordChar(label.text[edit.start]) && isWordChar(replacement[0]))
+            || needsKeywordSpace(replacement.match(/^[\p{L}\p{N}_]+/u)?.[0], label.text[edit.start - 1], edit.start)) ? " " : "";
+        const spaceAfter = ((isWordChar(label.text[edit.end]) && !isWordChar(label.text[edit.end - 1]) && isWordChar(replacement[replacement.length - 1]))
+            || needsKeywordSpace(replacement.match(/[\p{L}\p{N}_]+$/u)?.[0], label.text[edit.end], edit.end)) ? " " : "";
         newText += label.text.substring(lastPos, edit.start);
         lastEditStartInNewText = newText.length;
         lastEditInsertedLength = spaceBefore.length + replacement.length + spaceAfter.length;

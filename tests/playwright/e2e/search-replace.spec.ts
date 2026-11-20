@@ -523,6 +523,41 @@ if price and tax  :
     expect(renderedSlots).toEqual(await getRenderedMainCodeSlots(page));
 });
 
+test("Replacements within a single slot that aren't a simple token render the slots as if the code was loaded", async ({page}) => {
+    await loadContent(page, `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+price  = tax * raw
+print("Hello from Strype")
+#(=> Section:End
+`);
+    await waitForEditorSettled(page);
+    await page.keyboard.press(searchReplaceShortcut);
+    await widget(page).getByLabel("Match case").check();
+    // A name replaced by a keyword operator, which must become an operator
+    await searchInput(page).fill("tax");
+    await replaceInput(page).fill("and");
+    await expect(status(page)).toHaveText("1 of 1");
+    await page.locator("#searchReplaceReplaceAllButton").click();
+    await expect(status(page)).toHaveText("1 replaced");
+    // Quotes inserted in a string, which end the string
+    await searchInput(page).fill("Hello");
+    await replaceInput(page).fill("\"hi\"");
+    await expect(status(page)).toHaveText("1 of 1");
+    await page.locator("#searchReplaceReplaceAllButton").click();
+    await expect(status(page)).toHaveText("1 replaced");
+    await replaceInput(page).press("Escape");
+    await expect(widget(page)).toBeHidden();
+    await waitForEditorSettled(page);
+
+    const savedCode = await getSavedCode(page);
+    const renderedSlots = await getRenderedMainCodeSlots(page);
+    await loadContent(page, savedCode);
+    await waitForEditorSettled(page);
+    expect(renderedSlots).toEqual(await getRenderedMainCodeSlots(page));
+});
+
 // Right-clicks near the bottom right corner of an element (which is empty for the code part and the left pane with our small project)
 async function rightClickBottomOf(page: Page, elementId: string): Promise<void> {
     const box = await getBox(page.locator("#" + elementId));

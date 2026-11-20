@@ -40,4 +40,18 @@ test.describe("Convert to Python file", () => {
         await expect(page.getByText(en.appMessage.preCompiledErrorNeedFix).and(page.locator(":visible"))).toBeVisible();
         expect(downloaded).toBe(false);
     });
+
+    // Part of https://github.com/k-pet-group/Strype/issues/848: unpack "*" and "**" are unary,
+    // so the generated Python must keep them tight against their operand (no space or placeholder after them), including right after "{":
+    test("Keeps unpack operators tight against their operand", async ({page}) => {
+        await enterCode(page, ["", "", "def f(*a, **b):\n    pass\nf(1, *[2], **{'k': 3})\nx = {**{'a': 1}, **{'b': 2}}\nfirst, *rest = [1, 2, 3]\n"]);
+        const [download] = await Promise.all([
+            page.waitForEvent("download"),
+            clickConvertToPython(page),
+        ]);
+        const py = readFileSync(await download.path(), "utf-8");
+        expect(py).toContain("f(1,*[2],**{'k':3})");
+        expect(py).toContain("x  = {**{'a':1},**{'b':2}}");
+        expect(py).toContain("first,*rest  = [1,2,3]");
+    });
 });

@@ -102,6 +102,15 @@ export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotCo
     // sign binds as tightly as "~" rather than sharing binary +/-'s much looser precedence.
     const isUnarySignAt = slotStructure.operators.map((operatorSlot, index) =>
         (operatorSlot.code === "-" || operatorSlot.code === "+") && !hasRealOperandBefore(index));
+    // An unpack "*"/"**" (e.g. f(*a), [x,*rest], {**d}) is unary: it sits at the start of a level or
+    // right after a comma, with a blank where a left operand would be. Like unary "-"/"+", it needs
+    // no left operand, so it must not be treated as a binary operator with a missing left-hand side.
+    const isExpandAt = slotStructure.operators.map((operatorSlot, index) => {
+        const field = slotStructure.fields[index];
+        return (operatorSlot.code === "*" || operatorSlot.code === "**")
+            && (index === 0 || slotStructure.operators[index - 1].code === ",")
+            && isFieldBaseSlot(field) && field.code.trim() === "";
+    });
     // Computed once per level (i.e. per bracketed/top-level expression), so that
     // spacing scales with the operators actually present at that level only.
     const precedenceTiers = calculatePrecedenceTiers(slotStructure.operators.map((operatorSlot) => operatorSlot.code), isUnarySignAt);
@@ -146,7 +155,9 @@ export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotCo
                 // "not"/"~"/"lambda" above -- but unlike those, "+"/"-" are ambiguous with the
                 // binary operators of the same spelling, so we can't just add them to
                 // UNARY_PREFIX_OPERATORS; isUnarySignAt has already disambiguated this occurrence:
-                !isUnarySignAt[index];
+                !isUnarySignAt[index] &&
+                // Likewise for an unpack "*"/"**", which is only ever unary in that position:
+                !isExpandAt[index];
             addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(slot, fieldSlot)}, adjacentOp, opBefore, operatorSlot.code);
         }   
 
@@ -1425,22 +1436,36 @@ export function showIndexDBError(errorMsg:string) : void {
     useStore().showMessage(msg, null);
 }
 
+// Frames inside the Testing section (the test functions and their contents) are deliberately kept
+// out of frameTypeCounts, importFrameCounts and oopHint, and counted separately in testFrameTypeCounts
+// and sectionFrameCounts.tests: this way the existing counts (and e.g. recognising the unmodified starter
+// project) are not affected by the starter's test function or the tests that users write.
 export function computeFrameSnapshot() : {
     frameTypeCounts: Record<string, number>;
+    testFrameTypeCounts: Record<string, number>;
     importFrameCounts: { import: number; fromimport: number; library: number };
-    sectionFrameCounts: { imports: number; defs: number; main: number };
+    sectionFrameCounts: { imports: number; defs: number; main: number; tests: number };
     oopHint: boolean
     } {
     const frameTypeCounts: Record<string, number> = {};
+    const testFrameTypeCounts: Record<string, number> = {};
     const importFrameCounts = {import: 0, fromimport: 0, library: 0};
-    const sectionFrameCounts = {imports: 0, defs: 0, main: 0};
+    const sectionFrameCounts = {imports: 0, defs: 0, main: 0, tests: 0};
     const importsContainerId = useStore().getImportsFrameContainerId;
     const defsContainerId = useStore().getDefsFrameContainerId;
     const mainContainerId = useStore().getMainCodeFrameContainerId;
+    const testsContainerId = useStore().getTestsFrameContainerId;
     Object.values(useStore().frameObjects)
         .filter((frame) => frame.id > 0)
         .forEach((frame) => {
             const frameType = frame.frameType.type;
+            const containerId = getFrameContainer(frame.id);
+            if (containerId === testsContainerId) {
+                sectionFrameCounts.tests += 1;
+                testFrameTypeCounts[frameType] = (testFrameTypeCounts[frameType] ?? 0) + 1;
+                return;
+            }
+            
             frameTypeCounts[frameType] = (frameTypeCounts[frameType] ?? 0) + 1;
             if (frameType === AllFrameTypesIdentifier.import) {
                 importFrameCounts.import += 1;
@@ -1452,7 +1477,6 @@ export function computeFrameSnapshot() : {
                 importFrameCounts.library += 1;
             }
             
-            const containerId = getFrameContainer(frame.id);
             if (containerId === importsContainerId) {
                 sectionFrameCounts.imports += 1;
             }
@@ -1467,6 +1491,7 @@ export function computeFrameSnapshot() : {
     const funcdefCount = frameTypeCounts[AllFrameTypesIdentifier.funcdef] ?? 0;
     return {
         frameTypeCounts,
+        testFrameTypeCounts,
         importFrameCounts,
         sectionFrameCounts,
         oopHint: classdefCount > 0 && funcdefCount > 0,

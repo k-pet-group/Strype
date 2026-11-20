@@ -240,6 +240,40 @@ test.describe("nodeToSlots: calls, attributes, subscripts, slices", () => {
         expect(argsField.operators.map((o) => o.code)).toEqual(["*", ",", "**"]);
     });
 
+    test("double-splat in dict display (issue #848)", () => {
+        const result = exprSlots("{\"a\":1,**other}\n");
+        const inner = result.fields[1] as SlotsStructure;
+        expect(inner.operators.map((o) => o.code)).toEqual(["", "", ":", ",", "**"]);
+        // (the two leading blank operators are the string literal's quote slots; the "**" is
+        // preceded by a blank field, i.e. it is in unary position, same as for "*rest")
+        expect((inner.fields[4] as {code: string}).code).toBe("");
+    });
+
+    test("double-splat first in dict display", () => {
+        const result = exprSlots("{**a,**b}\n");
+        const inner = result.fields[1] as SlotsStructure;
+        expect(inner.operators.map((o) => o.code)).toEqual(["**", ",", "**"]);
+    });
+
+    test("rest patterns in match-case sequence/mapping patterns (issue #848)", () => {
+        const expectedOps: [string, string[]][] = [
+            ["{\"name\":name,**rest}", ["", "", ":", ",", "**"]],
+            ["[a,b,*rest]", [",", ",", "*"]],
+        ];
+        for (const [pat, ops] of expectedOps) {
+            const tree = parser.parse("match x:\n    case " + pat + ":\n        pass\n");
+            const casePattern = tree.rootNode.descendantsOfType("case_clause")[0].child(1);
+            if (!casePattern) {
+                throw new Error("No case pattern found for: " + pat);
+            }
+            const bracket = nodeToSlots(casePattern).fields[1] as SlotsStructure;
+            expect(bracket.operators.map((o) => o.code)).toEqual(ops);
+            // The rest name is preceded by a blank field, i.e. the splat is in unary position:
+            expect((bracket.fields.at(-2) as {code: string}).code).toBe("");
+            expect((bracket.fields.at(-1) as {code: string}).code).toBe("rest");
+        }
+    });
+
     test("subscript", () => {
         const result = exprSlots("a[1]\n");
         expect(result.fields[0]).toEqual(field("a"));

@@ -157,7 +157,7 @@ import { DAPWrapper } from "./helpers/partial-flashing";
 import { mapStores } from "pinia";
 import {getAdjacentColourSlotInfos, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos, getFrameBelowCaretPosition, checkCodeErrors, calculateNextCollapseState, showIndexDBError} from "./helpers/storeMethods";
 import { cloneDeep } from "lodash";
-import {pasteMixedPython} from "@/helpers/pythonToFrames";
+import {ensureMediaLiteralImports, pasteMixedPython} from "@/helpers/pythonToFrames";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 import EditImageDlg from "@/components/EditImageDlg.vue";
 import EditSoundDlg from "@/components/EditSoundDlg.vue";
@@ -2193,6 +2193,8 @@ export default defineComponent({
             const restoreOriginalCursor = () => this.restoreSlotFocusAndSelection(restoreAnchor, restoreFocus);
 
             const commitInsertion = (replacement: {code: string, mediaType: string}) => {
+                // The literal needs load_image()/load_sound() to be imported, so add that import if it's missing:
+                ensureMediaLiteralImports([kind]);
                 this.appStore.addNewSlot(targetSlotInfos, replacement.mediaType, lhsCode, rhsCode, SlotType.media, false, replacement.code);
                 // Explicitly place the cursor in the new trailing (empty) field right after the
                 // inserted media, mirroring the same three calls onGetCaret() uses when a user

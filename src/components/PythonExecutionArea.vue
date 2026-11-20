@@ -1005,6 +1005,14 @@ export default defineComponent({
                 return;
             }
 
+            try {
+                this.appStore.enqueueAnalyticsEvent("test_run", computeFrameSnapshot());
+                this.appStore.flushAnalyticsQueue("critical");
+            }
+            catch (e) {
+                console.error("Analytics error", e);
+            }
+
             const pythonConsole = this.$refs.pythonConsole as HTMLTextAreaElement;
             // Like a normal Run, start by clearing the previous run's errors (and the previous tests' outcomes):
             this.appStore.wasLastRuntimeErrorFrameId = undefined;

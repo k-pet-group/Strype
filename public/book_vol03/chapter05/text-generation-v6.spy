@@ -20,7 +20,7 @@ def make_ngrams (text,n ) :
     '''Take a text as a parameter and return a list of the bigrams in the text.'''
     words  = text.split() 
     word_lists  = [words[i:] for i in range(n)] 
-    ngram_list  = list(zip(___strype_blank * word_lists)) 
+    ngram_list  = list(zip(*word_lists)) 
     ngrams  = defaultdict(list) 
     for t  in ngram_list  :
         ngrams[t[:-1]].append(t[-1]) 
@@ -39,7 +39,7 @@ text  = text + read_file("/books/winnie-the-pooh.txt")
 ngrams  = make_ngrams(text,4) 
 
 prev_words  = ("There","was","a") 
-print(___strype_blank * prev_words,end=" ") 
+print(*prev_words,end=" ") 
 for n  in range(80)  :
     next_word  = generate_next_word(prev_words,ngrams) 
     print(next_word,end=" ") 

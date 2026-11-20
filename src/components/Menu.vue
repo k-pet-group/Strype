@@ -1983,7 +1983,9 @@ export default defineComponent({
     // below this) forcing every direct child of the menu to display:flex -- that breaks a
     // <table>'s row/cell layout, so this needs to explicitly win it back.
     display: table !important;
-    margin-left: 5%;
+    // The table spans the whole menu so the labels can take the width the controls leave (see below):
+    // the left indentation is done by the first column.
+    width: 100%;
     color: black;
     border-collapse: collapse;
 }
@@ -1993,7 +1995,30 @@ export default defineComponent({
 }
 
 .appMenu-prefs-div td:first-child {
+    // About 5% of the menu's (fixed) width
+    padding-left: 10px;
     padding-right: 8px;
+}
+
+// The menu is too narrow for all the labels to stay on one line next to their controls: the controls
+// column is fitted to the controls first, and the labels take the remaining width, wrapping where the
+// browser finds sensible (between words, or between characters in a language like Chinese).
+.appMenu-prefs-div td:last-child {
+    width: 1%;
+    white-space: nowrap;
+    // Keep the controls off the menu's right edge
+    padding-right: 5px;
+}
+
+// When a label wraps (e.g. "Frame numbers:"), its control is aligned with the label's last line,
+// the one ending with the colon that leads to the control.
+.appMenu-prefs-div td:last-child {
+    vertical-align: bottom;
+}
+
+// Remove the browser's default left margin of the checkbox, so it's aligned with the other controls
+#frameNumbersCheckboxId {
+    margin-left: 0;
 }
 
 .menu-icons-div {

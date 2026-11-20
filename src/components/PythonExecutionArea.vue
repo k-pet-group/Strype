@@ -88,7 +88,7 @@
             <!-- Unmounts/remounts on every switch to/from the Files tab (v-if, not v-show), matching
                  how it always behaved as a frame-shortcuts-pane tab before it moved here: the pane's
                  own mounted() -> refresh() is what re-fetches "/local" from localFsCache.ts's cache. -->
-            <FileSystemPane v-if="isFilesAreaShowing" class="pea-files-container" />
+            <FileSystemPane v-if="isFilesAreaShowing" class="pea-files-container" :projectLoadCount="projectLoadCount" />
             <div :class="{[scssVars.peaToggleLayoutButtonsContainerClassName]: true, hidden: (!isTabContentHovered || isPythonExecuting || isFilesAreaShowing)}">
                 <div v-for="(layoutData, index) in PEALayoutsData" :key="'strype-PEA-Layout-'+index"
                     @click="togglePEALayout(layoutData.mode, true)" :title="$t('PEA.'+layoutData.iconName)">
@@ -136,6 +136,7 @@ import { TurtlePixiHandler } from "@/stryperuntime/turtle_pixi_handler";
 import {closeAudioContext, createOrGetAudioContext} from "@/helpers/audioContext";
 import {clearAllRuntimeErrors, clearAllTestOutcomes, computeFrameSnapshot} from "@/helpers/storeMethods";
 import {listEntriesForWorker} from "@/helpers/localFsCache";
+import {isCloudMountReadOnly} from "@/helpers/fileSystemTabIO";
 import html2canvas from "html2canvas";
 import FileSystemPane from "@/components/FileSystemTab/FileSystemPane.vue";
 
@@ -310,6 +311,8 @@ export default defineComponent({
             hoverCoordsAtTopRight: false,
             copyConsoleTextBtnClicked: false, // flag used for UI
             graphicsOverride: null as {background: OffscreenCanvas | HTMLImageElement, imageToShowCentered: OffscreenCanvas | HTMLImageElement} | null,
+            // Bumped when a project is loaded (see clear()), so a showing File system tab lists the new project's files
+            projectLoadCount: 0,
         };
     },
 
@@ -888,6 +891,7 @@ export default defineComponent({
                     micropipLibraries,
                     userLibraries,
                     typeof(this.appStore.strypeProjectLocation) === "string",
+                    isCloudMountReadOnly(),
                     Comlink.proxy((asreq : SyncOrAsyncStrypePyodideWorkerRequest) => serialize(() => {
                         if (asreq.kind == "async") {
                             asyncBridge(asreq.request);
@@ -1067,7 +1071,7 @@ export default defineComponent({
                 console.error("Service worker sync channel not responding; file access during tests may fail");
             }
 
-            client.call(client.workerProxy.executeTests, mainCode, importsCode, testsCode, micropipLibraries, userLibraries, typeof(this.appStore.strypeProjectLocation) === "string", testFileRequestHandler).then((results: TestRunResults) => {
+            client.call(client.workerProxy.executeTests, mainCode, importsCode, testsCode, micropipLibraries, userLibraries, typeof(this.appStore.strypeProjectLocation) === "string", isCloudMountReadOnly(), testFileRequestHandler).then((results: TestRunResults) => {
                 let output: string;
                 if (results.collectionError) {
                     output = `Could not run tests:\n${results.collectionError}\n`;
@@ -1326,6 +1330,10 @@ export default defineComponent({
             sendNextKey = () => {};
             renderer.clear();
             this.redrawCanvas();
+
+            // This is only called when a project is loaded: the File system tab must show its files
+            // (its pinned files are restored into "/local" just after this call)
+            this.projectLoadCount++;
         },
 
         // Note: this is called from our graphics API in strype_graphics_input_internal.ts

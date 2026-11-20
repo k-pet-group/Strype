@@ -279,7 +279,19 @@ function rememberSelection(location: GitLocationStruct) {
     selectedBranch.value = location.branchId;
 }
 
-defineExpose({open, openForSave, rememberSelection});
+// Forgets what the dialog kept from the user's account (repositories, branches and the location used last),
+// so none of it shows if someone else connects next (when the user signs out).
+function forget() {
+    repositories.value = [];
+    branches.value = [];
+    selectedRepository.value = "";
+    selectedBranch.value = "";
+    rememberedLocation.value = null;
+    pickerRootFolder.value = null;
+    pickedItem.value = null;
+}
+
+defineExpose({open, openForSave, rememberSelection, forget});
 </script>
 <style lang="scss">
 .git-file-picker-selectors {

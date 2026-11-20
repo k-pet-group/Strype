@@ -1436,22 +1436,36 @@ export function showIndexDBError(errorMsg:string) : void {
     useStore().showMessage(msg, null);
 }
 
+// Frames inside the Testing section (the test functions and their contents) are deliberately kept
+// out of frameTypeCounts, importFrameCounts and oopHint, and counted separately in testFrameTypeCounts
+// and sectionFrameCounts.tests: this way the existing counts (and e.g. recognising the unmodified starter
+// project) are not affected by the starter's test function or the tests that users write.
 export function computeFrameSnapshot() : {
     frameTypeCounts: Record<string, number>;
+    testFrameTypeCounts: Record<string, number>;
     importFrameCounts: { import: number; fromimport: number; library: number };
-    sectionFrameCounts: { imports: number; defs: number; main: number };
+    sectionFrameCounts: { imports: number; defs: number; main: number; tests: number };
     oopHint: boolean
     } {
     const frameTypeCounts: Record<string, number> = {};
+    const testFrameTypeCounts: Record<string, number> = {};
     const importFrameCounts = {import: 0, fromimport: 0, library: 0};
-    const sectionFrameCounts = {imports: 0, defs: 0, main: 0};
+    const sectionFrameCounts = {imports: 0, defs: 0, main: 0, tests: 0};
     const importsContainerId = useStore().getImportsFrameContainerId;
     const defsContainerId = useStore().getDefsFrameContainerId;
     const mainContainerId = useStore().getMainCodeFrameContainerId;
+    const testsContainerId = useStore().getTestsFrameContainerId;
     Object.values(useStore().frameObjects)
         .filter((frame) => frame.id > 0)
         .forEach((frame) => {
             const frameType = frame.frameType.type;
+            const containerId = getFrameContainer(frame.id);
+            if (containerId === testsContainerId) {
+                sectionFrameCounts.tests += 1;
+                testFrameTypeCounts[frameType] = (testFrameTypeCounts[frameType] ?? 0) + 1;
+                return;
+            }
+            
             frameTypeCounts[frameType] = (frameTypeCounts[frameType] ?? 0) + 1;
             if (frameType === AllFrameTypesIdentifier.import) {
                 importFrameCounts.import += 1;
@@ -1463,7 +1477,6 @@ export function computeFrameSnapshot() : {
                 importFrameCounts.library += 1;
             }
             
-            const containerId = getFrameContainer(frame.id);
             if (containerId === importsContainerId) {
                 sectionFrameCounts.imports += 1;
             }
@@ -1478,6 +1491,7 @@ export function computeFrameSnapshot() : {
     const funcdefCount = frameTypeCounts[AllFrameTypesIdentifier.funcdef] ?? 0;
     return {
         frameTypeCounts,
+        testFrameTypeCounts,
         importFrameCounts,
         sectionFrameCounts,
         oopHint: classdefCount > 0 && funcdefCount > 0,

@@ -37,7 +37,7 @@
         "@imengyu/vue3-context-menu": "^1.5.4",
         "@microbit/microbit-fs": "^0.9.2",
         "@popperjs/core": "^2.11.4",
-        "@tigerpython/tpparser": "^1.2.3",
+        "@tigerpython/tpparser": "^1.2.4",
         "@types/google.accounts": "^0.0.2",
         "@types/google.picker": "^0.0.39",
         "@types/jquery": "^3.5.16",

@@ -528,6 +528,13 @@ export default defineComponent({
             return true;
         },
 
+        // Whether the operators (at any nesting level) differ between two slot structures, which are assumed to be isomorphic.
+        haveOperatorsChanged(before: SlotsStructure, after: SlotsStructure) : boolean {
+            const slotDef = getSlotDefFromInfos({frameId: this.frameId, labelSlotsIndex: this.labelIndex});
+            const operatorCodes = (struct: SlotsStructure) => generateFlatSlotBases(slotDef, struct).filter((flatSlot) => flatSlot.type == SlotType.operator).map((flatSlot) => flatSlot.code).join("\u0000");
+            return operatorCodes(before) != operatorCodes(after);
+        },
+
         checkSlotRefactoring(slotUID: string, stateBeforeChanges: any, options?: {skipCursorSetAndStateSave?: boolean, skipStateSaveOnly?: boolean, doAfterCursorSet?: VoidFunction, useFlatMediaDataCode?: boolean, ignoreBlurEditableSlot?: boolean, triggeredByEnter?: boolean, treatAsBlurred?: boolean}) {
             // Slot errors will be check later again. We clear off the notification on the parent (frame header) for slot errors so it can reset the triangle error indicator
             vueComponentsAPIHandler.frameHeaderComponentAPI?.forInstance[this.frameId].setHasErroneousSlot(false);
@@ -565,7 +572,10 @@ export default defineComponent({
                 const majorChange = this.majorChange(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures, parsedCodeRes.slots);
                 // Chrome triggers a loss and reset of focus when the slots structure (and only structurally speaking) are changed in the store, typically when inserting operators
                 // so might want to ignore the events in this situation (ignore blur fully, and partially ignore refocus as some things in focus() should not be done).
-                if(detectBrowser() == "chrome" && !areSlotStructuresIsomorphic(this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures, parsedCodeRes.slots)){
+                // The same applies when the structure keeps its shape but an operator's content changes (e.g. typing a second "*" turns the
+                // operator "*" into "**", likewise "//" or "=="): that is a major change, so everything is re-rendered and focus is lost just the same.
+                const previousSlotStructures = this.appStore.frameObjects[this.frameId].labelSlotsDict[this.labelIndex].slotStructures;
+                if(detectBrowser() == "chrome" && (!areSlotStructuresIsomorphic(previousSlotStructures, parsedCodeRes.slots) || (majorChange && this.haveOperatorsChanged(previousSlotStructures, parsedCodeRes.slots)))){
                     this.appStore.ignoreBlurEditableSlot = options?.ignoreBlurEditableSlot??false;
                     this.partialIgnoreRefocus = true;
                 }

@@ -22,7 +22,7 @@ def make_ngrams (text,n ) :
     for i  in range(n)  :
         word_lists.append(words[i:]) 
     
-    ngrams  = zip(___strype_blank * word_lists) 
+    ngrams  = zip(*word_lists) 
     return list(ngrams) 
 def generate_next_word (prev_words,ngrams ) :
     '''Given some previous words and a list of n-grams, return a next word by randomly selecting one of the n-grams that matches the previous words.
@@ -47,7 +47,7 @@ ngrams  = make_ngrams(text,4)
 
 #If our n-grams are length 4, the prev_words must be length 3 (always one less)
 prev_words  = ("There","was","a") 
-print(___strype_blank * prev_words,end=" ") 
+print(*prev_words,end=" ") 
 for n  in range(80)  :
     next_word  = generate_next_word(prev_words,ngrams) 
     print(next_word,end=" ") 

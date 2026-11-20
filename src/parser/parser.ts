@@ -972,12 +972,12 @@ export default class Parser {
                 // "not"/"lambda") are left tight against their operand, as before.
                 // there could be an error on an operator, so we included it in the slot positions
                 if(flatSlot.code.length > 0){
-                    // The expand/unpack "*" (e.g. f(*a), [*a], first,*rest = x) has no dedicated
+                    // The expand/unpack "*" and "**" (e.g. f(*a), f(**a), [*a], {**a}, first,*rest = x) have no dedicated
                     // precedence tier of its own (unlike unary +/-, it's not part of
                     // calculatePrecedenceTiers' isUnarySignAt handling), so detect it the same way
-                    // structurally: it's unary whenever nothing but an opening bracket or a comma
+                    // structurally: it's unary whenever nothing but an opening bracket/brace or a comma
                     // (or the very start of the expression) precedes it:
-                    const isExpandStar = flatSlot.code === "*" && /(^|[([,])\s*$/.test(code);
+                    const isExpandStar = (flatSlot.code === "*" || flatSlot.code === "**") && /(^|[([{,])\s*$/.test(code);
                     const isUnary = flatSlot.operatorPrecedenceTier === "sign-medium" || UNARY_PREFIX_OPERATORS.has(flatSlot.code) || isExpandStar;
                     const isStructural = [".", ",", ":", "="].includes(flatSlot.code);
                     // Add extra 2 characters for the surrounding spaces

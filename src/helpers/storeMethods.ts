@@ -102,6 +102,15 @@ export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotCo
     // sign binds as tightly as "~" rather than sharing binary +/-'s much looser precedence.
     const isUnarySignAt = slotStructure.operators.map((operatorSlot, index) =>
         (operatorSlot.code === "-" || operatorSlot.code === "+") && !hasRealOperandBefore(index));
+    // An unpack "*"/"**" (e.g. f(*a), [x,*rest], {**d}) is unary: it sits at the start of a level or
+    // right after a comma, with a blank where a left operand would be. Like unary "-"/"+", it needs
+    // no left operand, so it must not be treated as a binary operator with a missing left-hand side.
+    const isExpandAt = slotStructure.operators.map((operatorSlot, index) => {
+        const field = slotStructure.fields[index];
+        return (operatorSlot.code === "*" || operatorSlot.code === "**")
+            && (index === 0 || slotStructure.operators[index - 1].code === ",")
+            && isFieldBaseSlot(field) && field.code.trim() === "";
+    });
     // Computed once per level (i.e. per bracketed/top-level expression), so that
     // spacing scales with the operators actually present at that level only.
     const precedenceTiers = calculatePrecedenceTiers(slotStructure.operators.map((operatorSlot) => operatorSlot.code), isUnarySignAt);
@@ -146,7 +155,9 @@ export const generateFlatSlotBases = (slot: { allowedSlotContent?: AllowedSlotCo
                 // "not"/"~"/"lambda" above -- but unlike those, "+"/"-" are ambiguous with the
                 // binary operators of the same spelling, so we can't just add them to
                 // UNARY_PREFIX_OPERATORS; isUnarySignAt has already disambiguated this occurrence:
-                !isUnarySignAt[index];
+                !isUnarySignAt[index] &&
+                // Likewise for an unpack "*"/"**", which is only ever unary in that position:
+                !isExpandAt[index];
             addFlatSlot({...(fieldSlot as BaseSlot), id: slotId, type: evaluateSlotType(slot, fieldSlot)}, adjacentOp, opBefore, operatorSlot.code);
         }   
 

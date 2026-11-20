@@ -55,6 +55,12 @@ describe("Python round-trip", () => {
         ["f(*a)\n", "f(*a)\n"],
         ["x = [*a]\n", "x = [*a]\n"],
         ["first,*rest = x\n", "first,*rest = x\n"],
+        // Rest patterns in match-case (issue #848):
+        ["match x:\n    case [a,b,*rest]:\n        pass\n", "match x:\n    case [a,b,*rest]:\n        pass\n"],
+        ["match x:\n    case {\"name\":name,**rest}:\n        pass\n", "match x:\n    case {\"name\":name,**rest}:\n        pass\n"],
+        // Double-splat in a plain dict display (not a pattern):
+        ["x = {\"a\":1,**other}\n", "x = {\"a\":1,**other}\n"],
+        ["x = {**a,**b}\n", "x = {**a,**b}\n"],
         // Single element tuples (made using a trailing comma in a bracket):
         ["(x,) = a\n", "(x,) = a\n"],
         ["print((100,))\n", "print((100,))\n"],

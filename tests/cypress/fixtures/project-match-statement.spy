@@ -29,14 +29,16 @@ def handle_value (value ) :
         # 3. Sequence patterns
         case [x,y]  :
             return f"Got a 2‑item list: x={x}, y={y}" 
-        #case [x, y, *rest]:
-        #    return f"List with at least 2 items: x={x}, y={y}, rest={rest}"
+        case [x,y,*rest]  :
+            return f"List with at least 2 items: x={x}, y={y}, rest={rest}" 
+        case [first,*_]  :
+            return f"Starts with {first}" 
         
         # 4. Mapping patterns
         case {"type":"point","x":x,"y":y}  :
             return f"Got a point: ({x}, {y})" 
-        #case {"type": "user", "name": name, **extra}:
-        #    return f"User {name} with extra fields {extra}"
+        case {"type":"user","name":name,**extra}  :
+            return f"User {name} with extra fields {extra}" 
         
         # 5. Class patterns
         case complex(real=r,imag=i)  :

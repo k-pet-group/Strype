@@ -179,6 +179,15 @@
             <!-- Localisation -->
             <table class="appMenu-prefs-div">
                 <tbody>
+                    <!-- sign out from the cloud target the project is synced with: it's a row of this table so that its cross is aligned with the controls below -->
+                    <template v-if="showMenu && isSyncingToCloud">
+                        <tr id="signOutFromCloudLink" role="button" :class="scssVars.strypeMenuItemClassName" @click="requestSignOutFromCloud"
+                            :title="signOutFromCloudLabel" :aria-label="signOutFromCloudLabel">
+                            <td class="cloud-sign-out-name">{{ syncedCloudDriveName }}</td>
+                            <td><span class="cloud-sign-out-cross" aria-hidden="true">&#x2716;</span></td>
+                        </tr>
+                        <tr class="menu-separator-row"><td colspan="2"></td></tr>
+                    </template>
                     <tr>
                         <td><label :for="frameNumbersCheckboxId">{{$t("appMenu.frameNumbers")}}</label></td>
                         <td><input type="checkbox" :id="frameNumbersCheckboxId" v-model="frameNumbersEnabled" @change="showMenu=false;" @click="setCurrentTabIndexFromEltId(frameNumbersCheckboxId)"></td>
@@ -698,6 +707,16 @@ export default defineComponent({
             return "shareCloudDriveProjectWithGDRadioBtn";
         },
 
+        syncedCloudDriveName(): string {
+            // Retrieved from the sync target (so it's re-evaluated when the project's target changes) rather than
+            // with getDriveName(), which gives the name of the Drive the cloud handler last worked with
+            return (this.isSyncingToCloud) ? (vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getSpecificCloudDriveComponent(this.appStore.syncTarget)?.driveName??"") : "";
+        },
+
+        signOutFromCloudLabel(): string {
+            return this.$t("appMessage.signOutFromCloud", {providername: this.syncedCloudDriveName});
+        },
+
         canShareProjectViaCloud(): boolean {
             return isSyncTargetCloudDrive(this.appStore.syncTarget);
         },
@@ -942,6 +961,11 @@ export default defineComponent({
                     eventBus.emit(CustomEventTypes.showStrypeModal, this.saveProjectModalDlgId);
                 }
             }
+        },
+
+        requestSignOutFromCloud(){
+            this.showMenu = false;
+            vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.requestSignOut(this.appStore.syncTarget);
         },
 
         saveToSuggestedCloudLocation(){
@@ -1983,8 +2007,8 @@ export default defineComponent({
     // below this) forcing every direct child of the menu to display:flex -- that breaks a
     // <table>'s row/cell layout, so this needs to explicitly win it back.
     display: table !important;
-    // The table spans the whole menu so the labels can take the width the controls leave (see below):
-    // the left indentation is done by the first column.
+    // The table spans the whole menu so that the separator row (below the cloud sign out row)
+    // is as wide as the menu's other separators: the left indentation is done by the first column.
     width: 100%;
     color: black;
     border-collapse: collapse;
@@ -1994,7 +2018,7 @@ export default defineComponent({
     padding: 2px 0;
 }
 
-.appMenu-prefs-div td:first-child {
+.appMenu-prefs-div td:first-child:not([colspan]) {
     // About 5% of the menu's (fixed) width
     padding-left: 10px;
     padding-right: 8px;
@@ -2003,11 +2027,32 @@ export default defineComponent({
 // The menu is too narrow for all the labels to stay on one line next to their controls: the controls
 // column is fitted to the controls first, and the labels take the remaining width, wrapping where the
 // browser finds sensible (between words, or between characters in a language like Chinese).
-.appMenu-prefs-div td:last-child {
+.appMenu-prefs-div td:last-child:not([colspan]) {
     width: 1%;
     white-space: nowrap;
     // Keep the controls off the menu's right edge
     padding-right: 5px;
+}
+
+#signOutFromCloudLink {
+    cursor: pointer;
+}
+
+// A border on a (collapsed) table row would shift the layout when it gets the focus, so we use an outline instead
+#signOutFromCloudLink:focus {
+    border: none !important;
+    outline: $strype-menu-entry-focus-border;
+    outline-offset: -2px;
+}
+
+// The provider name stays on one line (it's a name)
+.cloud-sign-out-name {
+    white-space: nowrap;
+}
+
+.cloud-sign-out-cross {
+    color: #dc3545;
+    font-weight: bold;
 }
 
 // When a label wraps (e.g. "Frame numbers:"), its control is aligned with the label's last line,
@@ -2019,6 +2064,11 @@ export default defineComponent({
 // Remove the browser's default left margin of the checkbox, so it's aligned with the other controls
 #frameNumbersCheckboxId {
     margin-left: 0;
+}
+
+.menu-separator-row > td {
+    border-top: 1px solid #c5c4c1;
+    padding: 0 !important;
 }
 
 .menu-icons-div {

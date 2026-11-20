@@ -5,7 +5,11 @@ export async function dragDividerTo(page: Page, locator: string, x: number, y: n
     const box = await getSplitterPos(page, locator);
 
     const currentX = box.x + box.width / 2;
-    const currentY = box.y + box.height / 2;
+    // A thin horizontal splitter (the 1px one between the frame commands and the Python execution area) is grabbed
+    // just above its line rather than in its middle: its grab area extends a couple of pixels either side of the line
+    // (see its :before in Commands.vue), but the PEA's controls row, below it, can be drawn over the lower part of
+    // that area, so a press in the middle may reach the PEA instead of the splitter:
+    const currentY = (box.width > box.height && box.height < 4) ? box.y - 1 : box.y + box.height / 2;
 
     await page.mouse.move(currentX, currentY);
     await page.mouse.down();

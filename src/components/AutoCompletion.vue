@@ -344,8 +344,9 @@ export default defineComponent({
             const imported = await getAllExplicitlyImportedItems(context);
             this.acResults = {};
             if (token != null && kind == "string") {
-                this.acResults[this.$t("autoCompletion.builtinFiles")] = assetFileCompletions;
+                // User's own files go first, as with user-defined items in code:
                 this.acResults[this.$t("autoCompletion.yourFiles")] = localFileCompletions();
+                this.acResults[this.$t("autoCompletion.builtinFiles")] = assetFileCompletions;
                 this.showSuggestionsAC(token);
             }
             else if (token === null) {

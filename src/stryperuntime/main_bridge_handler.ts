@@ -95,6 +95,12 @@ export const handleFileSyncRequests : SyncPromiseStrypePyodideHandlerFunction = 
         case StrypeSyncTarget.od:
             cloudName = "Microsoft OneDrive";
             break;
+        case StrypeSyncTarget.gh:
+            cloudName = "GitHub";
+            break;
+        case StrypeSyncTarget.gl:
+            cloudName = "GitLab";
+            break;
         default:
             break;
         }

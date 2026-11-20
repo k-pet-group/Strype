@@ -29,6 +29,16 @@ function isDir(mode: number) {
     return (mode & S_IFDIR) != 0;
 }
 
+// The permission bits of the nodes we create.  When mounted read-only (the files of a Git provider, see executePython()),
+// there is no write permission, so Emscripten itself refuses opening a file for writing, truncating it or creating
+// a new one, which raises a PermissionError in Python (as for the read-only bundled assets).
+function getPermissionBits(mount: any, forDir: boolean) : number {
+    if (mount?.opts?.readOnly) {
+        return forDir ? 0o555 : 0o444;
+    }
+    return 0o777;
+}
+
 function llseek(stream : FSStream, offset : number, whence : number) {
     var position = offset;
     if (whence === SEEK_CUR) {
@@ -129,7 +139,7 @@ export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPl
             if (!r) {
                 throw new pyodide.FS.ErrnoError(ENOENT);
             }
-            const node = pyodide.FS.createNode(parent, name, (r.isDir ? S_IFDIR : S_IFREG) | 0o777, 0);
+            const node = pyodide.FS.createNode(parent, name, (r.isDir ? S_IFDIR : S_IFREG) | getPermissionBits(parent.mount, r.isDir), 0);
             node.strypeCloudFileId = r.fileId;
             if (r.isDir) {
                 node.node_ops = DIR_NODE_OPS;
@@ -174,7 +184,7 @@ export function getFSForEmscripten(pyodide: PyodideAPI) : EmscriptenFileSystemPl
         mount(mount) {
             // Although we are mounted at /cloud, within our own file system it is "/"
             // so we must give that as the root node:
-            const root : FSNode = pyodide.FS.createNode(null, "/", S_IFDIR | 0o777, 0);
+            const root : FSNode = pyodide.FS.createNode(null, "/", S_IFDIR | getPermissionBits(mount, true), 0);
             root.mount = mount;
             // I know this looks weird but apparently to denote the root node of a file system,
             // Emscripten uses the fact that the root's parent is itself:

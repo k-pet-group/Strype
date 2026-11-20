@@ -19,7 +19,7 @@ import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import { AllFrameTypesIdentifier, AllowedSlotContent, BaseSlot, CaretPosition, CollapsedState, FlatSlotBase, FrameObject, FrozenState, isSlotBracketType, isSlotQuoteType, SlotCoreInfos, SlotType } from "@/types/types";
 import { getLabelSlotUID, parseCodeLiteral, trimmedKeywordOperators } from "@/helpers/editor";
-import { getAllChildrenAndJointFramesIds, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
+import { getAllChildrenAndJointFramesIds, getFrameSectionIdFromFrameId, retrieveSlotFromSlotInfos } from "@/helpers/storeMethods";
 import { isMacOSPlatform } from "@/helpers/common";
 import { invalidateParamPromptCache } from "@/autocompletion/acManager";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
@@ -443,6 +443,21 @@ export function revealFrame(frameId: number): boolean {
         return true;
     }
     return false;
+}
+
+// Makes sure the section of a frame is showing: the third section of the editor shows either the main code or the testing
+// code (see the store's mainSectionShowsTests), the other one is still rendered, but hidden. If the frame is in the one hidden,
+// we switch to it (which moves the frame cursor to the top of that section). Returns true if the section was switched.
+export function revealFrameSection(frameId: number): boolean {
+    const store = useStore();
+    const sectionId = getFrameSectionIdFromFrameId(frameId);
+    const isInHiddenSection = (store.mainSectionShowsTests) ? sectionId == store.getMainCodeFrameContainerId : sectionId == store.getTestsFrameContainerId;
+    if (!isInHiddenSection) {
+        return false;
+    }
+    // (nothing happens while a program is running, see setMainSectionShowsTests())
+    store.setMainSectionShowsTests(!store.mainSectionShowsTests);
+    return store.mainSectionShowsTests == (sectionId == store.getTestsFrameContainerId);
 }
 
 // Opens the search and replace widget from a context menu (frames, frame caret), with the replace part folded or not

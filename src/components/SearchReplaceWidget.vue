@@ -95,7 +95,7 @@ import { mapStores } from "pinia";
 import { useStore } from "@/store/store";
 import { CaretPosition, CriticalActionPositioning, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos } from "@/types/types";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
-import { buildSearchRegExp, findAllMatches, getEditorCaretSearchAnchor, getMatchDOMRanges, getMatchSingleSlot, getSearchReplaceShortcut, replaceAllMatches, replaceMatch, revealFrame, SearchMatch, SearchOptions } from "@/helpers/searchReplace";
+import { buildSearchRegExp, findAllMatches, getEditorCaretSearchAnchor, getMatchDOMRanges, getMatchSingleSlot, getSearchReplaceShortcut, replaceAllMatches, replaceMatch, revealFrame, revealFrameSection, SearchMatch, SearchOptions } from "@/helpers/searchReplace";
 import { CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, isFullyInViewport, setDocumentSelection } from "@/helpers/editor";
 import { checkCodeErrors } from "@/helpers/storeMethods";
 import { isMacOSPlatform } from "@/helpers/common";
@@ -628,9 +628,25 @@ export default defineComponent({
         },
 
         // Shows the matches in the editor, and if requested, makes sure the current match can be seen
-        // (which may require expanding collapsed frames, and scrolling).
+        // (which may require switching between the main code and the testing code, expanding collapsed frames, and scrolling).
         updateHighlights(showCurrentMatch: boolean) {
             const currentMatch = this.matches[this.currentMatchIndex];
+            // (the section that isn't showing is still rendered, so we can't rely on the match's elements being found to know if it can be seen)
+            if (showCurrentMatch && currentMatch) {
+                // Switching the section clears the document's selection, which leaves the popup's field that has the focus (the user may be typing
+                // the search) without a text cursor: the browser no longer inserts what is typed. We put the field's text cursor (or selection) back.
+                const focusedInput = (document.activeElement instanceof HTMLInputElement && (this.$refs.widget as HTMLElement | undefined)?.contains(document.activeElement))
+                    ? document.activeElement : null;
+                const inputSelection = (focusedInput) ? {start: focusedInput.selectionStart, end: focusedInput.selectionEnd, direction: focusedInput.selectionDirection} : null;
+                if (revealFrameSection(currentMatch.frameId)) {
+                    if (focusedInput && inputSelection && inputSelection.start != null && inputSelection.end != null) {
+                        focusedInput.focus();
+                        focusedInput.setSelectionRange(inputSelection.start, inputSelection.end, inputSelection.direction ?? undefined);
+                    }
+                    this.$nextTick(() => this.updateHighlights(showCurrentMatch));
+                    return;
+                }
+            }
             if (showCurrentMatch && currentMatch && getMatchDOMRanges(currentMatch) == null && revealFrame(currentMatch.frameId)) {
                 // The editor needs to be updated after expanding frames before we can find the match's elements
                 this.$nextTick(() => this.updateHighlights(showCurrentMatch));

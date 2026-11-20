@@ -595,3 +595,66 @@ test("The editor's background context menu has undo, redo and find, but not the 
     await rightClickBottomOf(page, await strypeElIds(page).getCommandsRightPaneContainerId());
     await expect(page.locator(".mx-context-menu")).toHaveCount(0);
 });
+
+test("Going to a match in the section that isn't showing (My code or Test code) switches to it", async ({page}) => {
+    await loadContent(page, `#(=> Strype:1:std
+#(=> Section:Imports
+#(=> Section:Definitions
+#(=> Section:Main
+check = 1 
+#(=> Section:Testing
+def test_check ( ) :
+    assert check == 1 
+#(=> Section:End
+`);
+    await waitForEditorSettled(page);
+    const selectedTab = page.locator("#frameContainer_-3 .frame-container-header .frame-container-tab-selected");
+    const mainAssignment = page.locator("#frameContainer_-3 .frame-div[data-frameType='varassign']");
+    const testAssert = page.locator("#frameContainer_-4 .frame-div[data-frameType='assert']");
+    await expect(selectedTab).toHaveAttribute("data-tab", "main");
+    await page.keyboard.press(findShortcut);
+    // The search starts from the frame cursor, which loading leaves below the last frame of My code: the first match
+    // is in Test code, which is shown as soon as the search is typed
+    await page.keyboard.type("chec");
+    await expect(selectedTab).toHaveAttribute("data-tab", "tests");
+    await expect(testAssert).toBeVisible();
+    // The popup is still opened, with the focus in the search field, which still has its text cursor so the user can carry on typing:
+    // switching the section clears the document's selection, which leaves an input unable to take what the user types in the browser
+    // (Playwright's typing would still work, so we check the selection itself)
+    await expect(searchInput(page)).toBeFocused();
+    await expect.poll(() => page.evaluate(() => document.getSelection()?.rangeCount)).toEqual(1);
+    await page.keyboard.type("k");
+    await expect(searchInput(page)).toHaveValue("check");
+    // The assignment in My code, the test function's name and the assert in Test code: we go to the match in My code
+    await expect(status(page)).toHaveText(/^\d of 3$/);
+    const firstIndex = parseInt(await status(page).textContent() as string);
+    for (let i = firstIndex; i <= 3 && firstIndex > 1; i++) {
+        await page.keyboard.press("Enter");
+    }
+    await expect(status(page)).toHaveText("1 of 3");
+    await expect(selectedTab).toHaveAttribute("data-tab", "main");
+    await expect(mainAssignment).toBeVisible();
+    // The next match is in Test code: it is shown
+    await page.keyboard.press("Enter");
+    await expect(status(page)).toHaveText("2 of 3");
+    await expect(selectedTab).toHaveAttribute("data-tab", "tests");
+    await expect(testAssert).toBeVisible();
+    await expect(mainAssignment).toBeHidden();
+    await expect(searchInput(page)).toBeFocused();
+    await page.keyboard.press("Enter");
+    await expect(status(page)).toHaveText("3 of 3");
+    await expect(selectedTab).toHaveAttribute("data-tab", "tests");
+    // Wrapping around goes back to My code, and going backwards to Test code again
+    await page.keyboard.press("Enter");
+    await expect(status(page)).toHaveText("1 of 3");
+    await expect(selectedTab).toHaveAttribute("data-tab", "main");
+    await expect(mainAssignment).toBeVisible();
+    await page.keyboard.press("Shift+Enter");
+    await expect(status(page)).toHaveText("3 of 3");
+    await expect(selectedTab).toHaveAttribute("data-tab", "tests");
+    // Closing leaves the current match selected in the editor, in Test code
+    await page.keyboard.press("Escape");
+    await expect(widget(page)).toBeHidden();
+    await expect(selectedTab).toHaveAttribute("data-tab", "tests");
+    await expect.poll(() => page.evaluate(() => document.getSelection()?.toString())).toEqual("check");
+});

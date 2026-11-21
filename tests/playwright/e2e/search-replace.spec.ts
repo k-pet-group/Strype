@@ -631,7 +631,7 @@ test("The editor's background context menu has undo, redo and find, but not the 
     await expect(page.locator(".mx-context-menu")).toHaveCount(0);
 });
 
-test("Going to a match in the section that isn't showing (My code or Test code) switches to it", async ({page}) => {
+test("Going to a match in the section that isn't showing (My code or Test code) switches to it", async ({page, browserName}) => {
     await loadContent(page, `#(=> Strype:1:std
 #(=> Section:Imports
 #(=> Section:Definitions
@@ -655,9 +655,12 @@ def test_check ( ) :
     await expect(testAssert).toBeVisible();
     // The popup is still opened, with the focus in the search field, which still has its text cursor so the user can carry on typing:
     // switching the section clears the document's selection, which leaves an input unable to take what the user types in the browser
-    // (Playwright's typing would still work, so we check the selection itself)
+    // (Playwright's typing would still work, so we check the selection itself; Firefox keeps an input's text cursor out of the
+    // document's selection, which then has no range, so we can't check it there)
     await expect(searchInput(page)).toBeFocused();
-    await expect.poll(() => page.evaluate(() => document.getSelection()?.rangeCount)).toEqual(1);
+    if (browserName != "firefox") {
+        await expect.poll(() => page.evaluate(() => document.getSelection()?.rangeCount)).toEqual(1);
+    }
     await page.keyboard.type("k");
     await expect(searchInput(page)).toHaveValue("check");
     // The assignment in My code, the test function's name and the assert in Test code: we go to the match in My code

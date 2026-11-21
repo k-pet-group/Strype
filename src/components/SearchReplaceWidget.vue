@@ -93,10 +93,10 @@
 import { defineComponent } from "vue";
 import { mapStores } from "pinia";
 import { useStore } from "@/store/store";
-import { CaretPosition, CriticalActionPositioning, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos } from "@/types/types";
+import { areSlotCoreInfosEqual, CaretPosition, CriticalActionPositioning, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos } from "@/types/types";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { buildSearchRegExp, findAllMatches, getEditorCaretSearchAnchor, getMatchDOMRanges, getMatchSingleSlot, getSearchReplaceShortcut, replaceAllMatches, replaceMatch, revealFrame, revealFrameSection, SearchMatch, SearchOptions } from "@/helpers/searchReplace";
-import { CustomEventTypes, getFrameLabelSlotsStructureUID, getLabelSlotUID, isFullyInViewport, setDocumentSelection } from "@/helpers/editor";
+import { CustomEventTypes, getCaretRequestSeq, getFrameLabelSlotsStructureUID, getLabelSlotUID, isFullyInViewport, setDocumentSelection } from "@/helpers/editor";
 import { checkCodeErrors } from "@/helpers/storeMethods";
 import { isMacOSPlatform } from "@/helpers/common";
 import { BButton } from "bootstrap-vue-next";
@@ -117,6 +117,10 @@ function isOnElementScrollbar(element: Element, event: MouseEvent): boolean {
     const rect = element.getBoundingClientRect();
     return (element.clientWidth > 0 && event.clientX >= rect.left + element.clientLeft + element.clientWidth && event.clientX < rect.right)
         || (element.clientHeight > 0 && event.clientY >= rect.top + element.clientTop + element.clientHeight && event.clientY < rect.bottom);
+}
+
+function isSameSlotCursor(cursorInfos: SlotCursorInfos | undefined | null, otherCursorInfos: SlotCursorInfos): boolean {
+    return cursorInfos != null && cursorInfos.cursorPos == otherCursorInfos.cursorPos && areSlotCoreInfosEqual(cursorInfos.slotInfos, otherCursorInfos.slotInfos);
 }
 
 export default defineComponent({
@@ -140,6 +144,8 @@ export default defineComponent({
             // A message replacing the matches count for a short while after an action (e.g. "5 replaced")
             actionMessage: "",
             searchTimeoutHandle: -1,
+            // Whether the search scheduled (see scheduleSearch()) is for a changed search; null when no search is scheduled
+            pendingSearchChanged: null as boolean | null,
             // The position of the popup within the editor's column once the user has moved it (null: the default position, at the top right).
             // It's kept when the popup is closed, so it opens again where the user left it.
             position: null as {left: number, top: number} | null,
@@ -322,6 +328,7 @@ export default defineComponent({
             this.onDragEnd();
             this.clearHighlights();
             window.clearTimeout(this.searchTimeoutHandle);
+            this.pendingSearchChanged = null;
             this.matches = [];
             this.currentMatchIndex = -1;
             this.caretAfterReplacement = null;
@@ -432,25 +439,49 @@ export default defineComponent({
             }
             const anchorCursorInfos: SlotCursorInfos = {slotInfos, cursorPos: start};
             const focusCursorInfos: SlotCursorInfos = {slotInfos, cursorPos: end};
-            // The DOM focus, when editing, is held by the label's container (see LabelSlot.vue's onGetCaret()), then the slot is notified
-            // it gets the caret (which gets the editor into edition), and when that's done, we can set the selection.
-            document.getElementById(getFrameLabelSlotsStructureUID(slotInfos.frameId, slotInfos.labelSlotsIndex))?.focus();
-            slotElement.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
-            setTimeout(() => {
+            const applySelection = () => {
                 setDocumentSelection(anchorCursorInfos, focusCursorInfos);
                 this.appStore.setSlotTextCursors(anchorCursorInfos, focusCursorInfos);
+            };
+            // The DOM focus, when editing, is held by the label's container (see LabelSlot.vue's onGetCaret()), then the slot is notified
+            // it gets the caret (which gets the editor into edition). We set the selection straight away: what the user does next
+            // (typing, extending the selection, undoing...) must apply there, not where the browser puts the caret when focusing the container.
+            document.getElementById(getFrameLabelSlotsStructureUID(slotInfos.frameId, slotInfos.labelSlotsIndex))?.focus();
+            applySelection();
+            slotElement.dispatchEvent(new Event(CustomEventTypes.editableSlotGotCaret));
+            // Getting the caret is done asynchronously, so we set the selection again once it's done, unless the user has already
+            // done something else since (the selection, kept in the store by App.vue's selectionchange handler, has changed, or another
+            // slot got the caret): setting it again would then undo what the user did.
+            const caretRequestSeq = getCaretRequestSeq();
+            setTimeout(() => {
+                const isSelectionUnchanged = caretRequestSeq == getCaretRequestSeq()
+                    && isSameSlotCursor(this.appStore.anchorSlotCursorInfos, anchorCursorInfos) && isSameSlotCursor(this.appStore.focusSlotCursorInfos, focusCursorInfos);
+                if (isSelectionUnchanged) {
+                    applySelection();
+                }
             }, 50);
         },
 
         scheduleSearch(searchChanged: boolean) {
             window.clearTimeout(this.searchTimeoutHandle);
-            this.searchTimeoutHandle = window.setTimeout(() => this.doSearch(searchChanged), 100);
+            // (a change of the search scheduled before mustn't be lost because the code changed in the meantime)
+            this.pendingSearchChanged = (this.pendingSearchChanged ?? false) || searchChanged;
+            this.searchTimeoutHandle = window.setTimeout(() => this.doSearch(this.pendingSearchChanged ?? searchChanged), 100);
+        },
+
+        // Does the search scheduled, if there is one, now: the replacements must apply to the matches of what is in the fields
+        // (the user may replace right after typing the search, before the scheduled search is done)
+        flushScheduledSearch() {
+            if (this.pendingSearchChanged != null) {
+                this.doSearch(this.pendingSearchChanged);
+            }
         },
 
         // Searches the editor's code: if the search itself has changed, the current match is the first one from the editor's caret,
         // otherwise (when the code has changed) the first one from the current match.
         doSearch(searchChanged: boolean, anchor?: {labelOrder: number, offset: number}) {
             window.clearTimeout(this.searchTimeoutHandle);
+            this.pendingSearchChanged = null;
             if (!this.isOpened) {
                 return;
             }
@@ -497,6 +528,7 @@ export default defineComponent({
         },
 
         replaceCurrent() {
+            this.flushScheduledSearch();
             if (!this.canReplace) {
                 return;
             }
@@ -528,6 +560,7 @@ export default defineComponent({
         },
 
         replaceAll() {
+            this.flushScheduledSearch();
             if (!this.canReplace) {
                 return;
             }

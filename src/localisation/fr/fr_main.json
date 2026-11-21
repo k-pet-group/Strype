@@ -276,7 +276,9 @@
     "cannotCollapseErrors": "Réduction impossible avec des erreurs",
     "freeze": "Verrouiller",
     "unfreeze": "Déverrouiller",
-    "cannotFreezeErrors": "Verrouillage impossible avec des erreurs"
+    "cannotFreezeErrors": "Verrouillage impossible avec des erreurs",
+    "find": "Rechercher...",
+    "searchReplace": "Rechercher et remplacer..."
   },
   "appMenu": {
     "downloadHex": "Convertir vers Hex",
@@ -415,9 +417,30 @@
     "builtinTurtle": "Turtle",
     "builtinMicrobit": "micro:bit"
   },
+  "searchReplace": {
+    "title": "Rechercher et remplacer",
+    "titleFind": "Rechercher",
+    "find": "Rechercher",
+    "replace": "Remplacer",
+    "replaceWith": "Remplacer par",
+    "matchCase": "Respecter la casse",
+    "wholeWord": "Mot entier",
+    "previous": "Précédent",
+    "previousTooltip": "Résultat précédent (Maj+Entrée)",
+    "next": "Suivant",
+    "nextTooltip": "Résultat suivant (Entrée)",
+    "close": "Fermer (Échap)",
+    "replaceOneWithShortcut": "Remplacer <span class=\"kb-shortcut\">(Entrée)</span>",
+    "replaceAllWithShortcut": "Tout remplacer <span class=\"kb-shortcut\">({modifierkey}Entrée)</span>",
+    "noResults": "Aucun résultat",
+    "matchCount": "{current} sur {total}",
+    "readOnly": "(lecture seule)",
+    "replacedCount": "{count} remplacé(s)"
+  },
   "shortcut": {
     "delete": "Suppr",
     "ctrlPlus": "Ctrl+",
+    "shiftPlus": "Maj+",
     "period": "Point"
   },
   "fileSystemTab": {

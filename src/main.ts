@@ -7,7 +7,7 @@ import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap-vue-next/dist/bootstrap-vue-next.css";
 import scssVars  from "@/assets/style/_export.module.scss";
 import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_NEXTTICK_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "./helpers/sharedIdCssWithTests";
-import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getFrameContainerUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getImportFileInputId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNewProjectLinkId, getSaveProjectLinkId, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, getShareProjectLinkId} from "./helpers/editor";
+import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getFrameContainerUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getImportFileInputId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNewProjectLinkId, getSaveProjectLinkId, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, getShareProjectLinkId, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId} from "./helpers/editor";
 import "@imengyu/vue3-context-menu/lib/vue3-context-menu.css";
 import ContextMenu from "@imengyu/vue3-context-menu";
 import { initialiseAnalytics } from "./helpers/initialiseAnalytics";
@@ -89,6 +89,9 @@ else {
 (window as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME] = {
     getEditorID: getEditorID,
     getEditorMenuUID: getEditorMenuUID,
+    getMenuLeftPaneUID: getMenuLeftPaneUID,
+    getEditorMiddleUID: getEditorMiddleUID,
+    getCommandsRightPaneContainerId: getCommandsRightPaneContainerId,
     getFrameContainerUID: getFrameContainerUID,
     getFrameUID: getFrameUID,
     getFrameHeaderUID: getFrameHeaderUID, 

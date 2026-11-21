@@ -134,6 +134,7 @@
     "resetProject": "Nuevo proyecto",
     "resetProjectTooltip": "Restablecer el editor con el proyecto predeterminado de Strype",
     "lang": "Idioma: ",
+    "frameNumbers": "Números de marco:",
     "version": "versión",
     "homepage": "Página de inicio de Strype"
   },

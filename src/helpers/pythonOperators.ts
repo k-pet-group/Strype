@@ -15,3 +15,11 @@ export const operators = [".","+","-","/","*","%",":","//","**","&","|","~","^",
 // gives it no semantic support (no parameter-list awareness) -- it's a pass-through.
 export const keywordOperatorsWithSurroundSpaces = [" and ", " in ", " is not ", " is ", " or ", " not in ", " not ", " as ", " if ", " else ", " for ", " lambda "];
 export const trimmedKeywordOperators = keywordOperatorsWithSurroundSpaces.map((spacedOp) => spacedOp.trim());
+
+// Python's reserved words (as in keyword.kwlist), which can't be used as identifiers.
+export const pythonKeywords = new Set([
+    "False", "None", "True", "and", "as", "assert", "async", "await",
+    "break", "class", "continue", "def", "del", "elif", "else", "except",
+    "finally", "for", "from", "global", "if", "import", "in", "is", "lambda",
+    "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with", "yield",
+]);

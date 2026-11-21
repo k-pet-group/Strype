@@ -57,7 +57,8 @@
   "appMenu": {
     "downloadHex": "Μετατροπή σε Εξαδικό αρχείο",
     "downloadPython": "Μετατροπή σε Αρχείο Python",
-    "lang": "Γλώσσα: "
+    "lang": "Γλώσσα: ",
+    "frameNumbers": "Αριθμοί πλαισίων:"
   },
   "autoCompletion": {
     "myFunctions": "Συναρτήσεις μου",

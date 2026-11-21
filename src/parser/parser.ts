@@ -1,6 +1,7 @@
 import Compiler from "@/compiler/compiler";
 import {hasNonRuntimeCodeError, trimmedKeywordOperators} from "@/helpers/editor";
 import { UNARY_PREFIX_OPERATORS } from "@/helpers/operatorPrecedence";
+import { pythonKeywords } from "@/helpers/pythonOperators";
 import { generateFlatSlotBases, getFrameSectionIdFromFrameId, getParentOrJointParent, retrieveSlotByPredicate } from "@/helpers/storeMethods";
 import i18n from "@/i18n";
 import { useStore } from "@/store/store";
@@ -47,13 +48,6 @@ function isValidPythonName(name: string): boolean {
     // Match Unicode identifiers: start with a Unicode letter or _, then letters/digits/underscores
     // \p{ID_Start} and \p{ID_Continue} are Unicode property escapes (ECMAScript 2018+)
     const identifierRegex = /^[\p{ID_Start}_][\p{ID_Continue}_]*$/u;
-
-    const pythonKeywords = new Set([
-        "False", "None", "True", "and", "as", "assert", "async", "await",
-        "break", "class", "continue", "def", "del", "elif", "else", "except",
-        "finally", "for", "from", "global", "if", "import", "in", "is", "lambda",
-        "nonlocal", "not", "or", "pass", "raise", "return", "try", "while", "with", "yield",
-    ]);
 
     return identifierRegex.test(name) && !pythonKeywords.has(name);
 }

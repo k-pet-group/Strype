@@ -168,6 +168,11 @@ export type ColourPickerDlgComponentAPI = {
   getHexValue: () => string | null,
 }
 
+export type SearchReplaceWidgetComponentAPI = {
+  open: (withReplace: boolean, initialSearchText?: string) => void,
+  isOpened: () => boolean,
+}
+
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 export type PEAComponentAPI = {
   togglePEALayout:(layoutMode: StrypePEALayoutMode, userTriggeredAction?: boolean) => void,

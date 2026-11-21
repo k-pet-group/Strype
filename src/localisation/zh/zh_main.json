@@ -149,6 +149,7 @@
     "resetProject": "新项目",
     "resetProjectTooltip": "使用 Strype 默认项目重置编辑器",
     "lang": "语言：",
+    "frameNumbers": "框架编号：",
     "homepage": "Strype 主页",
     "version": "版本"
   },

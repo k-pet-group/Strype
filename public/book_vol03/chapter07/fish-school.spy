@@ -156,5 +156,6 @@ while True  :
         a  = add(scale(f.velocity,1 / 15),(f.get_x(),f.get_y())) 
         f.set_location(a[0],a[1]) 
         f.set_rotation(math.degrees(math.atan2(f.velocity[1],f.velocity[0]))) 
+    sync_graphics() 
     pace(30) 
 #(=> Section:End

@@ -6,6 +6,28 @@ export interface PyodideErrorDetails {
     traceback: {filename: string, lineno: number}[]
 }
 
+// Result of running the Testing section's code via pytest.
+export interface TestRunResult {
+    nodeId: string,
+    outcome: "passed" | "failed" | "error",
+    message: string,
+    // Best-effort crash location (see pytest_runtest_logreport in python-execution.ts), used to
+    // highlight the offending frame in the editor the same way a normal Run's error does. Any of
+    // these can be null/undefined if pytest didn't report a reprcrash for this result (e.g. a
+    // plain pytest.fail() reason) or the crash wasn't in either generated file we can map back to
+    // frames (e.g. inside a library pytest itself loaded).
+    crashMessage?: string | null,
+    lineno?: number | null,
+    crashFile?: "main" | "tests" | null,
+}
+
+export interface TestRunResults {
+    // Set when pytest itself could not be run at all (e.g. a syntax error in the test/main code
+    // that stopped collection) -- in that case `results` will be empty.
+    collectionError: string | null,
+    results: TestRunResult[],
+}
+
 export async function serviceWorkerReadyAndInControl() : Promise<void> {
     await navigator.serviceWorker.ready;
 
@@ -30,7 +52,7 @@ export async function serviceWorkerReadyAndInControl() : Promise<void> {
 // python-execution.ts) -- `document` and `navigator.serviceWorker` aren't necessarily defined
 // there (Chromium doesn't expose navigator.serviceWorker to Workers at all: crbug.com/40364838),
 // so both are guarded rather than assumed:
-export async function isServiceWorkerChannelResponsive(channelBaseUrl: string, timeoutMs = 800) : Promise<boolean> {
+export async function isServiceWorkerChannelResponsive(channelBaseUrl: string, timeoutMs = 800, onFailureDetail?: (detail: string) => void) : Promise<boolean> {
     // Logged (temporarily, while we're chasing down a report of the Run button getting stuck on
     // "Stop" with nothing happening, even though the page stayed foregrounded/visible throughout)
     // so a repro can confirm whether this pre-flight check is the thing catching (or failing to
@@ -50,10 +72,15 @@ export async function isServiceWorkerChannelResponsive(channelBaseUrl: string, t
         // unmatched path correctly falls through to a real 404 instead:
         const response = await fetch(channelBaseUrl + "/version", {method: "POST", signal: AbortSignal.timeout(timeoutMs)});
         console.info(`${logPrefix} -> responsive=${response.ok} (status ${response.status})`);
+        if (!response.ok) {
+            // A fast 404 means the request reached the real server, i.e. we are not controlled:
+            onFailureDetail?.(`status ${response.status}`);
+        }
         return response.ok;
     }
     catch (err) {
         console.info(`${logPrefix} -> responsive=false (${err})`);
+        onFailureDetail?.(`${err}`);
         return false;
     }
 }

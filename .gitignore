@@ -48,3 +48,5 @@ public/pysrc.zip
 public/compiled-service-worker.js
 public/pyodide/
 components.d.ts
+public/gh-auth/server.js
+public/gh-auth/.env

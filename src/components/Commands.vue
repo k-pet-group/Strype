@@ -10,10 +10,14 @@
                         <div :class="scssVars.strypeProjectNameContainerClassName">
                             <span class="project-name">{{projectName}}</span>
                             <div @mouseover="getLastProjectSavedDateTooltip" :title="lastProjectSavedDateTooltip">
-                                <img v-if="isProjectFromCloudDrive" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
-                                <img v-else-if="isProjectFromFS" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/> 
+                                <img v-if="isProjectFromCloudDrive" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/>
+                                <img v-else-if="isProjectFromFS" :src="syncedTargetLogo" :alt="syncedTargetName" class="project-target-logo"/>
                                 <span class="gdrive-sync-label" v-if="!isProjectNotSourced && !isEditorContentModifiedFlag">{{ $t("appMessage.saved") }}</span>
                                 <span class="gdrive-sync-label" v-else-if="isEditorContentModifiedFlag" :class="{'modifed-label-span': isProjectNotSourced}">{{ $t("appMessage.modified") }}</span>
+                                <button v-if="isProjectFromCloudDrive" type="button" id="signOutFromCloudButton" class="cloud-sign-out-btn" @click="requestSignOutFromCloud"
+                                    :title="$t('appMessage.signOutFromCloud', {providername: syncedTargetName})" :aria-label="$t('appMessage.signOutFromCloud', {providername: syncedTargetName})">
+                                    <i class="fas fa-sign-out-alt"></i>
+                                </button>
                             </div>
                         </div>
                         <div class="commands-flex-fill" @mousedown.prevent.stop @mouseup.prevent.stop>
@@ -43,8 +47,8 @@
                                                 <p class="frame-cmd-row add-frame-commands-list">
                                                     <AddFrameCommand
                                                         v-for="addFrameCommand in addFrameCommands"
-                                                        :id="addFrameCommandUID(addFrameCommand[0].type.type)"
-                                                        :key="addFrameCommand[0].type.type"
+                                                        :id="addFrameCommandUID(addFrameCommand[0].testsSectionOnly ? 'testfunc' : addFrameCommand[0].type.type)"
+                                                        :key="addFrameCommand[0].testsSectionOnly ? 'testfunc' : addFrameCommand[0].type.type"
                                                         :type="addFrameCommand[0].type.type"
                                                         :shortcut="addFrameCommand[0].shortcuts[0]"
                                                         :symbol="
@@ -176,10 +180,12 @@ import { isMacOSPlatform } from "@/helpers/common";
 import fsIcon from "@/assets/images/FSicon.png";
 import gdIcon from "@/assets/images/logoGDrive.png";
 import odIcon from "@/assets/images/logoOneDrive.svg";
+import ghIcon from "@/assets/images/logoGitHub.svg";
+import glIcon from "@/assets/images/logoGitLab.svg";
 import { findCurrentStrypeLocation, STRYPE_LOCATION } from "@/helpers/pythonToFrames";
 import { clamp } from "lodash";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
-import { eventBus } from "@/helpers/appContext";
+import { eventBus, TestingSectionAvailable } from "@/helpers/appContext";
 import { BTab, BTabs } from "bootstrap-vue-next";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import {Splitpanes, Pane} from "splitpanes";
@@ -287,6 +293,10 @@ export default defineComponent({
                 return gdIcon;
             case StrypeSyncTarget.od:
                 return odIcon;
+            case StrypeSyncTarget.gh:
+                return ghIcon;
+            case StrypeSyncTarget.gl:
+                return glIcon;
             default:
                 return "";
             }
@@ -299,6 +309,8 @@ export default defineComponent({
                 return this.$t("appMessage.targetFS");
             case StrypeSyncTarget.gd:
             case StrypeSyncTarget.od:
+            case StrypeSyncTarget.gh:
+            case StrypeSyncTarget.gl:
                 return (cloudDriveHandlerComponentAPI?.getDriveName())??"";
             default:
                 return "";
@@ -669,6 +681,25 @@ export default defineComponent({
                     return;
                 }
 
+                // With the frame cursor (so not while editing a slot), Alt+T (Option+T on a Mac) switches between My code and Test code,
+                // as does the plain left arrow key when the cursor is at the top of the section that is showing. (This takes over from
+                // the usual left-arrow move to the end of the section above, which for My code is Definitions; the up arrow key
+                // still goes there.) The key code is checked for the shortcut because Option+T types another character on a Mac. Nothing
+                // happens while a program is running, as for clicking the tabs, nor with a menu open or frames being dragged.
+                if(TestingSectionAvailable && !isEditing && !isDraggingFrames && !isPythonExecuting && !this.appStore.isAppMenuOpened && !event.repeat){
+                    const isAltT = (event.code === "KeyT" && event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey);
+                    const shownSectionId = this.appStore.mainSectionShowsTests ? this.appStore.getTestsFrameContainerId : this.appStore.getMainCodeFrameContainerId;
+                    const isLeftAtTopOfSection = (event.key === "ArrowLeft" && !event.altKey && !event.ctrlKey && !event.metaKey && !event.shiftKey
+                        && this.appStore.currentFrame.id === shownSectionId && this.appStore.currentFrame.caretPosition === CaretPosition.body);
+                    if(isAltT || isLeftAtTopOfSection){
+                        event.preventDefault();
+                        event.stopImmediatePropagation();
+                        event.stopPropagation();
+                        this.appStore.setMainSectionShowsTests(!this.appStore.mainSectionShowsTests);
+                        return;
+                    }
+                }
+
                 // Tab or Space at the frame caret opens the frame commands pane (letting the user then
                 // either press a shortcut letter, or arrow to a command and press Enter) instead of their
                 // usual jobs (Tab normally moves to the next navigable position, Space normally inserts a
@@ -952,6 +983,10 @@ export default defineComponent({
             return getAddFrameCmdElementUID(commandType);
         },
 
+        requestSignOutFromCloud(){
+            vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.requestSignOut(this.appStore.syncTarget);
+        },
+
         // Inserts the frame matching this (lowercased) shortcut key -- by its original shortcut, its
         // legacy shortcut (see getLegacyShortcut, editor.ts), or a hidden shorthand -- exactly as the
         // direct top-level dispatch always has. Returns whether a match was found and dispatched, so
@@ -961,6 +996,8 @@ export default defineComponent({
         // game once the pane is focused.
         insertFrameForShortcutKey(eventKeyLowCase: string): boolean {
             const isHiddenShorthandFrameCommand = (hiddenShorthandFrames[eventKeyLowCase] !== undefined
+                && (!hiddenShorthandFrames[eventKeyLowCase].testsSectionOnly
+                    || (TestingSectionAvailable && getFrameSectionIdFromFrameId(this.appStore.currentFrame.id) == this.appStore.getTestsFrameContainerId))
                 && Object.values(this.addFrameCommands).flat().flatMap((addFrameDef) => addFrameDef.type.type).includes(hiddenShorthandFrames[eventKeyLowCase].type.type));
 
             if(this.addFrameCommands[eventKeyLowCase] === undefined
@@ -1495,6 +1532,21 @@ export default defineComponent({
     height: 16px;
     margin-left: 15px;
     margin-right: 5px;
+}
+
+.cloud-sign-out-btn {
+    border: none;
+    background: none;
+    padding: 0 2px;
+    margin-left: 6px;
+    font-size: 12px;
+    line-height: 1;
+    color: #6c757d;
+    cursor: pointer;
+}
+
+.cloud-sign-out-btn:hover, .cloud-sign-out-btn:focus-visible {
+    color: #274D19;
 }
 
 .gdrive-sync-label {

@@ -111,6 +111,7 @@ export const StandardFrameTypesIdentifiers = {
     continue: "continue",
     try: "try",
     raise: "raise",
+    assert: "assert",
     with: "with",
     return: "return",
     varassign: "varassign",
@@ -272,6 +273,14 @@ export function generateAllFrameDefinitionTypes(): void{
         type: StandardFrameTypesIdentifiers.raise,
         labels: [
             { label: "raise ", defaultText: en.frame.defaultText.exception, optionalSlot: OptionalSlotType.HIDDEN_WHEN_UNFOCUSED_AND_BLANK },
+        ],
+    };
+
+    const AssertDefinition: FramesDefinitions = {
+        ...StatementDefinition,
+        type: StandardFrameTypesIdentifiers.assert,
+        labels: [
+            { label: "assert ", defaultText: en.frame.defaultText.condition },
         ],
     };
 
@@ -475,6 +484,7 @@ export function generateAllFrameDefinitionTypes(): void{
         BreakDefinition,
         ContinueDefinition,
         RaiseDefinition,
+        AssertDefinition,
         TryDefinition,
         ExceptDefinition,
         FinallyDefinition,
@@ -644,6 +654,11 @@ export const allFrameCommandsDefs = {
         type: getFrameDefType(AllFrameTypesIdentifier.raise),
         description: "raise",
         shortcuts: ["a"],
+    }],
+    "k": [{
+        type: getFrameDefType(AllFrameTypesIdentifier.assert),
+        description: "assert",
+        shortcuts: ["k"],
     }],
     "h": [{
         type: getFrameDefType(AllFrameTypesIdentifier.with),

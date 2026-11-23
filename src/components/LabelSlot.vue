@@ -24,7 +24,7 @@
             @keyup.backspace="onBackSpaceKeyUp"
             @keydown="onKeyDown($event)"
             @contentPastedInSlot="onCodePaste"
-            :class="{[scssVars.labelSlotInputClassName]: true, [scssVars.navigationPositionClassName]: isEditableSlot && !isFrozen, [scssVars.errorSlotClassName]: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised, readonly: (isPythonExecuting || isDisabled)}"
+            :class="{[scssVars.labelSlotInputClassName]: true, [scssVars.navigationPositionClassName]: isEditableSlot && !isFrozen, [scssVars.errorSlotClassName]: erroneous(), [scssVars.precompileErrorClassName]: erroneous(), [getSpanTypeClass]: true, bold: isEmphasised, readonly: (isPythonExecuting || isDisabled)}"
             :id="UID"
             :key="UID"
             :style="spanBackgroundStyle"
@@ -83,6 +83,7 @@ import { bumpCaretRequestSeq, bumpLastSlotCharacterTypedTimestamp, closeBracketC
 import { AllFrameTypesIdentifier, AllowedSlotContent, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CollapsedState, EditImageInDialogFunction, FieldSlot, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, FrameObject, getFrameDefType, isFieldBracketedSlot, isFieldStringSlot, LoadedMedia, MediaSlot, MessageDefinitions, OptionalSlotType, PythonExecRunningState, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { getCandidatesForAC } from "@/autocompletion/acManager";
 import { isKnownFileNameOrPath } from "@/helpers/knownFiles";
+import { ensureMediaLiteralImports } from "@/helpers/pythonToFrames";
 import { mapStores } from "pinia";
 import {evaluateSlotType, getFlatNeighbourFieldSlotInfos, getOutmostDisabledAncestorFrameId, getSlotDefFromInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, isFrameLabelSlotStructWithCodeContent, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos} from "@/helpers/storeMethods";
 import Parser from "@/parser/parser";
@@ -1009,8 +1010,9 @@ export default defineComponent({
             // We already handle some keys separately, so no need to process any further (i.e. deletion)
             // We can just discard any keys with length > 0
             if(event.key.length > 1 || event.ctrlKey || event.metaKey || event.altKey){
-                // Do not updated the a/c if arrows up/down, escape, enter and tab keys are hit because it will mess with navigation of the a/c
-                if(!["ArrowUp", "ArrowDown","Enter","Escape", "Tab"].includes(event.key)) {
+                // Do not updated the a/c if arrows up/down, escape, enter and tab keys are hit because it will mess with navigation of the a/c.
+                // Likewise for the modifier keys on their own: they don't change anything, but updating would reset the a/c selection (#977)
+                if(!["ArrowUp", "ArrowDown","Enter","Escape", "Tab", "Shift", "Control", "Alt", "Meta", "AltGraph", "CapsLock", "Fn"].includes(event.key)) {
                     this.$nextTick(() => {
                         this.updateAC();
                     });
@@ -1360,6 +1362,11 @@ export default defineComponent({
                         if(forbidOperator && this.frameType == AllFrameTypesIdentifier.for && inputString == ","){
                             forbidOperator = false;
                         }
+                        // For the class name (not the content of its parent classes' brackets, which are a nested slot), we forbid
+                        // operators and quotes too, but still allow brackets as that's how the parent classes get entered (#682):
+                        if(this.frameType == AllFrameTypesIdentifier.classdef && this.labelSlotsIndex == 0 && !isBracket && !this.coreSlotInfo.slotId.includes(",")){
+                            forbidOperator = true;
+                        }
                         let planningToInsertKey = !forbidOperator;
                         if(!forbidOperator && (this.frameType == AllFrameTypesIdentifier.fromimport || this.frameType == AllFrameTypesIdentifier.import)){
                             // If we're in some import frame, we check we match the rule mentioned above
@@ -1529,6 +1536,9 @@ export default defineComponent({
             const inputSpanField = document.getElementById(this.UID) as HTMLSpanElement;
             const {selectionStart, selectionEnd} = getFocusedEditableSlotTextSelectionStartEnd(this.UID);
             if (type.startsWith("image") || type.startsWith("audio")) {
+                // The literal needs load_image()/load_sound() to be imported, so add that import if it's missing
+                // (without a separate undo/redo step, so one undo removes both the literal and the import):
+                ensureMediaLiteralImports([type.startsWith("image") ? "image" : "sound"], true);
                 this.appStore.addNewSlot(parseLabelSlotUID(this.UID), type, (inputSpanField.textContent?.substring(0, selectionStart) ?? "").replace(/\u200B/g, ""), (inputSpanField.textContent?.substring(selectionEnd) ?? "").replace(/\u200B/g, ""), SlotType.media, false, content);
                 this.$nextTick(() => {
                     this.appStore.leftRightKey({key: "ArrowRight"});
@@ -1603,6 +1613,14 @@ export default defineComponent({
                                 }
                             }
                         } 
+                        // Likewise for the name of a function or class: only a plain name can be pasted (for a class, a bracketed list of
+                        // parent classes is also fine, and anything is fine inside those brackets, which are a nested slot) (#682)
+                        else if((this.frameType == AllFrameTypesIdentifier.funcdef || this.frameType == AllFrameTypesIdentifier.classdef) && this.labelSlotsIndex == 0
+                            && this.allowedSlotContent != AllowedSlotContent.FREE_TEXT_DOCUMENTATION && !this.coreSlotInfo.slotId.includes(",")){
+                            const allowsBrackets = this.frameType == AllFrameTypesIdentifier.classdef;
+                            pastedInvalidCode = tempSlots.operators.length > 0
+                                || tempSlots.fields.some((field) => isFieldStringSlot(field) || (!allowsBrackets && isFieldBracketedSlot(field)));
+                        }
                         if(pastedInvalidCode){
                             // Show an error message to the user, and do nothing else.
                             const msg = cloneDeep(MessageDefinitions.InvalidPythonParsePaste);

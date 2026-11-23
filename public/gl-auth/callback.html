@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="robots" content="noindex">
+    <!-- Do not leak the authorisation code in the URL to anything this page loads -->
+    <meta name="referrer" content="no-referrer">
+    <title>Strype - GitLab connection</title>
+    <link rel="icon" href="/images/favicon.png">
+    <style>
+        body {font-family: sans-serif; text-align: center; margin: 3em 1em; color: #333;}
+    </style>
+</head>
+<body>
+    <p id="message">Completing the connection to GitLab...</p>
+    <script>
+        // This page is the "Redirect URI" of Strype's GitLab OAuth application, opened in the popup started by the Strype editor.
+        // After the user authorises Strype, GitLab sends it ?code=...&state=... (or ?error=...).
+        // We pass these to the editor, which checks "state" and exchanges the code itself
+        // (the code is useless without the PKCE verifier the editor kept).
+        // BroadcastChannel is used rather than window.opener because GitLab's pages may sever the
+        // opener link (Cross-Origin-Opener-Policy). It only works within the same origin, so this
+        // page must be served from the same origin as the editor (which will be the case when deploying the Strype built: it will be at the right place).
+        (function () {
+            var params = new URLSearchParams(window.location.search);
+            // Remove the code from the address bar and history.
+            history.replaceState(null, "", window.location.pathname);
+
+            var messageElement = document.getElementById("message");
+            var channel;
+            try {
+                channel = new BroadcastChannel("strype-gl-auth");
+            }
+            catch (e) {
+                messageElement.textContent = "Your browser could not complete the connection to GitLab. Please try with an up-to-date browser.";
+                return;
+            }
+
+            var succeeded = !params.get("error") && params.get("code");
+            channel.postMessage(succeeded
+                ? {type: "strype-gl-auth-callback", code: params.get("code"), state: params.get("state")}
+                : {type: "strype-gl-auth-callback", state: params.get("state"), error: params.get("error") || "missing_code", errorDescription: params.get("error_description")});
+            channel.close();
+            messageElement.textContent = (succeeded ? "Connected to GitLab." : "The connection to GitLab was not completed.")
+                + " You can close this window and return to Strype.";
+            window.close();
+        })();
+    </script>
+</body>
+</html>

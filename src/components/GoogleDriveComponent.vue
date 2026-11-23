@@ -175,21 +175,61 @@ export default defineComponent({
             this.oauthToken = null;
         },
 
+        signOut(): Promise<boolean> {
+            // The token is forgotten right away (which also stops the keep alive mechanism, see onGSILoad()), then revoked by Google:
+            // that invalidates it on Google's side (and removes the access Strype was granted, so the consent screen shows again on next sign-in).
+            // Google doesn't give Strype a refresh token, so this is the only token to revoke.
+            const token = this.oauthToken;
+            this.resetOAuthToken();
+            window.clearInterval(this.GAPI_keepAliveHandle);
+            this.GAPI_keepAliveHandle = -1;
+            // (we can only have a token if Google Identity was loaded)
+            if(token == null || typeof google == "undefined"){
+                return Promise.resolve(true);
+            }
+            return new Promise<boolean>((resolve) => {
+                // (in case Google can't be reached and never answers, we don't wait forever)
+                const timeoutHandle = window.setTimeout(() => resolve(false), 15000);
+                // (Google passes a RevocationResponse to the callback, but the typings we have declare it without arguments, hence the cast)
+                const onRevoked = (response?: {successful: boolean, error?: string, error_description?: string}) => {
+                    window.clearTimeout(timeoutHandle);
+                    // "invalid_token" means the token had already expired or been revoked: it can't be used anymore either
+                    const isRevoked = (response?.successful ?? false) || response?.error == "invalid_token";
+                    if(!isRevoked){
+                        console.warn(`Could not revoke the Google token: ${response?.error} ${response?.error_description}`);
+                    }
+                    resolve(isRevoked);
+                };
+                google.accounts.oauth2.revoke(token, onRevoked as () => void);
+            });
+        },
+
         isOAuthTokenNotSet(){
             return this.oauthToken == null;
         },
 
-        testCloudConnection(onSuccessCallback: () => void, onFailureCallBack: () => void){
+        testCloudConnection(onSuccessCallback: () => void, onFailureCallBack: () => void, onNetworkErrorCallBack?: () => void){
             const xhr = new XMLHttpRequest();
-            xhr.open("GET",
-                "https://www.googleapis.com/drive/v3/about?fields=user&" +
-                "access_token=" + this.oauthToken);
-            xhr.onreadystatechange = function (e) {                
+            xhr.open("GET", "https://www.googleapis.com/drive/v3/about?fields=user");
+            xhr.setRequestHeader("Authorization", "Bearer " + this.oauthToken);
+            xhr.onreadystatechange = function (e) {
                 if(xhr.readyState == xhr.DONE) {
-                    if(JSON.parse(xhr.response)["user"]){
+                    let response = null;
+                    try {
+                        response = JSON.parse(xhr.response);
+                    }
+                    catch {
+                        // Not a JSON answer from Google (e.g. a captive portal page): handled below like a network error.
+                    }
+                    if(xhr.status == 0 || response == null){
+                        // The request didn't reach Google (no network, TLS failure...) so we know nothing about the token:
+                        // this isn't a failure of the connection test, which would reset the token and request signing in again.
+                        onNetworkErrorCallBack?.();
+                    }
+                    else if(response["user"]){
                         onSuccessCallback();
                     }
-                    else if(JSON.parse(xhr.response)["error"]){
+                    else if(response["error"]){
                         onFailureCallBack();
                     }
                 }
@@ -715,9 +755,8 @@ export default defineComponent({
                         this.oauthToken = null;
                         this.appStore.simpleModalDlgMsg = this.$t("errorMessage.gdrivePermissionsNotMet");
                         eventBus.emit(CustomEventTypes.showStrypeModal, this.loginErrorModalDlgId);
-                    }                   
-                             
-                    if (response && response.error == undefined) {
+                    }
+                    else if (response && response.error == undefined) {
                         this.oauthToken = response.access_token;
                         vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.updateSignInStatus(StrypeSyncTarget.gd, true);
                         // We also set a basic Google Drive related activity "keep alive" mechanism to avoid GIS disconnecting after,

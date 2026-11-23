@@ -25,7 +25,7 @@
                     :executing="isPythonExecuting"
                     @download="(n) => onDownload(n, '/local')"
                     @downloadDir="(n) => onDownloadDir(n, '/local')"
-                    @upload="(n, file) => onUpload(n, file, '/local')"
+                    @upload="(n, file) => void onUpload(n, file, '/local')"
                     @delete="onDeleteLocal"
                     @pin="onPinLocal"
                     @view="(n) => onView(n, '/local')"
@@ -42,17 +42,18 @@
                 </div>
             </div>
             <div class="file-system-pane-root" v-if="cloudRoot">
-                <h4>{{ $t("fileSystemTab.cloud") }}</h4>
+                <!-- The files of a Git provider can only be read (see isCloudMountReadOnly()) -->
+                <h4>{{ isCloudReadOnly ? $t("fileSystemTab.gitReadOnly") : $t("fileSystemTab.cloud") }}</h4>
                 <FileSystemTree
                     :node="cloudRoot"
                     label-override="/cloud/"
                     start-expanded
-                    allow-upload
+                    :allow-upload="!isCloudReadOnly"
                     :executing="isPythonExecuting"
                     :is-cwd="cwdRoot === '/cloud'"
                     @download="(n) => onDownload(n, '/cloud')"
                     @downloadDir="(n) => onDownloadDir(n, '/cloud')"
-                    @upload="(n, file) => onUpload(n, file, '/cloud')"
+                    @upload="(n, file) => void onUpload(n, file, '/cloud')"
                     @view="(n) => onView(n, '/cloud')"
                 />
             </div>
@@ -109,26 +110,30 @@ import OverwriteConfirmDialog from "@/components/FileSystemTab/OverwriteConfirmD
 import FileViewerDlg from "@/components/FileSystemTab/FileViewerDlg.vue";
 import {
     assetsRoots,
+    blockedUploadFileNames,
     deleteFromLocal,
     dirHasEntryNamed,
     downloadFsDirectoryAsZip,
     downloadFsFile,
     FsRoot,
+    isBlockedUploadFile,
     isCloudMounted,
+    isCloudMountReadOnly,
     listFsRootTree,
     readFsFileBytes,
     togglePinLocal,
     uploadEntriesToCloud,
     uploadEntriesToLocal,
 } from "@/helpers/fileSystemTabIO";
-import { ArchiveEntry, isZipFile, unzipEntries } from "@/helpers/archive";
+import { ArchiveEntry, isZipFile, listZipEntryPaths, unzipEntries } from "@/helpers/archive";
 import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
 import { runChangeCount } from "@/helpers/localFsCache";
 import { eventBus } from "@/helpers/appContext";
-import { CustomEventTypes } from "@/helpers/editor";
+import { CustomEventTypes, getAppSimpleMsgDlgId } from "@/helpers/editor";
 import { decodeAsTextIfValid, MAX_PREVIEWABLE_FILE_SIZE, mimeTypeForExtension, previewKindForExtension } from "@/helpers/filePreview";
 import { drawSoundOnCanvas } from "@/helpers/media";
 import { saveAs } from "file-saver";
+import { escapeHTML } from "@/helpers/common";
 
 // Waveform image size for the "view file" sound preview -- wider than MediaPreviewPopup.vue's own
 // 200x50 (a small hover popup) since this renders in a full-width modal dialog instead.
@@ -166,6 +171,11 @@ export default defineComponent({
         FileViewerDlg,
     },
 
+    props: {
+        // Bumped by PythonExecutionArea.vue when a project is loaded
+        projectLoadCount: { type: Number, default: 0 },
+    },
+
     data() {
         return {
             loading: true,
@@ -183,6 +193,11 @@ export default defineComponent({
             viewingFile: null as ViewingFile | null,
             // Pending re-list of /local caused by the running program's file changes -- see the watcher
             refreshLocalTimer: null as number | null,
+            // Pending re-list of everything caused by loading a project or changing where it lives -- see the watchers
+            refreshAllTimer: null as number | null,
+            // Incremented by each refresh(), so that a slower earlier one (e.g. listing a cloud drive) doesn't
+            // overwrite the result of a later one
+            refreshSequence: 0,
         };
     },
 
@@ -214,6 +229,10 @@ export default defineComponent({
         cwdRoot(): "/local" | "/cloud" {
             return isCloudMounted() ? "/cloud" : "/local";
         },
+
+        isCloudReadOnly(): boolean {
+            return isCloudMountReadOnly();
+        },
     },
 
     mounted() {
@@ -223,6 +242,9 @@ export default defineComponent({
     beforeUnmount() {
         if (this.refreshLocalTimer != null) {
             window.clearTimeout(this.refreshLocalTimer);
+        }
+        if (this.refreshAllTimer != null) {
+            window.clearTimeout(this.refreshAllTimer);
         }
     },
 
@@ -238,17 +260,51 @@ export default defineComponent({
                 }, 100);
             }
         },
+
+        // The pane is only listed when it's mounted, so if it's showing when a project is loaded, or when the project
+        // starts living somewhere else (for example, saved to a cloud drive), we must list it again.
+        // Loading a project can change these several times in a row (e.g. the location is only set once its content
+        // is loaded), so we only re-list once things have settled.
+        projectLoadCount() {
+            this.scheduleRefresh();
+        },
+
+        "appStore.strypeProjectLocation"() {
+            this.scheduleRefresh();
+        },
+
+        "appStore.syncTarget"() {
+            this.scheduleRefresh();
+        },
     },
 
     methods: {
+        scheduleRefresh(): void {
+            if (this.refreshAllTimer != null) {
+                window.clearTimeout(this.refreshAllTimer);
+            }
+            this.refreshAllTimer = window.setTimeout(() => {
+                this.refreshAllTimer = null;
+                void this.refresh();
+            }, 100);
+        },
+
         async refresh(): Promise<void> {
             this.loading = true;
+            const sequence = ++this.refreshSequence;
             const roots = assetsRoots();
             const [assetTrees, localRoot, cloudRoot] = await Promise.all([
                 Promise.all(roots.map((root) => listFsRootTree(root))),
                 listFsRootTree("/local"),
-                isCloudMounted() ? listFsRootTree("/cloud") : Promise.resolve(null),
+                // (if the cloud can't be listed, e.g. the connection expired, we still show the other files)
+                isCloudMounted() ? listFsRootTree("/cloud").catch((error) => {
+                    console.warn("Could not list the cloud files", error);
+                    return null;
+                }) : Promise.resolve(null),
             ]);
+            if (sequence != this.refreshSequence) {
+                return;
+            }
             this.assetRoots = roots
                 .map((root, i) => ({root, tree: assetTrees[i]}))
                 .filter((entry): entry is { root: FsRoot, tree: FsTreeNode } => entry.tree != null);
@@ -385,10 +441,38 @@ export default defineComponent({
             if (!file || this.localRoot == null) {
                 return;
             }
-            this.onUpload(this.localRoot, file, "/local");
+            void this.onUpload(this.localRoot, file, "/local");
         },
 
-        onUpload(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): void {
+        // Every upload (from either upload button, /local or /cloud) comes through here first, so
+        // this is where disallowed file types are refused (by name or MIME type) -- see
+        // fileSystemTabIO.ts's upload validation. Checked before the overwrite prompt, so the user
+        // is never asked to confirm replacing a file with something that's then refused anyway. A
+        // zip's own entries are vetted here too (by name only -- read from the archive's directory
+        // without extracting anything), and a zip containing any disallowed file is refused
+        // outright -- both for "Unzip contents" and for "Keep as zip", since a kept zip can be
+        // downloaded and extracted elsewhere just the same.
+        async onUpload(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): Promise<void> {
+            if (isBlockedUploadFile(file)) {
+                this.showUploadRefused(this.$t("fileSystemTab.uploadBlockedType", {name: escapeHTML(file.name)}) as string);
+                return;
+            }
+            if (isZipFile(file)) {
+                let entryPaths: string[] | null = null;
+                try {
+                    entryPaths = await listZipEntryPaths(file);
+                }
+                catch {
+                    // Not a readable zip despite the extension -- nothing can be extracted from it
+                    // (unzipping will fail just as it did before this check existed), so let the
+                    // usual keep/unzip dialog handle it as an opaque file.
+                }
+                const blocked = blockedUploadFileNames(entryPaths ?? []);
+                if (blocked.length > 0) {
+                    this.showUploadRefused(this.$t("fileSystemTab.uploadBlockedArchive", {name: escapeHTML(file.name), files: escapeHTML(blocked.join(", "))}) as string);
+                    return;
+                }
+            }
             if (dirHasEntryNamed(dirNode, file.name)) {
                 // Ask for confirmation before silently overwriting an existing entry -- see
                 // onConfirmOverwrite() below, triggered from OverwriteConfirmDialog.vue.
@@ -397,6 +481,14 @@ export default defineComponent({
                 return;
             }
             this.proceedWithUpload(dirNode, file, root);
+        },
+
+        // The app's shared message dialog (SimpleMsgModalDlg.vue) renders its message as HTML, so
+        // callers must escape anything user-controlled they put in it -- a file name, or worse, a
+        // zip entry name chosen by whoever made the archive -- see escapeHTML() at the call sites.
+        showUploadRefused(message: string): void {
+            this.appStore.simpleModalDlgMsg = message;
+            eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
         },
 
         onConfirmOverwrite(): void {

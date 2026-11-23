@@ -24,24 +24,37 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-          # Test Python and Microbit, on Ubuntu, should be all in parallel:
-          testtype: ["python", "microbit"]
-          # Did have Mac here, but it seems to run out of memory so taken it out:
-          os: [ ubuntu-latest ]
-          # For parallelising the jobs, length must match the SPLIT env var below.
-          cypress_split: [0, 1, 2]
+          # Test Python and Microbit, on Ubuntu, should be all in parallel.
+          # There is deliberately no plain axis (like os) alongside the include list: GitHub merges
+          # each include entry into the existing axis combinations whenever it doesn't overwrite
+          # an axis value, so with os as an axis all six entries collapsed into ONE job (the last
+          # entry winning). With only include entries, each one becomes its own job, hence os being
+          # repeated in each of them.
+          # Did have Mac here, but it seems to run out of memory so taken it out.
+          # Each testtype gets its own number of parallel shards (cypress_split_total, passed as
+          # SPLIT below), sized from the measured job durations (python ~233 min of total test
+          # time, microbit ~148): 4 python shards come to ~58 min each and 2 microbit shards to
+          # ~74, instead of 3 + 3 where the python shards took 71-85 min and microbit 41-56.
+          # Each cypress_split must be 0 .. cypress_split_total - 1 for its testtype:
+          include:
+            - {os: ubuntu-latest, testtype: python, cypress_split: 0, cypress_split_total: 4}
+            - {os: ubuntu-latest, testtype: python, cypress_split: 1, cypress_split_total: 4}
+            - {os: ubuntu-latest, testtype: python, cypress_split: 2, cypress_split_total: 4}
+            - {os: ubuntu-latest, testtype: python, cypress_split: 3, cypress_split_total: 4}
+            - {os: ubuntu-latest, testtype: microbit, cypress_split: 0, cypress_split_total: 2}
+            - {os: ubuntu-latest, testtype: microbit, cypress_split: 1, cypress_split_total: 2}
     runs-on: ${{ matrix.os }}
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       - name: Install Node.js and NPM via Volta
-        uses: volta-cli/action@v4
+        uses: volta-cli/action@v5
       - name: NPM Install
         # ci is better than npm install for CI jobs, apparently (quicker + more predictable):
         run: npm ci
       - name: Cache Pyodide
         id: cache-pyodide
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: public/pyodide
           key: ${{ runner.os }}-pyodide-${{ hashFiles('package-lock.json', 'scripts/download-pyodide-libs.cjs') }}
@@ -54,7 +67,7 @@ jobs:
         run: npm run test:cypress:${{ matrix.testtype }}-only
         # pass the machine index and the total number
         env:
-            SPLIT: ${{ 3 }}
+            SPLIT: ${{ matrix.cypress_split_total }}
             SPLIT_INDEX: ${{ matrix.cypress_split }}
             SPLIT_FILE: tests/cypress/timings/timings-${{ matrix.testtype }}.json
       - name: Upload test videos (if any)

@@ -300,7 +300,9 @@ function stripTypedSlotContent(entries: FrameEntry[]): FrameEntry[] {
 }
 
 async function testSpecific(page: Page, sections: FrameEntry[][], projectDoc?: string) : Promise<void> {
-    const expectedSections = sections.map(stripTypedSlotContent);
+    // The editor has a fourth container after Imports, Definitions and Main: the Testing section. These tests
+    // don't use it (clearDefaultProject() empties it, and an empty one isn't saved), so it is always empty:
+    const expectedSections = [...sections.map(stripTypedSlotContent), []];
     // Clears every default frame (Imports and Main), leaving the caret at the top of Imports --
     // exactly where the section-by-section loop below needs to start:
     await clearDefaultProject(page);

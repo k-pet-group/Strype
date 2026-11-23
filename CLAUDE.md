@@ -40,6 +40,16 @@ before assuming it's still working, and don't treat an Electron-renderer
 crash as a real test failure (rerun, or narrow to a smaller spec) — it's an
 environment issue, not a code regression.
 
+## Commit messages
+
+Follow the style of Neil's commits (`git log --author=Neil`): a first line
+that is one simple sentence saying what the commit does (imperative, e.g.
+"Fix ...", "Show ...", "Add ..."), then a blank line, then the details in
+plain prose paragraphs wrapped at ~72 columns: why the change was needed
+and how it works (behaviour before/after, notable decisions, what was
+deliberately left alone). Use a bullet list only when the commit touches
+several independent things. Don't cram the details into the first line.
+
 ## Test layout
 
 - `tests/cypress/e2e/*.cy.ts` + `tests/cypress/support/*.ts` — Cypress specs

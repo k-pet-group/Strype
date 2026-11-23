@@ -93,13 +93,13 @@ jobs:
             browser: chromium
     runs-on: ${{ matrix.os }}
     steps:
-    - uses: actions/checkout@v6
-    - uses: volta-cli/action@v4
+    - uses: actions/checkout@v7
+    - uses: volta-cli/action@v5
     - name: Install dependencies
       run: npm ci
     - name: Cache Pyodide
       id: cache-pyodide
-      uses: actions/cache@v4
+      uses: actions/cache@v6
       with:
         path: public/pyodide
         key: ${{ runner.os }}-pyodide-${{ hashFiles('package-lock.json', 'scripts/download-pyodide-libs.cjs') }}
@@ -107,7 +107,9 @@ jobs:
       if: steps.cache-pyodide.outputs.cache-hit != 'true'
       run: npm run build:download-pyodide-libs
     - name: Install Playwright Browsers
-      run: npx playwright install --with-deps
+      # Only the browser this matrix entry actually runs (each job uses a single --project), rather
+      # than all of them -- skips downloading/installing the other two (~3-4 min on Windows):
+      run: npx playwright install --with-deps ${{ matrix.browser }}
     - name: Run Playwright tests (Unix)
       if: ${{ matrix.os == 'ubuntu-latest' }}
       shell: bash
@@ -159,7 +161,7 @@ jobs:
       run: |
         brew install coreutils
         brew install --quiet jq
-        ISOLATED_SPECS="tests/playwright/e2e/console-execution.spec.ts,tests/playwright/e2e/storage-model.spec.ts,tests/playwright/e2e/sound-wait-after-run.spec.ts"
+        ISOLATED_SPECS="tests/playwright/e2e/console-execution.spec.ts,tests/playwright/e2e/storage-model.spec.ts,tests/playwright/e2e/sound-wait-after-run.spec.ts,tests/playwright/e2e/file-system-tab.spec.ts,tests/playwright/e2e/package-installation.spec.ts,tests/playwright/e2e/scroll-into-view.spec.ts,tests/playwright/e2e/testing-section.spec.ts"
         if [ "${{ matrix.browser }}" = "webkit" ] && [ "${{ matrix.webkitPart }}" = "single" ]; then
           # console-execution.spec.ts and storage-model.spec.ts have both shown CI-only
           # stop-slowness/flakiness on macOS+WebKit, suspected to be main-thread starvation
@@ -170,6 +172,19 @@ jobs:
           # phases serially in one job. sound-wait-after-run.spec.ts was added here too: it
           # waits on real-time sound playback finishing on its own, which is exactly the kind
           # of timing assertion multi-worker main-thread starvation would make flaky.
+          # file-system-tab.spec.ts was added too: its "files changed by a busy loop that is then
+          # stopped" tests run a `while True: pass` and, on macOS+WebKit with 3 workers, regularly
+          # hung until the 180s test timeout on every one of the 3 retries (4-7 min per attempt,
+          # ~13 min per run in the last 20 runs; also moves ~25 min of tests off the much longer
+          # "multi" job, 104 min on average vs 36 for this one).
+          # package-installation.spec.ts and scroll-into-view.spec.ts were added too: in run
+          # 38899805838 they took ~4-5x (package-installation, Pyodide package loads: 327s vs ~70s) and
+          # ~3.4x (scroll-into-view: 582s vs 173s) their macOS-chromium time in "multi", i.e. they
+          # are CPU-contention sensitive, and this job had ~30 min of headroom over "multi".
+          # testing-section.spec.ts was added here too: nearly every test in it starts a real
+          # Pyodide worker (to run tests with pytest), and one runs a CPU-bound loop until it is
+          # stopped. In the multi-worker job below that was enough cold-Pyodide/CPU contention to
+          # push unrelated tests (undo-redo, load-save-frozen-collapsed, ...) over their timeouts.
           RUN_CMD="SPEC=$ISOLATED_SPECS npx playwright test --project=webkit --workers=1"
         elif [ "${{ matrix.browser }}" = "webkit" ] && [ "${{ matrix.webkitPart }}" = "multi" ]; then
           RUN_CMD="EXCLUDE_SPEC=$ISOLATED_SPECS npx playwright test --project=webkit"

@@ -35,14 +35,26 @@ async function openColourPickerViaShortcut(page: Page) {
     // still isn't active (the slot is empty here, so a second Space is harmless), with short waits
     // between attempts instead of one long one.
     const panel = page.locator("#addSlotShortcutsPanel");
+    const dialog = page.locator("#colourPickerDlg");
+    // If the previous picker dialog is still fading out, the new one can't (visibly) open over
+    // it: the "c" below is then swallowed, and the next click on the dialog's contents waits out
+    // the whole 180s test timeout on an element that is never visible (seen on CI, in
+    // "Editing an adjacent colour literal", which opens the picker twice in a row):
+    await expect(dialog).toBeHidden();
+    // As above, a lost "c" can't be fixed by waiting either, so the whole sequence is retried
+    // until the dialog is actually visible (the pane closes on "c", so a retry starts afresh by
+    // reopening it with Space):
     await expect(async () => {
-        // The panel is shown whenever the slot offers shortcuts; this class marks it as open:
-        if (await panel.locator("xpath=self::*[contains(@class, 'frame-commands-pane-active')]").count() === 0) {
-            await page.keyboard.press(" ");
-        }
-        await expect(panel.locator(".frame-cmd-btn").first()).toBeFocused({timeout: 3000});
-    }).toPass({timeout: 30000});
-    await page.keyboard.press("c");
+        await expect(async () => {
+            // The panel is shown whenever the slot offers shortcuts; this class marks it as open:
+            if (await panel.locator("xpath=self::*[contains(@class, 'frame-commands-pane-active')]").count() === 0) {
+                await page.keyboard.press(" ");
+            }
+            await expect(panel.locator(".frame-cmd-btn").first()).toBeFocused({timeout: 3000});
+        }).toPass({timeout: 30000});
+        await page.keyboard.press("c");
+        await expect(dialog).toBeVisible({timeout: 5000});
+    }).toPass({timeout: 60000});
 }
 
 // Reads the raw (unstripped -- deliberately keeping any stray U+200B placeholder rather than
@@ -245,6 +257,25 @@ test.describe("Graphics preview", () => {
         await expect.poll(() => getGraphicsCenterPixel(page)).not.toEqual(before);
 
         await visibleCancelButton(page).click();
+    });
+
+    test("An invalid hex value disables OK, and Enter then doesn't validate the dialog", async ({page}) => {
+        await openIfFrame(page);
+        await openColourPickerViaShortcut(page);
+        await page.locator("button", {hasText: "Spectrum"}).click();
+        const hexInput = page.locator("#ColourPickerDlg-hex-input");
+        await hexInput.fill("#zz");
+        // (the OK button is disabled by its class, it doesn't have the "disabled" attribute)
+        await expect(visibleOKButton(page)).toHaveClass(/\bdisabled\b/);
+        await hexInput.press("Enter");
+        await expect(page.locator("#colourPickerDlg")).toBeVisible();
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveCount(0);
+        // A valid value enables OK again, and Enter then validates the dialog
+        await hexInput.fill("#3366cc");
+        await expect(visibleOKButton(page)).not.toHaveClass(/\bdisabled\b/);
+        await hexInput.press("Enter");
+        await expect(page.locator("#colourPickerDlg")).toBeHidden();
+        await expect(page.locator("img[data-mediatype='colour']")).toHaveAttribute("data-code", "\"#3366cc\"");
     });
 
     test("Typing an exact hex value in the fine-grained selector previews that exact colour", async ({page}) => {

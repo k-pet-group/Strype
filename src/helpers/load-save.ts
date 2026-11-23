@@ -5,6 +5,7 @@ import { useStore } from "@/store/store";
 import {StrypeLayoutDividerSettings, StrypePEALayoutMode} from "@/types/types";
 import { AppName, AppPlatform, AppSPYFullPrefix, AppSPYSaveVersion } from "./appContext";
 import * as localFsCache from "@/helpers/localFsCache";
+import { isBlockedUploadFileName } from "@/helpers/fileSystemTabIO";
 
 export function saveDivider(divider: StrypeLayoutDividerSettings | undefined) : string | undefined {
     if (divider === undefined) {
@@ -77,6 +78,14 @@ export function loadPinnedLocalFiles(headers: Record<string, string>): void {
         const value = headers[key];
         const separatorIndex = value.lastIndexOf(":");
         const relativePath = value.substring(0, separatorIndex);
+        // A project file is untrusted input (it may have been hand-edited or come from someone
+        // else), so it mustn't be a way around the File system tab's upload reject list -- see
+        // fileSystemTabIO.ts's upload validation. Skipped rather than failing the whole load, since the rest of
+        // the project is still perfectly usable without it:
+        if (isBlockedUploadFileName(relativePath)) {
+            console.warn("Not restoring pinned file of a disallowed type: " + relativePath);
+            continue;
+        }
         const base64Data = value.substring(separatorIndex + 1);
         const bytes = inflateRaw(Base64.toUint8Array(base64Data)) as Uint8Array;
         const path = `/local/${relativePath}`;
@@ -84,6 +93,10 @@ export function loadPinnedLocalFiles(headers: Record<string, string>): void {
         localFsCache.setPinned(path, true);
     }
 }
+
+// The header ("#(=> testingShowing:true") recording that the third section was showing the Testing code, rather than
+// My code, when the project was saved, so that it opens the same way. It is left out when My code was showing.
+export const testingShowingHeader = "testingShowing";
 
 export function generateSPYFileContent(): string {
     let saveContent = parseCodeAndGetParseElements(false, "spy").parsedOutput;
@@ -98,6 +111,7 @@ export function generateSPYFileContent(): string {
     headers.set("peaSplitViewSplitterPane1Size", saveDivider(useStore().peaSplitViewSplitterPane1Size));
     headers.set("peaExpandedSplitterPane2Size", saveDivider(useStore().peaExpandedSplitterPane2Size));
     Object.entries(savePinnedLocalFiles()).forEach(([key, value]) => headers.set(key, value));
+    headers.set(testingShowingHeader, useStore().mainSectionShowsTests ? "true" : undefined);
     // #v-endif
     saveContent = Array.from(headers.entries()).filter(([k, v]) => v !== undefined).map((e) => AppSPYFullPrefix + " " + e[0] + ":" + e[1] + "\n").join("") + saveContent;
     return saveContent;

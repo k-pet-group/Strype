@@ -60,6 +60,7 @@ export type MenuComponentAPI = {
   setCurrentErrorNavIndex: (v: number) => void, 
   goToError: (event: MouseEvent | null, toNext: boolean) => void,
   getCurrentDriveLocation: () => string,
+  getRequestSaveAs: () => boolean,
   setRequestSaveAs: (v: boolean) => void,
   saveTargetChoice: (target: StrypeSyncTarget) => void,
   getRequestOpenProjectLater: () => boolean,
@@ -81,6 +82,7 @@ export type CloudDriveHandlerComponentAPI = {
   backupPreviousCloudFileSharingStatus: (cloudTarget: StrypeSyncTarget, prevCloudFileSharingStatus: CloudFileSharingStatus) => Promise<void>,
   restoreCloudDriveFileSharingStatus: (cloudTarget: StrypeSyncTarget) => Promise<void> | undefined,
   getPublicShareLink: (cloudTarget: StrypeSyncTarget) => Promise<{ respStatus: number, webLink: string }>,
+  getSharedFileId: (cloudTarget: StrypeSyncTarget) => string,
   getPublicSharedProjectContent: (cloudTarget: StrypeSyncTarget, sharedFileID: string) => Promise<void> | undefined,
   searchCloudDriveElements: (cloudTarget: StrypeSyncTarget, fileName: string | undefined, fileLocationId: string, searchAllSPYFiles: boolean, searchOptions: Record<string, string>) => Promise<CloudDriveFile[]>,
   readFileContentForIO: (cloudTarget: StrypeSyncTarget, fileId: string, filePath: string) => Promise<Uint8Array>,
@@ -90,6 +92,7 @@ export type CloudDriveHandlerComponentAPI = {
   setSaveFileName: (v: string) => void,
   saveFile: (cloudTarget: StrypeSyncTarget, saveReason: SaveRequestReason) => void,
   loadFile: (cloudTarget: StrypeSyncTarget, loadReason?: LoadRequestReason) => void,
+  requestSignOut: (cloudTarget: StrypeSyncTarget) => void,
   modifiedDataSearchOptionName(cloudTarget: StrypeSyncTarget): string | undefined,
   fileMoreFieldsForIO(cloudTarget: StrypeSyncTarget): string | undefined,
 }

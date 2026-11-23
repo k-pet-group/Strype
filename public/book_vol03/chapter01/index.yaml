@@ -1,17 +1,7 @@
 - file: thematic-analysis-v1.spy
-  name: thematic-analysis
   image: thematic-analysis.png
   description: The starting version of the thematic analysis project
 
 - file: thematic-analysis-v2.spy
+  image: thematic-analysis.png
   description: The second version of the thematic analysis project
-
-- file: thematic-analysis-v3.spy
-  description: The third version of the thematic analysis project
-
-- file: thematic-analysis-v4.spy
-  description: The fourth version of the thematic analysis project
-
-- file: top-10-songs.spy
-  image: top-songs.png
-  description: An extension project showing how to use the 'pandas' library to read csv files

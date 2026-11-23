@@ -41,6 +41,10 @@ ${getDefaultStrypeProjectImportsFullLine()}#(=> Section:Definitions
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 
+#(=> Section:Testing
+def test_my_code ( ) :
+    '''Add assert statements to test your code'''
+    pass
 #(=> Section:End
 `.trimStart().split(/\r?\n/));
 }

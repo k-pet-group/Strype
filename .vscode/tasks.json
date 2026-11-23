@@ -5,6 +5,7 @@
             "label": "Serve Strype micro:bit",
             "dependsOn": [
                 "npm: clear",
+                "SUB serve GitHub server",
                 "SUB serve strype microbit"
             ],
             "problemMatcher": []
@@ -22,6 +23,7 @@
             "label": "Serve Strype python",
             "dependsOn": [
                 "npm: clear",
+                "SUB serve GitHub server",
                 "SUB serve strype python"
             ],
             "problemMatcher": []
@@ -34,6 +36,12 @@
                 "SUB build strype python"
             ],
             "problemMatcher": []
+        },
+        {
+            "type": "npm",
+            "script": "serve:gh-auth",
+            "problemMatcher": [],
+            "label": "SUB serve GitHub server",
         },
         {
             "type": "npm",

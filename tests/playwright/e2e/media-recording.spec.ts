@@ -1,6 +1,6 @@
 import { test, expect } from "@playwright/test";
 import { setupStrypeTest } from "../support/general";
-import { assertStateOfIfFrame, waitForEditorSettled, typeIndividually, MEDIA_SLOT_PARSED_PLACEHOLDER, pressFrameShortcut } from "../support/editor";
+import { assertStateOfIfFrame, enterCode, waitForEditorSettled, typeIndividually, MEDIA_SLOT_PARSED_PLACEHOLDER, pressFrameShortcut } from "../support/editor";
 
 // This spec only runs under the dedicated "chromium-media-recording" Playwright project (see
 // playwright.config.ts), which supplies Chrome's fake-device flags so getUserMedia() returns a
@@ -274,5 +274,41 @@ test.describe("Record and insert a sound", () => {
         await typeIndividually(page, "2");
         await waitForEditorSettled(page);
         await assertStateOfIfFrame(page, "{2$}", []);
+    });
+});
+
+// Image and sound literals need load_image/load_sound to be imported, so recording one should add
+// the import if the project doesn't have it:
+test.describe("Record media literal -- adds the necessary import", () => {
+    test("Recording an image adds the strype.graphics import", async ({page}) => {
+        await enterCode(page, ["", "", ""]);
+        await expect(page.locator("#frameContainer_-1")).not.toContainText("strype.graphics");
+        await openIfFrame(page);
+        await openMediaShortcut(page, "i");
+        await waitForFakeVideoPlaying(page);
+        await page.locator(".RecordImageDlg-record-button").click();
+        await expect(page.locator("span.EditImageDlg-sizeInfo").first()).toBeVisible();
+        await waitForImageCropperReady(page);
+        await clickVisiblePrimaryButton(page, "OK");
+        await page.waitForFunction(() => document.querySelector("img[data-code^='load_image']") != null);
+        await expect(page.locator("#frameContainer_-1")).toContainText("strype.graphics");
+        await expect(page.locator("#frameContainer_-1")).not.toContainText("strype.sound");
+    });
+
+    test("Recording a sound adds the strype.sound import", async ({page}) => {
+        await enterCode(page, ["", "", ""]);
+        await expect(page.locator("#frameContainer_-1")).not.toContainText("strype.sound");
+        await openIfFrame(page);
+        await openMediaShortcut(page, "s");
+        await expect(page.locator(".RecordSoundDlg-waveform")).toBeVisible();
+        await page.locator(".RecordSoundDlg-record-button").click();
+        await page.waitForTimeout(500);
+        await page.locator(".RecordSoundDlg-stop-button").click();
+        await expect(page.locator("span.EditSoundDlg-sizeInfo").first()).toBeVisible();
+        await waitForEditDialogLoaded(page, "span.EditSoundDlg-sizeInfo");
+        await clickVisiblePrimaryButton(page, "OK");
+        await page.waitForFunction(() => document.querySelector("img[data-code^='load_sound']") != null);
+        await expect(page.locator("#frameContainer_-1")).toContainText("strype.sound");
+        await expect(page.locator("#frameContainer_-1")).not.toContainText("strype.graphics");
     });
 });

@@ -21,7 +21,7 @@ const BUILTIN = "Python";
 // and equivalent to expectedStateWithPlaceholders if you count placeholders as the text for blank spans
 // If the last parameter is missing, it's assumed that expectedStateWithPlaceholders is the same as expectedState
 // (but without the dollar)
-function assertState(frameId: number, expectedState : string, expectedStateWithPlaceholders?: string) : void {
+export function assertState(frameId: number, expectedState : string, expectedStateWithPlaceholders?: string) : void {
     expectedStateWithPlaceholders = expectedStateWithPlaceholders ?? expectedState.replaceAll("$", "");
     withSelection((info) => {
         cy.get("#" + strypeElIds.getFrameHeaderUID(frameId) + " #" + strypeElIds.getFrameLabelSlotsStructureUID(frameId, 0) + " ." + scssVars.labelSlotInputClassName).then((parts) => {
@@ -54,7 +54,7 @@ function assertState(frameId: number, expectedState : string, expectedStateWithP
 }
 
 
-function withFrameId(inner : (frameId: number) => void) : void {
+export function withFrameId(inner : (frameId: number) => void) : void {
     // We need to make sure last DOM update has occurred:
     waitForEditorSettled();
     cy.get("#" + strypeElIds.getEditorID()).then((eds) => {
@@ -67,7 +67,7 @@ function withFrameId(inner : (frameId: number) => void) : void {
     });
 }
 
-function focusEditorAC(): void {
+export function focusEditorAC(): void {
     // Not totally sure why this hack is necessary, I think it's to give focus into the webpage via an initial click:
     // (on the main code container frame -- would be better to retrieve it properly but the file won't compile if we use Apps.ts and/or the store)
     cy.get("#" + strypeElIds.getFrameUID(-3), {timeout: 15 * 1000}).focus();

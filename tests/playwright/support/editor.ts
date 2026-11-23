@@ -334,6 +334,11 @@ export function getDefaultStrypeProjectImportsFullLine(): string {
     return "from strype.graphics import * \nfrom strype.sound import * \n";
 }
 
+// The Testing section of the default project as saved: its starter test function (empty, with a description)
+export function getDefaultStrypeProjectTestingFullLines(): string {
+    return "#(=> Section:Testing\ndef test_my_code ( ) :\n    \'\'\'Add assert statements to test your code\'\'\'\n    pass\n";
+}
+
 // Deletes forward (Delete key) from the top of a container until it's empty. `maxPresses` isn't a
 // count of frames to remove -- the recursion always runs to an empty container, however many
 // presses that takes, since deleting a top-level block frame removes its whole subtree (nested
@@ -359,12 +364,27 @@ async function deleteFramesUpTo(page: Page, containerSelector: string, maxPresse
     await deleteFramesUpTo(page, containerSelector, maxPresses - 1);
 }
 
-// Deletes every frame currently in Main, Definitions and Imports -- not just the default
-// project's frames (2 default imports plus the myString assignment and print call in Main), since
+// Clicking the "Test code" tab of the heading switches the third section from the main code ("My code")
+// to the testing code, and puts the frame cursor at the top of the section now showing.
+// These helpers assume the third section is currently showing the main code (as it is after load).
+
+// Switches to the testing code; the frame cursor is at the top of it, ready for frame shortcuts to add things there.
+export async function switchToTestingFromMain(page: Page) : Promise<void> {
+    await page.locator("[data-tab='tests']").click();
+    await waitForEditorSettled(page);
+}
+
+// As above, for use where the intent is to start working in the testing code.
+export async function enterTestingSection(page: Page) : Promise<void> {
+    await switchToTestingFromMain(page);
+}
+
+// Deletes every frame currently in Main, Definitions, Imports and Testing -- not just the default
+// project's frames (2 default imports, plus the myString assignment and print call in Main), since
 // this is also used to clear out whatever a previous operation left behind, which can include
-// Definitions content that the default project never has -- leaving a genuinely blank editor
-// (0 frames) with the caret positioned at the top of Imports, ready for fresh content. Reads the
-// frame counts from the DOM rather than hard-coding them so this doesn't go stale if a section's
+// Definitions or Testing content that the default project never has -- leaving a genuinely blank
+// editor (0 frames) with the caret positioned at the top of Imports, ready for fresh content. Reads
+// the frame counts from the DOM rather than hard-coding them so this doesn't go stale if a section's
 // content changes shape.
 export async function clearDefaultProject(page: Page) : Promise<void> {
     const totalCount = await page.locator(".frame-div").count();
@@ -393,6 +413,15 @@ export async function clearDefaultProject(page: Page) : Promise<void> {
     await page.keyboard.press("ArrowDown");
     await waitForEditorSettled(page);
     await deleteFramesUpTo(page, "#frameContainer_-3");
+    // The testing code is not showing (and so can't be navigated to) unless the heading is switched to it,
+    // so only do that if there is anything there to delete. The count includes the hidden frames:
+    if (await page.locator("#frameContainer_-4 .frame-div").count() > 0) {
+        await enterTestingSection(page);
+        await deleteFramesUpTo(page, "#frameContainer_-4");
+        // Switch back to the main code, which puts the cursor at the top of it:
+        await page.locator("[data-tab='main']").click();
+        await waitForEditorSettled(page);
+    }
     // Belt-and-braces check that we truly ended up at 0, on top of the settling above:
     await expect(page.locator(".frame-div")).toHaveCount(0, {timeout: 4000});
     // Return to the top of Imports, where callers of this function expect to end up:

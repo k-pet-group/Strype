@@ -94,7 +94,7 @@ describe("Stride TestExpressionSlot.testKWOperators()", () => {
     testInsert("a() and b and c", "{a}_({})_{}and{b}and{c$}");
     testInsert("a() and \"b\"and c", "{a}_({})_{}and{}_“b”_{}and{c$}");
     testInsert("a() and \"b\"and \"c\"", "{a}_({})_{}and{}_“b”_{}and{}_“c”_{$}");
-    testInsert("((\"apple\"in [\"apple\", \"banana\", \"cherry\"]) and not (\"dog\"in (\"cat\", \"doghouse\", \"mouse\"))) or (\"grape\"+ str([1, 2, 3]) == \"grape[1, 2, 3]\")",
+    testInsert("((\"apple\"in [\"apple\",\"banana\",\"cherry\"]) and not (\"dog\"in (\"cat\",\"doghouse\",\"mouse\"))) or (\"grape\"+ str([1,2,3]) == \"grape[1, 2, 3]\")",
         "{}_({}_({}_“apple”_{}in{}_[{}_“apple”_{},{}_“banana”_{},{}_“cherry”_{}]_{})_{}and{}not{}_({}_“dog”_{}in{}_({}_“cat”_{},{}_“doghouse”_{},{}_“mouse”_{})_{})_{})_{}or{}_({}_“grape”_{}+{str}_({}_[{1},{2},{3}]_{})_{}=={}_“grape[1, 2, 3]”_{})_{$}");
 });
 

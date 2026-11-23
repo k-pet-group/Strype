@@ -146,7 +146,7 @@ import { DAPWrapper } from "./helpers/partial-flashing";
 import { mapStores } from "pinia";
 import {getAdjacentColourSlotInfos, getFlatNeighbourFieldSlotInfos, getSlotIdFromParentIdAndIndexSplit, getSlotParentIdAndIndexSplit, retrieveParentSlotFromSlotInfos, retrieveSlotFromSlotInfos, getFrameBelowCaretPosition, checkCodeErrors, calculateNextCollapseState, showIndexDBError} from "./helpers/storeMethods";
 import { cloneDeep } from "lodash";
-import {pasteMixedPython} from "@/helpers/pythonToFrames";
+import {ensureMediaLiteralImports, pasteMixedPython} from "@/helpers/pythonToFrames";
 import MediaPreviewPopup from "@/components/MediaPreviewPopup.vue";
 import EditImageDlg from "@/components/EditImageDlg.vue";
 import EditSoundDlg from "@/components/EditSoundDlg.vue";
@@ -155,9 +155,9 @@ import RecordSoundDlg from "@/components/RecordSoundDlg.vue";
 import ColourPickerDlg from "@/components/ColourPickerDlg.vue";
 import axios from "axios";
 import scssVars from "@/assets/style/_export.module.scss";
-import {loadDivider, loadPinnedLocalFiles} from "@/helpers/load-save";
+import {loadDivider, loadPinnedLocalFiles, testingShowingHeader} from "@/helpers/load-save";
 import FrameHeader from "@/components/FrameHeader.vue";
-import { eventBus, projectDocumentationFrameId } from "@/helpers/appContext";
+import { eventBus, projectDocumentationFrameId, TestingSectionAvailable } from "@/helpers/appContext";
 import {inflateRaw} from "pako";
 import { Base64 } from "js-base64";
 import { BvTriggerableEvent } from "bootstrap-vue-next";
@@ -593,8 +593,14 @@ export default defineComponent({
                 return;
             }
             
+            // The frame shortcuts below don't apply when typing in a text field outside the frames (e.g. in a dialog):
+            // the keys must act on that text field instead. (A frame cursor's invisible paste-focus <input> doesn't count:
+            // it is the focus target when at a frame cursor, see CaretContainer.vue.)
+            const isTypingInTextField = (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement)
+                && !isCaretContainerFocusInputElement(event.target.id);
+
             // If we are at a frame cursor and they hit ctrl-x or ctrl-c or ctrl-d or ctrl-/ then we do cut/copy/duplicate/disable[enable]:
-            if(!this.appStore.isEditing && !this.isPythonExecuting && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x" || event.key.toLowerCase() === "d" || event.key === "/")) {
+            if(!this.appStore.isEditing && !this.isPythonExecuting && !isTypingInTextField && (event.ctrlKey || event.metaKey) && (event.key.toLowerCase() === "c" || event.key.toLowerCase() === "x" || event.key.toLowerCase() === "d" || event.key === "/")) {
                 // We emit an event to be picked up by the first frame in the current selection:
                 // The frames themselves decide whether to act based on whether they are the first frame in the selection:
                 let customEvent = "";
@@ -632,7 +638,7 @@ export default defineComponent({
                 return;
             }
             
-            if (!this.appStore.isEditing && !this.isPythonExecuting && !event.ctrlKey && !event.metaKey && event.key === ".") {
+            if (!this.appStore.isEditing && !this.isPythonExecuting && !isTypingInTextField && !event.ctrlKey && !event.metaKey && event.key === ".") {
                 // The relevant frames are the selection, or otherwise the frame *after* the caret:
                 let frameIds: number[] = [];
                 if (this.appStore.selectedFrames.length > 0) {
@@ -825,6 +831,15 @@ export default defineComponent({
             
             const googleDrivePublicURLPreamble = "https://drive.google.com/file/d/";
             const isPublicShareFromGD = shareProjectId.startsWith(googleDrivePublicURLPreamble);
+            // OneDrive public links are on 1drv.ms or onedrive.live.com for personal accounts, and on <tenant>-my.sharepoint.com for work/school accounts.
+            let sharedURLHost = "";
+            try {
+                sharedURLHost = new URL(shareProjectId).hostname.toLowerCase();
+            }
+            catch {
+                // Malformed URL: it isn't a OneDrive link (and retrieving it will fail and be reported below)
+            }
+            const isPublicShareFromOD = ["1drv.ms", "onedrive.live.com"].includes(sharedURLHost) || sharedURLHost.endsWith("-my.sharepoint.com");
             let alertMsgKey = "";
             let alertParams = "";
             if(isPublicShareFromGD){
@@ -839,10 +854,13 @@ export default defineComponent({
                 axios.get<string>(shareProjectId)
                     .then((resp) => {
                         if(resp.status == 200){
-                            // Find the filename from the URL:
-                            const cleaned = shareProjectId.replace(/\/+$/, "");
-                            const lastSlash = cleaned.lastIndexOf("/");
-                            const filename = lastSlash !== -1 ? cleaned.substring(lastSlash + 1) : cleaned;
+                            // Find the filename from the URL: it is the last part of its path, except for a file shared from GitLab,
+                            // whose (API) URL ends with ".../files/<the file's path, encoded>/raw".
+                            const urlPathParts = new URL(shareProjectId).pathname.split("/").filter((part) => part.length > 0);
+                            if(urlPathParts.length >= 3 && urlPathParts[urlPathParts.length - 1] == "raw" && urlPathParts[urlPathParts.length - 3] == "files"){
+                                urlPathParts.pop();
+                            }
+                            const filename = decodeURIComponent(urlPathParts[urlPathParts.length - 1] ?? "").split("/").pop() ?? "";
                         
                             return (resp.data.startsWith("{") ?
                                 this.appStore.setStateFromJSONStr({
@@ -869,10 +887,15 @@ export default defineComponent({
                     })
                     .catch((error) => {
                         alertMsgKey = "errorMessage.retrievedSharedGenericProject";
-                        alertParams = `${error?.message??error.toString()}<br/><br/><b>${this.$t("appMessage.publicSharedProjectUserDownloadAttempt")}`;
-                        setTimeout(() => {
-                            window.open(shareProjectId, "_blank");
-                        }, 3000);                            
+                        alertParams = error?.message??error.toString();
+                        // OneDrive public links lead to a OneDrive page rather than the file itself, so we can't retrieve the file:
+                        // we open that page for the user to download the project from there.
+                        if(isPublicShareFromOD){
+                            alertParams += `<br/><br/><b>${this.$t("appMessage.publicSharedProjectUserDownloadAttempt")}`;
+                            setTimeout(() => {
+                                window.open(shareProjectId, "_blank");
+                            }, 3000);
+                        }
                     })
                     .finally(() => {
                         // Make sure the progress indication on the editor is removed.
@@ -1064,6 +1087,10 @@ export default defineComponent({
                 }
                 if(savedSettingsState.frameNumbersEnabled) {
                     this.settingsStore.setFrameNumbersEnabled(savedSettingsState.frameNumbersEnabled);
+                }
+                // (only a cloud target can be promoted: if the saved value isn't one, we keep the default)
+                if(savedSettingsState.promotedCloudTarget !== undefined && isSyncTargetCloudDrive(savedSettingsState.promotedCloudTarget)) {
+                    this.settingsStore.promotedCloudTarget = savedSettingsState.promotedCloudTarget;
                 }
                 if(!savedSettingsState.locale) {
                     // There is no locale saved. Maybe the user wants to use the default English, but maybe
@@ -1513,6 +1540,11 @@ export default defineComponent({
             }
             
             this.$nextTick(() => {
+                // The browser queues its "selectionchange" event as a separate task, so (notably on Firefox when the page is busy)
+                // this mouseup can be handled before the selectionchange for the very same click.  The store would then still
+                // hold the position from before the click (e.g. the slot where a runtime error was shown), and we would
+                // wrongly put the caret back there.  So we bring the store up to date with the current selection first:
+                this.handleDocumentSelectionChange();
                 const anchorSlotCursorInfos = this.appStore.anchorSlotCursorInfos;
                 const focusSlotCursorInfos = this.appStore.focusSlotCursorInfos;
                 if(anchorSlotCursorInfos && focusSlotCursorInfos){
@@ -1798,6 +1830,13 @@ export default defineComponent({
                 if (s != null) {
                     // Now we can clear other non-frame related elements
                     this.appStore.clearNoneFrameRelatedState();
+                    // ... and a newly loaded project starts with the third section showing the main code, unless it was saved
+                    // with the Testing code showing (see testingShowingHeader), when the cursor goes to the top of that instead:
+                    const showTesting = TestingSectionAvailable && s.headers[testingShowingHeader]?.trim() == "true";
+                    this.appStore.mainSectionShowsTests = showTesting;
+                    if (showTesting) {
+                        this.appStore.setCurrentFrame({id: this.appStore.getTestsFrameContainerId, caretPosition: CaretPosition.body});
+                    }
                 
                     // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
                     // We check about turtle being imported as at loading a state we should reflect if turtle was added in that state.
@@ -2123,6 +2162,8 @@ export default defineComponent({
             const restoreOriginalCursor = () => this.restoreSlotFocusAndSelection(restoreAnchor, restoreFocus);
 
             const commitInsertion = (replacement: {code: string, mediaType: string}) => {
+                // The literal needs load_image()/load_sound() to be imported, so add that import if it's missing:
+                ensureMediaLiteralImports([kind]);
                 this.appStore.addNewSlot(targetSlotInfos, replacement.mediaType, lhsCode, rhsCode, SlotType.media, false, replacement.code);
                 // Explicitly place the cursor in the new trailing (empty) field right after the
                 // inserted media, mirroring the same three calls onGetCaret() uses when a user

@@ -137,13 +137,16 @@ export default defineComponent({
         },
 
         onOK(){
-            this.modalHideFunction("ok");
+            // (a disabled OK button can't validate the dialog)
+            if(!this.okDisabled){
+                this.modalHideFunction("ok");
+            }
         },
 
         validateOnEnterKeyDown(event: KeyboardEvent){
-            // Hitting "enter" on the dialog triggers its validation.
+            // Hitting "enter" on the dialog triggers its validation, unless the OK button is disabled.
             // Only if there is not focus on a button already (then it show leave the action on that button to be performed)
-            if((document.activeElement?.tagName.toLocaleLowerCase()??"") != "button" && event.code.toLowerCase() == "enter" && this.appStore.isModalDlgShown && this.dlgId == this.appStore.currentModalDlgId){
+            if(!this.okDisabled && (document.activeElement?.tagName.toLocaleLowerCase()??"") != "button" && event.code.toLowerCase() == "enter" && this.appStore.isModalDlgShown && this.dlgId == this.appStore.currentModalDlgId){
                 eventBus.emit(CustomEventTypes.hideStrypeModal, {trigger: "ok", componentId: this.dlgId });
             }
         },

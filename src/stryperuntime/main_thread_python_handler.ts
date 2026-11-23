@@ -119,8 +119,35 @@ async function triggerServiceWorkerReclaim() : Promise<void> {
     if (!("serviceWorker" in navigator)) {
         return;
     }
-    const registration = await navigator.serviceWorker.getRegistration();
-    registration?.active?.postMessage("claim");
+    // Wait for there to be an *active* service worker rather than reading registration.active
+    // once: at page load this is typically called before the registration even exists, or while
+    // the service worker is still installing, and the message was then silently dropped -- leaving
+    // a worker created in that window uncontrolled for the rest of the session (the Run button
+    // stuck on "Initialising...", seen repeatedly in CI with ready=true controlled=false):
+    const registration = await navigator.serviceWorker.ready;
+    registration.active?.postMessage("claim");
+}
+
+// How long, and how often, a worker that isn't controlled keeps being re-claimed (see
+// keepReclaimingUntilControlled()). Claiming is idempotent and cheap, so a generous bound is fine:
+const reclaimRetryIntervalMs = 1000;
+const reclaimRetryMaxAttempts = 90;
+
+// A single reclaim request isn't enough on its own: the service worker's own clients.claim() on
+// activation can miss a worker that was still starting up at that moment, and nothing else asks
+// again once the page has loaded. So keep asking, once a second, until the worker reports itself
+// controlled (or the slot is discarded, or we run out of attempts):
+async function keepReclaimingUntilControlled(slot: PyodideSlot) : Promise<void> {
+    for (let attempt = 1; attempt <= reclaimRetryMaxAttempts; attempt++) {
+        if (slot.controlled || (slot !== activeSlot && slot !== spareSlot)) {
+            return;
+        }
+        await triggerServiceWorkerReclaim();
+        await new Promise((resolve) => setTimeout(resolve, reclaimRetryIntervalMs));
+    }
+    if (!slot.controlled && (slot === activeSlot || slot === spareSlot)) {
+        console.warn(`[Pyodide slot reclaim ${new Date().toISOString()}] still not controlled after ${reclaimRetryMaxAttempts} reclaim attempts`);
+    }
 }
 
 // How many times in a row we'll automatically replace an *active* slot whose worker failed to even
@@ -194,7 +221,7 @@ function createPyodideSlot() : PyodideSlot | null {
     // promoted to active and possibly needed immediately -- this gives it the most possible time
     // to resolve in the background before anyone tries to actually run code on it. It's a no-op
     // if the worker is already controlled:
-    void triggerServiceWorkerReclaim();
+    void keepReclaimingUntilControlled(slot);
 
     // Only fires for a worker that never gets going at all -- its script fails to load, or it
     // throws before ever calling onReady below. A worker that's already up and running has its own

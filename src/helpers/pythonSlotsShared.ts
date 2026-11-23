@@ -61,6 +61,48 @@ export function fromUnicodeEscapes(input: string): string {
     return input.replace(regex, (_, hex) => String.fromCodePoint(parseInt(hex, 16)));
 }
 
+export function toUnicodeEscapes(input: string): string {
+    return Array.from(input)
+        .map((char) => {
+            const code = char.codePointAt(0) ?? 0;
+            return "u" + code.toString(16).padStart(4, "0");
+        })
+        .join("");
+}
+
+// We need to replace fields with placeholders to make parsing of brackets easier:
+export const FIELD_PLACEHOLDER_START = "$strype_field_placeholder";
+export const FIELD_PLACEHOLDER_END = "_strype_field_placeholder$";
+const FIELD_PLACEHOLDER_SPLIT_REGEX = /(\$strype_field_placeholder([0-9a-fu]*)_strype_field_placeholder\$)/;
+// Escapes the given code for use as the payload of a field placeholder.  Any placeholder already in the code is not
+// escaped again: its payload is already escaped, so we just unwrap it (the decoded result is the same as before).
+// Re-escaping would multiply its length by 5 each time, so for N sibling brackets, e.g. "[(1,2),(3,4),(5,6),...]",
+// the size would grow as 5^N.
+export function escapeForFieldPlaceholder(code: string) : string {
+    // Splitting with two capture groups gives, per placeholder, [whole match, payload] after each plain-text part:
+    const parts = code.split(FIELD_PLACEHOLDER_SPLIT_REGEX);
+    let result = "";
+    for (let i = 0; i < parts.length; i += 3) {
+        result += toUnicodeEscapes(parts[i]) + (parts[i + 2] ?? "");
+    }
+    return result;
+}
+
+// Replaces each field placeholder in the input with the (decoded) code it stands for.
+export function decodeFieldPlaceholders(input: string) : string {
+    const startIndex = input.indexOf(FIELD_PLACEHOLDER_START);
+    if (startIndex === -1) {
+        return input; // No more placeholders
+    }
+    const endIndex = input.indexOf(FIELD_PLACEHOLDER_END, startIndex + FIELD_PLACEHOLDER_START.length);
+    if (endIndex === -1) {
+        return input; // No matching end marker; treat as finished
+    }
+    const decoded = fromUnicodeEscapes(input.substring(startIndex + FIELD_PLACEHOLDER_START.length, endIndex));
+    // Recurse to handle more placeholders:
+    return decodeFieldPlaceholders(input.substring(0, startIndex) + decoded + input.substring(endIndex + FIELD_PLACEHOLDER_END.length));
+}
+
 // Concatenates two slot structures with the given operator.
 // Eliminates any redundant blank operators.
 export function concatSlots(lhs: SlotsStructure, operator: string, rhs: SlotsStructure) : SlotsStructure {

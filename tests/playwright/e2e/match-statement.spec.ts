@@ -2,7 +2,7 @@ import {test, expect} from "@playwright/test";
 import {readFileSync} from "node:fs";
 import {save, testPlaywrightRoundTripImportAndDownload} from "../support/loading-saving";
 import {setupStrypeTest} from "../support/general";
-import {doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, pressFrameShortcut, pressN, waitForEditorSettled} from "../support/editor";
+import {doPagePaste, getDefaultStrypeProjectDocumentationFullLine, getDefaultStrypeProjectImportsFullLine, getDefaultStrypeProjectTestingFullLines, pressFrameShortcut, pressN, waitForEditorSettled} from "../support/editor";
 import {checkConsoleContent, runToFinish} from "../support/execution";
 
 const defaultStandardStrypeProjectDocLiteral = getDefaultStrypeProjectDocumentationFullLine();
@@ -18,7 +18,7 @@ match ___strype_blank  :
         pass
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `;
 
 const defaultProjectCodeLiteral = `
@@ -28,7 +28,7 @@ ${defaultStrypeProjectImportsLiteral}#(=> Section:Definitions
 #(=> Section:Main
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `;
 
 const complexMatchCodeLiteral = `
@@ -93,7 +93,7 @@ match foo  :
         pass
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart());
     });
 
@@ -168,13 +168,13 @@ print(myString)
         await waitForEditorSettled(page);
         await pressFrameShortcut(page, "c");
         await waitForEditorSettled(page);
-        await page.keyboard.type("[x,y]");
+        await page.keyboard.type("[x,y,*rest]");
         await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
         await waitForEditorSettled(page);
         await pressFrameShortcut(page, "r");
         await waitForEditorSettled(page);
-        await page.keyboard.type("f\"Got a 2-item list: x={x}, y={y}");
+        await page.keyboard.type("f\"List with at least 2 items: x={x}, y={y}, rest={rest}");
         await waitForEditorSettled(page);
         await pressN("ArrowDown", 2, true)(page);   
         await page.keyboard.press("#");
@@ -185,13 +185,13 @@ print(myString)
         await waitForEditorSettled(page);
         await pressFrameShortcut(page, "c");
         await waitForEditorSettled(page);
-        await page.keyboard.type("{\"type\":\"point\",\"x\":x,\"y\":y}");
+        await page.keyboard.type("{\"type\":\"user\",\"name\":name,**extra}");
         await waitForEditorSettled(page);
         await page.keyboard.press("ArrowDown");
         await waitForEditorSettled(page);
         await pressFrameShortcut(page, "r");
         await waitForEditorSettled(page);
-        await page.keyboard.type("f\"Got a point: ({x}, {y})");
+        await page.keyboard.type("f\"User {name} with extra fields {extra}");
         await waitForEditorSettled(page);
         await pressN("ArrowDown", 2, true)(page);
         await page.keyboard.press("#");
@@ -265,13 +265,6 @@ print(myString)
         await waitForEditorSettled(page);
         await page.keyboard.type("f\"Something else: {value}\"");
         await waitForEditorSettled(page);
-        // Note the following content is redacted from points 3 and 4 as we don't support rest patterns yet
-        //# 3. Sequence patterns
-        //case [x, y, *rest]  :
-        //    return f"List with at least 2 items: x={x}, y={y}, rest={rest}" 
-        //# 4. Mapping patterns
-        //case {"type": "user", "name": name, **extra}  :
-        //    return f"User {name} with extra fields {extra}" 
         expect(readFileSync(await save(page), "utf-8")).toEqual(`
 #(=> Strype:1:std
 ${defaultStandardStrypeProjectDocLiteral}#(=> Section:Imports
@@ -289,11 +282,11 @@ match value  :
     case int()  :
         return f"Got an integer: {value}" 
     # 3. Sequence patterns
-    case [x,y]  :
-        return f"Got a 2-item list: x={x}, y={y}" 
+    case [x,y,*rest]  :
+        return f"List with at least 2 items: x={x}, y={y}, rest={rest}" 
     # 4. Mapping patterns
-    case {"type":"point","x":x,"y":y}  :
-        return f"Got a point: ({x}, {y})" 
+    case {"type":"user","name":name,**extra}  :
+        return f"User {name} with extra fields {extra}" 
     # 5. Class patterns
     case complex(real=r,imag=i)  :
         return f"Complex number: real={r}, imag={i}" 
@@ -310,7 +303,7 @@ match value  :
         return f"Something else: {value}" 
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart());
     });
 
@@ -328,7 +321,7 @@ match ___strype_blank  :
     case _  :
         myString  = "Hello from Strype" 
         print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart());
     });
 });
@@ -408,7 +401,7 @@ match ___strype_blank  :
             pass
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart());
         // Delete the if, and try again to backspace: we should delete the case and bring the comment up
         await page.keyboard.press("ArrowDown");
@@ -429,7 +422,7 @@ match ___strype_blank  :
     #comment test
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `.trimStart());        
     });
 });
@@ -472,7 +465,7 @@ match "1"  :
         print("Matched!") 
 myString  = "Hello from Strype" 
 print(myString) 
-#(=> Section:End
+${getDefaultStrypeProjectTestingFullLines()}#(=> Section:End
 `);
     });
 });

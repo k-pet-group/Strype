@@ -8,9 +8,9 @@
 This is a demo project that shows some data analysis using pandas and pyplot.
 It reads a csv file with data about renewable energy production across the world (in 2020-2025), separated by country.
 
-There is a constant called WRITE_PNG at the beginning of the \'My code\' section – set this to True to generate PNG image files with the graphs. For the writing of the image files to work, the project must be stored in a cloud file system, so that the program can write the files. 
+There is a constant called WRITE_PNG at the beginning of the \'My code\' section – set this to True to generate PNG image files with the graphs. The image files will be written to the local file store, which you can see using the "Files" tab. If your project is stored in a cloud file system, the image files will be saved there.
 
-If you want to use your own csv file, it must be stored in a cloud file system in the same folder as the project.
+If you want to use your own csv file, you can use the local file store to upload it, or you can work with a  cloud file system and store it in the same folder as the project.
 
 Source of the data file: https://github.com/owid/energy-data (via kaggle.com/datasets), licenced under CC BY-SA 4.0
 
@@ -165,7 +165,7 @@ def solar_vs_wind ( ) :
         fig.savefig(f"6_solar_vs_wind_race.png",dpi=150) 
     plt.close(fig) 
 #(=> Section:Main
-#Set the following to True to also generate PNG image files (they will be saved to the project folder)
+#Set the following to True to also generate PNG image files (they will be saved to the working directory)
 WRITE_PNG  = False 
 
 # Load & clean data

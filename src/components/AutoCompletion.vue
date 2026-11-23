@@ -344,8 +344,9 @@ export default defineComponent({
             const imported = await getAllExplicitlyImportedItems(context);
             this.acResults = {};
             if (token != null && kind == "string") {
-                this.acResults[this.$t("autoCompletion.builtinFiles")] = assetFileCompletions;
+                // User's own files go first, as with user-defined items in code:
                 this.acResults[this.$t("autoCompletion.yourFiles")] = localFileCompletions();
+                this.acResults[this.$t("autoCompletion.builtinFiles")] = assetFileCompletions;
                 this.showSuggestionsAC(token);
             }
             else if (token === null) {
@@ -467,7 +468,7 @@ export default defineComponent({
                 this.acResults["Python"] = getBuiltins().filter((ac) => !ac.acResult.startsWith("_") || token.startsWith("_"));
               
                 // Add user-defined functions except class functions (even if the user is inside the class):
-                this.acResults[this.$t("autoCompletion.myFunctions")] = await Promise.all(getAllEnabledUserDefinedFunctions().map(async (f) => ({
+                this.acResults[this.$t("autoCompletion.myFunctions")] = await Promise.all(getAllEnabledUserDefinedFunctions(frameId).map(async (f) => ({
                     acResult: (f.labelSlotsDict[0].slotStructures.fields[0] as BaseSlot).code,
                     // If the function's documentation slot isn't empty, we used it as documentation
                     documentation: (f.labelSlotsDict[3].slotStructures.fields[0] as BaseSlot)?.code.trim()??"",

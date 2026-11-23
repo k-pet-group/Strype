@@ -2,6 +2,7 @@ import i18n from "@/i18n";
 import { useStore } from "@/store/store";
 import { AddFrameCommandDef, AddShorthandFrameCommandDef, AllFrameTypesIdentifier, areSlotCoreInfosEqual, BaseSlot, CaretPosition, CurrentFrame, FieldSlot, FrameContextMenuActionName, FrameContextMenuShortcut, FramesDefinitions, getFrameDefType, isFieldBaseSlot, isFieldBracketedSlot, isFieldMediaSlot, isFieldStringSlot, isSlotBracketType, isSlotQuoteType, isSlotStringLiteralType, MediaSlot, ModifierKeyCode, NavigationPosition, Position, SelectAllFramesAction, SlotCoreInfos, SlotCursorInfos, SlotsStructure, SlotType, StringSlot } from "@/types/types";
 import { checkCodeErrors, getAboveFrameCaretPosition, getAllChildrenAndJointFramesIds, getAvailableNavigationPositions, getFrameBelowCaretPosition, getFrameSectionIdFromFrameId } from "./storeMethods";
+import { testFunctionNamePrefix } from "./testFunctionNames";
 import { splitByRegexMatches, strypeFileExtension } from "./common";
 import Parser from "@/parser/parser";
 import {getContentForACPrefix} from "@/autocompletion/acManager";
@@ -11,8 +12,8 @@ import { nextTick } from "vue";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { debounce } from "lodash";
 // #v-endif
-import {toUnicodeEscapes} from "@/parser/parser";
-import { fromUnicodeEscapes, pasteMixedPython } from "@/helpers/pythonToFrames";
+import { pasteMixedPython } from "@/helpers/pythonToFrames";
+import { decodeFieldPlaceholders, escapeForFieldPlaceholder, FIELD_PLACEHOLDER_END, FIELD_PLACEHOLDER_START, toUnicodeEscapes } from "@/helpers/pythonSlotsShared";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { eventBus } from "@/helpers/appContext";
 import { isHexColourLiteral } from "@/helpers/colour";
@@ -96,11 +97,6 @@ export enum CustomEventTypes {
     acItemClicked = "acItemClicked",
     openSharedFileDone = "openSharedFileDone",
     dropFramePositionsUpdated = "dropFramePositionsUpdated",
-    requestedCloudDrivePickerPickedItem = "requestedCloudDrivePickerPickedItme",
-    exposedCloudDrivePickerPickedItem = "exposedCloudDrivePickerPickedItem",
-    requestedCloudDriveItemChildren = "requestedCloudDriveItemChildren",
-    exposedCloudDriveItemChidren = "exposedCloudDriveItemChidren",
-    requestedCloudDrivePickerRefresh = "requestedCloudDrivePickerRefresh",
     cutFrameSelection = "cutFrameSelection",
     copyFrameSelection = "copyFrameSelection",
     duplicateFrameSelection = "duplicateFrameSelection",
@@ -735,8 +731,12 @@ export function hasEditorCodeErrors(): boolean {
     return countEditorCodeErrors() > 0;
 }
 
-export function hasPrecompiledCodeError(): boolean {
-    return hasEditorCodeErrors() && !errorHTMLElements?.some((element) => isElementUIDFrameHeader(element.id));                                                                    
+// True if there is any error which is not a runtime error from the last run (i.e. a precompile error: syntax errors,
+// blank slots, TigerPython errors, etc).  Such errors mean the code can't be run or converted to Python; a runtime
+// error doesn't.  Errors are flagged with either the runtime or the precompile error class, in addition to the usual
+// error class (or error-slot class).
+export function hasNonRuntimeCodeError(): boolean {
+    return hasEditorCodeErrors() && (errorHTMLElements?.some((element) => element.classList.contains(scssVars.precompileErrorClassName)) ?? false);
 }
 
 // This methods checks for the relative positions of the current position (which can be a focused slot or a blue caret) towards the positions of the errors (slots or 1st slot in frame header or a frame)
@@ -886,6 +886,13 @@ export function generateAllFrameCommandsDefs():void {
             // "f" is kept working as a secret/legacy shortcut alongside the official "d".
             shortcuts: ["d", "f"],
         }],
+        // Only offered in the Testing section, where it adds a function named "test_" (see hiddenShorthandFrames)
+        "s": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
+            description: i18n.global.t("frame.testfunc_desc"),
+            shortcuts: ["s"],
+            testsSectionOnly: true,
+        }],
         "c": [
             {
                 type: getFrameDefType(AllFrameTypesIdentifier.classdef),
@@ -958,6 +965,11 @@ export function generateAllFrameCommandsDefs():void {
             description: "raise",
             shortcuts: ["a"],
         }],
+        "k": [{
+            type: getFrameDefType(AllFrameTypesIdentifier.assert),
+            description: "assert",
+            shortcuts: ["k"],
+        }],
         "h": [{
             type: getFrameDefType(AllFrameTypesIdentifier.with),
             description: "with",
@@ -1020,6 +1032,8 @@ export function findAddCommandFrameType(shortcut: string, index?: number): Frame
 // and assignment. Every other shortcut requires opening the frame commands pane first.
 export const alwaysDirectFrameShortcutKeys = ["enter", "#", "="];
 
+export const testFunctionBgColour = "#E6D2B5"; // light brown
+
 // This shorthand frames are enhanced frames because they contain some default code value.
 // Therefore they are treated separately in the code and in the UI. They do not show in the frame command panel.
 // IMPORTANT : make sure that the shortcut assigned to a frame IS NOT assigned to a normal frame (see generateAllFrameCommandsDefs()) 
@@ -1029,6 +1043,12 @@ export const hiddenShorthandFrames: {[id: string]: AddShorthandFrameCommandDef} 
         codeContent:"print", // No need for the brackets: they're already included in the function call frame by default
         goNextSlot: true,
         type: getFrameDefType(AllFrameTypesIdentifier.funccall),
+    },
+    // A new test function: a function definition with its name pre-filled to "test_", text cursor left at the end of the name.
+    "s": {
+        codeContent: testFunctionNamePrefix,
+        type: getFrameDefType(AllFrameTypesIdentifier.funcdef),
+        testsSectionOnly: true,
     },
 };
 
@@ -1500,9 +1520,6 @@ export const getSameLevelAncestorIndex = (slotId: string, sameLevelThanSlotParen
     return parseInt(slotId.split(",")[ancestorLevels -1]);
 };
 
-// We need to replace fields with placeholders to make parsing of brackets easier:
-const FIELD_PLACEHOLDER_START = "$strype_field_placeholder";
-const FIELD_PLACEHOLDER_END = "_strype_field_placeholder$";
 function removePossibleFieldPlaceholderFromStart(s: string) : string {
     if (s.startsWith(FIELD_PLACEHOLDER_START)) {
         const end = s.indexOf(FIELD_PLACEHOLDER_END);
@@ -1515,23 +1532,7 @@ function removePossibleFieldPlaceholderFromStart(s: string) : string {
 export function transformFieldPlaceholders(input: string) : string {
     input = input.replaceAll(STRING_SINGLEQUOTE_PLACERHOLDER, "'");
     input = input.replaceAll(STRING_DOUBLEQUOTE_PLACERHOLDER, "\"");
-    
-    const startIndex = input.indexOf(FIELD_PLACEHOLDER_START);
-    if (startIndex === -1) {
-        return input; // No more placeholders
-    }
-    const endIndex = input.indexOf(FIELD_PLACEHOLDER_END, startIndex + FIELD_PLACEHOLDER_START.length);
-    if (endIndex === -1) {
-        return input; // No matching end marker; treat as finished
-    }
-    const decoded = fromUnicodeEscapes(input.substring(startIndex + FIELD_PLACEHOLDER_START.length, endIndex));
-    const newInput =
-        input.substring(0, startIndex) +
-        decoded +
-        input.substring(endIndex + FIELD_PLACEHOLDER_END.length);
-
-    // Recurse to handle more placeholders:
-    return transformFieldPlaceholders(newInput);
+    return decodeFieldPlaceholders(input);
 }
 
 function splitAtCommas<X>(operands: X[], operators: BaseSlot[]): { operands: X[], operators: string[] }[] {
@@ -1701,7 +1702,7 @@ export const parseCodeLiteral = (codeLiteral: string, flags?: {isInsideString?: 
         // so if we fed the parser only "-3", it would see it as an unitary sign and not an operator.
         // So for the parser to "see" the bracket part we will use a placeholder token that will be removed when aggrating the slots. 
         let afterBracketCode = (closingBracketPos > -1) ? codeLiteral.substring(closingBracketPos + 1) : "";
-        const bracketPlaceholder = FIELD_PLACEHOLDER_START + toUnicodeEscapes(beforeBracketCode + openingBracketValue + innerBracketCode + closingBracketValue) + FIELD_PLACEHOLDER_END;
+        const bracketPlaceholder = FIELD_PLACEHOLDER_START + escapeForFieldPlaceholder(beforeBracketCode + openingBracketValue + innerBracketCode + closingBracketValue) + FIELD_PLACEHOLDER_END;
         if(afterBracketCode.length > 0){
             afterBracketCode = bracketPlaceholder + afterBracketCode;
         }

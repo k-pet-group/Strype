@@ -42,6 +42,7 @@ export const keywordConversionDefs: KeywordConversionDef[] = [
     {keyword: "return", targetType: AllFrameTypesIdentifier.return, slots: 1},
     {keyword: "global", targetType: AllFrameTypesIdentifier.global, slots: 1},
     {keyword: "raise", targetType: AllFrameTypesIdentifier.raise, slots: 1},
+    {keyword: "assert", targetType: AllFrameTypesIdentifier.assert, slots: 1},
     {keyword: "match", targetType: AllFrameTypesIdentifier.match, slots: 1},
     {keyword: "case", targetType: AllFrameTypesIdentifier.case, slots: 1},
     {keyword: "library", targetType: AllFrameTypesIdentifier.library, slots: 1},

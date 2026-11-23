@@ -82,8 +82,15 @@ async function insertColourSwatch(page: import("@playwright/test").Page, hex: st
 // 37274489427, on three consecutive retries), so wait for a real selection first and keep
 // re-copying until the clipboard has the expected text (copying is idempotent):
 async function selectSwatchAndCopy(page: import("@playwright/test").Page, expected = "\"#aabbcc\"") {
-    await page.keyboard.press("Shift+ArrowLeft");
-    await expect.poll(() => page.evaluate(() => document.getSelection()?.isCollapsed === false)).toBe(true);
+    // The Shift+ArrowLeft itself can also be lost under load (seen on CI: the selection then stays
+    // collapsed for the whole poll), so press it again whenever there's still no selection:
+    const hasSelection = () => page.evaluate(() => document.getSelection()?.isCollapsed === false);
+    await expect(async () => {
+        if (!await hasSelection()) {
+            await page.keyboard.press("Shift+ArrowLeft");
+        }
+        await expect.poll(hasSelection, {timeout: 2000}).toBe(true);
+    }).toPass({timeout: 15000});
     await expect.poll(async () => {
         await page.keyboard.press("ControlOrMeta+c");
         return await page.evaluate("navigator.clipboard.readText()");

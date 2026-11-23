@@ -212,6 +212,11 @@ export const pythonFileExtension = "py";
 // For file names allow only A–Z a–z 0–9 _ - () spaces and unicode characters
 export const fileNameRegex = /^[\d\p{L} \-_()]+$/u;
 
+// Escapes text so it shows as is when inserted in HTML (for example, a message from an external service shown with v-html)
+export function escapeHTML(text: string): string {
+    return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+}
+
 export function getDateTimeFormatted(dt: Date): string {
     // Returned "YYYY-MM-DD_HH-mm-ss" format string representation of a date
     const rawMonthOneIndexedVal = dt.getMonth() + 1;
@@ -265,4 +270,15 @@ export function removeIf<T>(arr: T[], predicate: (item: T, index: number, array:
             arr.splice(i, 1);
         }
     }
+}
+
+// Encodes bytes in base64url without padding (RFC 4648 §5), as PKCE expects (RFC 7636).
+// The bytes are spread as arguments of String.fromCharCode, so this is only meant for small arrays (not for file contents).
+export function base64Url(bytes: Uint8Array): string {
+    return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+}
+
+// Returns a random string (base64url encoded) made of the given number of random bytes, e.g. for an OAuth state or a PKCE code verifier.
+export function randomBase64UrlString(byteCount: number): string {
+    return base64Url(crypto.getRandomValues(new Uint8Array(byteCount)));
 }

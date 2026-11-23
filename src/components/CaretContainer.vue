@@ -215,8 +215,12 @@ export default defineComponent({
     unmounted() {
         window.removeEventListener("paste", this.pasteIfFocused);
         document.removeEventListener(CustomEventTypes.scrollCaretIntoView, this.onScrollCaretIntoView);
-        // Remove the component's API instance
-        if(vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[this.UID]){
+        // Remove the component's API instance, but only if it is still ours: when a frame's type changes
+        // (e.g. a function call frame converted to a "while" frame by typing "while "), the Frame's key changes
+        // and its caret containers are re-created with the same UID. The new instance registers itself in created()
+        // BEFORE this unmounted() hook of the old instance is called, so we would otherwise remove the new
+        // instance's API (which breaks frames drag and drop, see issue #1125).
+        if(vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[this.UID]?.handleClick === this.handleClick){
             delete vueComponentsAPIHandler.caretContainerComponentAPI?.forInstance[this.UID];
         }
     },

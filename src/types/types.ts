@@ -53,7 +53,6 @@ export interface BaseSlot {
     focused?: boolean; // default false
     error?: string; // default ""
     errorTitle?: string; // default ""
-    isEmphasised?: boolean; // false by default
 }
 
 export interface StringSlot extends BaseSlot {

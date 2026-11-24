@@ -324,9 +324,18 @@ export default defineComponent({
             }
             const focusSlotInfos = focusSlotCursorInfos.slotInfos;
             const focusSlotCursorPos = focusSlotCursorInfos.cursorPos;
-            const focusSlotCode = (retrieveSlotFromSlotInfos(focusSlotInfos) as BaseSlot | undefined)?.code ?? "";
+            // The text cursor isn't always updated at the same time as the slots: for example, when deleting a bracket,
+            // the slots change first, and the text cursor may then still point to a slot that doesn't exist anymore
+            // (retrieving it from the store would then fail). So we look for the focused slot in the flat slots,
+            // which always match the slots, and there is no emphasis until the text cursor is in an existing slot.
+            const flatSlots = this.subSlots as FlatSlotBase[];
+            const focusFlatSlot = flatSlots.find((slot) => areSlotCoreInfosEqual({frameId: this.frameId, labelSlotsIndex: this.labelIndex, slotId: slot.id, slotType: slot.type}, focusSlotInfos));
+            if(!focusFlatSlot){
+                return undefined;
+            }
+            const focusSlotCode = focusFlatSlot.code;
             const selectionCursorsComparisonValue = getSelectionCursorsComparisonValue()??0;
-            const emphasisedBracket = (this.subSlots as FlatSlotBase[]).find((slot) => {
+            const emphasisedBracket = flatSlots.find((slot) => {
                 if(!isSlotBracketType(slot.type)){
                     return false;
                 }

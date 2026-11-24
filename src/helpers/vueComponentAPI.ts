@@ -1,4 +1,4 @@
-import { AppComponentAPI, AutoCompletionComponentAPI, CaretContainerComponentAPI, CloudDriveHandlerComponentAPI, ColourPickerDlgComponentAPI, CommandsComponentAPI, EditImageDlgComponentAPI, EditSoundDlgComponentAPI, FrameComponentAPI, FrameHeaderComponentAPI, GoogleDriveFilePickerComponentAPI, LabelSlotComponentAPI, LabelSlotsStructureComponentAPI, MediaPreviewPopupComponentAPI, MenuComponentAPI, OpenDemoDlgComponentAPI, PEAComponentAPI, RecordImageDlgComponentAPI, RecordSoundDlgComponentAPI } from "@/types/vue-component-api-types";
+import { AppComponentAPI, AutoCompletionComponentAPI, CaretContainerComponentAPI, CloudDriveHandlerComponentAPI, ColourPickerDlgComponentAPI, CommandsComponentAPI, EditImageDlgComponentAPI, EditSoundDlgComponentAPI, FrameComponentAPI, FrameHeaderComponentAPI, GoogleDriveFilePickerComponentAPI, LabelSlotComponentAPI, LabelSlotsStructureComponentAPI, MediaPreviewPopupComponentAPI, MenuComponentAPI, OpenDemoDlgComponentAPI, PEAComponentAPI, RecordImageDlgComponentAPI, RecordSoundDlgComponentAPI, SearchReplaceWidgetComponentAPI } from "@/types/vue-component-api-types";
 
 /** Application-wide exposed Vue Components methods and accessors to data/computer props ( --> "API")
  * Done here because some of those Components are ALSO used in the store and in helpers scripts,
@@ -23,6 +23,7 @@ export const vueComponentsAPIHandler = {
     frameHeaderComponentAPI: null as null | FrameHeaderComponentAPI,
     autoCompletionComponentAPI: null as null | AutoCompletionComponentAPI,
     colourPickerDlgComponentAPI: null as null | ColourPickerDlgComponentAPI,
+    searchReplaceWidgetComponentAPI: null as null | SearchReplaceWidgetComponentAPI,
     // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
     peaComponentAPI: null as null | PEAComponentAPI,
     mediaPreviewPopupComponentAPI:null as null | MediaPreviewPopupComponentAPI,

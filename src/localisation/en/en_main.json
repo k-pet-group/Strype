@@ -276,7 +276,9 @@
     "cannotCollapseErrors": "Cannot collapse with errors",
     "freeze": "Freeze",
     "unfreeze": "Unfreeze", 
-    "cannotFreezeErrors": "Cannot freeze with errors"
+    "cannotFreezeErrors": "Cannot freeze with errors",
+    "find": "Find...",
+    "searchReplace": "Find and replace..."
   },
   "appMenu": {
     "downloadHex": "Convert to Hex file",
@@ -445,9 +447,30 @@
     "builtinTurtle": "Turtle",
     "builtinMicrobit": "micro:bit"
   },
+  "searchReplace": {
+    "title": "Find and replace",
+    "titleFind": "Find",
+    "find": "Find",
+    "replace": "Replace",
+    "replaceWith": "Replace with",
+    "matchCase": "Match case",
+    "wholeWord": "Whole word",
+    "previous": "Previous",
+    "previousTooltip": "Previous match (Shift+Enter)",
+    "next": "Next",
+    "nextTooltip": "Next match (Enter)",
+    "close": "Close (Escape)",
+    "replaceOneWithShortcut": "Replace <span class=\"kb-shortcut\">(Enter)</span>",
+    "replaceAllWithShortcut": "Replace all <span class=\"kb-shortcut\">({modifierkey}Enter)</span>",
+    "noResults": "No results",
+    "matchCount": "{current} of {total}",
+    "readOnly": "(read-only)",
+    "replacedCount": "{count} replaced"
+  },
   "shortcut": {
     "delete": "Delete",
     "ctrlPlus": "Ctrl+",
+    "shiftPlus": "Shift+",
     "period": "Dot"
   }
 }

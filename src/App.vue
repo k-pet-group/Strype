@@ -113,6 +113,14 @@
                     <BButton :id="resyncSaveToCloudDriveAtStartupButtonId" variant="primary" @click="resyncToCloudDriveAtStartup(false, ok);">{{resyncSaveToCloudDriveAtStartupButtonLabel}}</BButton>
                 </template>
             </ModalDlg>
+            <ModalDlg :dlgId="cloudHandoffSignInModalDlgId" :elementToFocusId="cloudHandoffSignInButtonId">
+                <span style="white-space:pre-wrap" v-html="cloudHandoffSignInMessage"></span>
+                <!-- the connection must be started by the click itself (the Cloud Drive may need to show a popup), hence our own buttons -->
+                <template #modal-footer-content="{ok, cancel}">
+                    <BButton variant="secondary" @click="cancel()">{{$t('buttonLabel.noContinueWithout')}}</BButton>
+                    <BButton :id="cloudHandoffSignInButtonId" variant="primary" @click="signInToOpenHandedOverCloudFile(ok)">{{$t('buttonLabel.connect')}}</BButton>
+                </template>
+            </ModalDlg>
             <MediaPreviewPopup ref="mediaPreviewPopup" />
             <EditImageDlg dlgId="editImageDlg" ref="editImageDlg" :imgToEdit="imgToEditInDialog" :showImgPreview="showImgPreview" :showReRecordButton="editImageDlgShowReRecord" />
             <EditSoundDlg dlgId="editSoundDlg" ref="editSoundDlg" :soundToEdit="soundToEditInDialog" :showReRecordButton="editSoundDlgShowReRecord" />
@@ -144,7 +152,9 @@ import SimpleMsgModalDlg from "@/components/SimpleMsgModalDlg.vue";
 import {Splitpanes, Pane} from "splitpanes";
 import { useStore, settingsStore, getEditorTabId } from "@/store/store";
 import { AppEvent, ProjectSaveFunction, BaseSlot, CaretPosition, FrameObject, FrozenState, MediaSlot, MessageTypes, ModifierKeyCode, Position, PythonExecRunningState, SaveRequestReason, SlotCursorInfos, SlotsStructure, SlotType, StringSlot, StrypeSyncTarget, StrypePEALayoutMode, defaultEmptyStrypeLayoutDividerSettings, EditImageInDialogFunction, EditSoundInDialogFunction, RecordNewImageInDialogFunction, RecordNewSoundInDialogFunction, OpenColourPickerInDialogFunction, areSlotCoreInfosEqual, SlotCoreInfos, ProjectDocumentationDefinition, CollapsedState, LoadRequestReason, StateAppObject, MessageDefinitions, FormattedMessage, FormattedMessageArgKeyValuePlaceholders, StrypeContextMenuItem, CoordPosition } from "@/types/types";
-import { isMacOSPlatform } from "@/helpers/common";
+import { escapeHTML, isMacOSPlatform, pythonFileExtension, waitForNextPaint } from "@/helpers/common";
+import { CloudHandoff, isCloudHandoffRequested, requestCloudHandoff } from "@/helpers/cloudHandoff";
+import { isLocalFileRequested, LocalFileForNewTab, requestLocalFile } from "@/helpers/localFileInNewTab";
 import { CloudDriveAPIState, isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 import { getFrameContainerUID, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId, isElementLabelSlotInput, CustomEventTypes, getFrameUID, parseLabelSlotUID, getLabelSlotUID, getFrameLabelSlotsStructureUID, getFocusedEditableSlotTextSelectionStartEnd, getSelectionCursorsComparisonValue, bumpCaretRequestSeq, getCaretRequestSeq, setDocumentSelection, getSameLevelAncestorIndex, autoSaveFreqMins, getImportDiffVersionModalDlgId, getAppSimpleMsgDlgId, getActiveContextMenu, actOnGraphicsImport, setPythonExecutionAreaTabsContentMaxHeight, setManuallyResizedEditorHeightFlag, setPythonExecAreaLayoutButtonPos, getStrypeCommandComponentRefId, frameContextMenuShortcuts, getCompanionDndCanvasId, addDuplicateActionOnFramesDnD, removeDuplicateActionOnFramesDnD, sharedStrypeProjectTargetKey, sharedStrypeProjectIdKey, getCaretContainerUID, isCaretContainerFocusInputElement, getEditorID, getLoadProjectLinkId, AutoSaveKeyNames, getFrameHeaderUID, closeRenameIdentifierPopups, newStrypeProject } from "./helpers/editor";
 import { AllFrameTypesIdentifier} from "@/types/types";
@@ -241,6 +251,8 @@ export default defineComponent({
             setAppNotOnTop: false,
             progressbarMessage: "",
             cloudDriveName: "",
+            // In a tab opened by Strype for opening a Cloud Drive file (see cloudHandoff.ts), when the user must connect to open it
+            cloudHandoffToSignIn: null as CloudHandoff | null,
             // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
             isExpandedPythonExecArea: false,
             // #v-endif
@@ -375,6 +387,23 @@ export default defineComponent({
 
         resyncToCloudDriveAtStartupDetailsMessage(): string {
             return this.$t("appMessage.resyncToCloudDriveAtStartup", {drivename: this.cloudDriveName});
+        },
+
+        cloudHandoffSignInModalDlgId(): string {
+            return "cloudHandoffSignInModalDlg";
+        },
+
+        cloudHandoffSignInButtonId(): string {
+            return "cloudHandoffSignInButton";
+        },
+
+        cloudHandoffSignInMessage(): string {
+            const handoff = this.cloudHandoffToSignIn;
+            if(handoff == null){
+                return "";
+            }
+            const driveName = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.getSpecificCloudDriveComponent(handoff.target)?.driveName ?? "";
+            return this.$t("appMessage.cloudHandoffSignIn", {drivename: driveName, filename: escapeHTML(handoff.fileName)});
         },
 
         resyncSaveToCloudDriveAtStartupButtonId(): string {
@@ -827,7 +856,15 @@ export default defineComponent({
         // When there is a shared project shared within a Cloud Drive, we do like if we were opening that Cloud Drive project BUT we use a special
         // mode that does not ask for the target selection (which shows with "open" in the menu) and breaks links to the Cloud Drive
         // (it's only a retrieval of the code)
-        if(shareProjectId && sharedProjectTarget && isSyncTargetCloudDrive(parseInt(sharedProjectTarget))) {
+        // A tab opened by Strype for opening a Cloud Drive file (see cloudHandoff.ts) or a file of the Files tab's "/local" folder
+        // (see localFileInNewTab.ts): this takes priority over anything else
+        if(isCloudHandoffRequested()){
+            void this.openHandedOverCloudFile();
+        }
+        else if(isLocalFileRequested()){
+            void this.openLocalFileFromOpener();
+        }
+        else if(shareProjectId && sharedProjectTarget && isSyncTargetCloudDrive(parseInt(sharedProjectTarget))) {
             const cloudTarget = parseInt(sharedProjectTarget) as StrypeSyncTarget;
             vueComponentsAPIHandler.menuComponentAPI?.setOpenSharedProjectTarget(cloudTarget);
             vueComponentsAPIHandler.menuComponentAPI?.setOpenSharedProjectId(shareProjectId);
@@ -1347,6 +1384,82 @@ export default defineComponent({
                 await new Promise(() => {});
             }
             sessionStorage.removeItem(RELOAD_KEY);
+        },
+
+        async openHandedOverCloudFile() {
+            const handoff = await requestCloudHandoff();
+            const cloudDriveHandlerComponentAPI = vueComponentsAPIHandler.cloudDriveHandlerComponentAPI;
+            if(handoff == null || cloudDriveHandlerComponentAPI == null){
+                // We don't know what to open (the Strype tab that opened this one didn't answer, or was closed):
+                // we tell the user and start with a new project when they have read the message.
+                this.appStore.simpleModalDlgMsg = this.$t("errorMessage.cloudHandoffFailed");
+                this.startNewProjectWhenModalHidden(getAppSimpleMsgDlgId(), () => true);
+                eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
+                return;
+            }
+            if(!(await cloudDriveHandlerComponentAPI.openHandedOverCloudFile(handoff))){
+                // The connection couldn't be handed over, or can't be used: the user must connect to open the file
+                // (or not, then they get a new project).
+                this.cloudHandoffToSignIn = handoff;
+                this.startNewProjectWhenModalHidden(this.cloudHandoffSignInModalDlgId, (event) => event.trigger != "ok");
+                eventBus.emit(CustomEventTypes.showStrypeModal, this.cloudHandoffSignInModalDlgId);
+            }
+        },
+
+        // Opens the project file of the opener's "/local" folder it gives this tab (see localFileInNewTab.ts)
+        async openLocalFileFromOpener() {
+            const localFile = await requestLocalFile();
+            if(localFile == null){
+                // We don't know what to open (the Strype tab that opened this one didn't answer, or was closed):
+                // we tell the user and start with a new project when they have read the message.
+                this.appStore.simpleModalDlgMsg = this.$t("errorMessage.cloudHandoffFailed");
+                this.startNewProjectWhenModalHidden(getAppSimpleMsgDlgId(), () => true);
+                eventBus.emit(CustomEventTypes.showStrypeModal, getAppSimpleMsgDlgId());
+                return;
+            }
+            this.loadLocalFileFromOpener(localFile);
+        },
+
+        // Opens a project file of the opener's "/local" folder like an example project: "/local" only exists
+        // in the opener tab, so the project isn't linked to anything (no target, saving asks where to save it).
+        loadLocalFileFromOpener(localFile: LocalFileForNewTab) {
+            this.applyShowAppProgress({requestAttention: true, message: this.$t("appMessage.loadEditorFile")});
+            // Make sure the progress overlay has been painted before the (synchronous, and potentially long) parse blocks the main thread:
+            void waitForNextPaint().then(() => {
+                // (as when the user picks a file: an old Strype file may not have the extension, but it starts with a "{")
+                const loading = (localFile.fileName.endsWith(`.${pythonFileExtension}`) || !localFile.content.trimStart().startsWith("{"))
+                    ? this.setStateFromPythonFile(localFile.content, localFile.fileName, -1, false, "import")
+                    : this.appStore.setStateFromJSONStr({stateJSONStr: localFile.content}).then(() => {
+                        const fileName = localFile.fileName;
+                        this.appStore.projectName = (fileName.includes(".")) ? fileName.substring(0, fileName.lastIndexOf(".")) : fileName;
+                    });
+                void loading
+                    .then(() => {
+                        vueComponentsAPIHandler.menuComponentAPI?.saveTargetChoice(StrypeSyncTarget.none);
+                        this.appStore.isEditorContentModified = false;
+                    }, () => { /* an error has already been shown to the user */ })
+                    .finally(() => this.applyShowAppProgress({requestAttention: false}));
+            });
+        },
+
+        signInToOpenHandedOverCloudFile(dialogOK: VoidFunction) {
+            dialogOK();
+            if(this.cloudHandoffToSignIn != null){
+                vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.signInToOpenHandedOverCloudFile(this.cloudHandoffToSignIn);
+            }
+        },
+
+        // When the given dialog is hidden, starts with a new project if requested
+        startNewProjectWhenModalHidden(dlgId: string, isNewProjectRequested: (event: BvTriggerableEvent) => boolean) {
+            const onModalHidden = (event: BvTriggerableEvent) => {
+                if(event.componentId == dlgId){
+                    eventBus.off(CustomEventTypes.strypeModalHidden, onModalHidden);
+                    if(isNewProjectRequested(event)){
+                        this.loadLocalStorageProjectOnStart(true);
+                    }
+                }
+            };
+            eventBus.on(CustomEventTypes.strypeModalHidden, onModalHidden);
         },
 
         resyncToCloudDriveAtStartup(isLoadingRequested: boolean, dialogOK: VoidFunction){

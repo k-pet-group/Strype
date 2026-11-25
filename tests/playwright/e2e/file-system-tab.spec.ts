@@ -881,6 +881,54 @@ test.describe("File system tab -- viewing a file", () => {
     });
 });
 
+// A project file (.py or .spy) of "/local" isn't viewed: it's opened in a new Strype tab, which is given
+// its content (see FileSystemPane.vue's openLocalProjectFileInNewTab() and localFileInNewTab.ts).
+test.describe("File system tab -- opening a project file of /local", () => {
+    // Some tests run two Strype tabs at once, which some browsers (Firefox notably) load too slowly when other
+    // workers do the same: run these tests one after another in one worker (as cloud-handoff.spec.ts does).
+    test.describe.configure({mode: "default"});
+    const projectFiles = [
+        {fileName: "opened-from-local.py", content: "answer = 42\nprint(answer)\n"},
+        {fileName: "opened-from-local.spy", content: "#(=> Strype:1:std\n#(=> Section:Imports\n#(=> Section:Definitions\n#(=> Section:Main\nanswer = 42\nprint(answer)\n#(=> Section:End\n"},
+    ];
+    for (const {fileName, content} of projectFiles) {
+        test(`opens a ${path.extname(fileName)} file in a new tab, leaving this tab's project alone`, async ({ page, context }) => {
+            await openFilesTab(page);
+            await localUploadInput(page).setInputFiles(testFixturePath(test.info().outputDir, fileName, content));
+            const row = page.locator(".file-system-tree-file", { hasText: fileName });
+            await row.hover();
+            const openButton = row.locator(".file-system-tree-view-btn");
+            await expect(openButton).toHaveAttribute("title", en.fileSystemTab.openInNewTab);
+
+            const [newTab] = await Promise.all([context.waitForEvent("page"), openButton.click()]);
+            // (a background tab may load much more slowly)
+            await newTab.bringToFront();
+            await expect(newTab.locator(".project-name")).toHaveText("opened-from-local", {timeout: 60000});
+            await expect(newTab.locator(".frame-div", { hasText: "answer" }).first()).toBeVisible();
+            // "/local" only exists in this tab: the project in the new tab isn't linked to anything
+            // (no logo of a target next to its name, and no "Saved" label)
+            await expect(newTab.locator(".project-target-logo")).toHaveCount(0);
+            await expect(newTab.locator(".gdrive-sync-label")).toHaveCount(0);
+
+            // This tab's project hasn't changed, and the file wasn't viewed here
+            await expect(page.locator("#fileSystemFileViewerDlg")).toBeHidden();
+            await expect(page.locator(".project-name")).not.toHaveText("opened-from-local");
+            await expect(page.locator(".frame-div", { hasText: "answer" })).toHaveCount(0);
+
+            // (Firefox sometimes fails to close the test's context when a tab the page opened is still there)
+            await newTab.close();
+        });
+    }
+
+    test("still views the other files", async ({ page }) => {
+        await openFilesTab(page);
+        await localUploadInput(page).setInputFiles(testFixturePath(test.info().outputDir, "not-a-project.txt", "answer = 42\n"));
+        const row = page.locator(".file-system-tree-file", { hasText: "not-a-project.txt" });
+        await row.hover();
+        await expect(row.locator(".file-system-tree-view-btn")).toHaveAttribute("title", en.fileSystemTab.view);
+    });
+});
+
 // Upload validation (see src/helpers/fileSystemTabIO.ts's reject list): executables, OS scripts and
 // JavaScript files are refused with a message, and nothing is written -- by extension, and for a
 // direct upload also by the MIME type the browser reports. HTML/XHTML files remain allowed. Most tests use Playwright's in-memory {name, mimeType, buffer} payloads rather than

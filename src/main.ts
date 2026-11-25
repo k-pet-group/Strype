@@ -6,7 +6,7 @@ import i18n from "@/i18n";
 import "bootstrap/dist/css/bootstrap.css";
 import "bootstrap-vue-next/dist/bootstrap-vue-next.css";
 import scssVars  from "@/assets/style/_export.module.scss";
-import { WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_NEXTTICK_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "./helpers/sharedIdCssWithTests";
+import { WINDOW_STRYPE_CLOUDHANDOFF_PROPNAME, WINDOW_STRYPE_HTMLIDS_PROPNAME, WINDOW_STRYPE_NEXTTICK_PROPNAME, WINDOW_STRYPE_SCSSVARS_PROPNAME } from "./helpers/sharedIdCssWithTests";
 import {getAppLangSelectId, getEditorID, getEditorMenuUID, getFrameBodyUID, getFrameContainerUID, getFrameHeaderUID, getFrameLabelSlotsStructureUID, getFrameUID, getImportFileInputId, getLabelSlotUID, getLoadFromFSStrypeButtonId, getLoadProjectLinkId, getNewProjectLinkId, getSaveProjectLinkId, getSaveStrypeProjectToFSButtonId, getStrypeSaveProjectNameInputId, getShareProjectLinkId, getMenuLeftPaneUID, getEditorMiddleUID, getCommandsRightPaneContainerId} from "./helpers/editor";
 import "@imengyu/vue3-context-menu/lib/vue3-context-menu.css";
 import ContextMenu from "@imengyu/vue3-context-menu";
@@ -14,6 +14,8 @@ import { initialiseAnalytics } from "./helpers/initialiseAnalytics";
 import { startVersionCheck } from "./helpers/versionCheck";
 import { openIndexedDBConnection, tidyUpDatabaseState } from "@/store/store-db-storage";
 import { getEditorTabId } from "@/store/store";
+import { openCloudFileInNewTab, takeCloudHandoffRequestFromURL } from "@/helpers/cloudHandoff";
+import { takeLocalFileRequestFromURL } from "@/helpers/localFileInNewTab";
 import { showIndexDBError } from "@/helpers/storeMethods";
 import { startEagerLoad as startEagerTreeSitterLoad } from "@/helpers/treeSitterPython";
 
@@ -85,6 +87,10 @@ else {
 // Expose Vue's nextTick for the tests here, so they can wait for reactive updates to settle
 // instead of a fixed timeout:
 (window as any)[WINDOW_STRYPE_NEXTTICK_PROPNAME] = nextTick;
+// Expose the opening of a Cloud Drive file in a new tab for the tests here: it's otherwise only reachable
+// from the Files tab's "/cloud" folder, which needs a real Cloud Drive connection (see cloudHandoff.ts).
+// (It gives nothing away: a page that can call it can already use the connection itself.)
+(window as any)[WINDOW_STRYPE_CLOUDHANDOFF_PROPNAME] = {openCloudFileInNewTab};
 // Set the HTML Elements shared IDs for the test here
 (window as any)[WINDOW_STRYPE_HTMLIDS_PROPNAME] = {
     getEditorID: getEditorID,
@@ -132,6 +138,12 @@ else {
 (Vue as unknown as { configureCompat: (config: Record<string, boolean>) => void }).configureCompat({
     WATCH_ARRAY: false,
 });
+
+// A tab opened by Strype to open a Cloud Drive file (see cloudHandoff.ts) must clear what was copied from its opener's
+// session storage (notably the tab ID) before anything reads it:
+takeCloudHandoffRequestFromURL();
+// Same for a tab opened by Strype to open a file of the Files tab's "/local" folder (see localFileInNewTab.ts):
+takeLocalFileRequestFromURL();
 
 // New way of creating the App in Vue 3: using createApp()
 const app = createApp(App);

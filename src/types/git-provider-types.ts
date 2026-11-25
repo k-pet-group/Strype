@@ -96,6 +96,11 @@ export interface GitProviderAPI<Auth> {
    getPublicFileUrl(auth: Auth, repoId: string, commitSha: string, filePath: string): string,
    // The server the connection is for, when the provider has several (GitLab's instances)
    getServerUrl?(auth: Auth): string,
+   // For handing the connection over to a new Strype tab (see cloudHandoff.ts): the connection without its refresh token
+   // (a refresh token can only be used once, so two tabs can't share it: the new tab asks to connect again when the access token expires),
+   // and the connection rebuilt from what was handed over (null if it isn't a valid connection).
+   toHandoffAuth(auth: Auth): Auth,
+   fromHandoffAuth(data: unknown): Auth | null,
 }
 
 // The name of the repository Strype uses by default (created when the user saves into it if it doesn't exist)

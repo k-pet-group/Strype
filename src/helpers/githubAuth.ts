@@ -1,5 +1,6 @@
 import { GitAuthExpiredError, GitContentItem, GitHttpError, GitProviderAPI, readGitErrorDetails, GitRepository } from "@/types/git-provider-types";
 import { base64Url, randomBase64UrlString } from "@/helpers/common";
+import { fromGitHubHandoffAuth, toGitHubHandoffAuth } from "@/helpers/gitHandoffAuth";
 
 const GH_AUTH_API = "/gh-auth/api"; // same origin; use an absolute URL if the editor is served elsewhere
 const GITHUB_API = "https://api.github.com";
@@ -467,4 +468,6 @@ export const gitHubAPI: GitProviderAPI<GitHubAuth> = {
     createRepository: createGitHubRepository,
     isRepositoryPublic: isGitHubRepositoryPublic,
     getPublicFileUrl: (auth, repositoryFullName, commitSha, filePath) => getGitHubPublicFileUrl(repositoryFullName, commitSha, filePath),
+    toHandoffAuth: toGitHubHandoffAuth,
+    fromHandoffAuth: fromGitHubHandoffAuth,
 };

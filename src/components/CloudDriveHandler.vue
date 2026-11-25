@@ -58,6 +58,7 @@ import GitHubComponent from "@/components/GitHubComponent.vue";
 import GitLabComponent from "@/components/GitLabComponent.vue";
 import { GitProviderComponent, parseGitFileId } from "@/types/git-provider-types";
 import { getDefaultGitCommitMessage } from "@/helpers/gitProvider";
+import type { CloudHandoff } from "@/helpers/cloudHandoff";
 
 // This enum is used for flaging the action taken when a request to save a file on a Cloud Drive
 // has been done, and a file of the same name already exists on the Drive
@@ -116,6 +117,8 @@ export default defineComponent({
             },
             saveFile: this.saveFile,
             loadFile: this.loadFile,
+            openHandedOverCloudFile: this.openHandedOverCloudFile,
+            signInToOpenHandedOverCloudFile: this.signInToOpenHandedOverCloudFile,
             requestSignOut: this.requestSignOut,
             modifiedDataSearchOptionName: (cloudTarget: StrypeSyncTarget) => {
                 return this.getSpecificCloudDriveComponent(cloudTarget)?.modifiedDataSearchOptionName;
@@ -817,6 +820,43 @@ export default defineComponent({
             }
         },
         
+        // In a tab opened by Strype for opening a Cloud Drive file (see cloudHandoff.ts): uses the connection given by the opener tab,
+        // and opens the file. Resolves to false if that connection can't be used: the user must then connect (see signInToOpenHandedOverCloudFile()).
+        async openHandedOverCloudFile(handoff: CloudHandoff): Promise<boolean> {
+            const cloudDriveComponent = this.getSpecificCloudDriveComponent(handoff.target);
+            if(cloudDriveComponent == null || handoff.credentials == null || !(await cloudDriveComponent.importHandoffCredentials(handoff.credentials).catch(() => false))){
+                return false;
+            }
+            // We make sure the connection works before using it (the token may have been revoked, or the network be down)
+            const isConnected = await new Promise<boolean>((resolve) => cloudDriveComponent.testCloudConnection(() => resolve(true), () => resolve(false), () => resolve(false)));
+            if(!isConnected){
+                cloudDriveComponent.resetOAuthToken();
+                return false;
+            }
+            this.updateSignInStatus(handoff.target, true);
+            await this.loadHandedOverCloudFile(handoff);
+            return true;
+        },
+
+        // Must be called on a user's action (the Cloud Drive may need to show a popup to connect).
+        signInToOpenHandedOverCloudFile(handoff: CloudHandoff) {
+            this.setGenericSignInCallBack(handoff.target, () => void this.loadHandedOverCloudFile(handoff));
+            this.signInFn();
+        },
+
+        async loadHandedOverCloudFile(handoff: CloudHandoff) {
+            const cloudDriveComponent = this.getSpecificCloudDriveComponent(handoff.target);
+            this.currentAction = "load";
+            this.loadReason = LoadRequestReason.standardUserLoad;
+            // The file's folder becomes the project's location, as when a file is picked in the Drive
+            // (the project is then saved there, and it is what the Files tab shows in "/cloud")
+            const folderNameAndPath = await cloudDriveComponent?.getFolderNameFromId(handoff.folderId).catch(() => undefined);
+            this.appStore.strypeProjectLocation = handoff.folderId;
+            this.appStore.strypeProjectLocationAlias = folderNameAndPath?.name ?? "";
+            this.appStore.strypeProjectLocationPath = folderNameAndPath?.path ?? "";
+            this.loadPickedFileId(handoff.target, handoff.fileId, handoff.fileName);
+        },
+
         loadPickedFileId(cloudTarget: StrypeSyncTarget, id : string, fileName?: string) {
             // The file name is either already set in the call of this method (case of choosing from the Drive Picker for example),
             // or we need to check it directly against the Drive. 

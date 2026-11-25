@@ -23,9 +23,10 @@
                     allow-delete
                     allow-pin
                     :executing="isPythonExecuting"
+                    :opens-in-new-tab="isProjectFile"
                     @download="(n) => onDownload(n, '/local')"
                     @downloadDir="(n) => onDownloadDir(n, '/local')"
-                    @upload="(n, file) => void onUpload(n, file, '/local')"
+                    @upload="(n, file) => void onUpload(n, file)"
                     @delete="onDeleteLocal"
                     @pin="onPinLocal"
                     @view="(n) => onView(n, '/local')"
@@ -48,12 +49,11 @@
                     :node="cloudRoot"
                     label-override="/cloud/"
                     start-expanded
-                    :allow-upload="!isCloudReadOnly"
                     :executing="isPythonExecuting"
                     :is-cwd="cwdRoot === '/cloud'"
+                    :opens-in-new-tab="canOpenCloudProjectFileInNewTab"
                     @download="(n) => onDownload(n, '/cloud')"
                     @downloadDir="(n) => onDownloadDir(n, '/cloud')"
-                    @upload="(n, file) => void onUpload(n, file, '/cloud')"
                     @view="(n) => onView(n, '/cloud')"
                 />
             </div>
@@ -122,18 +122,20 @@ import {
     listFsRootTree,
     readFsFileBytes,
     togglePinLocal,
-    uploadEntriesToCloud,
     uploadEntriesToLocal,
 } from "@/helpers/fileSystemTabIO";
 import { ArchiveEntry, isZipFile, listZipEntryPaths, unzipEntries } from "@/helpers/archive";
 import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
-import { runChangeCount } from "@/helpers/localFsCache";
+import { readFile as readLocalFile, runChangeCount } from "@/helpers/localFsCache";
 import { eventBus } from "@/helpers/appContext";
 import { CustomEventTypes, getAppSimpleMsgDlgId } from "@/helpers/editor";
 import { decodeAsTextIfValid, MAX_PREVIEWABLE_FILE_SIZE, mimeTypeForExtension, previewKindForExtension } from "@/helpers/filePreview";
 import { drawSoundOnCanvas } from "@/helpers/media";
 import { saveAs } from "file-saver";
-import { escapeHTML } from "@/helpers/common";
+import { escapeHTML, pythonFileExtension, strypeFileExtension } from "@/helpers/common";
+import { openCloudFileInNewTab } from "@/helpers/cloudHandoff";
+import { openLocalFileInNewTab } from "@/helpers/localFileInNewTab";
+import { isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 
 // Waveform image size for the "view file" sound preview -- wider than MediaPreviewPopup.vue's own
 // 200x50 (a small hover popup) since this renders in a full-width modal dialog instead.
@@ -143,7 +145,6 @@ const SOUND_WAVEFORM_HEIGHT = 120;
 interface PendingUpload {
     dirNode: FsTreeNode,
     file: File,
-    root: "/local" | "/cloud",
 }
 
 interface ViewingFile {
@@ -159,6 +160,22 @@ interface ViewingFile {
     text?: string,
     tooLarge?: boolean,
     bytes?: Uint8Array,
+}
+
+// The directory node directly containing the given node in the tree, if found (paths are unique in a tree)
+function findParentNode(tree: FsTreeNode, node: FsTreeNode): FsTreeNode | undefined {
+    for (const child of tree.children ?? []) {
+        if (child.path === node.path) {
+            return tree;
+        }
+        if (child.isDir) {
+            const parent = findParentNode(child, node);
+            if (parent) {
+                return parent;
+            }
+        }
+    }
+    return undefined;
 }
 
 export default defineComponent({
@@ -317,10 +334,6 @@ export default defineComponent({
             this.localRoot = await listFsRootTree("/local");
         },
 
-        async refreshCloud(): Promise<void> {
-            this.cloudRoot = isCloudMounted() ? await listFsRootTree("/cloud") : null;
-        },
-
         onDownload(node: FsTreeNode, root: FsRoot): void {
             void downloadFsFile(node, root);
         },
@@ -344,6 +357,10 @@ export default defineComponent({
         // size) to be over MAX_PREVIEWABLE_FILE_SIZE -- previewing is a convenience, not worth
         // downloading a huge file just to then refuse to render it.
         async onView(node: FsTreeNode, root: FsRoot): Promise<void> {
+            // (must be done right away in the click's handler: the browser blocks opening a tab otherwise)
+            if ((root === "/cloud" && this.openCloudProjectFileInNewTab(node)) || (root === "/local" && this.openLocalProjectFileInNewTab(node))) {
+                return;
+            }
             this.revokeViewingObjectUrl();
             this.viewingFile = {node, root, kind: "loading"};
             eventBus.emit(CustomEventTypes.showStrypeModal, this.fileViewerDlgId);
@@ -394,6 +411,52 @@ export default defineComponent({
                 : {node, root, kind: "unsupported", bytes};
         },
 
+        // A project file (.spy or .py) of "/local" isn't shown in the dialog: it's opened in a new Strype tab, which is given its content
+        // (see localFileInNewTab.ts). The project isn't linked to the file there: "/local" only exists in this tab.
+        // Returns false if it isn't such a file, or the new tab couldn't be opened (then the file is shown in the dialog as usual).
+        openLocalProjectFileInNewTab(node: FsTreeNode): boolean {
+            if (!this.isProjectFile(node)) {
+                return false;
+            }
+            // (a file that isn't text can't be a project: it's shown in the dialog, which says it can't be previewed)
+            const bytes = readLocalFile(node.path);
+            const content = (bytes != undefined) ? decodeAsTextIfValid(bytes) : undefined;
+            return content != undefined && openLocalFileInNewTab({fileName: node.name, content});
+        },
+
+        // Whether the file is a project file (.spy or .py), which is opened in a new tab rather than viewed
+        // (FileSystemTree.vue then shows an "open" button rather than a "view" one for it).
+        isProjectFile(node: FsTreeNode): boolean {
+            return !node.isDir && (node.name.endsWith(`.${strypeFileExtension}`) || node.name.endsWith(`.${pythonFileExtension}`));
+        },
+
+        // A project file (.spy or .py) of "/cloud" isn't shown in the dialog: it's opened in a new Strype tab,
+        // with the same connection to the Cloud Drive (see cloudHandoff.ts), and saved to the Cloud Drive from there.
+        // Returns false if it isn't such a file, or the new tab couldn't be opened (then the file is shown in the dialog as usual).
+        openCloudProjectFileInNewTab(node: FsTreeNode): boolean {
+            const cloudTarget = this.appStore.syncTarget;
+            const folderId = this.cloudProjectFileFolderId(node);
+            if (node.cloudFileId == null || folderId == undefined || !isSyncTargetCloudDrive(cloudTarget)) {
+                return false;
+            }
+            return openCloudFileInNewTab({target: cloudTarget, fileId: node.cloudFileId, fileName: node.name, folderId});
+        },
+
+        // Whether the file of "/cloud" would be opened in a new tab by openCloudProjectFileInNewTab()
+        // (FileSystemTree.vue then shows an "open" button rather than a "view" one for it).
+        canOpenCloudProjectFileInNewTab(node: FsTreeNode): boolean {
+            return this.cloudProjectFileFolderId(node) != undefined;
+        },
+
+        // The ID of the Cloud Drive folder containing the project file (.spy or .py) of "/cloud",
+        // or undefined if it isn't such a file (or we aren't connected to a Cloud Drive).
+        cloudProjectFileFolderId(node: FsTreeNode): string | undefined {
+            if (node.cloudFileId == null || !isSyncTargetCloudDrive(this.appStore.syncTarget) || !this.isProjectFile(node)) {
+                return undefined;
+            }
+            return (this.cloudRoot) ? findParentNode(this.cloudRoot, node)?.cloudFileId : undefined;
+        },
+
         revokeViewingObjectUrl(): void {
             if (this.viewingFile?.objectUrl) {
                 URL.revokeObjectURL(this.viewingFile.objectUrl);
@@ -441,10 +504,10 @@ export default defineComponent({
             if (!file || this.localRoot == null) {
                 return;
             }
-            void this.onUpload(this.localRoot, file, "/local");
+            void this.onUpload(this.localRoot, file);
         },
 
-        // Every upload (from either upload button, /local or /cloud) comes through here first, so
+        // Every upload (from any of /local's upload buttons) comes through here first, so
         // this is where disallowed file types are refused (by name or MIME type) -- see
         // fileSystemTabIO.ts's upload validation. Checked before the overwrite prompt, so the user
         // is never asked to confirm replacing a file with something that's then refused anyway. A
@@ -452,7 +515,7 @@ export default defineComponent({
         // without extracting anything), and a zip containing any disallowed file is refused
         // outright -- both for "Unzip contents" and for "Keep as zip", since a kept zip can be
         // downloaded and extracted elsewhere just the same.
-        async onUpload(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): Promise<void> {
+        async onUpload(dirNode: FsTreeNode, file: File): Promise<void> {
             if (isBlockedUploadFile(file)) {
                 this.showUploadRefused(this.$t("fileSystemTab.uploadBlockedType", {name: escapeHTML(file.name)}) as string);
                 return;
@@ -476,11 +539,11 @@ export default defineComponent({
             if (dirHasEntryNamed(dirNode, file.name)) {
                 // Ask for confirmation before silently overwriting an existing entry -- see
                 // onConfirmOverwrite() below, triggered from OverwriteConfirmDialog.vue.
-                this.pendingOverwrite = {dirNode, file, root};
+                this.pendingOverwrite = {dirNode, file};
                 eventBus.emit(CustomEventTypes.showStrypeModal, this.overwriteConfirmDlgId);
                 return;
             }
-            this.proceedWithUpload(dirNode, file, root);
+            this.proceedWithUpload(dirNode, file);
         },
 
         // The app's shared message dialog (SimpleMsgModalDlg.vue) renders its message as HTML, so
@@ -495,45 +558,40 @@ export default defineComponent({
             const pending = this.pendingOverwrite;
             this.pendingOverwrite = null;
             if (pending) {
-                this.proceedWithUpload(pending.dirNode, pending.file, pending.root);
+                this.proceedWithUpload(pending.dirNode, pending.file);
             }
         },
 
-        proceedWithUpload(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): void {
+        proceedWithUpload(dirNode: FsTreeNode, file: File): void {
             if (isZipFile(file)) {
                 // Ask the user whether to keep the archive as-is or unzip its contents -- see
                 // onKeepAsZip()/onUnzipContents() below, triggered from ArchiveImportDialog.vue.
-                this.pendingUpload = {dirNode, file, root};
+                this.pendingUpload = {dirNode, file};
                 eventBus.emit(CustomEventTypes.showStrypeModal, this.archiveImportDlgId);
                 return;
             }
-            void this.uploadPlainFile(dirNode, file, root);
+            void this.uploadPlainFile(dirNode, file);
         },
 
         // Shared by uploadPlainFile() (a single-entry array) and onUnzipContents() (an archive's
         // whole entry list) -- both just need "write these entries under dirNode, then refresh
-        // whichever root they went into" and otherwise differ only in where the entries came from.
-        async uploadEntries(dirNode: FsTreeNode, entries: ArchiveEntry[], root: "/local" | "/cloud"): Promise<void> {
-            if (root === "/local") {
-                await uploadEntriesToLocal(dirNode, entries);
-                await this.refreshLocal();
-            }
-            else {
-                await uploadEntriesToCloud(dirNode, entries);
-                await this.refreshCloud();
-            }
+        // /local" and otherwise differ only in where the entries came from. Uploads only ever go
+        // to /local: the Files tab offers no upload under /cloud.
+        async uploadEntries(dirNode: FsTreeNode, entries: ArchiveEntry[]): Promise<void> {
+            await uploadEntriesToLocal(dirNode, entries);
+            await this.refreshLocal();
         },
 
-        async uploadPlainFile(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): Promise<void> {
+        async uploadPlainFile(dirNode: FsTreeNode, file: File): Promise<void> {
             const data = new Uint8Array(await file.arrayBuffer());
-            await this.uploadEntries(dirNode, [{path: file.name, data}], root);
+            await this.uploadEntries(dirNode, [{path: file.name, data}]);
         },
 
         async onKeepAsZip(): Promise<void> {
             const pending = this.pendingUpload;
             this.pendingUpload = null;
             if (pending) {
-                await this.uploadPlainFile(pending.dirNode, pending.file, pending.root);
+                await this.uploadPlainFile(pending.dirNode, pending.file);
             }
         },
 
@@ -544,7 +602,7 @@ export default defineComponent({
                 return;
             }
             const entries = await unzipEntries(pending.file);
-            await this.uploadEntries(pending.dirNode, entries, pending.root);
+            await this.uploadEntries(pending.dirNode, entries);
         },
     },
 });

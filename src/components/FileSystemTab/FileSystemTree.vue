@@ -74,8 +74,8 @@
                 >
                     <i class="fa fa-thumbtack"></i>
                 </button>
-                <button class="file-system-tree-view-btn" :title="$t('fileSystemTab.view')" @click="guardedEmit('view', node)">
-                    <i class="fa fa-eye"></i>
+                <button class="file-system-tree-view-btn" :title="viewOpensNewTab ? $t('fileSystemTab.openInNewTab') : $t('fileSystemTab.view')" @click="guardedEmit('view', node)">
+                    <i :class="viewOpensNewTab ? 'fa fa-folder-open' : 'fa fa-eye'"></i>
                 </button>
                 <button class="file-system-tree-download-btn" :title="$t('fileSystemTab.download')" @click="guardedEmit('download', node)">
                     <i class="fa fa-download"></i>
@@ -94,6 +94,7 @@
                     :allow-pin="allowPin"
                     :executing="executing"
                     :invisible-prefix="childInvisiblePrefix"
+                    :opens-in-new-tab="opensInNewTab"
                     @download="(n) => $emit('download', n)"
                     @downloadDir="(n) => $emit('downloadDir', n)"
                     @upload="(n, file) => $emit('upload', n, file)"
@@ -125,12 +126,12 @@ export default defineComponent({
         // FileSystemPane passes true for the top-level asset roots, /local and /cloud so they
         // open immediately; nested directories always start collapsed.
         startExpanded: { type: Boolean, default: false },
-        // Whether directories in this subtree get an upload button -- true under /local and /cloud,
-        // false under the read-only asset roots (/data, /books, etc).
+        // Whether directories in this subtree get an upload button -- true only under /local (not
+        // under /cloud, nor the read-only asset roots /data, /books, etc).
         allowUpload: { type: Boolean, default: false },
         // Whether items in this subtree get a delete button -- true only under /local (see
-        // FileSystemPane.vue): unlike upload, this isn't offered under /cloud too, since deleting a
-        // cloud file needs real API calls this doesn't (yet) make, not just a local cache edit.
+        // FileSystemPane.vue): it isn't offered under /cloud, since deleting a cloud file needs
+        // real API calls this doesn't (yet) make, not just a local cache edit.
         allowDelete: { type: Boolean, default: false },
         // Whether *files* (not directories -- see the template, only the file branch uses this) in
         // this subtree get a pin button -- true only under /local (see FileSystemPane.vue): pinning
@@ -141,7 +142,7 @@ export default defineComponent({
         // Whether Python is currently executing: every action button in this subtree stays
         // enabled and clickable regardless (see guardedEmit()/clickUploadInput() below), but while
         // this is true, clicking one does nothing except flash the run/stop button red -- /local's
-        // main-thread cache (and, for uploads only, /cloud's cache in cloudFileIO.ts) are only meant
+        // main-thread cache is only meant
         // to be touched between runs, not while a run might also be reading/writing the same files.
         executing: { type: Boolean, default: false },
         // Whether this node is the directory that will be the current working directory when the
@@ -161,6 +162,10 @@ export default defineComponent({
         // this node's own invisiblePrefix + ownLabelText down as its children's prefix), and also
         // doubles as a hover hint showing the item's full path.
         invisiblePrefix: { type: String, default: "" },
+        // Tells whether "viewing" a file of this subtree opens it in a new Strype tab rather than in
+        // the viewer dialog (see FileSystemPane.vue's openCloudProjectFileInNewTab() and openLocalProjectFileInNewTab()): its view button
+        // then shows an open folder, with a matching title, instead of the eye. Forwarded as it recurses.
+        opensInNewTab: { type: Function as PropType<(node: FsTreeNode) => boolean>, default: null },
     },
 
     emits: ["download", "downloadDir", "upload", "delete", "pin", "view"],
@@ -176,6 +181,10 @@ export default defineComponent({
     },
 
     computed: {
+        viewOpensNewTab(): boolean {
+            return !this.node.isDir && this.opensInNewTab != null && this.opensInNewTab(this.node);
+        },
+
         // What's actually shown as this node's own label (directories only -- see the template):
         // labelOverride for the root nodes FileSystemPane.vue passes it for (e.g. "/books/", which
         // already has its own trailing slash baked in), otherwise the plain node name with a

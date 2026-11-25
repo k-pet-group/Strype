@@ -147,7 +147,16 @@ export interface CloudDriveComponent {
     checkIsCloudDriveFileReadonly: (file: CloudDriveFile) => boolean,
     readFileContentForIO: (fileId: string, filePath: string) => Promise<Uint8Array>,
     writeFileContentForIO: (fileContent: string | Uint8Array, fileInfos: { filePath: string, fileName: string, folderId: string } | { filePath: string, fileId: string }) => Promise<string>,
+    // Handing the connection over to a new Strype tab opened by Strype (see cloudHandoff.ts):
+    // the credentials to give to the new tab (null if not connected or they can't be got without the user),
+    // and, in the new tab, using them (resolves to false if they can't be used: the user then connects as usual).
+    exportHandoffCredentials: () => Promise<CloudHandoffCredentials | null>,
+    importHandoffCredentials: (credentials: CloudHandoffCredentials) => Promise<boolean>,
 }
+
+// What a Cloud Drive component gives to a new Strype tab for it to use the same connection (see cloudHandoff.ts).
+// Its content is specific to each Cloud Drive; it must be cloneable by postMessage() (plain data).
+export type CloudHandoffCredentials = Record<string, unknown>;
 
 /** Specific to OneDrive - the Graph types are imported from https://github.com/microsoftgraph/msgraph-typescript-typings*/
 export enum OneDriveTokenPurpose {

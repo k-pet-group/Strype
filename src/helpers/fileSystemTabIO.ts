@@ -13,7 +13,7 @@ import { encodeUint8ToString } from "@/stryperuntime/worker_bridge_type";
 import { isServiceWorkerChannelResponsive, serviceWorkerReadyAndInControl } from "@/workers/shared_helpers";
 import { serviceWorkerChannel } from "@/stryperuntime/main_thread_python_handler";
 import * as localFsCache from "@/helpers/localFsCache";
-import { cloudCloseFile, cloudCreate, cloudListDir, cloudReadFile, cloudWriteFile } from "@/helpers/cloudFileIO";
+import { cloudListDir, cloudReadFile } from "@/helpers/cloudFileIO";
 import { useStore } from "@/store/store";
 import type { ArchiveEntry } from "@/helpers/archive";
 import { isSyncTargetGitProvider } from "@/types/cloud-drive-types";
@@ -247,7 +247,7 @@ export function togglePinLocal(node: FsTreeNode): void {
 
 // ---- Upload validation ----
 // A reject list of file types that must never be written into the user-visible file system
-// ("/local", "/cloud"), whether uploaded directly, extracted from a zip, or restored from a project
+// ("/local"), whether uploaded directly, extracted from a zip, or restored from a project
 // file's pinned files (see load-save.ts's loadPinnedLocalFiles()).
 //
 // Strype only ever runs Python code (inside Pyodide), so none of these types is needed for anything
@@ -362,30 +362,5 @@ export async function uploadEntriesToLocal(dirNode: FsTreeNode, entries: Archive
     for (const entry of entries) {
         const path = dirNode.path === "/local" ? `/local/${entry.path}` : `${dirNode.path}/${entry.path}`;
         localFsCache.writeFile(path, entry.data);
-    }
-}
-
-// Uploads a set of files (a single plain upload becomes a one-entry array -- see
-// FileSystemPane.vue's uploadPlainFile()/onUnzipContents()) into "/cloud" at the given directory
-// node (its cloudFileId is the parent folder to create the new file(s) in). Goes straight through
-// cloudFileIO.ts's main-thread functions -- create, write the actual content, then close (which
-// awaits the write actually landing, the same way a Python open()/write()/close() would via the
-// worker's sync bridge -- see cloudCloseFile's own comment for why closing is what forces/awaits
-// the flush). Unlike /local, entries are flattened into the target folder using just their base
-// file name: cloudCreate() (cloudFileIO.ts) can't create directories at all (Strype's cloud file IO
-// only ever creates files, never folders), so there's no way to recreate an archive's subfolder
-// structure in the cloud drive. Sequential (not parallelised) to keep this simple and avoid
-// hammering the cloud API with a burst of concurrent create+write+close calls for a large archive.
-export async function uploadEntriesToCloud(dirNode: FsTreeNode, entries: ArchiveEntry[]): Promise<void> {
-    if (dirNode.cloudFileId == null) {
-        return;
-    }
-    assertNoBlockedEntries(entries);
-    for (const entry of entries) {
-        const name = entry.path.split("/").pop() as string;
-        const filePath = `${dirNode.path}/${name}`;
-        const newFileId = await cloudCreate({cloudFileId: dirNode.cloudFileId}, name, false, filePath);
-        await cloudWriteFile(newFileId, entry.data, 0, filePath, true);
-        await cloudCloseFile(newFileId);
     }
 }

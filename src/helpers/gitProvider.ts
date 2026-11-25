@@ -9,7 +9,7 @@ import { strypeFileExtension } from "@/helpers/common";
 import { CustomEventTypes, getAppSimpleMsgDlgId } from "@/helpers/editor";
 import { vueComponentsAPIHandler } from "@/helpers/vueComponentAPI";
 import { useStore } from "@/store/store";
-import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus } from "@/types/cloud-drive-types";
+import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, CloudHandoffCredentials } from "@/types/cloud-drive-types";
 import { getGitFileLocation, getGitLocationLabel, compareGitRepositories, findStrypeRepository, GitAuthExpiredError, GitFileIdStruct, GitFilePickerQueries, GitHttpError, GitLocationStruct, GitProviderAPI, GitProviderComponent, GitRepository, GitSaveChoice, parseGitFileId, parseGitLocationId, strypeRepositoryName, toGitFileId, toGitLocationId } from "@/types/git-provider-types";
 import { StrypeSyncTarget } from "@/types/types";
 import { Ref, ref, shallowRef } from "vue";
@@ -428,6 +428,27 @@ export function useGitProvider<Auth>(options: {
         return Promise.reject(i18n.global.t("errorMessage.fileIO.gitFilesReadOnly", {providername: driveName}));
     }
 
+    // Hand-over of the connection to a new Strype tab (see cloudHandoff.ts)
+    async function exportHandoffCredentials(): Promise<CloudHandoffCredentials | null> {
+        const auth = oauthToken.value;
+        if(auth == null){
+            return null;
+        }
+        // Checking the connection also renews the access token here if it is about to expire:
+        // the new tab gets no refresh token (see toHandoffAuth()), so it must get a token that is still valid for a while.
+        const isValid = await api.isConnectionValid(auth).catch(() => false);
+        return (isValid) ? {auth: api.toHandoffAuth(auth)} : null;
+    }
+
+    function importHandoffCredentials(credentials: CloudHandoffCredentials): Promise<boolean> {
+        const auth = api.fromHandoffAuth(credentials.auth);
+        if(auth == null){
+            return Promise.resolve(false);
+        }
+        oauthToken.value = auth;
+        return Promise.resolve(true);
+    }
+
     // A <script setup> component is "closed": CloudDriveHandler can only access (via its template ref)
     // what is explicitly exposed, so everything from CloudDriveComponent must be listed: the return type makes TS check that.
     // (Note: the accessors must stay accessors, so this object must not be spread.)
@@ -482,6 +503,8 @@ export function useGitProvider<Auth>(options: {
             shareCloudDriveFile,
             signOut,
             writeFileContentForIO,
+            exportHandoffCredentials,
+            importHandoffCredentials,
         };
     }
 

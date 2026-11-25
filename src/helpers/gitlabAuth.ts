@@ -6,6 +6,7 @@
 
 import { GitAuthExpiredError, GitContentItem, GitHttpError, GitProviderAPI, readGitErrorDetails, GitRepository } from "@/types/git-provider-types";
 import { GITLAB_COM_URL, GitLabInstance } from "@/helpers/gitlabInstances";
+import { fromGitLabHandoffAuth, toGitLabHandoffAuth } from "@/helpers/gitHandoffAuth";
 import { base64Url, randomBase64UrlString } from "@/helpers/common";
 
 const CHANNEL_NAME = "strype-gl-auth";
@@ -490,4 +491,6 @@ export const gitLabAPI: GitProviderAPI<GitLabAuth> = {
     isRepositoryPublic: isGitLabProjectPublic,
     getPublicFileUrl: (auth, projectFullPath, commitSha, filePath) => getGitLabPublicFileUrl(auth.instance.url, projectFullPath, commitSha, filePath),
     getServerUrl: (auth) => auth.instance.url,
+    toHandoffAuth: toGitLabHandoffAuth,
+    fromHandoffAuth: fromGitLabHandoffAuth,
 };

@@ -103,8 +103,15 @@ function onNewTabMessage(event: MessageEvent): void {
     (cloudDriveComponent?.exportHandoffCredentials() ?? Promise.resolve(null))
         .catch(() => null)
         .then((credentials) => {
-            const handoff: CloudHandoff = {...file, credentials};
-            newTab.postMessage({type: HANDOFF_MESSAGE_TYPE, nonce, handoff}, window.location.origin);
+            try{
+                newTab.postMessage({type: HANDOFF_MESSAGE_TYPE, nonce, handoff: {...file, credentials} satisfies CloudHandoff}, window.location.origin);
+            }
+            catch(error){
+                // The credentials couldn't be sent (they must be plain data, see CloudHandoffCredentials):
+                // the new tab still gets the file to open, the user can connect there.
+                console.error(`Could not hand the connection over to the new tab: ${(error as Error).message}`);
+                newTab.postMessage({type: HANDOFF_MESSAGE_TYPE, nonce, handoff: {...file, credentials: null} satisfies CloudHandoff}, window.location.origin);
+            }
         });
 }
 

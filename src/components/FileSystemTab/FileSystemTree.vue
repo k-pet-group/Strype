@@ -74,8 +74,8 @@
                 >
                     <i class="fa fa-thumbtack"></i>
                 </button>
-                <button class="file-system-tree-view-btn" :title="$t('fileSystemTab.view')" @click="guardedEmit('view', node)">
-                    <i class="fa fa-eye"></i>
+                <button class="file-system-tree-view-btn" :title="viewOpensNewTab ? $t('fileSystemTab.openInNewTab') : $t('fileSystemTab.view')" @click="guardedEmit('view', node)">
+                    <i :class="viewOpensNewTab ? 'fa fa-folder-open' : 'fa fa-eye'"></i>
                 </button>
                 <button class="file-system-tree-download-btn" :title="$t('fileSystemTab.download')" @click="guardedEmit('download', node)">
                     <i class="fa fa-download"></i>
@@ -94,6 +94,7 @@
                     :allow-pin="allowPin"
                     :executing="executing"
                     :invisible-prefix="childInvisiblePrefix"
+                    :opens-in-new-tab="opensInNewTab"
                     @download="(n) => $emit('download', n)"
                     @downloadDir="(n) => $emit('downloadDir', n)"
                     @upload="(n, file) => $emit('upload', n, file)"
@@ -161,6 +162,10 @@ export default defineComponent({
         // this node's own invisiblePrefix + ownLabelText down as its children's prefix), and also
         // doubles as a hover hint showing the item's full path.
         invisiblePrefix: { type: String, default: "" },
+        // Tells whether "viewing" a file of this subtree opens it in a new Strype tab rather than in
+        // the viewer dialog (see FileSystemPane.vue's openCloudProjectFileInNewTab()): its view button
+        // then shows an open folder, with a matching title, instead of the eye. Forwarded as it recurses.
+        opensInNewTab: { type: Function as PropType<(node: FsTreeNode) => boolean>, default: null },
     },
 
     emits: ["download", "downloadDir", "upload", "delete", "pin", "view"],
@@ -176,6 +181,10 @@ export default defineComponent({
     },
 
     computed: {
+        viewOpensNewTab(): boolean {
+            return !this.node.isDir && this.opensInNewTab != null && this.opensInNewTab(this.node);
+        },
+
         // What's actually shown as this node's own label (directories only -- see the template):
         // labelOverride for the root nodes FileSystemPane.vue passes it for (e.g. "/books/", which
         // already has its own trailing slash baked in), otherwise the plain node name with a

@@ -51,6 +51,7 @@
                     :allow-upload="!isCloudReadOnly"
                     :executing="isPythonExecuting"
                     :is-cwd="cwdRoot === '/cloud'"
+                    :opens-in-new-tab="canOpenCloudProjectFileInNewTab"
                     @download="(n) => onDownload(n, '/cloud')"
                     @downloadDir="(n) => onDownloadDir(n, '/cloud')"
                     @upload="(n, file) => void onUpload(n, file, '/cloud')"
@@ -421,15 +422,27 @@ export default defineComponent({
         // Returns false if it isn't such a file, or the new tab couldn't be opened (then the file is shown in the dialog as usual).
         openCloudProjectFileInNewTab(node: FsTreeNode): boolean {
             const cloudTarget = this.appStore.syncTarget;
-            if (node.cloudFileId == null || !isSyncTargetCloudDrive(cloudTarget)
-                || !(node.name.endsWith(`.${strypeFileExtension}`) || node.name.endsWith(`.${pythonFileExtension}`))) {
-                return false;
-            }
-            const folderId = (this.cloudRoot) ? findParentNode(this.cloudRoot, node)?.cloudFileId : undefined;
-            if (folderId == undefined) {
+            const folderId = this.cloudProjectFileFolderId(node);
+            if (node.cloudFileId == null || folderId == undefined || !isSyncTargetCloudDrive(cloudTarget)) {
                 return false;
             }
             return openCloudFileInNewTab({target: cloudTarget, fileId: node.cloudFileId, fileName: node.name, folderId});
+        },
+
+        // Whether the file of "/cloud" would be opened in a new tab by openCloudProjectFileInNewTab()
+        // (FileSystemTree.vue then shows an "open" button rather than a "view" one for it).
+        canOpenCloudProjectFileInNewTab(node: FsTreeNode): boolean {
+            return this.cloudProjectFileFolderId(node) != undefined;
+        },
+
+        // The ID of the Cloud Drive folder containing the project file (.spy or .py) of "/cloud",
+        // or undefined if it isn't such a file (or we aren't connected to a Cloud Drive).
+        cloudProjectFileFolderId(node: FsTreeNode): string | undefined {
+            if (node.cloudFileId == null || !isSyncTargetCloudDrive(this.appStore.syncTarget)
+                || !(node.name.endsWith(`.${strypeFileExtension}`) || node.name.endsWith(`.${pythonFileExtension}`))) {
+                return undefined;
+            }
+            return (this.cloudRoot) ? findParentNode(this.cloudRoot, node)?.cloudFileId : undefined;
         },
 
         revokeViewingObjectUrl(): void {

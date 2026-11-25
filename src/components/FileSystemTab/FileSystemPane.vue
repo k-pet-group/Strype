@@ -133,7 +133,9 @@ import { CustomEventTypes, getAppSimpleMsgDlgId } from "@/helpers/editor";
 import { decodeAsTextIfValid, MAX_PREVIEWABLE_FILE_SIZE, mimeTypeForExtension, previewKindForExtension } from "@/helpers/filePreview";
 import { drawSoundOnCanvas } from "@/helpers/media";
 import { saveAs } from "file-saver";
-import { escapeHTML } from "@/helpers/common";
+import { escapeHTML, pythonFileExtension, strypeFileExtension } from "@/helpers/common";
+import { openCloudFileInNewTab } from "@/helpers/cloudHandoff";
+import { isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 
 // Waveform image size for the "view file" sound preview -- wider than MediaPreviewPopup.vue's own
 // 200x50 (a small hover popup) since this renders in a full-width modal dialog instead.
@@ -159,6 +161,22 @@ interface ViewingFile {
     text?: string,
     tooLarge?: boolean,
     bytes?: Uint8Array,
+}
+
+// The directory node directly containing the given node in the tree, if found (paths are unique in a tree)
+function findParentNode(tree: FsTreeNode, node: FsTreeNode): FsTreeNode | undefined {
+    for (const child of tree.children ?? []) {
+        if (child.path === node.path) {
+            return tree;
+        }
+        if (child.isDir) {
+            const parent = findParentNode(child, node);
+            if (parent) {
+                return parent;
+            }
+        }
+    }
+    return undefined;
 }
 
 export default defineComponent({
@@ -344,6 +362,10 @@ export default defineComponent({
         // size) to be over MAX_PREVIEWABLE_FILE_SIZE -- previewing is a convenience, not worth
         // downloading a huge file just to then refuse to render it.
         async onView(node: FsTreeNode, root: FsRoot): Promise<void> {
+            // (must be done right away in the click's handler: the browser blocks opening a tab otherwise)
+            if (root === "/cloud" && this.openCloudProjectFileInNewTab(node)) {
+                return;
+            }
             this.revokeViewingObjectUrl();
             this.viewingFile = {node, root, kind: "loading"};
             eventBus.emit(CustomEventTypes.showStrypeModal, this.fileViewerDlgId);
@@ -392,6 +414,22 @@ export default defineComponent({
             this.viewingFile = text !== undefined
                 ? {node, root, kind: "text", text, bytes}
                 : {node, root, kind: "unsupported", bytes};
+        },
+
+        // A project file (.spy or .py) of "/cloud" isn't shown in the dialog: it's opened in a new Strype tab,
+        // with the same connection to the Cloud Drive (see cloudHandoff.ts), and saved to the Cloud Drive from there.
+        // Returns false if it isn't such a file, or the new tab couldn't be opened (then the file is shown in the dialog as usual).
+        openCloudProjectFileInNewTab(node: FsTreeNode): boolean {
+            const cloudTarget = this.appStore.syncTarget;
+            if (node.cloudFileId == null || !isSyncTargetCloudDrive(cloudTarget)
+                || !(node.name.endsWith(`.${strypeFileExtension}`) || node.name.endsWith(`.${pythonFileExtension}`))) {
+                return false;
+            }
+            const folderId = (this.cloudRoot) ? findParentNode(this.cloudRoot, node)?.cloudFileId : undefined;
+            if (folderId == undefined) {
+                return false;
+            }
+            return openCloudFileInNewTab({target: cloudTarget, fileId: node.cloudFileId, fileName: node.name, folderId});
         },
 
         revokeViewingObjectUrl(): void {

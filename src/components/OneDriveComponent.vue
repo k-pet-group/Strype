@@ -30,7 +30,7 @@ import { CloudDriveItemPickerItem, CloudDriveItemPickerMode, CloudFileSharingSta
 import { uniqueId } from "lodash";
 import { pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { CloudDriveAPIState } from "@/types/cloud-drive-types";
-import { CloudDriveFile } from "@/types/cloud-drive-types";
+import { CloudDriveFile, CloudHandoffCredentials } from "@/types/cloud-drive-types";
 import type { BaseItem, DriveItem, Permission, UploadSession } from "@microsoft/microsoft-graph-types";
 import CloudDriveItemPicker from "@/components/CloudDriveItemPicker.vue";
 import ModalDlg from "@/components/ModalDlg.vue";
@@ -45,6 +45,24 @@ import { BvTriggerableEvent } from "bootstrap-vue-next";
 
 // This variable is moved to at the module level rather than in data because having a Window as a reactive property doesn't work with Vue 2.7 (and Vue 3)
 let pickerPopup: Window | null = null;
+
+// An access token given by the Strype tab that opened this one (see exportHandoffCredentials()); expiresOn is a timestamp (ms).
+interface HandedOverToken {
+    accessToken: string,
+    expiresOn: number,
+}
+// The purposes we give tokens for to a new tab: those of the Graph API requests made when working on a project
+const handedOverTokenPurposes = [
+    OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS,
+    OneDriveTokenPurpose.GRAPH_CHECK_FOLDER,
+    OneDriveTokenPurpose.GRAPH_SEARCH,
+    OneDriveTokenPurpose.GRAPH_CHECK_SHARING,
+    OneDriveTokenPurpose.GRAPH_CREATE_FOLDER,
+    OneDriveTokenPurpose.GRAPH_SAVE_FILE,
+    OneDriveTokenPurpose.GRAPH_SHARE_FILE,
+];
+// A handed over token isn't used anymore when it expires within that time (MSAL is used instead)
+const HANDED_OVER_TOKEN_EXPIRY_MARGIN_MS = 2 * 60 * 1000;
 
 export default defineComponent({
     name: "OneDriveComponent",
@@ -77,6 +95,8 @@ export default defineComponent({
             previousCloudFileSharingStatus: CloudFileSharingStatus.UNKNOWN,
             // Specific to OneDrive:
             oauthToken: null as string | null,
+            // The access tokens given by the Strype tab that opened this one, if any (see importHandoffCredentials())
+            handedOverTokens: {} as Partial<Record<OneDriveTokenPurpose, HandedOverToken>>,
             isPersonalAccount: false,
             app: null as PublicClientApplication | null,
             baseUrl: "https://onedrive.live.com/picker", // default value for personal accounts
@@ -237,6 +257,59 @@ export default defineComponent({
         
         resetOAuthToken() {
             this.oauthToken = null;
+            this.handedOverTokens = {};
+        },
+
+        // Hand-over of the connection to a new Strype tab (see cloudHandoff.ts).
+        // MSAL's cache can't be given (it's specific to a tab, and has the refresh token, that can only be used once):
+        // we give the access tokens for the Graph API requests, got silently (without the user) from MSAL's cache here.
+        // The new tab uses them until they expire (about an hour), then MSAL asks the user to connect again, as usual.
+        // (The tokens for the picker aren't given: opening the picker in the new tab connects the user there.)
+        async exportHandoffCredentials(): Promise<CloudHandoffCredentials | null> {
+            if(this.oauthToken == null){
+                return null;
+            }
+            const handedOverTokens: Partial<Record<OneDriveTokenPurpose, HandedOverToken>> = {};
+            // (several purposes have the same scopes: the token is only asked once for them)
+            const tokensForScopes = new Map<string, Promise<HandedOverToken | null>>();
+            for(const purpose of handedOverTokenPurposes){
+                const scopesKey = this.getScopesForPurpose(purpose).join(" ");
+                if(!tokensForScopes.has(scopesKey)){
+                    tokensForScopes.set(scopesKey, this.getTokenSilently(purpose).catch(() => null));
+                }
+                const token = await tokensForScopes.get(scopesKey);
+                if(token != null){
+                    handedOverTokens[purpose] = token;
+                }
+            }
+            // Without a token to get the file, the new tab can't do anything without the user: it connects as usual.
+            if(handedOverTokens[OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS] == undefined){
+                return null;
+            }
+            return {oauthToken: this.oauthToken, isPersonalAccount: this.isPersonalAccount, baseUrl: this.baseUrl, tokens: handedOverTokens};
+        },
+
+        importHandoffCredentials(credentials: CloudHandoffCredentials): Promise<boolean> {
+            const {oauthToken, isPersonalAccount, baseUrl, tokens} = credentials;
+            if(typeof oauthToken != "string" || oauthToken.length == 0 || typeof isPersonalAccount != "boolean" || typeof baseUrl != "string"
+                || !baseUrl.startsWith("https://") || typeof tokens != "object" || tokens == null){
+                return Promise.resolve(false);
+            }
+            const handedOverTokens: Partial<Record<OneDriveTokenPurpose, HandedOverToken>> = {};
+            for(const purpose of handedOverTokenPurposes){
+                const token = (tokens as Record<number, Partial<HandedOverToken> | undefined>)[purpose];
+                if(typeof token?.accessToken == "string" && token.accessToken.length > 0 && typeof token.expiresOn == "number"){
+                    handedOverTokens[purpose] = {accessToken: token.accessToken, expiresOn: token.expiresOn};
+                }
+            }
+            if(handedOverTokens[OneDriveTokenPurpose.GRAPH_GET_FILE_DETAILS] == undefined){
+                return Promise.resolve(false);
+            }
+            this.oauthToken = oauthToken;
+            this.isPersonalAccount = isPersonalAccount;
+            this.baseUrl = baseUrl;
+            this.handedOverTokens = handedOverTokens;
+            return Promise.resolve(true);
         },
 
         async signOut(): Promise<boolean> {
@@ -900,15 +973,13 @@ export default defineComponent({
         /**
          * Specific to OneDrive
          **/ 
-        async getToken(purpose: OneDriveTokenPurpose): Promise<string> {
-            this.app = new PublicClientApplication((purpose == OneDriveTokenPurpose.INIT_AUTH) 
-                ? this.msalParamsInit 
-                : ((this.isPersonalAccount) ? this.msalParamsConsumerPicker : this.msalParamsWorkPicker));
-           
-            // Next line mentioned by AI and is crucial
-            await this.app.initialize();
+        getMsalConfigurationForPurpose(purpose: OneDriveTokenPurpose): Configuration {
+            return (purpose == OneDriveTokenPurpose.INIT_AUTH)
+                ? this.msalParamsInit
+                : ((this.isPersonalAccount) ? this.msalParamsConsumerPicker : this.msalParamsWorkPicker);
+        },
 
-            let accessToken = ""; let account = null as null | AccountInfo;
+        getScopesForPurpose(purpose: OneDriveTokenPurpose): string[] {
             // Logic for the scopes:
             // if we are only authenticating, we get to access the account details personal+work/school (WS) accounts --> "openid".
             // if we are getting a token for using the picker: personal --> "OneDrive.ReadWrite", WS --> default scope for SharePoint
@@ -918,7 +989,7 @@ export default defineComponent({
             // if we are getting a token for checking the sharing status of a file: personal+WS --> Files.Read
             // if we are getting a token for sharing the file: personal+WS --> Files.ReadWrite
             const sharePointDefaultScope = (this.isPersonalAccount) ? "" : this.baseUrl.replace(/\/personal\/.*/,"") + "/.default";
-            let scopes = [];
+            const scopes: string[] = [];
             switch(purpose){
             case OneDriveTokenPurpose.INIT_AUTH:
                 scopes.push("openid");
@@ -944,7 +1015,35 @@ export default defineComponent({
             default:
                 break;
             }
-            const authParams = {scopes: scopes};
+            return scopes;
+        },
+
+        // Gets a token from MSAL's cache only (never asking the user), see exportHandoffCredentials()
+        async getTokenSilently(purpose: OneDriveTokenPurpose): Promise<HandedOverToken> {
+            const app = new PublicClientApplication(this.getMsalConfigurationForPurpose(purpose));
+            await app.initialize();
+            const resp = await app.acquireTokenSilent({scopes: this.getScopesForPurpose(purpose)});
+            // (MSAL always gives the expiry for an access token, but it's typed as optional: we assume the shortest usual lifetime otherwise)
+            return {accessToken: resp.accessToken, expiresOn: resp.expiresOn?.getTime() ?? (Date.now() + 60 * 60 * 1000)};
+        },
+
+        async getToken(purpose: OneDriveTokenPurpose): Promise<string> {
+            // A token given by the Strype tab that opened this one is used until it expires (see importHandoffCredentials())
+            const handedOverToken = this.handedOverTokens[purpose];
+            if(handedOverToken != undefined){
+                if(handedOverToken.expiresOn - Date.now() > HANDED_OVER_TOKEN_EXPIRY_MARGIN_MS){
+                    return handedOverToken.accessToken;
+                }
+                delete this.handedOverTokens[purpose];
+            }
+
+            this.app = new PublicClientApplication(this.getMsalConfigurationForPurpose(purpose));
+
+            // Next line mentioned by AI and is crucial
+            await this.app.initialize();
+
+            let accessToken = ""; let account = null as null | AccountInfo;
+            const authParams = {scopes: this.getScopesForPurpose(purpose)};
             if(purpose == OneDriveTokenPurpose.INIT_AUTH ){
                 // NOTE: there is a very tricky behaviour with MSAL: it seems that Azure will try its best to keep users
                 // logged in, for example with SSO. We request a login, but if the user has used MFA with email to log in

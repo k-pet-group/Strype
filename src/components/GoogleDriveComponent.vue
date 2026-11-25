@@ -15,7 +15,7 @@
 //      Imports     //
 //////////////////////
 import { useStore } from "@/store/store";
-import { CloudDriveAPIState, CloudDriveFile, CloudFileSharingStatus, GDFile } from "@/types/cloud-drive-types";
+import { CloudDriveAPIState, CloudDriveFile, CloudFileSharingStatus, CloudHandoffCredentials, GDFile } from "@/types/cloud-drive-types";
 import { mapStores } from "pinia";
 import { defineComponent, PropType } from "vue";
 import { MessageDefinitions, StrypeSyncTarget } from "@/types/types";
@@ -743,6 +743,55 @@ export default defineComponent({
             });
         },
 
+        startKeepAlive() {
+            // We set a basic Google Drive related activity "keep alive" mechanism to avoid GIS disconnecting after,
+            // based on observation, about 20 minutes of inactivty. We do so every 15 mins.
+            // If the OAuth token is null (that is, we're no longer working with Google Drive) we stop the keep alive mechanism.
+            if(this.GAPI_keepAliveHandle == -1 ){
+                this.GAPI_keepAliveHandle = window.setInterval(() => {
+                    if(this.oauthToken != null){
+                        this.testCloudConnection(() => {}, () => {
+                            // When the connection test failed, that means most likely the access token expired (or some sort of network issue occurred),
+                            // so we trigger a token refresh.
+                            // The callback for requestAccessToken() is defined in initToken(), we need to defined our own callback when signin succeeds as well.
+                            this.signInCallBack = (_) => {
+                                // Do nothing: in this situation we only wanted to refresh the token, there is no action to follow.
+                            };
+                            gap_client?.requestAccessToken({prompt: ""});
+                        });
+                    }
+                    else{
+                        window.clearInterval(this.GAPI_keepAliveHandle);
+                        this.GAPI_keepAliveHandle = -1;
+                    }
+                }, 15 * 60 * 1000);
+            }
+        },
+
+        // Hand-over of the connection to a new Strype tab (see cloudHandoff.ts).
+        // Google doesn't give Strype a refresh token: the access token is all there is to give.
+        exportHandoffCredentials(): Promise<CloudHandoffCredentials | null> {
+            return Promise.resolve((this.oauthToken != null) ? {accessToken: this.oauthToken} : null);
+        },
+
+        async importHandoffCredentials(credentials: CloudHandoffCredentials): Promise<boolean> {
+            const accessToken = credentials.accessToken;
+            if(typeof accessToken != "string" || accessToken.length == 0){
+                return false;
+            }
+            try{
+                await this.whenApiLoaded();
+            }
+            catch{
+                return false;
+            }
+            // The requests made with gapi.client use the token it is given (Google Identity Services gives it when signing in)
+            gapi.client.setToken({access_token: accessToken});
+            this.oauthToken = accessToken;
+            this.startKeepAlive();
+            return true;
+        },
+
         // Load Google Identity services API:
         onGSILoad() {
             gap_client = google.accounts.oauth2.initTokenClient({
@@ -759,28 +808,7 @@ export default defineComponent({
                     else if (response && response.error == undefined) {
                         this.oauthToken = response.access_token;
                         vueComponentsAPIHandler.cloudDriveHandlerComponentAPI?.updateSignInStatus(StrypeSyncTarget.gd, true);
-                        // We also set a basic Google Drive related activity "keep alive" mechanism to avoid GIS disconnecting after,
-                        // based on observation, about 20 minutes of inactivty. We do so every 15 mins.
-                        // If the OAuth token is null (that is, we're no longer working with Google Drive) we stop the keep alive mechanism.
-                        if(this.GAPI_keepAliveHandle == -1 ){
-                            this.GAPI_keepAliveHandle = window.setInterval(() => {
-                                if(this.oauthToken != null){
-                                    this.testCloudConnection(() => {}, () => {
-                                        // When the connection test failed, that means most likely the access token expired (or some sort of network issue occurred),
-                                        // so we trigger a token refresh.
-                                        // The callback for requestAccessToken() is defined in initToken(), we need to defined our own callback when signin succeeds as well.
-                                        this.signInCallBack = (_) => {
-                                            // Do nothing: in this situation we only wanted to refresh the token, there is no action to follow.                                            
-                                        };
-                                        gap_client?.requestAccessToken({prompt: ""});
-                                    });
-                                }
-                                else{
-                                    window.clearInterval(this.GAPI_keepAliveHandle);
-                                    this.GAPI_keepAliveHandle = -1;
-                                }
-                            }, 15 * 60 * 1000);
-                        }
+                        this.startKeepAlive();
                     }
 
                     // In any case, continue the action requested by the user (need to do it in a next tick to make sure the oauthToken is updated in all Vue components)

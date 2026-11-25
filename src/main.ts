@@ -14,6 +14,7 @@ import { initialiseAnalytics } from "./helpers/initialiseAnalytics";
 import { startVersionCheck } from "./helpers/versionCheck";
 import { openIndexedDBConnection, tidyUpDatabaseState } from "@/store/store-db-storage";
 import { getEditorTabId } from "@/store/store";
+import { takeCloudHandoffRequestFromURL } from "@/helpers/cloudHandoff";
 import { showIndexDBError } from "@/helpers/storeMethods";
 import { startEagerLoad as startEagerTreeSitterLoad } from "@/helpers/treeSitterPython";
 
@@ -132,6 +133,10 @@ else {
 (Vue as unknown as { configureCompat: (config: Record<string, boolean>) => void }).configureCompat({
     WATCH_ARRAY: false,
 });
+
+// A tab opened by Strype to open a Cloud Drive file (see cloudHandoff.ts) must clear what was copied from its opener's
+// session storage (notably the tab ID) before anything reads it:
+takeCloudHandoffRequestFromURL();
 
 // New way of creating the App in Vue 3: using createApp()
 const app = createApp(App);

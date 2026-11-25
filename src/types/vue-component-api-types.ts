@@ -18,6 +18,7 @@
  **/
 
 import { CloudDriveAPIState, CloudDriveComponent, CloudDriveFile, CloudFileSharingStatus, SaveExistingCloudProjectInfos } from "@/types/cloud-drive-types";
+import type { CloudHandoff } from "@/helpers/cloudHandoff";
 import { AppEvent, LoadRequestReason, Position, SaveRequestReason, SlotCoreInfos, StrypePEALayoutMode, StrypeSyncTarget } from "@/types/types";
 // #v-ifdef STRYPE_PLATFORM == VITE_STANDARD_PYTHON_MODE
 import { LoadedMedia } from "@/types/types";
@@ -92,6 +93,8 @@ export type CloudDriveHandlerComponentAPI = {
   setSaveFileName: (v: string) => void,
   saveFile: (cloudTarget: StrypeSyncTarget, saveReason: SaveRequestReason) => void,
   loadFile: (cloudTarget: StrypeSyncTarget, loadReason?: LoadRequestReason) => void,
+  openHandedOverCloudFile: (handoff: CloudHandoff) => Promise<boolean>,
+  signInToOpenHandedOverCloudFile: (handoff: CloudHandoff) => void,
   requestSignOut: (cloudTarget: StrypeSyncTarget) => void,
   modifiedDataSearchOptionName(cloudTarget: StrypeSyncTarget): string | undefined,
   fileMoreFieldsForIO(cloudTarget: StrypeSyncTarget): string | undefined,

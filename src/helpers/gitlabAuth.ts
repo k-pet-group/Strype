@@ -5,7 +5,7 @@
 // application (VITE_GITLAB_COM_CLIENTID), and a self-managed instance needs its own one, registered by its administrator.
 
 import { GitAuthExpiredError, GitContentItem, GitHttpError, GitProviderAPI, readGitErrorDetails, GitRepository } from "@/types/git-provider-types";
-import { GITLAB_COM_URL, GitLabInstance } from "@/helpers/gitlabInstances";
+import { getSelfManagedGitLabInstance, GITLAB_COM_URL, GitLabInstance } from "@/helpers/gitlabInstances";
 import { base64Url, randomBase64UrlString } from "@/helpers/common";
 
 const CHANNEL_NAME = "strype-gl-auth";
@@ -490,4 +490,16 @@ export const gitLabAPI: GitProviderAPI<GitLabAuth> = {
     isRepositoryPublic: isGitLabProjectPublic,
     getPublicFileUrl: (auth, projectFullPath, commitSha, filePath) => getGitLabPublicFileUrl(auth.instance.url, projectFullPath, commitSha, filePath),
     getServerUrl: (auth) => auth.instance.url,
+    toHandoffAuth: (auth) => ({instance: {url: auth.instance.url, clientId: auth.instance.clientId}, accessToken: auth.accessToken, expiresAt: auth.expiresAt}),
+    fromHandoffAuth: (data) => {
+        const auth = data as Partial<GitLabAuth> | null | undefined;
+        // (the instance is checked like one typed by the user: the token is sent to it)
+        const instance = (typeof auth?.instance?.url === "string" && typeof auth.instance.clientId === "string")
+            ? getSelfManagedGitLabInstance(auth.instance.url, auth.instance.clientId)
+            : undefined;
+        if(instance == undefined || typeof auth?.accessToken !== "string" || auth.accessToken.length == 0 || (auth.expiresAt !== undefined && typeof auth.expiresAt !== "number")){
+            return null;
+        }
+        return {instance, accessToken: auth.accessToken, expiresAt: auth.expiresAt};
+    },
 };

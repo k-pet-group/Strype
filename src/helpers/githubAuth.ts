@@ -467,4 +467,12 @@ export const gitHubAPI: GitProviderAPI<GitHubAuth> = {
     createRepository: createGitHubRepository,
     isRepositoryPublic: isGitHubRepositoryPublic,
     getPublicFileUrl: (auth, repositoryFullName, commitSha, filePath) => getGitHubPublicFileUrl(repositoryFullName, commitSha, filePath),
+    toHandoffAuth: (auth) => ({accessToken: auth.accessToken, expiresAt: auth.expiresAt}),
+    fromHandoffAuth: (data) => {
+        const auth = data as Partial<GitHubAuth> | null | undefined;
+        if(typeof auth?.accessToken !== "string" || auth.accessToken.length == 0 || (auth.expiresAt !== undefined && typeof auth.expiresAt !== "number")){
+            return null;
+        }
+        return {accessToken: auth.accessToken, expiresAt: auth.expiresAt};
+    },
 };

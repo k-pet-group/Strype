@@ -429,8 +429,10 @@ export default defineComponent({
         eventBus.off(CustomEventTypes.duplicateFrameSelection, this.duplicateIfFirstInSelection);
         eventBus.off(CustomEventTypes.toggleFrameSelectionDisable, this.toggleDisableFirstInSelection);
         
-        // Remove the component's API instance
-        if(vueComponentsAPIHandler.frameComponentAPI?.forInstance[this.frameId]){
+        // Remove the component's API instance, but only if it is still ours: when a frame's type changes
+        // the Frame's key changes and a new instance is created for the same frame ID. The new instance
+        // registers itself in created() BEFORE this unmounted() hook of the old instance is called.
+        if(vueComponentsAPIHandler.frameComponentAPI?.forInstance[this.frameId]?.changeToggledCaretPosition === this.changeToggledCaretPosition){
             delete vueComponentsAPIHandler.frameComponentAPI?.forInstance[this.frameId];
         }
     },

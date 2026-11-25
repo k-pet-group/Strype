@@ -235,7 +235,6 @@ export default defineComponent({
     data: function() {
         return {
             CustomEventTypes, // just to be able to use in template
-            ignoreBracketEmphasisCheck: false, // cf. isSlotEmphasised()
             // Because the user edits the DOM directly, Vue can fail to realise it needs to update the DOM.
             // So we add a dummy counter variable that just increases every time we refactor (which includes all cases where
             // the user has edited things which might affect the slot structure) in order to nudge
@@ -310,6 +309,57 @@ export default defineComponent({
         focusSlotCursorInfos(): SlotCursorInfos | undefined {
             return this.appStore.focusSlotCursorInfos;
         },
+
+        emphasisedBracketsSlotId(): string | undefined {
+            // The id of the bracketed structure whose brackets (both of them) are emphasised: the first one, in the
+            // flat slots order, with a bracket right next to the text cursor (i.e. the cursor is just after the
+            // opening bracket or just before the closing bracket, inside, or just before the opening bracket or
+            // just after the closing bracket, outside). This is derived from the state only, and not stored in the
+            // flat slots: subSlots gives new flat slot objects whenever the slots change (including their "focused"
+            // flag, which isn't updated at the same time as the text cursor), so anything set on them gets lost.
+            const focusSlotCursorInfos = this.focusSlotCursorInfos;
+            if(!this.appStore.isEditing || !focusSlotCursorInfos || !this.appStore.anchorSlotCursorInfos
+                || focusSlotCursorInfos.slotInfos.frameId != this.frameId || focusSlotCursorInfos.slotInfos.labelSlotsIndex != this.labelIndex){
+                return undefined;
+            }
+            const focusSlotInfos = focusSlotCursorInfos.slotInfos;
+            const focusSlotCursorPos = focusSlotCursorInfos.cursorPos;
+            // The text cursor isn't always updated at the same time as the slots: for example, when deleting a bracket,
+            // the slots change first, and the text cursor may then still point to a slot that doesn't exist anymore
+            // (retrieving it from the store would then fail). So we look for the focused slot in the flat slots,
+            // which always match the slots, and there is no emphasis until the text cursor is in an existing slot.
+            const flatSlots = this.subSlots as FlatSlotBase[];
+            const focusFlatSlot = flatSlots.find((slot) => areSlotCoreInfosEqual({frameId: this.frameId, labelSlotsIndex: this.labelIndex, slotId: slot.id, slotType: slot.type}, focusSlotInfos));
+            if(!focusFlatSlot){
+                return undefined;
+            }
+            const focusSlotCode = focusFlatSlot.code;
+            const selectionCursorsComparisonValue = getSelectionCursorsComparisonValue()??0;
+            const emphasisedBracket = flatSlots.find((slot) => {
+                if(!isSlotBracketType(slot.type)){
+                    return false;
+                }
+                const isOpeningBracket = (slot.type == SlotType.openingBracket);
+                const parentIdSlotIndexSplit = getSlotParentIdAndIndexSplit(slot.id);
+                const currentSlotCoreInfos: SlotCoreInfos = {frameId: this.frameId, labelSlotsIndex: this.labelIndex, slotId: slot.id, slotType: slot.type};
+                const previousSlotId = isOpeningBracket 
+                    ? getSlotIdFromParentIdAndIndexSplit(parentIdSlotIndexSplit.parentId, parentIdSlotIndexSplit.slotIndex - 1)
+                    : slot.id + "," + ((retrieveSlotFromSlotInfos(currentSlotCoreInfos) as SlotsStructure).fields.length - 1);
+                const nextSlotId = isOpeningBracket 
+                    ? slot.id + "," + 0
+                    : getSlotIdFromParentIdAndIndexSplit(parentIdSlotIndexSplit.parentId, parentIdSlotIndexSplit.slotIndex + 1);
+                const focusCursorInPrevious = areSlotCoreInfosEqual({...currentSlotCoreInfos, slotId: previousSlotId, slotType: SlotType.code}, focusSlotInfos);
+                const focusCursorInNext = areSlotCoreInfosEqual({...currentSlotCoreInfos, slotId: nextSlotId, slotType: SlotType.code}, focusSlotInfos);
+                if(focusCursorInPrevious && selectionCursorsComparisonValue <= 0){
+                    return focusSlotCode.substring(focusSlotCursorPos).trim().length == 0;
+                }
+                if(focusCursorInNext && selectionCursorsComparisonValue >= 0){
+                    return focusSlotCursorPos == 0; // a slot cannot start with spaces
+                }
+                return false;
+            });
+            return emphasisedBracket?.id;
+        },
         
         renameAllPopupButtonLabel(): string {
             return this.$t("buttonLabel.renameAllWithShortcut", {modifierkey: this.$t("contextMenu.ctrl")});
@@ -317,11 +367,6 @@ export default defineComponent({
     },
 
     watch: {
-        // Whenever the focus changes, we update the flag to check the bracket emphasis
-        focusSlotCursorInfos() {
-            this.ignoreBracketEmphasisCheck = false;
-        },
-
         // Whenever the rename identifier popup is closed (automatically, or by the user actions) we also clear the internal related flags
         showRenameIdentifierPopup(newVal){
             if(newVal == false){
@@ -433,62 +478,9 @@ export default defineComponent({
             }
         },
         isSlotEmphasised(slot: FlatSlotBase): boolean{
-            // In this method, if the flag to check a bracket emphasis (ignoreBracketEmphasisCheck) isn't set,
-            // we check if the current slot bracket should be emphasised, and if so, emphasise its bracket counterpart.
-            // The flag ignoreBracketEmphasisCheck is used to avoid cancelling the couterpart emphasise once set up.            
-            const isEditing = this.appStore.isEditing;
-            if(isEditing && isSlotBracketType(slot.type) && this.focusSlotCursorInfos && this.appStore.anchorSlotCursorInfos){            
-                if(!this.ignoreBracketEmphasisCheck){
-                    
-                    // The slot for the bracket is emphasised if the text cursor is near it (preceding or following) or its counterpart.
-                    const currentSlotCoreInfos: SlotCoreInfos= {frameId: this.frameId, labelSlotsIndex: this.labelIndex, slotId: slot.id, slotType: slot.type};
-                    const isOpeningBracket = (slot.type == SlotType.openingBracket);
-                    const parentIdSlotIndexSplit = getSlotParentIdAndIndexSplit(slot.id);
-                    const previousSlotId = isOpeningBracket 
-                        ? getSlotIdFromParentIdAndIndexSplit(parentIdSlotIndexSplit.parentId, parentIdSlotIndexSplit.slotIndex - 1)
-                        : slot.id + "," + ((retrieveSlotFromSlotInfos(currentSlotCoreInfos) as SlotsStructure).fields.length - 1);
-                    const nextSlotId = isOpeningBracket 
-                        ? slot.id + "," + 0
-                        : getSlotIdFromParentIdAndIndexSplit(parentIdSlotIndexSplit.parentId, parentIdSlotIndexSplit.slotIndex + 1);
-                
-                    const focusSlotInfos = this.focusSlotCursorInfos.slotInfos;
-                    const focusSlotCursorPos = this.focusSlotCursorInfos.cursorPos;
-                    const focusInputSpan = document.getElementById(getLabelSlotUID(focusSlotInfos)) as HTMLSpanElement;
-                    // That's not just to keep TS happy: the focus span could here be null, when a change of slot type happens
-                    if(focusInputSpan){
-                        const focusInputSpanContent = focusInputSpan.textContent??"";
-                        const focusCursorInPrevious = areSlotCoreInfosEqual({...currentSlotCoreInfos, slotId: previousSlotId, slotType: SlotType.code}, focusSlotInfos);
-                        const focusCursorInNext = areSlotCoreInfosEqual({...currentSlotCoreInfos, slotId: nextSlotId, slotType: SlotType.code}, focusSlotInfos);
-                        const selectionCursorsComparisonValue = getSelectionCursorsComparisonValue()??0;
-                        let needEmphasis = false;
-
-                        // Check the current bracket
-                        if((focusCursorInPrevious && selectionCursorsComparisonValue <= 0) 
-                            || (focusCursorInNext && selectionCursorsComparisonValue >= 0)){
-                            needEmphasis = focusCursorInPrevious 
-                                ? focusInputSpanContent.substring(focusSlotCursorPos).trim().length == 0 
-                                : focusSlotCursorPos == 0; // a slot cannot start with spaces               
-                        }
-                        slot.isEmphasised = needEmphasis;
-                        
-                        // Then if this bracket can have emphasis we flag the counterpart
-                        if(needEmphasis){
-                            const counterpartType = (isOpeningBracket) ? SlotType.closingBracket : SlotType.openingBracket;
-                            const counterpartSlot = this.subSlots.find((flatSlot) => flatSlot.id == slot.id && flatSlot.type == counterpartType);
-                            if(counterpartSlot){
-                                counterpartSlot.isEmphasised = true;
-                            }
-                            this.ignoreBracketEmphasisCheck = true;
-                        }
-                    }
-                }
-                return slot.isEmphasised??false;
-            }
-
-            // If we are not editing or the slot we checked is not a bracket, there is no emphasis
-            return false;
+            // Both brackets of a bracketed structure share the same slot id (see generateFlatSlotBases()).
+            return isSlotBracketType(slot.type) && slot.id === this.emphasisedBracketsSlotId;
         },
-
 
         beforeInput(e: InputEvent) {
             // beforeInput comes to us not the slot, so we must be responsible

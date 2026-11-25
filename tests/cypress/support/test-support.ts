@@ -218,10 +218,10 @@ export function waitForEditorSettled(timeoutMs = 10000): void {
                 // A param prompt (e.g. a function call's argument placeholders) can still be waiting
                 // on an async calculateParamPrompt() resolution (library data fetched over the
                 // network) well after focus/cursor/frameCount have already settled -- see
-                // LabelSlot.vue's data-param-prompt-pending, set by LabelSlotsStructure.vue while
+                // LabelSlot.vue's param-prompt-pending class, set by LabelSlotsStructure.vue while
                 // that promise is in flight. Without checking it here, a caller reading the DOM right
                 // after we resolve could see a stale/blank placeholder instead of the real one.
-                const pendingParamPrompt = win.document.querySelector("[data-param-prompt-pending=\"true\"]") != null;
+                const pendingParamPrompt = win.document.querySelector(".param-prompt-pending") != null;
                 const state = `${focusId}:${cursor}:${frameCount}:${pendingConversion}:${pendingParamPrompt}`;
                 const now = Date.now();
                 if (state !== lastState) {

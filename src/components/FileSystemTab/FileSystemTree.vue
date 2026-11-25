@@ -126,12 +126,12 @@ export default defineComponent({
         // FileSystemPane passes true for the top-level asset roots, /local and /cloud so they
         // open immediately; nested directories always start collapsed.
         startExpanded: { type: Boolean, default: false },
-        // Whether directories in this subtree get an upload button -- true under /local and /cloud,
-        // false under the read-only asset roots (/data, /books, etc).
+        // Whether directories in this subtree get an upload button -- true only under /local (not
+        // under /cloud, nor the read-only asset roots /data, /books, etc).
         allowUpload: { type: Boolean, default: false },
         // Whether items in this subtree get a delete button -- true only under /local (see
-        // FileSystemPane.vue): unlike upload, this isn't offered under /cloud too, since deleting a
-        // cloud file needs real API calls this doesn't (yet) make, not just a local cache edit.
+        // FileSystemPane.vue): it isn't offered under /cloud, since deleting a cloud file needs
+        // real API calls this doesn't (yet) make, not just a local cache edit.
         allowDelete: { type: Boolean, default: false },
         // Whether *files* (not directories -- see the template, only the file branch uses this) in
         // this subtree get a pin button -- true only under /local (see FileSystemPane.vue): pinning
@@ -142,7 +142,7 @@ export default defineComponent({
         // Whether Python is currently executing: every action button in this subtree stays
         // enabled and clickable regardless (see guardedEmit()/clickUploadInput() below), but while
         // this is true, clicking one does nothing except flash the run/stop button red -- /local's
-        // main-thread cache (and, for uploads only, /cloud's cache in cloudFileIO.ts) are only meant
+        // main-thread cache is only meant
         // to be touched between runs, not while a run might also be reading/writing the same files.
         executing: { type: Boolean, default: false },
         // Whether this node is the directory that will be the current working directory when the

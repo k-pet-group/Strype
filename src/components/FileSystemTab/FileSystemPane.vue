@@ -26,7 +26,7 @@
                     :opens-in-new-tab="isProjectFile"
                     @download="(n) => onDownload(n, '/local')"
                     @downloadDir="(n) => onDownloadDir(n, '/local')"
-                    @upload="(n, file) => void onUpload(n, file, '/local')"
+                    @upload="(n, file) => void onUpload(n, file)"
                     @delete="onDeleteLocal"
                     @pin="onPinLocal"
                     @view="(n) => onView(n, '/local')"
@@ -49,13 +49,11 @@
                     :node="cloudRoot"
                     label-override="/cloud/"
                     start-expanded
-                    :allow-upload="!isCloudReadOnly"
                     :executing="isPythonExecuting"
                     :is-cwd="cwdRoot === '/cloud'"
                     :opens-in-new-tab="canOpenCloudProjectFileInNewTab"
                     @download="(n) => onDownload(n, '/cloud')"
                     @downloadDir="(n) => onDownloadDir(n, '/cloud')"
-                    @upload="(n, file) => void onUpload(n, file, '/cloud')"
                     @view="(n) => onView(n, '/cloud')"
                 />
             </div>
@@ -124,7 +122,6 @@ import {
     listFsRootTree,
     readFsFileBytes,
     togglePinLocal,
-    uploadEntriesToCloud,
     uploadEntriesToLocal,
 } from "@/helpers/fileSystemTabIO";
 import { ArchiveEntry, isZipFile, listZipEntryPaths, unzipEntries } from "@/helpers/archive";
@@ -148,7 +145,6 @@ const SOUND_WAVEFORM_HEIGHT = 120;
 interface PendingUpload {
     dirNode: FsTreeNode,
     file: File,
-    root: "/local" | "/cloud",
 }
 
 interface ViewingFile {
@@ -338,10 +334,6 @@ export default defineComponent({
             this.localRoot = await listFsRootTree("/local");
         },
 
-        async refreshCloud(): Promise<void> {
-            this.cloudRoot = isCloudMounted() ? await listFsRootTree("/cloud") : null;
-        },
-
         onDownload(node: FsTreeNode, root: FsRoot): void {
             void downloadFsFile(node, root);
         },
@@ -512,10 +504,10 @@ export default defineComponent({
             if (!file || this.localRoot == null) {
                 return;
             }
-            void this.onUpload(this.localRoot, file, "/local");
+            void this.onUpload(this.localRoot, file);
         },
 
-        // Every upload (from either upload button, /local or /cloud) comes through here first, so
+        // Every upload (from any of /local's upload buttons) comes through here first, so
         // this is where disallowed file types are refused (by name or MIME type) -- see
         // fileSystemTabIO.ts's upload validation. Checked before the overwrite prompt, so the user
         // is never asked to confirm replacing a file with something that's then refused anyway. A
@@ -523,7 +515,7 @@ export default defineComponent({
         // without extracting anything), and a zip containing any disallowed file is refused
         // outright -- both for "Unzip contents" and for "Keep as zip", since a kept zip can be
         // downloaded and extracted elsewhere just the same.
-        async onUpload(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): Promise<void> {
+        async onUpload(dirNode: FsTreeNode, file: File): Promise<void> {
             if (isBlockedUploadFile(file)) {
                 this.showUploadRefused(this.$t("fileSystemTab.uploadBlockedType", {name: escapeHTML(file.name)}) as string);
                 return;
@@ -547,11 +539,11 @@ export default defineComponent({
             if (dirHasEntryNamed(dirNode, file.name)) {
                 // Ask for confirmation before silently overwriting an existing entry -- see
                 // onConfirmOverwrite() below, triggered from OverwriteConfirmDialog.vue.
-                this.pendingOverwrite = {dirNode, file, root};
+                this.pendingOverwrite = {dirNode, file};
                 eventBus.emit(CustomEventTypes.showStrypeModal, this.overwriteConfirmDlgId);
                 return;
             }
-            this.proceedWithUpload(dirNode, file, root);
+            this.proceedWithUpload(dirNode, file);
         },
 
         // The app's shared message dialog (SimpleMsgModalDlg.vue) renders its message as HTML, so
@@ -566,45 +558,40 @@ export default defineComponent({
             const pending = this.pendingOverwrite;
             this.pendingOverwrite = null;
             if (pending) {
-                this.proceedWithUpload(pending.dirNode, pending.file, pending.root);
+                this.proceedWithUpload(pending.dirNode, pending.file);
             }
         },
 
-        proceedWithUpload(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): void {
+        proceedWithUpload(dirNode: FsTreeNode, file: File): void {
             if (isZipFile(file)) {
                 // Ask the user whether to keep the archive as-is or unzip its contents -- see
                 // onKeepAsZip()/onUnzipContents() below, triggered from ArchiveImportDialog.vue.
-                this.pendingUpload = {dirNode, file, root};
+                this.pendingUpload = {dirNode, file};
                 eventBus.emit(CustomEventTypes.showStrypeModal, this.archiveImportDlgId);
                 return;
             }
-            void this.uploadPlainFile(dirNode, file, root);
+            void this.uploadPlainFile(dirNode, file);
         },
 
         // Shared by uploadPlainFile() (a single-entry array) and onUnzipContents() (an archive's
         // whole entry list) -- both just need "write these entries under dirNode, then refresh
-        // whichever root they went into" and otherwise differ only in where the entries came from.
-        async uploadEntries(dirNode: FsTreeNode, entries: ArchiveEntry[], root: "/local" | "/cloud"): Promise<void> {
-            if (root === "/local") {
-                await uploadEntriesToLocal(dirNode, entries);
-                await this.refreshLocal();
-            }
-            else {
-                await uploadEntriesToCloud(dirNode, entries);
-                await this.refreshCloud();
-            }
+        // /local" and otherwise differ only in where the entries came from. Uploads only ever go
+        // to /local: the Files tab offers no upload under /cloud.
+        async uploadEntries(dirNode: FsTreeNode, entries: ArchiveEntry[]): Promise<void> {
+            await uploadEntriesToLocal(dirNode, entries);
+            await this.refreshLocal();
         },
 
-        async uploadPlainFile(dirNode: FsTreeNode, file: File, root: "/local" | "/cloud"): Promise<void> {
+        async uploadPlainFile(dirNode: FsTreeNode, file: File): Promise<void> {
             const data = new Uint8Array(await file.arrayBuffer());
-            await this.uploadEntries(dirNode, [{path: file.name, data}], root);
+            await this.uploadEntries(dirNode, [{path: file.name, data}]);
         },
 
         async onKeepAsZip(): Promise<void> {
             const pending = this.pendingUpload;
             this.pendingUpload = null;
             if (pending) {
-                await this.uploadPlainFile(pending.dirNode, pending.file, pending.root);
+                await this.uploadPlainFile(pending.dirNode, pending.file);
             }
         },
 
@@ -615,7 +602,7 @@ export default defineComponent({
                 return;
             }
             const entries = await unzipEntries(pending.file);
-            await this.uploadEntries(pending.dirNode, entries, pending.root);
+            await this.uploadEntries(pending.dirNode, entries);
         },
     },
 });

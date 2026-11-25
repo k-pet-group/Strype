@@ -163,7 +163,7 @@ export default defineComponent({
         // doubles as a hover hint showing the item's full path.
         invisiblePrefix: { type: String, default: "" },
         // Tells whether "viewing" a file of this subtree opens it in a new Strype tab rather than in
-        // the viewer dialog (see FileSystemPane.vue's openCloudProjectFileInNewTab()): its view button
+        // the viewer dialog (see FileSystemPane.vue's openCloudProjectFileInNewTab() and openLocalProjectFileInNewTab()): its view button
         // then shows an open folder, with a matching title, instead of the eye. Forwarded as it recurses.
         opensInNewTab: { type: Function as PropType<(node: FsTreeNode) => boolean>, default: null },
     },

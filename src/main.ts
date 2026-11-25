@@ -15,6 +15,7 @@ import { startVersionCheck } from "./helpers/versionCheck";
 import { openIndexedDBConnection, tidyUpDatabaseState } from "@/store/store-db-storage";
 import { getEditorTabId } from "@/store/store";
 import { openCloudFileInNewTab, takeCloudHandoffRequestFromURL } from "@/helpers/cloudHandoff";
+import { takeLocalFileRequestFromURL } from "@/helpers/localFileInNewTab";
 import { showIndexDBError } from "@/helpers/storeMethods";
 import { startEagerLoad as startEagerTreeSitterLoad } from "@/helpers/treeSitterPython";
 
@@ -141,6 +142,8 @@ else {
 // A tab opened by Strype to open a Cloud Drive file (see cloudHandoff.ts) must clear what was copied from its opener's
 // session storage (notably the tab ID) before anything reads it:
 takeCloudHandoffRequestFromURL();
+// Same for a tab opened by Strype to open a file of the Files tab's "/local" folder (see localFileInNewTab.ts):
+takeLocalFileRequestFromURL();
 
 // New way of creating the App in Vue 3: using createApp()
 const app = createApp(App);

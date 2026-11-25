@@ -23,6 +23,7 @@
                     allow-delete
                     allow-pin
                     :executing="isPythonExecuting"
+                    :opens-in-new-tab="isProjectFile"
                     @download="(n) => onDownload(n, '/local')"
                     @downloadDir="(n) => onDownloadDir(n, '/local')"
                     @upload="(n, file) => void onUpload(n, file, '/local')"
@@ -128,7 +129,7 @@ import {
 } from "@/helpers/fileSystemTabIO";
 import { ArchiveEntry, isZipFile, listZipEntryPaths, unzipEntries } from "@/helpers/archive";
 import { FsTreeNode } from "@/stryperuntime/file_system_tree_types";
-import { runChangeCount } from "@/helpers/localFsCache";
+import { readFile as readLocalFile, runChangeCount } from "@/helpers/localFsCache";
 import { eventBus } from "@/helpers/appContext";
 import { CustomEventTypes, getAppSimpleMsgDlgId } from "@/helpers/editor";
 import { decodeAsTextIfValid, MAX_PREVIEWABLE_FILE_SIZE, mimeTypeForExtension, previewKindForExtension } from "@/helpers/filePreview";
@@ -136,6 +137,7 @@ import { drawSoundOnCanvas } from "@/helpers/media";
 import { saveAs } from "file-saver";
 import { escapeHTML, pythonFileExtension, strypeFileExtension } from "@/helpers/common";
 import { openCloudFileInNewTab } from "@/helpers/cloudHandoff";
+import { openLocalFileInNewTab } from "@/helpers/localFileInNewTab";
 import { isSyncTargetCloudDrive } from "@/types/cloud-drive-types";
 
 // Waveform image size for the "view file" sound preview -- wider than MediaPreviewPopup.vue's own
@@ -364,7 +366,7 @@ export default defineComponent({
         // downloading a huge file just to then refuse to render it.
         async onView(node: FsTreeNode, root: FsRoot): Promise<void> {
             // (must be done right away in the click's handler: the browser blocks opening a tab otherwise)
-            if (root === "/cloud" && this.openCloudProjectFileInNewTab(node)) {
+            if ((root === "/cloud" && this.openCloudProjectFileInNewTab(node)) || (root === "/local" && this.openLocalProjectFileInNewTab(node))) {
                 return;
             }
             this.revokeViewingObjectUrl();
@@ -417,6 +419,25 @@ export default defineComponent({
                 : {node, root, kind: "unsupported", bytes};
         },
 
+        // A project file (.spy or .py) of "/local" isn't shown in the dialog: it's opened in a new Strype tab, which is given its content
+        // (see localFileInNewTab.ts). The project isn't linked to the file there: "/local" only exists in this tab.
+        // Returns false if it isn't such a file, or the new tab couldn't be opened (then the file is shown in the dialog as usual).
+        openLocalProjectFileInNewTab(node: FsTreeNode): boolean {
+            if (!this.isProjectFile(node)) {
+                return false;
+            }
+            // (a file that isn't text can't be a project: it's shown in the dialog, which says it can't be previewed)
+            const bytes = readLocalFile(node.path);
+            const content = (bytes != undefined) ? decodeAsTextIfValid(bytes) : undefined;
+            return content != undefined && openLocalFileInNewTab({fileName: node.name, content});
+        },
+
+        // Whether the file is a project file (.spy or .py), which is opened in a new tab rather than viewed
+        // (FileSystemTree.vue then shows an "open" button rather than a "view" one for it).
+        isProjectFile(node: FsTreeNode): boolean {
+            return !node.isDir && (node.name.endsWith(`.${strypeFileExtension}`) || node.name.endsWith(`.${pythonFileExtension}`));
+        },
+
         // A project file (.spy or .py) of "/cloud" isn't shown in the dialog: it's opened in a new Strype tab,
         // with the same connection to the Cloud Drive (see cloudHandoff.ts), and saved to the Cloud Drive from there.
         // Returns false if it isn't such a file, or the new tab couldn't be opened (then the file is shown in the dialog as usual).
@@ -438,8 +459,7 @@ export default defineComponent({
         // The ID of the Cloud Drive folder containing the project file (.spy or .py) of "/cloud",
         // or undefined if it isn't such a file (or we aren't connected to a Cloud Drive).
         cloudProjectFileFolderId(node: FsTreeNode): string | undefined {
-            if (node.cloudFileId == null || !isSyncTargetCloudDrive(this.appStore.syncTarget)
-                || !(node.name.endsWith(`.${strypeFileExtension}`) || node.name.endsWith(`.${pythonFileExtension}`))) {
+            if (node.cloudFileId == null || !isSyncTargetCloudDrive(this.appStore.syncTarget) || !this.isProjectFile(node)) {
                 return undefined;
             }
             return (this.cloudRoot) ? findParentNode(this.cloudRoot, node)?.cloudFileId : undefined;

@@ -35,14 +35,15 @@ let isListeningToNewTabs = false;
 // Must be called directly in the handler of the user's click (the browser would block the new tab otherwise).
 // Returns false if the new tab couldn't be opened.
 export function openLocalFileInNewTab(file: LocalFileForNewTab): boolean {
+    // We listen before opening the new tab, so we're sure to get its message.
+    if(!isListeningToNewTabs){
+        window.addEventListener("message", onNewTabMessage);
+        isListeningToNewTabs = true;
+    }
     // (no "noopener": the new tab needs window.opener to tell it's ready)
     const newTab = window.open(`${window.location.origin}${window.location.pathname}?${localFileQueryKey}`, "_blank");
     if(newTab == null){
         return false;
-    }
-    if(!isListeningToNewTabs){
-        window.addEventListener("message", onNewTabMessage);
-        isListeningToNewTabs = true;
     }
     filesForNewTabs.set(newTab, file);
     return true;

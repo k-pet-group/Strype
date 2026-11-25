@@ -32,6 +32,9 @@ const STRYPE_LOAD_TIMEOUT_MS = 45_000;
 interface HandoffFile {target: number, fileId: string, fileName: string, folderId: string}
 
 test.describe("Opening a Cloud Drive file in a new tab", () => {
+    // Each test runs two or three Strype tabs at once, which some browsers (Firefox notably) load too slowly
+    // when other workers do the same: run these tests one after another in one worker (a failure doesn't skip the next ones).
+    test.describe.configure({mode: "default"});
     test.beforeEach(async ({context, browserName}, testInfo) => {
         if (browserName === "webkit" && process.platform === "win32") {
             testInfo.skip(true, "Skipping on Windows + WebKit due to unknown problems");

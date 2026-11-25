@@ -99,7 +99,7 @@
     "EOFError": "This frame cannot be empty.",
     "cloudAPIFailed":"{apiname} failed to load.",
     "cloudConnectionFailed": "Could not reach {drivename}. Please check your network connection and try again.",
-    "cloudHandoffFailed": "Strype could not get the file to open from the Strype tab it was opened from (that tab may have been closed or reloaded). A new project has been started instead.",
+    "cloudHandoffFailed": "Strype couldn't open the file in this tab, because the Strype tab you opened it from didn't respond (it may have been closed or reloaded). A new project will be started.",
     "cloudSignOutFailed": "Strype could not confirm with {providername} that your session was ended (for example, because of a network issue or because the window was closed).<br>Strype has removed your sign-in details from this page. To be sure, you can also sign out from {providername} on its website.",
     "gitConnectionFailed": "Could not connect to {providername}: {error}",
     "gitNotConnected": "You are not connected to {providername}.",
